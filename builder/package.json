@@ -1,0 +1,7 @@
+{
+  "name": "builder",
+  "type": "module",
+  "scripts": {
+    "start": "ts-node src/index.ts"
+  }
+}
