@@ -1,13 +1,18 @@
-import { stat } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, type Stats, statSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 
 export async function getArgs(): Promise<{
   inputNextAppDir: string;
+  outputDir?: string;
 }> {
-  const { positionals } = parseArgs({
-    options: {},
+  const { positionals, values } = parseArgs({
+    options: {
+      output: {
+        type: "string",
+        short: "o",
+      },
+    },
     allowPositionals: true,
   });
 
@@ -19,13 +24,7 @@ export async function getArgs(): Promise<{
 
   const inputNextAppDir = resolve(positionals[0]);
 
-  const inputNextAppDirStat = await stat(inputNextAppDir).catch(() => {
-    throw new Error("Error: the provided input is not a valid path");
-  });
-
-  if (!inputNextAppDirStat.isDirectory()) {
-    throw new Error("Error: the provided input is not a directory");
-  }
+  assertDirArg(inputNextAppDir);
 
   // equivalent do: https://github.com/sst/open-next/blob/f61b0e94/packages/open-next/src/build.ts#L130-L141
   if (
@@ -38,5 +37,32 @@ export async function getArgs(): Promise<{
     );
   }
 
-  return { inputNextAppDir };
+  const outputDir = values.output ? resolve(values.output) : undefined;
+
+  if (outputDir) {
+    assertDirArg(outputDir, "output");
+  }
+
+  return { inputNextAppDir, outputDir };
+}
+
+function assertDirArg(path: string, argName?: string) {
+  let dirStats: Stats;
+  try {
+    dirStats = statSync(path);
+  } catch {
+    throw new Error(
+      `Error: the provided${
+        argName ? ` "${argName}"` : ""
+      } input is not a valid path`
+    );
+  }
+
+  if (!dirStats.isDirectory()) {
+    throw new Error(
+      `Error: the provided${
+        argName ? ` "${argName}"` : ""
+      } input is not a directory`
+    );
+  }
 }
