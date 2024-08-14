@@ -1,3 +1,5 @@
-const msg: string = "Hello World!";
+import { getArgs } from "./args";
 
-console.log(msg);
+const { inputNextAppDir } = await getArgs();
+
+console.log({ inputNextAppDir });
