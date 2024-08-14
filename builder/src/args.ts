@@ -4,10 +4,16 @@ import { resolve } from "node:path";
 
 export async function getArgs(): Promise<{
   inputNextAppDir: string;
+  skipBuild?: boolean;
   outputDir?: string;
 }> {
   const { positionals, values } = parseArgs({
     options: {
+      skipBuild: {
+        type: "boolean",
+        short: "s",
+        default: false,
+      },
       output: {
         type: "string",
         short: "o",
@@ -43,7 +49,7 @@ export async function getArgs(): Promise<{
     assertDirArg(outputDir, "output");
   }
 
-  return { inputNextAppDir, outputDir };
+  return { inputNextAppDir, outputDir, skipBuild: values.skipBuild };
 }
 
 function assertDirArg(path: string, argName?: string) {

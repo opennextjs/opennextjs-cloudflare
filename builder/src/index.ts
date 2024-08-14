@@ -1,6 +1,9 @@
 import { getArgs } from "./args";
-import { buildWorkerApp } from "./build";
+import { build } from "./build";
 
-const { inputNextAppDir, outputDir } = await getArgs();
+const { inputNextAppDir, skipBuild, outputDir } = await getArgs();
 
-buildWorkerApp(inputNextAppDir, outputDir);
+await build(inputNextAppDir, {
+  outputDir,
+  skipBuild: !!skipBuild,
+});
