@@ -1,5 +1,10 @@
 import { readdirSync, statSync } from "node:fs";
 
+import {
+  build as buildAsync,
+  type BuildOptions as ESBuildOptions,
+} from "esbuild";
+
 /**
  * Recursively traverse files in a directory and calls `callbackFn` on each file
  *
@@ -25,4 +30,35 @@ export function traverseFiles(
     const relativeFilePath = `${searchingDir}/${file}`;
     callbackFn(relativeFilePath);
   });
+}
+
+/**
+ * Simplified version of: https://github.com/sst/open-next/blob/f61b0e9486/packages/open-next/src/build/helper.ts#L94-L132
+ *
+ * @param esbuildOptions
+ */
+export async function esbuildAsync(esbuildOptions: ESBuildOptions) {
+  const result = await buildAsync({
+    target: "esnext",
+    format: "esm",
+    platform: "node",
+    bundle: true,
+    mainFields: ["module", "main"],
+    sourcesContent: false,
+    ...esbuildOptions,
+    external: [...(esbuildOptions.external ?? []), "next"],
+    banner: {
+      ...esbuildOptions.banner,
+      js: [esbuildOptions.banner?.js || ""].join(""),
+    },
+  });
+
+  if (result.errors.length > 0) {
+    result.errors.forEach((error) => console.error(error));
+    throw new Error(
+      `There was a problem bundling ${
+        (esbuildOptions.entryPoints as string[])[0]
+      }.`
+    );
+  }
 }

@@ -1,4 +1,4 @@
-import { statSync } from "node:fs";
+import { rmSync, statSync } from "node:fs";
 import { buildNextjsApp } from "./build-next-app";
 import { buildWorker } from "./build-worker";
 
@@ -20,6 +20,8 @@ export async function build(
   if (!opts.skipBuild) {
     buildNextjsApp(inputNextAppDir);
   }
+
+  rmSync(outputDir, { recursive: true, force: true });
 
   const dotNextDir = getDotNextDirPath(inputNextAppDir);
   await buildWorker(dotNextDir, outputDir);

@@ -1,6 +1,6 @@
 {
   "name": "poc-build-nextjs-app-for-cf-workers",
   "scripts": {
-    "build-api-nodejs-hello-world": "pnpm --filter builder start ../next-apps/api-nodejs-hello-world"
+    "build:api-nodejs-hello-world": "pnpm --filter builder start ../next-apps/api-nodejs-hello-world -o ../output -s"
   }
 }
