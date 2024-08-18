@@ -1,6 +1,7 @@
-import { rmSync, statSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { buildNextjsApp } from "./build-next-app";
 import { buildWorker } from "./build-worker";
+import { getNextjsAppPaths } from "../nextjsPaths";
 
 /**
  * Builds the application in a format that can be passed to workerd
@@ -15,16 +16,15 @@ export async function build(
   inputNextAppDir: string,
   opts: BuildOptions
 ): Promise<void> {
-  const outputDir = `${opts.outputDir ?? inputNextAppDir}/.worker-next`;
-
   if (!opts.skipBuild) {
     buildNextjsApp(inputNextAppDir);
   }
 
-  rmSync(outputDir, { recursive: true, force: true });
+  const outputDir = `${opts.outputDir ?? inputNextAppDir}/.worker-next`;
+  cleanDirectory(outputDir);
 
-  const dotNextDir = getDotNextDirPath(inputNextAppDir);
-  await buildWorker(dotNextDir, outputDir);
+  const nextjsAppPaths = getNextjsAppPaths(inputNextAppDir);
+  await buildWorker(outputDir, nextjsAppPaths);
 }
 
 type BuildOptions = {
@@ -32,15 +32,6 @@ type BuildOptions = {
   outputDir?: string;
 };
 
-function getDotNextDirPath(nextAppDir: string): string {
-  const dotNextDirPath = `${nextAppDir}/.next`;
-
-  try {
-    const dirStats = statSync(dotNextDirPath);
-    if (!dirStats.isDirectory()) throw new Error();
-  } catch {
-    throw new Error(`Error: \`.next\` directory not found!`);
-  }
-
-  return dotNextDirPath;
+async function cleanDirectory(path: string): Promise<void> {
+  return rm(path, { recursive: true, force: true });
 }
