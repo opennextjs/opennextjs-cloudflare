@@ -7,12 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "build:worker": "builder -s"
+    "build:worker": "nextjs-worker-builder"
   },
   "dependencies": {
     "react": "^18",
     "react-dom": "^18",
     "next": "14.2.5",
-    "builder": "workspace:*"
+    "nextjs-worker-builder": "workspace:*"
   }
 }

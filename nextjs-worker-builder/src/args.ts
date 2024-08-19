@@ -7,7 +7,7 @@ export async function getArgs(): Promise<{
   skipBuild?: boolean;
   outputDir?: string;
 }> {
-  const { positionals, values } = parseArgs({
+  const { values } = parseArgs({
     options: {
       skipBuild: {
         type: "boolean",
