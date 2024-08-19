@@ -2,12 +2,18 @@
   "name": "builder",
   "type": "module",
   "scripts": {
-    "start": "tsx src/index.ts"
+    "build": "tsup",
+    "build:watch": "tsup --watch"
   },
+  "bin": "dist/index.js",
+  "files": [
+    "dist"
+  ],
   "devDependencies": {
     "@types/node": "^22.2.0",
     "esbuild": "^0.23.0",
-    "tsx": "^4.17.0",
+    "next": "14.2.5",
+    "tsup": "^8.2.4",
     "typescript": "^5.5.4"
   }
 }

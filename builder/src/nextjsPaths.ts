@@ -7,15 +7,16 @@ import { relative } from "node:path";
  * NOTE: WIP, we still need to discern which paths are relevant here!
  */
 export type NextjsAppPaths = {
+  appDir: string;
   /**
    * The path to the application's `.next` directory (where `next build` saves the build output)
    */
   dotNextDir: string;
 
   /**
-   * The path to the standalone directory (where `next build` saves the standalone app when standalone mode is used)
+   * The path to the application standalone directory (where `next build` saves the standalone app when standalone mode is used)
    */
-  standaloneDir: string;
+  standaloneAppDir: string;
 
   /**
    * the path to the `.next` directory specific to the standalone application
@@ -40,8 +41,9 @@ export function getNextjsAppPaths(nextAppDir: string): NextjsAppPaths {
   const appPath = getNextjsApplicationPath(dotNextDir).replace(/\/$/, "");
 
   return {
+    appDir: nextAppDir,
     dotNextDir,
-    standaloneDir: `${dotNextDir}/standalone`,
+    standaloneAppDir: `${dotNextDir}/standalone/${appPath}`,
     standaloneAppDotNextDir: `${dotNextDir}/standalone/${appPath}/.next`,
     standaloneAppServerDir: `${dotNextDir}/standalone/${appPath}/.next/server`,
   };

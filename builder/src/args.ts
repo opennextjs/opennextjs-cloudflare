@@ -3,7 +3,7 @@ import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 
 export async function getArgs(): Promise<{
-  inputNextAppDir: string;
+  // inputNextAppDir: string;
   skipBuild?: boolean;
   outputDir?: string;
 }> {
@@ -19,29 +19,8 @@ export async function getArgs(): Promise<{
         short: "o",
       },
     },
-    allowPositionals: true,
+    allowPositionals: false,
   });
-
-  if (positionals.length !== 1) {
-    throw new Error(
-      "Please provide a single positional argument indicating the Next.js app directory"
-    );
-  }
-
-  const inputNextAppDir = resolve(positionals[0]);
-
-  assertDirArg(inputNextAppDir);
-
-  // equivalent do: https://github.com/sst/open-next/blob/f61b0e94/packages/open-next/src/build.ts#L130-L141
-  if (
-    !["js", "cjs", "mjs", "ts"].some((ext) =>
-      existsSync(`${inputNextAppDir}/next.config.${ext}`)
-    )
-  ) {
-    throw new Error(
-      "Error: the directory doesn't seem to point to a Next.js app"
-    );
-  }
 
   const outputDir = values.output ? resolve(values.output) : undefined;
 
@@ -49,7 +28,7 @@ export async function getArgs(): Promise<{
     assertDirArg(outputDir, "output", true);
   }
 
-  return { inputNextAppDir, outputDir, skipBuild: values.skipBuild };
+  return { outputDir, skipBuild: values.skipBuild };
 }
 
 function assertDirArg(path: string, argName?: string, make?: boolean) {
