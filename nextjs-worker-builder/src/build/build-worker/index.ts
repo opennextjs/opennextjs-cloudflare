@@ -1,6 +1,7 @@
 import { NextjsAppPaths } from "../../nextjsPaths";
 import { build } from "esbuild";
 import { readFileSync } from "node:fs";
+import { cp } from "node:fs/promises";
 
 /**
  * Using the Next.js build output in the `.next` directory builds a workerd compatible output
@@ -12,16 +13,17 @@ export async function buildWorker(
   outputDir: string,
   nextjsAppPaths: NextjsAppPaths
 ): Promise<void> {
+  console.log();
+
   const workerEntrypoint = `${import.meta.dirname}/templates/worker.ts`;
-
   const workerOutputFile = `${outputDir}/index.mjs`;
-
   const nextConfigStr =
     readFileSync(nextjsAppPaths.standaloneAppDir + "/server.js", "utf8")?.match(
       /const nextConfig = ({.+?})\n/
     )?.[1] ?? {};
 
-  build({
+  console.log(`\x1b[35m⚙️ Bundling the worker file...\n\x1b[0m`);
+  await build({
     entryPoints: [workerEntrypoint],
     bundle: true,
     outfile: workerOutputFile,
@@ -42,7 +44,10 @@ export async function buildWorker(
     platform: "node",
   });
 
-  console.log();
-  console.log(`\x1b[35mWorker saved in \`${workerOutputFile}\` 🚀\x1b[0m`);
-  console.log();
+  console.log(`\x1b[35m⚙️ Copying asset files...\n\x1b[0m`);
+  await cp(`${nextjsAppPaths.dotNextDir}/static`, `${outputDir}/assets/_next`, {
+    recursive: true,
+  });
+
+  console.log(`\x1b[35mWorker saved in \`${workerOutputFile}\` 🚀\n\x1b[0m`);
 }

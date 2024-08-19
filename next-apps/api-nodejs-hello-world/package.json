@@ -7,12 +7,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "build:worker": "nextjs-worker-builder"
+    "build:worker": "nextjs-worker-builder",
+    "dev:worker": "wrangler dev",
+    "preview:worker": "pnpm build:worker && pnpm dev:worker"
   },
   "dependencies": {
-    "react": "^18",
-    "react-dom": "^18",
     "next": "14.2.5",
-    "nextjs-worker-builder": "workspace:*"
+    "nextjs-worker-builder": "workspace:*",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "devDependencies": {
+    "wrangler": "^3.72.0"
   }
 }
