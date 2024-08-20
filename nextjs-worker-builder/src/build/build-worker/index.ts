@@ -102,11 +102,14 @@ export async function buildWorker(
       // Note: we need the __non_webpack_require__ variable declared as it is used by next-server:
       // https://github.com/vercel/next.js/blob/be0c3283/packages/next/src/server/next-server.ts#L116-L119
       __non_webpack_require__: "require",
+      // The next.js server can run in minimal mode: https://github.com/vercel/next.js/blob/aa90fe9bb/packages/next/src/server/base-server.ts#L510-L511
+      // this avoids some extra (/problematic) `require` calls, such as here: https://github.com/vercel/next.js/blob/aa90fe9bb/packages/next/src/server/next-server.ts#L1259
+      // that's wht we enable it
+      "process.env.NEXT_PRIVATE_MINIMAL_MODE": "true",
       // Ask mhart if he can explain why the `define`s below are necessary
       "process.env.NEXT_RUNTIME": '"nodejs"',
       "process.env.NODE_ENV": '"production"',
       "process.env.NEXT_MINIMAL": "true",
-      // "process.env.NEXT_PRIVATE_MINIMAL_MODE": "true",
     },
     // We need to set platform to node so that esbuild doesn't complain about the node imports
     platform: "node",
