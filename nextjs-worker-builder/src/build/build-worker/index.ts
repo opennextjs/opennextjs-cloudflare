@@ -182,5 +182,12 @@ async function updateWorkerBundledCode(
     `
   );
 
+  // Next.js tries to instantiate an https agent, so here we replace that with a simple http one (which we support)
+  // source: https://github.com/vercel/next.js/blob/aa90fe9bb/packages/next/src/server/setup-http-agent-env.ts#L20
+  updatedWorkerContents = updatedWorkerContents.replace(
+    'var _https = require("https");',
+    'var _https = require("http");'
+  );
+
   await writeFile(workerOutputFile, updatedWorkerContents);
 }
