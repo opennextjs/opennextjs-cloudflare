@@ -3,6 +3,8 @@ import { build, Plugin } from "esbuild";
 import { readFileSync, writeFileSync } from "node:fs";
 import { cp, readFile, writeFile } from "node:fs/promises";
 
+import { globSync } from "glob";
+
 let fixRequires: Plugin = {
   name: "replaceRelative",
   setup(build) {
@@ -110,12 +112,7 @@ export async function buildWorker(
     platform: "node",
   });
 
-  // ultra hack
-  const workerContents = await readFile(workerOutputFile, "utf8");
-  const updatedWorkerContents = workerContents
-    .replace(/__require\d?\(/g, "require(")
-    .replace(/__require\d?\./g, "require.");
-  await writeFile(workerOutputFile, updatedWorkerContents);
+  await updateWorkerBundledCode(workerOutputFile, nextjsAppPaths);
 
   console.log(`\x1b[35m⚙️ Copying asset files...\n\x1b[0m`);
   await cp(`${nextjsAppPaths.dotNextDir}/static`, `${outputDir}/assets/_next`, {
@@ -123,4 +120,67 @@ export async function buildWorker(
   });
 
   console.log(`\x1b[35mWorker saved in \`${workerOutputFile}\` 🚀\n\x1b[0m`);
+}
+
+/**
+ * This function applies string replacements on the bundled worker code necessary to get it to run in workerd
+ *
+ * Needless to say all the logic in this function is something we should avoid as much as possible!
+ *
+ * @param workerOutputFile
+ * @param nextjsAppPaths
+ */
+async function updateWorkerBundledCode(
+  workerOutputFile: string,
+  nextjsAppPaths: NextjsAppPaths
+): Promise<void> {
+  const workerContents = await readFile(workerOutputFile, "utf8");
+
+  // ultra hack (don't remember/know why it's needed)
+  let updatedWorkerContents = workerContents
+    .replace(/__require\d?\(/g, "require(")
+    .replace(/__require\d?\./g, "require.");
+
+  // The next-server code gets the buildId from the filesystem, resulting in a `[unenv] fs.readFileSync is not implemented yet!` error
+  // so we add an early return to the `getBuildId` function so that the `readyFileSync` is never encountered
+  // (source: https://github.com/vercel/next.js/blob/15aeb92efb34c09a36/packages/next/src/server/next-server.ts#L438-L451)
+  // Note: we could/should probably just patch readFileSync here or something!
+  updatedWorkerContents = updatedWorkerContents.replace(
+    "getBuildId() {",
+    `getBuildId() {
+      return ${JSON.stringify(
+        readFileSync(
+          `${nextjsAppPaths.standaloneAppDotNextDir}/BUILD_ID`,
+          "utf-8"
+        )
+      )};
+    `
+  );
+
+  // Same as above, the next-server code loads the manifests with `readyFileSync` and we want to avoid that
+  // (source: https://github.com/vercel/next.js/blob/15aeb92e/packages/next/src/server/load-manifest.ts#L34-L56)
+  // Note: we could/should probably just patch readFileSync here or something!
+  const manifestJsons = globSync(
+    `${nextjsAppPaths.standaloneAppDotNextDir}/**/*-manifest.json`
+  ).map((file) => file.replace(nextjsAppPaths.standaloneAppDir + "/", ""));
+  updatedWorkerContents = updatedWorkerContents.replace(
+    /function loadManifest\((.+?), .+?\) {/,
+    `$&
+    ${manifestJsons
+      .map(
+        (manifestJson) => `
+          if ($1.endsWith("${manifestJson}")) {
+            return ${readFileSync(
+              `${nextjsAppPaths.standaloneAppDir}/${manifestJson}`,
+              "utf-8"
+            )};
+          }
+        `
+      )
+      .join("\n")}
+    throw new Error("Unknown loadManifest: " + $1);
+    `
+  );
+
+  await writeFile(workerOutputFile, updatedWorkerContents);
 }
