@@ -8,7 +8,7 @@ let fixRequires: Plugin = {
   setup(build) {
     // Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
     build.onResolve({ filter: /^\.\/require-hook$/ }, (args) => ({
-      path: `${import.meta.dirname}/templates/shims/empty.ts`,
+      path: `${__dirname}/templates/shims/empty.ts`,
     }));
   },
 };
@@ -55,7 +55,7 @@ export async function buildWorker(
     )
   );
 
-  const workerEntrypoint = `${import.meta.dirname}/templates/worker.ts`;
+  const workerEntrypoint = `${__dirname}/templates/worker.ts`;
   const workerOutputFile = `${outputDir}/index.mjs`;
   const nextConfigStr =
     readFileSync(nextjsAppPaths.standaloneAppDir + "/server.js", "utf8")?.match(
@@ -75,16 +75,12 @@ export async function buildWorker(
       // Note: we (empty) shim next/dist/compiled/ws because it generates two `eval`s:
       //   eval("require")("bufferutil");
       //   eval("require")("utf-8-validate");
-      "next/dist/compiled/ws": `${
-        import.meta.dirname
-      }/templates/shims/empty.ts`,
+      "next/dist/compiled/ws": `${__dirname}/templates/shims/empty.ts`,
       // Note: we (empty) shim next/dist/compiled/edge-runtime since (amongst others) it generated the following `eval`:
       //   eval(getModuleCode)(module, module.exports, throwingRequire, params.context, ...Object.values(params.scopedContext));
       //   which comes from https://github.com/vercel/edge-runtime/blob/6e96b55f/packages/primitives/src/primitives/load.js#L57-L63
       // QUESTION: Why did I encountered this but mhart didn't?
-      "next/dist/compiled/edge-runtime": `${
-        import.meta.dirname
-      }/templates/shims/empty.ts`,
+      "next/dist/compiled/edge-runtime": `${__dirname}/templates/shims/empty.ts`,
       ///
       ///
       ///

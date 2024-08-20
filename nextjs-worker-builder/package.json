@@ -1,6 +1,5 @@
 {
   "name": "nextjs-worker-builder",
-  "type": "module",
   "scripts": {
     "build": "tsup",
     "build:watch": "tsup --watch"
