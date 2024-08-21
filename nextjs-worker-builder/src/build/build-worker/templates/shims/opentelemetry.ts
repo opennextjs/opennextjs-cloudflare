@@ -1,24 +1,24 @@
 export function createContextKey() {
-  return "";
+	return "";
 }
 
 export const context = {
-  active() {
-    return {};
-  },
-  with() {
-    return null;
-  },
+	active() {
+		return {};
+	},
+	with() {
+		return null;
+	},
 };
 
 export const trace = {
-  getSpanContext() {
-    return null;
-  },
+	getSpanContext() {
+		return null;
+	},
 };
 
 export const propagation = {
-  extract() {
-    return context;
-  },
+	extract() {
+		return context;
+	},
 };

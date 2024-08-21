@@ -8,15 +8,15 @@ import { build } from "./build";
 const inputNextAppDir = resolve(".");
 
 if (
-  !["js", "cjs", "mjs", "ts"].some((ext) => existsSync(`./next.config.${ext}`))
+	!["js", "cjs", "mjs", "ts"].some((ext) => existsSync(`./next.config.${ext}`))
 ) {
-  // TODO: we can add more validation later
-  throw new Error("Error: Not in a Next.js app project");
+	// TODO: we can add more validation later
+	throw new Error("Error: Not in a Next.js app project");
 }
 
 getArgs().then(({ skipBuild, outputDir }) => {
-  build(inputNextAppDir, {
-    outputDir,
-    skipBuild: !!skipBuild,
-  });
+	build(inputNextAppDir, {
+		outputDir,
+		skipBuild: !!skipBuild,
+	});
 });

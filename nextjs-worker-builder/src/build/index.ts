@@ -13,25 +13,25 @@ import { getNextjsAppPaths } from "../nextjsPaths";
  * @param opts.skipBuild boolean indicating whether the Next.js build should be skipped (i.e. if the `.next` dir is already built)
  */
 export async function build(
-  inputNextAppDir: string,
-  opts: BuildOptions
+	inputNextAppDir: string,
+	opts: BuildOptions
 ): Promise<void> {
-  if (!opts.skipBuild) {
-    buildNextjsApp(inputNextAppDir);
-  }
+	if (!opts.skipBuild) {
+		buildNextjsApp(inputNextAppDir);
+	}
 
-  const outputDir = `${opts.outputDir ?? inputNextAppDir}/.worker-next`;
-  cleanDirectory(outputDir);
+	const outputDir = `${opts.outputDir ?? inputNextAppDir}/.worker-next`;
+	cleanDirectory(outputDir);
 
-  const nextjsAppPaths = getNextjsAppPaths(inputNextAppDir);
-  await buildWorker(outputDir, nextjsAppPaths);
+	const nextjsAppPaths = getNextjsAppPaths(inputNextAppDir);
+	await buildWorker(outputDir, nextjsAppPaths);
 }
 
 type BuildOptions = {
-  skipBuild: boolean;
-  outputDir?: string;
+	skipBuild: boolean;
+	outputDir?: string;
 };
 
 async function cleanDirectory(path: string): Promise<void> {
-  return rm(path, { recursive: true, force: true });
+	return rm(path, { recursive: true, force: true });
 }

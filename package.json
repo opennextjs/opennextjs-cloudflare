@@ -1,3 +1,10 @@
 {
-  "name": "poc-build-nextjs-app-for-cf-workers"
+	"name": "poc-build-nextjs-app-for-cf-workers",
+	"devDependencies": {
+		"prettier": "3.3.3"
+	},
+	"scripts": {
+		"prettier:check": "prettier --check .",
+		"prettier:fix": "prettier --write ."
+	}
 }
