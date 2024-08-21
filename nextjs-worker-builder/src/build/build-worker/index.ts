@@ -87,6 +87,9 @@ export async function buildWorker(
       critters: `${__dirname}/templates/shims/empty.ts`,
       // Note: we need to stub out `@opentelemetry/api` as it is problematic
       "@opentelemetry/api": `${__dirname}/templates/shims/opentelemetry.ts`,
+      // `@next/env` is a library Next.js uses for loading dotenv files, for obvious reasons we need to stub it here
+      // source: https://github.com/vercel/next.js/tree/0ac10d79720/packages/next-env
+      "@next/env": `${__dirname}/templates/shims/env.ts`,
     },
     define: {
       // config file used by Next.js, see: https://github.com/vercel/next.js/blob/68a7128/packages/next/src/build/utils.ts#L2137-L2139
