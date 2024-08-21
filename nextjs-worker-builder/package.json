@@ -2,7 +2,7 @@
   "name": "nextjs-worker-builder",
   "scripts": {
     "build": "tsup",
-    "build:watch": "tsup --watch"
+    "build:watch": "tsup --watch src"
   },
   "bin": "dist/index.js",
   "files": [
