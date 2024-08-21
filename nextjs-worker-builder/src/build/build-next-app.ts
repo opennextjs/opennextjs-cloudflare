@@ -8,14 +8,7 @@ import { execSync } from "node:child_process";
  * @param nextAppDir the directory of the app to build
  */
 export function buildNextjsApp(nextAppDir: string): void {
-  setStandaloneBuildMode();
   runNextBuildCommand("pnpm", nextAppDir);
-}
-
-// equivalent to: https://github.com/sst/open-next/blob/f61b0e9/packages/open-next/src/build.ts#L168-L173
-function setStandaloneBuildMode() {
-  // Equivalent to setting `target: "standalone"` in next.config.js
-  process.env.NEXT_PRIVATE_STANDALONE = "true";
 }
 
 // equivalent to: https://github.com/sst/open-next/blob/f61b0e94/packages/open-next/src/build.ts#L175-L186
@@ -30,5 +23,11 @@ function runNextBuildCommand(
   execSync(command, {
     stdio: "inherit",
     cwd: nextAppDir,
+    env: {
+      ...process.env,
+      // equivalent to: https://github.com/sst/open-next/blob/f61b0e9/packages/open-next/src/build.ts#L168-L173
+      // Equivalent to setting `target: "standalone"` in next.config.js
+      NEXT_PRIVATE_STANDALONE: "true",
+    },
   });
 }
