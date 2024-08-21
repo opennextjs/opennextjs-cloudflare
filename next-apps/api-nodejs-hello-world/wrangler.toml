@@ -11,3 +11,5 @@ minify = false                                          # let's disable minifica
 [alias]
 # critters is `require`d from `pages.runtime.prod.js` when running wrangler dev, so we need to stub it out
 "critters" = "../../nextjs-worker-builder/src/build/build-worker/templates/shims/empty.ts"
+# @opentelemetry/api is `require`d when running wrangler dev, so we need to stub it out
+"@opentelemetry/api" = "../../nextjs-worker-builder/src/build/build-worker/templates/shims/empty.ts"

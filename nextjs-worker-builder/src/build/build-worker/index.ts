@@ -83,15 +83,10 @@ export async function buildWorker(
       //   which comes from https://github.com/vercel/edge-runtime/blob/6e96b55f/packages/primitives/src/primitives/load.js#L57-L63
       // QUESTION: Why did I encountered this but mhart didn't?
       "next/dist/compiled/edge-runtime": `${__dirname}/templates/shims/empty.ts`,
-      ///
-      ///
-      ///
-      ///
-      ///
-      // 'next/dist/experimental/testmode/server': `${import.meta.dirname}/shims/empty.mjs`,
-      // 'next/dist/compiled/node-html-parser': `${import.meta.dirname}/shim-empty.mjs`,
-      // '@next/env': `${import.meta.dirname}/shim-env.mjs`,
-      // '@opentelemetry/api': `${import.meta.dirname}/shim-throw.mjs`,
+      // Note: we need to stub out `@opentelemetry/api` as that is problematic and doesn't get properly bundled...
+      critters: `${__dirname}/templates/shims/empty.ts`,
+      // Note: we need to stub out `@opentelemetry/api` as it is problematic
+      "@opentelemetry/api": `${__dirname}/templates/shims/opentelemetry.ts`,
     },
     define: {
       // config file used by Next.js, see: https://github.com/vercel/next.js/blob/68a7128/packages/next/src/build/utils.ts#L2137-L2139
