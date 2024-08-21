@@ -5,19 +5,9 @@ assets = ".worker-next/assets"
 compatibility_date = "2024-07-01"
 compatibility_flags = ["experimental:nodejs_compat_v2"]
 workers_dev = true
-minify = true
+minify = false                                          # let's disable minification for easier debuggability
 
 # The aliases below should not be needed (we don't want users to have to define the aliases themselves)
-# [alias]
-# "critters" = "./scripts/shim-throw.mjs"
-# "@opentelemetry/api" = "./scripts/shim-throw.mjs"
-# "next/dist/compiled/@ampproject/toolbox-optimizer" = "./scripts/shim-throw.mjs"
-# "next/dist/experimental/testmode/server" = "./scripts/shim-throw.mjs"
-# "next/dist/compiled/ws" = "./scripts/shim-throw.mjs"
-# "next/dist/compiled/node-html-parser" = "./scripts/shim-throw.mjs"
-# "@next/env" = "./scripts/shim-throw.mjs"
-# "next/dist/compiled/jsonwebtoken" = "./scripts/shim-throw.mjs"
-# "./cjs/react-dom-server-legacy.browser.development.js" = "./scripts/shim-throw.mjs"
-# "./cjs/react-dom-server.browser.development.js" = "./scripts/shim-throw.mjs"
-# "./cjs/react.development.js" = "./scripts/shim-throw.mjs"
-# "./cjs/react-jsx-runtime.development.js" = "./scripts/shim-throw.mjs"
+[alias]
+# critters is `require`d from `pages.runtime.prod.js` when running wrangler dev, so we need to stub it out
+"critters" = "../../nextjs-worker-builder/src/build/build-worker/templates/shims/empty.ts"
