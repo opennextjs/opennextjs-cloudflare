@@ -5,6 +5,7 @@
 	},
 	"scripts": {
 		"prettier:check": "prettier --check .",
-		"prettier:fix": "prettier --write ."
+		"prettier:fix": "prettier --write .",
+		"postinstall": "pnpm --filter nextjs-worker-builder build"
 	}
 }
