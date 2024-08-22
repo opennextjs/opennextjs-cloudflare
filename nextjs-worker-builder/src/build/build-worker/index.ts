@@ -60,11 +60,11 @@ export async function buildWorker(
 		minify: false,
 		plugins: [fixRequires],
 		alias: {
-			// Note: we (empty) shim next/dist/compiled/ws because it generates two `eval`s:
+			// Note: we apply an empty shim to next/dist/compiled/ws because it generates two `eval`s:
 			//   eval("require")("bufferutil");
 			//   eval("require")("utf-8-validate");
 			"next/dist/compiled/ws": `${__dirname}/templates/shims/empty.ts`,
-			// Note: we (empty) shim next/dist/compiled/edge-runtime since (amongst others) it generated the following `eval`:
+			// Note: we apply an empty shim to next/dist/compiled/edge-runtime since (amongst others) it generated the following `eval`:
 			//   eval(getModuleCode)(module, module.exports, throwingRequire, params.context, ...Object.values(params.scopedContext));
 			//   which comes from https://github.com/vercel/edge-runtime/blob/6e96b55f/packages/primitives/src/primitives/load.js#L57-L63
 			// QUESTION: Why did I encountered this but mhart didn't?
