@@ -10,8 +10,8 @@ export default defineConfig({
 	external: ["esbuild"],
 	onSuccess: async () => {
 		await cp(
-			`${import.meta.dirname}/src/build/build-worker/templates`,
-			`${import.meta.dirname}/dist/templates`,
+			`${__dirname}/src/build/build-worker/templates`,
+			`${__dirname}/dist/templates`,
 			{ recursive: true }
 		);
 	},
