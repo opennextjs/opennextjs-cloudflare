@@ -28,20 +28,6 @@ export async function buildWorker(
 	console.log();
 
 	// ultra hack! to solve (maybe with Pete's help)
-	const problematicUnenvFile =
-		"/Users/dario/Desktop/poc-build-nextjs-app-for-cf-workers/node_modules/.pnpm/unenv-nightly@1.10.0-1717606461.a117952/node_modules/unenv-nightly/runtime/node/process/$cloudflare.mjs";
-	const originalProblematicUnenvFileContent = readFileSync(
-		problematicUnenvFile,
-		"utf-8"
-	);
-	writeFileSync(
-		problematicUnenvFile,
-		originalProblematicUnenvFileContent.replace(
-			'const unpatchedGlobalThisProcess = globalThis["process"];',
-			'const unpatchedGlobalThisProcess = global.process; /* 👈 original line: `const unpatchedGlobalThisProcess = globalThis["process"]` */'
-		)
-	);
-	// ultra hack! to solve (maybe with Pete's help)
 	// IMPORTANT: this is coming from the usage of the old school assets! we should not do that anyways!
 	const problematicKvAssetHandler =
 		"/Users/dario/Desktop/poc-build-nextjs-app-for-cf-workers/node_modules/.pnpm/@cloudflare+kv-asset-handler@0.3.4/node_modules/@cloudflare/kv-asset-handler/dist/index.js";
