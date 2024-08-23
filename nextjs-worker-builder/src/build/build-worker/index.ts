@@ -114,6 +114,18 @@ export async function buildWorker(
 		},
 		// We need to set platform to node so that esbuild doesn't complain about the node imports
 		platform: "node",
+		banner: {
+			js: `
+				${
+					/*
+					`__dirname` is used by unbundled js files (which don't inherit the `__dirname` present in the `define` field)
+					so we also need to set it on the global scope
+					Note: this was hit in the `next/dist/compiled/@opentelemetry/api` module
+				*/ ""
+				}
+				globalThis.__dirname ??= "";
+			`,
+		},
 	});
 
 	await updateWorkerBundledCode(workerOutputFile, nextjsAppPaths);
