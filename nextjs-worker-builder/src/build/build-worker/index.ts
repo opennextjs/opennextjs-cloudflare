@@ -1,6 +1,6 @@
 import { NextjsAppPaths } from "../../nextjsPaths";
 import { build, Plugin } from "esbuild";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { cp, readFile, writeFile } from "node:fs/promises";
 
 import { globSync } from "glob";
@@ -117,6 +117,8 @@ export async function buildWorker(
 	});
 
 	await updateWorkerBundledCode(workerOutputFile, nextjsAppPaths);
+
+	updateWebpackChunksFile(nextjsAppPaths);
 
 	console.log(`\x1b[35m⚙️ Copying asset files...\n\x1b[0m`);
 	await cp(`${nextjsAppPaths.dotNextDir}/static`, `${outputDir}/assets/_next`, {
@@ -261,4 +263,41 @@ async function updateWorkerBundledCode(
 	);
 
 	await writeFile(workerOutputFile, updatedWorkerContents);
+}
+
+/**
+ * Fixes the webpack-runtime.js file by removing its webpack dynamic requires.
+ *
+ * This hack is especially bad for two reasons:
+ *  - it requires setting `experimental.serverMinification` to `false` in the app's config file
+ *  - indicates that files inside the output directory still get a hold of files from the outside: `${nextjsAppPaths.standaloneAppServerDir}/webpack-runtime.js`
+ *    so this shows that not everything that's needed to deploy the application is in the output directory...
+ */
+async function updateWebpackChunksFile(nextjsAppPaths: NextjsAppPaths) {
+	const webpackRuntimeFile = `${nextjsAppPaths.standaloneAppServerDir}/webpack-runtime.js`;
+
+	const fileContent = readFileSync(webpackRuntimeFile, "utf-8");
+
+	const chunks = readdirSync(`${nextjsAppPaths.standaloneAppServerDir}/chunks`)
+		.filter((chunk) => /^\d+\.js$/.test(chunk))
+		.map((chunk) => chunk.replace(/\.js$/, ""));
+
+	const updatedFileContent = fileContent.replace(
+		"__webpack_require__.f.require = (chunkId, promises) => {",
+		`__webpack_require__.f.require = (chunkId, promises) => {
+	if (installedChunks[chunkId]) return;
+	${chunks
+		.map(
+			(chunk) => `
+	  if (chunkId === ${chunk}) {
+		installChunk(require("./chunks/${chunk}.js"));
+		return;
+	  }
+	`
+		)
+		.join("\n")}
+  `
+	);
+
+	writeFileSync(webpackRuntimeFile, updatedFileContent);
 }
