@@ -18,8 +18,8 @@ function runNextBuildCommand(
 	nextAppDir: string
 ) {
 	const command = ["bun", "npm"].includes(packager)
-		? `${packager} run build`
-		: `${packager} build`;
+		? `${packager} next build`
+		: `${packager} next build`;
 	execSync(command, {
 		stdio: "inherit",
 		cwd: nextAppDir,
