@@ -86,7 +86,10 @@ export async function buildWorker(
 			// Note: we need to stub out `@opentelemetry/api` as that is problematic and doesn't get properly bundled...
 			critters: `${__dirname}/templates/shims/empty.ts`,
 			// Note: we need to stub out `@opentelemetry/api` as it is problematic
-			"@opentelemetry/api": `${__dirname}/templates/shims/opentelemetry.ts`,
+			// IMPORTANT: we shim @opentelemetry/api to the throwing shim so that it will throw right away, this is so that we throw inside the
+			//            try block here: https://github.com/vercel/next.js/blob/9e8266a7/packages/next/src/server/lib/trace/tracer.ts#L27-L31
+			//            causing the code to require the 'next/dist/compiled/@opentelemetry/api' module instead (which properly works)
+			"@opentelemetry/api": `${__dirname}/templates/shims/throw.ts`,
 			// `@next/env` is a library Next.js uses for loading dotenv files, for obvious reasons we need to stub it here
 			// source: https://github.com/vercel/next.js/tree/0ac10d79720/packages/next-env
 			"@next/env": `${__dirname}/templates/shims/env.ts`,
