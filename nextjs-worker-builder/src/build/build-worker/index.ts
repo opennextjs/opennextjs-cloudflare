@@ -124,6 +124,14 @@ export async function buildWorker(
 				*/ ""
 				}
 				globalThis.__dirname ??= "";
+				${
+					/*
+					Code in `next/dist/compiled/next-server/app-page.runtime.prod.js` makes use of `setImmediate` so we need to make sure that
+					it is available.
+					Note: this most likely won't be needed soon after the changes from https://github.com/cloudflare/workerd/pull/2506 get released
+					 */ ""
+				}
+				globalThis.setImmediate ??= (c) => setTimeout(c, 0);
 			`,
 		},
 	});
