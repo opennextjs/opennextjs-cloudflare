@@ -4,6 +4,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { cp, readFile, writeFile } from "node:fs/promises";
 
 import { globSync } from "glob";
+import { resolve } from "node:path";
 
 let fixRequires: Plugin = {
 	name: "replaceRelative",
@@ -27,9 +28,10 @@ export async function buildWorker(
 ): Promise<void> {
 	console.log();
 
+	const repoRoot = resolve(`${__dirname}/../..`);
+
 	// ultra hack! to solve (maybe with Pete's help)
-	const problematicUnenvFile =
-		"/Users/dario/Desktop/poc-build-nextjs-app-for-cf-workers/node_modules/.pnpm/unenv-nightly@1.10.0-1717606461.a117952/node_modules/unenv-nightly/runtime/node/process/$cloudflare.mjs";
+	const problematicUnenvFile = `${repoRoot}/node_modules/.pnpm/unenv-nightly@1.10.0-1717606461.a117952/node_modules/unenv-nightly/runtime/node/process/$cloudflare.mjs`;
 	const originalProblematicUnenvFileContent = readFileSync(
 		problematicUnenvFile,
 		"utf-8"
@@ -43,8 +45,7 @@ export async function buildWorker(
 	);
 	// ultra hack! to solve (maybe with Pete's help)
 	// IMPORTANT: this is coming from the usage of the old school assets! we should not do that anyways!
-	const problematicKvAssetHandler =
-		"/Users/dario/Desktop/poc-build-nextjs-app-for-cf-workers/node_modules/.pnpm/@cloudflare+kv-asset-handler@0.3.4/node_modules/@cloudflare/kv-asset-handler/dist/index.js";
+	const problematicKvAssetHandler = `${repoRoot}/node_modules/.pnpm/@cloudflare+kv-asset-handler@0.3.4/node_modules/@cloudflare/kv-asset-handler/dist/index.js`;
 	const originalProblematicKvAssetHandlerContent = readFileSync(
 		problematicKvAssetHandler,
 		"utf-8"

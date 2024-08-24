@@ -37,7 +37,3 @@ build and preview the worker for the `api-nodejs-hello-world` application:
 ```sh
 pnpm --filter api-nodejs-hello-world preview:worker
 ```
-
-> [!WARNING]
-> In the `nextjs-worker-builder/src/build/build-worker/index.ts` file there are absolute filesystem paths (starting with `/Users/dario/Desktop/`)
-> these clearly need to be removed, for now replace them with your respective absolute file paths.
