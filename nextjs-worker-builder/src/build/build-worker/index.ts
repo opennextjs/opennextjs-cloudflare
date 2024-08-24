@@ -40,7 +40,7 @@ export async function buildWorker(
 		problematicUnenvFile,
 		originalProblematicUnenvFileContent.replace(
 			'const unpatchedGlobalThisProcess = globalThis["process"];',
-			'const unpatchedGlobalThisProcess = global.process; /* 👈 original line: `const unpatchedGlobalThisProcess = globalThis["process"]` */'
+			"const unpatchedGlobalThisProcess = global.process;"
 		)
 	);
 	// ultra hack! to solve (maybe with Pete's help)
