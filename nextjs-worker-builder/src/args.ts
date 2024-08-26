@@ -1,13 +1,14 @@
-import { existsSync, mkdirSync, type Stats, statSync } from "node:fs";
+import { mkdirSync, type Stats, statSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 
-export async function getArgs(): Promise<{
-	// inputNextAppDir: string;
-	skipBuild?: boolean;
+export function getArgs(): {
+	skipBuild: boolean;
 	outputDir?: string;
-}> {
-	const { values } = parseArgs({
+} {
+	const {
+		values: { skipBuild, output },
+	} = parseArgs({
 		options: {
 			skipBuild: {
 				type: "boolean",
@@ -22,13 +23,18 @@ export async function getArgs(): Promise<{
 		allowPositionals: false,
 	});
 
-	const outputDir = values.output ? resolve(values.output) : undefined;
+	const outputDir = output ? resolve(output) : undefined;
 
 	if (outputDir) {
 		assertDirArg(outputDir, "output", true);
 	}
 
-	return { outputDir, skipBuild: values.skipBuild };
+	return {
+		outputDir,
+		skipBuild:
+			skipBuild ||
+			["1", "true", "yes"].includes(String(process.env.SKIP_NEXT_APP_BUILD)),
+	};
 }
 
 function assertDirArg(path: string, argName?: string, make?: boolean) {

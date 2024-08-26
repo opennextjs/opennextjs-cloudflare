@@ -3,7 +3,7 @@
 This monorepo includes a POC to see if it is possible to get a Next.js application built via `next build` (in standalone mode) to run in the Cloudflare workerd runtime.
 
 > [!NOTE]
-> The code here is built based on the amazing work done by @mhart in https://github.com/mhart/nextjs-commerce
+> The code here is built based on the amazing work done by @mhart in <https://github.com/mhart/nextjs-commerce>
 
 ## The repository
 
@@ -36,4 +36,10 @@ build and preview the worker for the `api-nodejs-hello-world` application:
 
 ```sh
 pnpm --filter api-nodejs-hello-world preview:worker
+```
+
+You can skip building the next app when it has not been modified:
+
+```sh
+SKIP_NEXT_APP_BUILD=true pnpm --filter api-nodejs-hello-world preview:worker
 ```

@@ -14,9 +14,10 @@ if (
 	throw new Error("Error: Not in a Next.js app project");
 }
 
-getArgs().then(({ skipBuild, outputDir }) => {
-	build(inputNextAppDir, {
-		outputDir,
-		skipBuild: !!skipBuild,
-	});
+const { skipBuild, outputDir } = getArgs();
+
+build(inputNextAppDir, {
+	outputDir,
+	skipBuild: !!skipBuild,
 });
+
