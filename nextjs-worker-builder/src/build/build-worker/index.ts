@@ -26,37 +26,8 @@ export async function buildWorker(
 	outputDir: string,
 	nextjsAppPaths: NextjsAppPaths
 ): Promise<void> {
-	console.log();
-
 	const repoRoot = resolve(`${__dirname}/../..`);
-
-	// ultra hack! to solve (maybe with Pete's help)
-	const problematicUnenvFile = `${repoRoot}/node_modules/.pnpm/unenv-nightly@1.10.0-1717606461.a117952/node_modules/unenv-nightly/runtime/node/process/$cloudflare.mjs`;
-	const originalProblematicUnenvFileContent = readFileSync(
-		problematicUnenvFile,
-		"utf-8"
-	);
-	writeFileSync(
-		problematicUnenvFile,
-		originalProblematicUnenvFileContent.replace(
-			'const unpatchedGlobalThisProcess = globalThis["process"];',
-			"const unpatchedGlobalThisProcess = global.process;"
-		)
-	);
-	// ultra hack! to solve (maybe with Pete's help)
-	// IMPORTANT: this is coming from the usage of the old school assets! we should not do that anyways!
-	const problematicKvAssetHandler = `${repoRoot}/node_modules/.pnpm/@cloudflare+kv-asset-handler@0.3.4/node_modules/@cloudflare/kv-asset-handler/dist/index.js`;
-	const originalProblematicKvAssetHandlerContent = readFileSync(
-		problematicKvAssetHandler,
-		"utf-8"
-	);
-	writeFileSync(
-		problematicKvAssetHandler,
-		originalProblematicKvAssetHandlerContent.replace(
-			'const mime = __importStar(require("mime"));',
-			'let mime = __importStar(require("mime")); mime = mime.default ?? mime;'
-		)
-	);
+	console.log({ repoRoot });
 
 	const workerEntrypoint = `${__dirname}/templates/worker.ts`;
 	const workerOutputFile = `${outputDir}/index.mjs`;
