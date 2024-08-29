@@ -6,7 +6,7 @@ import { cp, readFile, writeFile } from "node:fs/promises";
 import { globSync } from "glob";
 import { resolve } from "node:path";
 
-let fixRequires: Plugin = {
+const fixRequiresESBuildPlugin: Plugin = {
 	name: "replaceRelative",
 	setup(build) {
 		// Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
@@ -44,7 +44,7 @@ export async function buildWorker(
 		format: "esm",
 		target: "esnext",
 		minify: false,
-		plugins: [fixRequires],
+		plugins: [fixRequiresESBuildPlugin],
 		alias: {
 			// Note: we apply an empty shim to next/dist/compiled/ws because it generates two `eval`s:
 			//   eval("require")("bufferutil");
@@ -125,10 +125,14 @@ async function updateWorkerBundledCode(
 	nextjsAppPaths: NextjsAppPaths
 ): Promise<void> {
 	console.log({ workerOutputFile });
-	const workerContents = await readFile(workerOutputFile, "utf8");
+	const originalCode = await readFile(workerOutputFile, "utf8");
 
-	// ultra hack (don't remember/know why it's needed)
-	let updatedWorkerContents = workerContents
+	let patchedCode = originalCode;
+
+	// ESBuild does not support CJS format
+	// See https://github.com/evanw/esbuild/issues/1921 and linked issues
+	// Some of the solutions are based on `module.createRequire()` not implemented in workerd.
+	patchedCode = patchedCode
 		.replace(/__require\d?\(/g, "require(")
 		.replace(/__require\d?\./g, "require.");
 
@@ -136,7 +140,7 @@ async function updateWorkerBundledCode(
 	// so we add an early return to the `getBuildId` function so that the `readyFileSync` is never encountered
 	// (source: https://github.com/vercel/next.js/blob/15aeb92efb34c09a36/packages/next/src/server/next-server.ts#L438-L451)
 	// Note: we could/should probably just patch readFileSync here or something!
-	updatedWorkerContents = updatedWorkerContents.replace(
+	patchedCode = patchedCode.replace(
 		"getBuildId() {",
 		`getBuildId() {
       return ${JSON.stringify(
@@ -154,7 +158,7 @@ async function updateWorkerBundledCode(
 	const manifestJsons = globSync(
 		`${nextjsAppPaths.standaloneAppDotNextDir}/**/*-manifest.json`
 	).map((file) => file.replace(nextjsAppPaths.standaloneAppDir + "/", ""));
-	updatedWorkerContents = updatedWorkerContents.replace(
+	patchedCode = patchedCode.replace(
 		/function loadManifest\((.+?), .+?\) {/,
 		`$&
     ${manifestJsons
@@ -177,7 +181,7 @@ async function updateWorkerBundledCode(
 	// VERY IMPORTANT: this required the following dependency to be part of the application!!!! (this is very bad!!!)
 	//    "node-url": "npm:url@^0.11.4"
 	// Hopefully this should not be necessary after this unenv PR lands: https://github.com/unjs/unenv/pull/292
-	updatedWorkerContents = updatedWorkerContents.replace(
+	patchedCode = patchedCode.replace(
 		/ ([a-zA-Z0-9_]+) = require\("url"\);/g,
 		` $1 = require("url");
       const nodeUrl = require("node-url");
@@ -210,7 +214,7 @@ async function updateWorkerBundledCode(
 	const htmlPages = allManifestFiles.filter((file) => file.endsWith(".html"));
 	const pageModules = allManifestFiles.filter((file) => file.endsWith(".js"));
 
-	updatedWorkerContents = updatedWorkerContents.replace(
+	patchedCode = patchedCode.replace(
 		/const pagePath = getPagePath\(.+?\);/,
 		`$&
     ${htmlPages
@@ -244,7 +248,7 @@ async function updateWorkerBundledCode(
 	// (source: https://github.com/vercel/next.js/blob/ba995993/packages/next/src/lib/find-pages-dir.ts#L4-L13)
 	// (usage source: https://github.com/vercel/next.js/blob/ba995993/packages/next/src/server/next-server.ts#L450-L451)
 	// Note: `findDir` uses `fs.existsSync` under the hood, so patching that should be enough to make this work
-	updatedWorkerContents = updatedWorkerContents.replace(
+	patchedCode = patchedCode.replace(
 		"function findDir(dir, name) {",
 		`function findDir(dir, name) {
 			if (dir.endsWith(".next/server")) {
@@ -267,7 +271,7 @@ async function updateWorkerBundledCode(
 	const manifestJss = globSync(
 		`${nextjsAppPaths.standaloneAppDotNextDir}/**/*_client-reference-manifest.js`
 	).map((file) => file.replace(`${nextjsAppPaths.standaloneAppDir}/`, ""));
-	updatedWorkerContents = updatedWorkerContents.replace(
+	patchedCode = patchedCode.replace(
 		/function evalManifest\((.+?), .+?\) {/,
 		`$&
 		${manifestJss
@@ -295,7 +299,7 @@ async function updateWorkerBundledCode(
 		`
 	);
 
-	await writeFile(workerOutputFile, updatedWorkerContents);
+	await writeFile(workerOutputFile, patchedCode);
 }
 
 /**
