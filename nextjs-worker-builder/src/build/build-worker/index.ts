@@ -124,6 +124,7 @@ async function updateWorkerBundledCode(
 	workerOutputFile: string,
 	nextjsAppPaths: NextjsAppPaths
 ): Promise<void> {
+	console.log({ workerOutputFile });
 	const workerContents = await readFile(workerOutputFile, "utf8");
 
 	// ultra hack (don't remember/know why it's needed)
@@ -170,13 +171,6 @@ async function updateWorkerBundledCode(
 			.join("\n")}
     throw new Error("Unknown loadManifest: " + $1);
     `
-	);
-
-	// Next.js tries to instantiate an https agent, so here we replace that with a simple http one (which we support)
-	// source: https://github.com/vercel/next.js/blob/aa90fe9bb/packages/next/src/server/setup-http-agent-env.ts#L20
-	updatedWorkerContents = updatedWorkerContents.replace(
-		'var _https = require("https");',
-		'var _https = require("http");'
 	);
 
 	// This solves the fact that the workerd URL parsing is not compatible with the node.js one

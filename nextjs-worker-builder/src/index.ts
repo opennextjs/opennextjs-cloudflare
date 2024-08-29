@@ -20,4 +20,3 @@ build(inputNextAppDir, {
 	outputDir,
 	skipBuild: !!skipBuild,
 });
-
