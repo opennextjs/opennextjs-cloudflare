@@ -1,20 +1,17 @@
 import { NextjsAppPaths } from "../../nextjsPaths";
 import { build, Plugin } from "esbuild";
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { cp, readFile, writeFile } from "node:fs/promises";
 
-import { globSync } from "glob";
 import { resolve } from "node:path";
 
-const fixRequiresESBuildPlugin: Plugin = {
-	name: "replaceRelative",
-	setup(build) {
-		// Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
-		build.onResolve({ filter: /^\.\/require-hook$/ }, (args) => ({
-			path: `${__dirname}/templates/shims/empty.ts`,
-		}));
-	},
-};
+import { patchRequire } from "./patches/investigated/patchRequire";
+import { patchUrl } from "./patches/investigated/patchUrl";
+
+import { patchReadFile } from "./patches/to-investigate/patchReadFile";
+import { patchFindDir } from "./patches/to-investigate/patchFindDir";
+import { inlineNextRequire } from "./patches/to-investigate/inlineNextRequire";
+import { inlineEvalManifest } from "./patches/to-investigate/inlineEvalManifest";
 
 /**
  * Using the Next.js build output in the `.next` directory builds a workerd compatible output
@@ -129,175 +126,12 @@ async function updateWorkerBundledCode(
 
 	let patchedCode = originalCode;
 
-	// ESBuild does not support CJS format
-	// See https://github.com/evanw/esbuild/issues/1921 and linked issues
-	// Some of the solutions are based on `module.createRequire()` not implemented in workerd.
-	patchedCode = patchedCode
-		.replace(/__require\d?\(/g, "require(")
-		.replace(/__require\d?\./g, "require.");
-
-	// The next-server code gets the buildId from the filesystem, resulting in a `[unenv] fs.readFileSync is not implemented yet!` error
-	// so we add an early return to the `getBuildId` function so that the `readyFileSync` is never encountered
-	// (source: https://github.com/vercel/next.js/blob/15aeb92efb34c09a36/packages/next/src/server/next-server.ts#L438-L451)
-	// Note: we could/should probably just patch readFileSync here or something!
-	patchedCode = patchedCode.replace(
-		"getBuildId() {",
-		`getBuildId() {
-      return ${JSON.stringify(
-				readFileSync(
-					`${nextjsAppPaths.standaloneAppDotNextDir}/BUILD_ID`,
-					"utf-8"
-				)
-			)};
-    `
-	);
-
-	// Same as above, the next-server code loads the manifests with `readyFileSync` and we want to avoid that
-	// (source: https://github.com/vercel/next.js/blob/15aeb92e/packages/next/src/server/load-manifest.ts#L34-L56)
-	// Note: we could/should probably just patch readFileSync here or something!
-	const manifestJsons = globSync(
-		`${nextjsAppPaths.standaloneAppDotNextDir}/**/*-manifest.json`
-	).map((file) => file.replace(nextjsAppPaths.standaloneAppDir + "/", ""));
-	patchedCode = patchedCode.replace(
-		/function loadManifest\((.+?), .+?\) {/,
-		`$&
-    ${manifestJsons
-			.map(
-				(manifestJson) => `
-          if ($1.endsWith("${manifestJson}")) {
-            return ${readFileSync(
-							`${nextjsAppPaths.standaloneAppDir}/${manifestJson}`,
-							"utf-8"
-						)};
-          }
-        `
-			)
-			.join("\n")}
-    throw new Error("Unknown loadManifest: " + $1);
-    `
-	);
-
-	// This solves the fact that the workerd URL parsing is not compatible with the node.js one
-	// VERY IMPORTANT: this required the following dependency to be part of the application!!!! (this is very bad!!!)
-	//    "node-url": "npm:url@^0.11.4"
-	// Hopefully this should not be necessary after this unenv PR lands: https://github.com/unjs/unenv/pull/292
-	patchedCode = patchedCode.replace(
-		/ ([a-zA-Z0-9_]+) = require\("url"\);/g,
-		` $1 = require("url");
-      const nodeUrl = require("node-url");
-      $1.parse = nodeUrl.parse.bind(nodeUrl);
-      $1.format = nodeUrl.format.bind(nodeUrl);
-      $1.pathToFileURL = (path) => {
-        console.log("url.pathToFileURL", path);
-        return new URL("file://" + path);
-      }
-    `
-	);
-
-	// The following avoid various Next.js specific files `require`d at runtime since we can just read
-	// and inline their content during build time
-	const pagesManifestFile = `${nextjsAppPaths.standaloneAppServerDir}/pages-manifest.json`;
-	const appPathsManifestFile = `${nextjsAppPaths.standaloneAppServerDir}/app-paths-manifest.json`;
-
-	const pagesManifestFiles = existsSync(pagesManifestFile)
-		? Object.values(JSON.parse(readFileSync(pagesManifestFile, "utf-8"))).map(
-				(file) => ".next/server/" + file
-			)
-		: [];
-	const appPathsManifestFiles = existsSync(appPathsManifestFile)
-		? Object.values(
-				JSON.parse(readFileSync(appPathsManifestFile, "utf-8"))
-			).map((file) => ".next/server/" + file)
-		: [];
-	const allManifestFiles = pagesManifestFiles.concat(appPathsManifestFiles);
-
-	const htmlPages = allManifestFiles.filter((file) => file.endsWith(".html"));
-	const pageModules = allManifestFiles.filter((file) => file.endsWith(".js"));
-
-	patchedCode = patchedCode.replace(
-		/const pagePath = getPagePath\(.+?\);/,
-		`$&
-    ${htmlPages
-			.map(
-				(htmlPage) => `
-          if (pagePath.endsWith("${htmlPage}")) {
-            return ${JSON.stringify(
-							readFileSync(
-								`${nextjsAppPaths.standaloneAppDir}/${htmlPage}`,
-								"utf-8"
-							)
-						)};
-          }
-        `
-			)
-			.join("\n")}
-    ${pageModules
-			.map(
-				(module) => `
-          if (pagePath.endsWith("${module}")) {
-            return require("${nextjsAppPaths.standaloneAppDir}/${module}");
-          }
-        `
-			)
-			.join("\n")}
-    throw new Error("Unknown pagePath: " + pagePath);
-    `
-	);
-
-	// Here we patch `findDir` so that the next server can detect whether the `app` or `pages` directory exists
-	// (source: https://github.com/vercel/next.js/blob/ba995993/packages/next/src/lib/find-pages-dir.ts#L4-L13)
-	// (usage source: https://github.com/vercel/next.js/blob/ba995993/packages/next/src/server/next-server.ts#L450-L451)
-	// Note: `findDir` uses `fs.existsSync` under the hood, so patching that should be enough to make this work
-	patchedCode = patchedCode.replace(
-		"function findDir(dir, name) {",
-		`function findDir(dir, name) {
-			if (dir.endsWith(".next/server")) {
-			if (name === "app") return ${existsSync(
-				`${nextjsAppPaths.standaloneAppServerDir}/app`
-			)};
-			if (name === "pages") return ${existsSync(
-				`${nextjsAppPaths.standaloneAppServerDir}/pages`
-			)};
-		}
-		throw new Error("Unknown findDir call: " + dir + " " + name);
-		`
-	);
-
-	// `evalManifest` relies on readFileSync so we need to patch the function so that it instead returns the content of the manifest files
-	// which are known at build time
-	// (source: https://github.com/vercel/next.js/blob/b1e32c5d1f/packages/next/src/server/load-manifest.ts#L72)
-	// Note: we could/should probably just patch readFileSync here or something, but here the issue is that after the readFileSync call
-	// there is a vm `runInNewContext` call which we also don't support (source: https://github.com/vercel/next.js/blob/b1e32c5d1f/packages/next/src/server/load-manifest.ts#L88)
-	const manifestJss = globSync(
-		`${nextjsAppPaths.standaloneAppDotNextDir}/**/*_client-reference-manifest.js`
-	).map((file) => file.replace(`${nextjsAppPaths.standaloneAppDir}/`, ""));
-	patchedCode = patchedCode.replace(
-		/function evalManifest\((.+?), .+?\) {/,
-		`$&
-		${manifestJss
-			.map(
-				(manifestJs) => `
-			  if ($1.endsWith("${manifestJs}")) {
-				require("${nextjsAppPaths.standaloneAppDir}/${manifestJs}");
-				return {
-				  __RSC_MANIFEST: {
-					"${manifestJs
-						.replace(".next/server/app", "")
-						.replace(
-							"_client-reference-manifest.js",
-							""
-						)}": globalThis.__RSC_MANIFEST["${manifestJs
-						.replace(".next/server/app", "")
-						.replace("_client-reference-manifest.js", "")}"],
-				  },
-				};
-			  }
-			`
-			)
-			.join("\n")}
-		throw new Error("Unknown evalManifest: " + $1);
-		`
-	);
+	patchedCode = patchRequire(patchedCode);
+	patchedCode = patchReadFile(patchedCode, nextjsAppPaths);
+	patchedCode = patchUrl(patchedCode);
+	patchedCode = inlineNextRequire(patchedCode, nextjsAppPaths);
+	patchedCode = patchFindDir(patchedCode, nextjsAppPaths);
+	patchedCode = inlineEvalManifest(patchedCode, nextjsAppPaths);
 
 	await writeFile(workerOutputFile, patchedCode);
 }
@@ -338,3 +172,13 @@ async function updateWebpackChunksFile(nextjsAppPaths: NextjsAppPaths) {
 
 	writeFileSync(webpackRuntimeFile, updatedFileContent);
 }
+
+const fixRequiresESBuildPlugin: Plugin = {
+	name: "replaceRelative",
+	setup(build) {
+		// Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
+		build.onResolve({ filter: /^\.\/require-hook$/ }, (args) => ({
+			path: `${__dirname}/templates/shims/empty.ts`,
+		}));
+	},
+};
