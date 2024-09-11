@@ -33,5 +33,5 @@ type BuildOptions = {
 };
 
 async function cleanDirectory(path: string): Promise<void> {
-	return rm(path, { recursive: true, force: true });
+	return await rm(path, { recursive: true, force: true });
 }

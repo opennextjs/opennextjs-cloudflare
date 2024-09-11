@@ -13,6 +13,10 @@ import { patchFindDir } from "./patches/to-investigate/patchFindDir";
 import { inlineNextRequire } from "./patches/to-investigate/inlineNextRequire";
 import { inlineEvalManifest } from "./patches/to-investigate/inlineEvalManifest";
 
+import * as url from "url";
+
+const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
+
 /**
  * Using the Next.js build output in the `.next` directory builds a workerd compatible output
  *
@@ -24,7 +28,6 @@ export async function buildWorker(
 	nextjsAppPaths: NextjsAppPaths
 ): Promise<void> {
 	const repoRoot = resolve(`${__dirname}/../..`);
-	console.log({ repoRoot });
 
 	const workerEntrypoint = `${__dirname}/templates/worker.ts`;
 	const workerOutputFile = `${outputDir}/index.mjs`;
@@ -121,7 +124,6 @@ async function updateWorkerBundledCode(
 	workerOutputFile: string,
 	nextjsAppPaths: NextjsAppPaths
 ): Promise<void> {
-	console.log({ workerOutputFile });
 	const originalCode = await readFile(workerOutputFile, "utf8");
 
 	let patchedCode = originalCode;

@@ -1,5 +1,5 @@
 import { globSync } from "glob";
-import { NextjsAppPaths } from "../../../../nextjsPaths";
+import { NextjsAppPaths } from "builder/src/nextjsPaths";
 
 /**
  * `evalManifest` relies on readFileSync so we need to patch the function so that it instead returns the content of the manifest files

@@ -1,12 +1,12 @@
 {
-	"name": "poc-build-nextjs-app-for-cf-workers",
+	"name": "POC-NextJS",
 	"devDependencies": {
 		"prettier": "3.3.3"
 	},
 	"scripts": {
 		"prettier:check": "prettier --check .",
 		"prettier:fix": "prettier --write .",
-		"postinstall": "pnpm --filter nextjs-worker-builder build",
+		"postinstall": "pnpm --filter builder build",
 		"e2e": "pnpm -r e2e"
 	}
 }

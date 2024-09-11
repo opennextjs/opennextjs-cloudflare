@@ -3,8 +3,6 @@ import { getArgs } from "./args";
 import { existsSync } from "node:fs";
 import { build } from "./build";
 
-// const { skipBuild, outputDir } = await getArgs();
-
 const inputNextAppDir = resolve(".");
 
 if (
@@ -16,7 +14,7 @@ if (
 
 const { skipBuild, outputDir } = getArgs();
 
-build(inputNextAppDir, {
+await build(inputNextAppDir, {
 	outputDir,
 	skipBuild: !!skipBuild,
 });

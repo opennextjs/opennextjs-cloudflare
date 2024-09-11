@@ -22,6 +22,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: api-nodejs-hello-world-playwright-report
-          path: next-apps/api-nodejs-hello-world/playwright-report/
+          name: api-playwright-report
+          path: next-apps/api/playwright-report/
           retention-days: 30

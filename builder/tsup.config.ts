@@ -5,7 +5,7 @@ export default defineConfig({
 	entry: ["src/index.ts"],
 	outDir: "dist",
 	dts: true,
-	format: ["cjs"],
+	format: ["esm"],
 	platform: "node",
 	external: ["esbuild"],
 	onSuccess: async () => {

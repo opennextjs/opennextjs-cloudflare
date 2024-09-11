@@ -67,9 +67,9 @@ function getDotNextDirPath(nextAppDir: string): string {
  * presence as the condition that needs to be met.
  *
  * For example:
- *  When I build the api-nodejs-hello-world application the `.next/server` directory is located in:
- *  `<dotNextDir>/standalone/next-apps/api-nodejs-hello-world/.next/server`
- *  and the function here given the `dotNextDir` returns `next-apps/api-nodejs-hello-world`
+ *  When I build the api application the `.next/server` directory is located in:
+ *  `<dotNextDir>/standalone/next-apps/api/.next/server`
+ *  and the function here given the `dotNextDir` returns `next-apps/api`
  */
 function getNextjsApplicationPath(dotNextDir: string): string {
 	const serverPath = findServerParentPath(dotNextDir);
