@@ -3,4 +3,5 @@ node_modules
 
 output
 .worker-next
+.save.next
 dist
