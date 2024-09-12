@@ -32,7 +32,7 @@ export default nextConfig;
 
 - add "node-url": "npm:url@^0.11.4" to the package.json
 
-- add a wrangler.tom int the generated app
+- add a wrangler.toml int the generated app
 
 ```
 #:schema node_modules/wrangler/config-schema.json
@@ -66,11 +66,11 @@ pnpm --filter builder build:watch
 Build the next app once:
 
 ```
-node /path/to/poc-next/builder/dist/index.mjs && wrangler dev
+node /path/to/poc-next/builder/dist/index.mjs && npx wrangler dev
 ```
 
 Then you can skip building the next app
 
 ```
-SKIP_NEXT_APP_BUILD=1 node /path/to/poc-next/builder/dist/index.mjs && wrangler dev
+SKIP_NEXT_APP_BUILD=1 node /path/to/poc-next/builder/dist/index.mjs && npx wrangler dev
 ```
