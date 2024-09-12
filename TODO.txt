@@ -1,5 +1,9 @@
-TODO:
+# POC
 
+## TODO
+
+- wrangler alias
+- move the wrangler.toml to the templates
 - figure out the assets
 - dependency graph
 
@@ -7,20 +11,52 @@ DONE:
 
 - copy the template folders
 
------
+## Install:
 
-wrangler alias
+- npx create-next-app@latest <app-name> --use-npm
+(use npm to avoid symlinks)
 
--> % cp -r .next/standalone/node_modules/.pnpm/next@14.2.5_@playwright+test@1.46.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next .next/standalone/next/api/node_modules/
--> % cp -r .next/standalone/node_modules/.pnpm/react@18.3.1/node_modules/react .next/standalone/next/api/node_modules/
+- add "node-url": "npm:url@^0.11.4" to the package.json
 
-find -L . -type l -ls
+- add a wrangler.tom int the generated app
 
-symlinks -rv
+```
+#:schema node_modules/wrangler/config-schema.json
+name = "api"
+main = ".worker-next/index.mjs"
+assets = ".worker-next/assets"
+compatibility_date = "2024-08-29"
+compatibility_flags = ["nodejs_compat_v2"]
+workers_dev = true
+minify = false
 
-----
+# The aliases below should not be needed (we don't want users to have to define the aliases themselves)
+[alias]
+# critters is `require`d from `pages.runtime.prod.js` when running wrangler dev, so we need to stub it out
+"critters" = "./.next/standalone/node_modules/cf/templates/shims/empty.ts"
+# @opentelemetry/api is `require`d when running wrangler dev, so we need to stub it out
+# IMPORTANT: we shim @opentelemetry/api to the throwing shim so that it will throw right away, this is so that we throw inside the
+#            try block here: https://github.com/vercel/next.js/blob/9e8266a7/packages/next/src/server/lib/trace/tracer.ts#L27-L31
+#            causing the code to require the 'next/dist/compiled/@opentelemetry/api' module instead (which properly works)
+"@opentelemetry/api" = "./.next/standalone/node_modules/cf/templates/shims/throw.ts"
+```
 
-Need to add "node-url": "npm:url@^0.11.4"
+- Build the builder
 
----
+```
+pnpm --filter builder build:watch
+```
 
+- To build for workers:
+
+Build the next app once:
+
+```
+node /path/to/poc-next/builder/dist/index.mjs && wrangler dev
+```
+
+Then you can skip building the next app
+
+```
+SKIP_NEXT_APP_BUILD=1 node /path/to/poc-next/builder/dist/index.mjs && wrangler dev
+```
