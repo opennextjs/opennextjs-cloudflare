@@ -16,6 +16,20 @@ DONE:
 - npx create-next-app@latest <app-name> --use-npm
 (use npm to avoid symlinks)
 
+- update next.config.mjs as follow
+
+````
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: "standalone",
+  experimental: {
+    serverMinification: false,
+  },
+};
+
+export default nextConfig;
+```
+
 - add "node-url": "npm:url@^0.11.4" to the package.json
 
 - add a wrangler.tom int the generated app
