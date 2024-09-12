@@ -24,10 +24,10 @@ export async function build(
 	if (!opts.skipBuild) {
 		// Build the next app and save a copy in .save.next
 		buildNextjsApp(inputNextAppDir);
-			rmSync(`${inputNextAppDir}/${SAVE_DIR}`, {
-				recursive: true,
-				force: true,
-			});
+		rmSync(`${inputNextAppDir}/${SAVE_DIR}`, {
+			recursive: true,
+			force: true,
+		});
 		cpSync(`${inputNextAppDir}/.next`, `${inputNextAppDir}/${SAVE_DIR}`, {
 			recursive: true,
 		});

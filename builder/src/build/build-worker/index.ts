@@ -101,9 +101,13 @@ export async function buildWorker(
 	updateWebpackChunksFile(nextjsAppPaths);
 
 	console.log(`\x1b[35m⚙️ Copying asset files...\n\x1b[0m`);
-	await cp(`${nextjsAppPaths.dotNextDir}/static`, `${outputDir}/assets/_next`, {
-		recursive: true,
-	});
+	await cp(
+		`${nextjsAppPaths.dotNextDir}/static`,
+		`${outputDir}/assets/_next/static`,
+		{
+			recursive: true,
+		}
+	);
 
 	console.log(`\x1b[35mWorker saved in \`${workerOutputFile}\` 🚀\n\x1b[0m`);
 }
@@ -187,4 +191,4 @@ function createFixRequiresESBuildPlugin(templateDir: string): Plugin {
 			}));
 		},
 	};
-};
+}
