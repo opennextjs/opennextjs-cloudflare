@@ -6,6 +6,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { cpSync, rmSync } from "node:fs";
 
+const SAVE_DIR = ".save.next";
+
 /**
  * Builds the application in a format that can be passed to workerd
  *
@@ -20,15 +22,19 @@ export async function build(
 	opts: BuildOptions
 ): Promise<void> {
 	if (!opts.skipBuild) {
-		// Build the next app and save a copy in .next.save
+		// Build the next app and save a copy in .save.next
 		buildNextjsApp(inputNextAppDir);
-		cpSync(`${inputNextAppDir}/.next`, `${inputNextAppDir}/save.next`, {
+			rmSync(`${inputNextAppDir}/${SAVE_DIR}`, {
+				recursive: true,
+				force: true,
+			});
+		cpSync(`${inputNextAppDir}/.next`, `${inputNextAppDir}/${SAVE_DIR}`, {
 			recursive: true,
 		});
 	} else {
 		// Skip the next build and restore the copy from .next.save
 		rmSync(`${inputNextAppDir}/.next`, { recursive: true, force: true });
-		cpSync(`${inputNextAppDir}/save.next`, `${inputNextAppDir}/.next`, {
+		cpSync(`${inputNextAppDir}/${SAVE_DIR}`, `${inputNextAppDir}/.next`, {
 			recursive: true,
 		});
 	}

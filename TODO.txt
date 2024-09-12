@@ -1,11 +1,11 @@
 TODO:
 
-- [] copy the template folders
-- [] figure out the assets
-- [] dependency graph
+- figure out the assets
+- dependency graph
 
 DONE:
 
+- copy the template folders
 
 -----
 
