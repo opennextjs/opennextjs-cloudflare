@@ -6,6 +6,7 @@ export function patchReadFile(
 	code: string,
 	nextjsAppPaths: NextjsAppPaths
 ): string {
+	console.log("# patchReadFile");
 	// The next-server code gets the buildId from the filesystem, resulting in a `[unenv] fs.readFileSync is not implemented yet!` error
 	// so we add an early return to the `getBuildId` function so that the `readyFileSync` is never encountered
 	// (source: https://github.com/vercel/next.js/blob/15aeb92efb34c09a36/packages/next/src/server/next-server.ts#L438-L451)

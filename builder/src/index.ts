@@ -5,6 +5,8 @@ import { build } from "./build";
 
 const inputNextAppDir = resolve(".");
 
+console.log({ inputNextAppDir });
+
 if (
 	!["js", "cjs", "mjs", "ts"].some((ext) => existsSync(`./next.config.${ext}`))
 ) {

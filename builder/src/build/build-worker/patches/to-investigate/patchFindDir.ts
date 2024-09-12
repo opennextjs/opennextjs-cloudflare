@@ -11,6 +11,7 @@ export function patchFindDir(
 	code: string,
 	nextjsAppPaths: NextjsAppPaths
 ): string {
+	console.log("# patchFindDir");
 	return code.replace(
 		"function findDir(dir, name) {",
 		`function findDir(dir, name) {

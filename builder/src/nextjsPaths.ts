@@ -1,5 +1,5 @@
 import { readdirSync, statSync } from "node:fs";
-import { relative } from "node:path";
+import path, { relative } from "node:path";
 
 /**
  * This type includes all the paths necessary to deal with a Next.js application build
@@ -40,12 +40,14 @@ export function getNextjsAppPaths(nextAppDir: string): NextjsAppPaths {
 
 	const appPath = getNextjsApplicationPath(dotNextDir).replace(/\/$/, "");
 
+	const standaloneAppDir = path.join(dotNextDir, "standalone", appPath);
+
 	return {
 		appDir: nextAppDir,
 		dotNextDir,
-		standaloneAppDir: `${dotNextDir}/standalone/${appPath}`,
-		standaloneAppDotNextDir: `${dotNextDir}/standalone/${appPath}/.next`,
-		standaloneAppServerDir: `${dotNextDir}/standalone/${appPath}/.next/server`,
+		standaloneAppDir,
+		standaloneAppDotNextDir: path.join(standaloneAppDir, ".next"),
+		standaloneAppServerDir: path.join(standaloneAppDir, ".next", "server"),
 	};
 }
 

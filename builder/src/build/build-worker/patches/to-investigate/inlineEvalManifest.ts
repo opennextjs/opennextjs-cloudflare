@@ -12,6 +12,7 @@ export function inlineEvalManifest(
 	code: string,
 	nextjsAppPaths: NextjsAppPaths
 ): string {
+	console.log("# inlineEvalManifest");
 	const manifestJss = globSync(
 		`${nextjsAppPaths.standaloneAppDotNextDir}/**/*_client-reference-manifest.js`
 	).map((file) => file.replace(`${nextjsAppPaths.standaloneAppDir}/`, ""));

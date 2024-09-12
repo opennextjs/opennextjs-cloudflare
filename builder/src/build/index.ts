@@ -2,6 +2,9 @@ import { rm } from "node:fs/promises";
 import { buildNextjsApp } from "./build-next-app";
 import { buildWorker } from "./build-worker";
 import { getNextjsAppPaths } from "../nextjsPaths";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { cpSync, rmSync } from "node:fs";
 
 /**
  * Builds the application in a format that can be passed to workerd
@@ -17,14 +20,32 @@ export async function build(
 	opts: BuildOptions
 ): Promise<void> {
 	if (!opts.skipBuild) {
+		// Build the next app and save a copy in .next.save
 		buildNextjsApp(inputNextAppDir);
+		cpSync(`${inputNextAppDir}/.next`, `${inputNextAppDir}/save.next`, {
+			recursive: true,
+		});
+	} else {
+		// Skip the next build and restore the copy from .next.save
+		rmSync(`${inputNextAppDir}/.next`, { recursive: true, force: true });
+		cpSync(`${inputNextAppDir}/save.next`, `${inputNextAppDir}/.next`, {
+			recursive: true,
+		});
 	}
 
 	const outputDir = `${opts.outputDir ?? inputNextAppDir}/.worker-next`;
-	cleanDirectory(outputDir);
+	await cleanDirectory(outputDir);
 
 	const nextjsAppPaths = getNextjsAppPaths(inputNextAppDir);
-	await buildWorker(outputDir, nextjsAppPaths);
+
+	const templateDir = path.join(
+		path.dirname(fileURLToPath(import.meta.url)),
+		"templates"
+	);
+
+	console.log({ outputDir, nextjsAppPaths, templateDir });
+
+	await buildWorker(outputDir, nextjsAppPaths, templateDir);
 }
 
 type BuildOptions = {

@@ -9,6 +9,7 @@ export function inlineNextRequire(
 	code: string,
 	nextjsAppPaths: NextjsAppPaths
 ) {
+	console.log("# inlineNextRequire");
 	const pagesManifestFile = `${nextjsAppPaths.standaloneAppServerDir}/pages-manifest.json`;
 	const appPathsManifestFile = `${nextjsAppPaths.standaloneAppServerDir}/app-paths-manifest.json`;
 

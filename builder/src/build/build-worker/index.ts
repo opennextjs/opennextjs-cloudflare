@@ -3,19 +3,14 @@ import { build, Plugin } from "esbuild";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { cp, readFile, writeFile } from "node:fs/promises";
 
-import { resolve } from "node:path";
-
 import { patchRequire } from "./patches/investigated/patchRequire";
 import { patchUrl } from "./patches/investigated/patchUrl";
+import { copyTemplates } from "./patches/investigated/copyTemplates";
 
 import { patchReadFile } from "./patches/to-investigate/patchReadFile";
 import { patchFindDir } from "./patches/to-investigate/patchFindDir";
 import { inlineNextRequire } from "./patches/to-investigate/inlineNextRequire";
 import { inlineEvalManifest } from "./patches/to-investigate/inlineEvalManifest";
-
-import * as url from "url";
-
-const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
 /**
  * Using the Next.js build output in the `.next` directory builds a workerd compatible output
@@ -25,11 +20,12 @@ const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
  */
 export async function buildWorker(
 	outputDir: string,
-	nextjsAppPaths: NextjsAppPaths
+	nextjsAppPaths: NextjsAppPaths,
+	templateSrcDir: string
 ): Promise<void> {
-	const repoRoot = resolve(`${__dirname}/../..`);
+	const templateDir = copyTemplates(templateSrcDir, nextjsAppPaths);
 
-	const workerEntrypoint = `${__dirname}/templates/worker.ts`;
+	const workerEntrypoint = `${templateDir}/worker.ts`;
 	const workerOutputFile = `${outputDir}/index.mjs`;
 	const nextConfigStr =
 		readFileSync(nextjsAppPaths.standaloneAppDir + "/server.js", "utf8")?.match(
@@ -44,27 +40,27 @@ export async function buildWorker(
 		format: "esm",
 		target: "esnext",
 		minify: false,
-		plugins: [fixRequiresESBuildPlugin],
+		plugins: [createFixRequiresESBuildPlugin(templateDir)],
 		alias: {
 			// Note: we apply an empty shim to next/dist/compiled/ws because it generates two `eval`s:
 			//   eval("require")("bufferutil");
 			//   eval("require")("utf-8-validate");
-			"next/dist/compiled/ws": `${__dirname}/templates/shims/empty.ts`,
+			"next/dist/compiled/ws": `${templateDir}/shims/empty.ts`,
 			// Note: we apply an empty shim to next/dist/compiled/edge-runtime since (amongst others) it generated the following `eval`:
 			//   eval(getModuleCode)(module, module.exports, throwingRequire, params.context, ...Object.values(params.scopedContext));
 			//   which comes from https://github.com/vercel/edge-runtime/blob/6e96b55f/packages/primitives/src/primitives/load.js#L57-L63
 			// QUESTION: Why did I encountered this but mhart didn't?
-			"next/dist/compiled/edge-runtime": `${__dirname}/templates/shims/empty.ts`,
+			"next/dist/compiled/edge-runtime": `${templateDir}/shims/empty.ts`,
 			// Note: we need to stub out `@opentelemetry/api` as that is problematic and doesn't get properly bundled...
-			critters: `${__dirname}/templates/shims/empty.ts`,
+			critters: `${templateDir}/shims/empty.ts`,
 			// Note: we need to stub out `@opentelemetry/api` as it is problematic
 			// IMPORTANT: we shim @opentelemetry/api to the throwing shim so that it will throw right away, this is so that we throw inside the
 			//            try block here: https://github.com/vercel/next.js/blob/9e8266a7/packages/next/src/server/lib/trace/tracer.ts#L27-L31
 			//            causing the code to require the 'next/dist/compiled/@opentelemetry/api' module instead (which properly works)
-			"@opentelemetry/api": `${__dirname}/templates/shims/throw.ts`,
+			"@opentelemetry/api": `${templateDir}/shims/throw.ts`,
 			// `@next/env` is a library Next.js uses for loading dotenv files, for obvious reasons we need to stub it here
 			// source: https://github.com/vercel/next.js/tree/0ac10d79720/packages/next-env
-			"@next/env": `${__dirname}/templates/shims/env.ts`,
+			"@next/env": `${templateDir}/shims/env.ts`,
 		},
 		define: {
 			// config file used by Next.js, see: https://github.com/vercel/next.js/blob/68a7128/packages/next/src/build/utils.ts#L2137-L2139
@@ -147,13 +143,19 @@ async function updateWorkerBundledCode(
  *    so this shows that not everything that's needed to deploy the application is in the output directory...
  */
 async function updateWebpackChunksFile(nextjsAppPaths: NextjsAppPaths) {
+	console.log("# updateWebpackChunksFile");
 	const webpackRuntimeFile = `${nextjsAppPaths.standaloneAppServerDir}/webpack-runtime.js`;
+
+	console.log({ webpackRuntimeFile });
 
 	const fileContent = readFileSync(webpackRuntimeFile, "utf-8");
 
 	const chunks = readdirSync(`${nextjsAppPaths.standaloneAppServerDir}/chunks`)
 		.filter((chunk) => /^\d+\.js$/.test(chunk))
-		.map((chunk) => chunk.replace(/\.js$/, ""));
+		.map((chunk) => {
+			console.log(` - chunk ${chunk}`);
+			return chunk.replace(/\.js$/, "");
+		});
 
 	const updatedFileContent = fileContent.replace(
 		"__webpack_require__.f.require = (chunkId, promises) => {",
@@ -175,12 +177,14 @@ async function updateWebpackChunksFile(nextjsAppPaths: NextjsAppPaths) {
 	writeFileSync(webpackRuntimeFile, updatedFileContent);
 }
 
-const fixRequiresESBuildPlugin: Plugin = {
-	name: "replaceRelative",
-	setup(build) {
-		// Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
-		build.onResolve({ filter: /^\.\/require-hook$/ }, (args) => ({
-			path: `${__dirname}/templates/shims/empty.ts`,
-		}));
-	},
+function createFixRequiresESBuildPlugin(templateDir: string): Plugin {
+	return {
+		name: "replaceRelative",
+		setup(build) {
+			// Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
+			build.onResolve({ filter: /^\.\/require-hook$/ }, (args) => ({
+				path: `${templateDir}/shims/empty.ts`,
+			}));
+		},
+	};
 };

@@ -5,6 +5,7 @@
  * Hopefully this should not be necessary after this unenv PR lands: https://github.com/unjs/unenv/pull/292
  */
 export function patchUrl(code: string): string {
+  console.log("# patchUrl");
 	return code.replace(
 		/ ([a-zA-Z0-9_]+) = require\("url"\);/g,
 		` $1 = require("url");
