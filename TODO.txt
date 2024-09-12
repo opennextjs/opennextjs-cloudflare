@@ -4,11 +4,11 @@
 
 - wrangler alias
 - move the wrangler.toml to the templates
-- figure out the assets
 - dependency graph
 
 DONE:
 
+- figure out the assets
 - copy the template folders
 
 ## Install:
