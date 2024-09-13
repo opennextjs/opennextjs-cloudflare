@@ -3,12 +3,14 @@
 	"version": "0.0.0.0",
 	"private": true,
 	"devDependencies": {
-		"prettier": "3.3.3"
+		"prettier": "3.3.3",
+		"@playwright/test": "1.47.0"
 	},
 	"scripts": {
 		"prettier:check": "prettier --check .",
 		"prettier:fix": "prettier --write .",
 		"postinstall": "pnpm --filter builder build",
+		"install-playwright": "playwright install --with-deps",
 		"e2e": "pnpm -r e2e"
 	}
 }
