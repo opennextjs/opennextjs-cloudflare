@@ -1,0 +1,11 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "create-next-app"
+main = ".worker-next/index.mjs"
+
+compatibility_date = "2024-08-29"
+compatibility_flags = ["nodejs_compat_v2"]
+workers_dev = true
+minify = false
+
+# Use the new Workers + Assets to host the static frontend files
+experimental_assets = { directory = ".worker-next/assets", binding = "ASSETS" }
