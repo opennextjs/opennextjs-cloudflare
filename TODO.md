@@ -28,12 +28,18 @@ DONE:
   export default nextConfig;
   ```
 
-- add "node-url": "npm:url@^0.11.4" to the package.json
+- add the following devDependency to the package.json:
+
+  ```json
+  "node-url": "npm:url@^0.11.4",
+  "wrangler": "^3.77.0"
+  ```
+
 - add a wrangler.toml int the generated app
 
   ```toml
   #:schema node_modules/wrangler/config-schema.json
-  name = "api"
+  name = "<app-name>"
   main = ".worker-next/index.mjs"
 
   compatibility_date = "2024-08-29"
