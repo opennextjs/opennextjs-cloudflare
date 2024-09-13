@@ -14,5 +14,3 @@ catalog:
   "react-dom": ^18
   "typescript": ^5.5.4
   "wrangler": ^3.77.0
-
-
