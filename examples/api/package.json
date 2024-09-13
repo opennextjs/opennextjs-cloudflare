@@ -10,7 +10,6 @@
 		"build:worker": "builder",
 		"dev:worker": "wrangler dev --port 8770",
 		"preview:worker": "pnpm build:worker && pnpm dev:worker",
-		"pree2e": "playwright install --with-deps",
 		"e2e": "playwright test"
 	},
 	"dependencies": {

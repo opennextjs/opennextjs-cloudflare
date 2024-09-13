@@ -8,9 +8,8 @@
 		"start": "next start",
 		"lint": "next lint",
 		"build:worker": "builder",
-		"dev:worker": "wrangler dev --port 8770",
+		"dev:worker": "wrangler dev --port 8771",
 		"preview:worker": "pnpm build:worker && pnpm dev:worker",
-		"pree2e": "playwright install --with-deps",
 		"e2e": "playwright test -c e2e/playwright.config.ts"
 	},
 	"dependencies": {
