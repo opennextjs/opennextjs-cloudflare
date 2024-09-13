@@ -2,12 +2,12 @@
 
 ## TODO
 
-- wrangler alias
 - move the wrangler.toml to the templates
 - dependency graph
 
 DONE:
 
+- wrangler alias
 - figure out the assets
 - copy the template folders
 
