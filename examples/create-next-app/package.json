@@ -7,8 +7,11 @@
 		"build": "next build",
 		"start": "next start",
 		"lint": "next lint",
-		"prepreview": "node ../../builder/dist/index.mjs",
-		"preview": "wrangler dev"
+		"build:worker": "builder",
+		"dev:worker": "wrangler dev --port 8770",
+		"preview:worker": "pnpm build:worker && pnpm dev:worker",
+		"pree2e": "playwright install --with-deps",
+		"e2e": "playwright test -c e2e/playwright.config.ts"
 	},
 	"dependencies": {
 		"react": "^18",
@@ -16,15 +19,17 @@
 		"next": "14.2.11"
 	},
 	"devDependencies": {
-		"typescript": "^5",
+		"builder": "workspace:*",
+		"@playwright/test": "1.47.0",
 		"@types/node": "^20",
 		"@types/react": "^18",
 		"@types/react-dom": "^18",
-		"postcss": "^8",
-		"tailwindcss": "^3.4.1",
-		"node-url": "npm:url@^0.11.4",
 		"eslint": "^8",
 		"eslint-config-next": "14.2.11",
+		"postcss": "^8",
+		"node-url": "npm:url@^0.11.4",
+		"tailwindcss": "^3.4.1",
+		"typescript": "^5",
 		"wrangler": "^3.77.0"
 	}
 }

@@ -1,5 +1,7 @@
 {
-	"name": "POC-NextJS",
+	"name": "poc-next",
+	"version": "0.0.0.0",
+	"private": true,
 	"devDependencies": {
 		"prettier": "3.3.3"
 	},
