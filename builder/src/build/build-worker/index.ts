@@ -11,6 +11,7 @@ import { patchReadFile } from "./patches/to-investigate/patchReadFile";
 import { patchFindDir } from "./patches/to-investigate/patchFindDir";
 import { inlineNextRequire } from "./patches/to-investigate/inlineNextRequire";
 import { inlineEvalManifest } from "./patches/to-investigate/inlineEvalManifest";
+import { patchWranglerDeps } from "./patches/to-investigate/wranglerDeps";
 
 /**
  * Using the Next.js build output in the `.next` directory builds a workerd compatible output
@@ -33,6 +34,10 @@ export async function buildWorker(
 		)?.[1] ?? {};
 
 	console.log(`\x1b[35m⚙️ Bundling the worker file...\n\x1b[0m`);
+
+	patchWranglerDeps(nextjsAppPaths);
+	updateWebpackChunksFile(nextjsAppPaths);
+
 	await build({
 		entryPoints: [workerEntrypoint],
 		bundle: true,
@@ -51,13 +56,6 @@ export async function buildWorker(
 			//   which comes from https://github.com/vercel/edge-runtime/blob/6e96b55f/packages/primitives/src/primitives/load.js#L57-L63
 			// QUESTION: Why did I encountered this but mhart didn't?
 			"next/dist/compiled/edge-runtime": `${templateDir}/shims/empty.ts`,
-			// Note: we need to stub out `@opentelemetry/api` as that is problematic and doesn't get properly bundled...
-			critters: `${templateDir}/shims/empty.ts`,
-			// Note: we need to stub out `@opentelemetry/api` as it is problematic
-			// IMPORTANT: we shim @opentelemetry/api to the throwing shim so that it will throw right away, this is so that we throw inside the
-			//            try block here: https://github.com/vercel/next.js/blob/9e8266a7/packages/next/src/server/lib/trace/tracer.ts#L27-L31
-			//            causing the code to require the 'next/dist/compiled/@opentelemetry/api' module instead (which properly works)
-			"@opentelemetry/api": `${templateDir}/shims/throw.ts`,
 			// `@next/env` is a library Next.js uses for loading dotenv files, for obvious reasons we need to stub it here
 			// source: https://github.com/vercel/next.js/tree/0ac10d79720/packages/next-env
 			"@next/env": `${templateDir}/shims/env.ts`,
@@ -97,8 +95,6 @@ export async function buildWorker(
 	});
 
 	await updateWorkerBundledCode(workerOutputFile, nextjsAppPaths);
-
-	updateWebpackChunksFile(nextjsAppPaths);
 
 	console.log(`\x1b[35m⚙️ Copying asset files...\n\x1b[0m`);
 	await cp(
