@@ -11,59 +11,55 @@ DONE:
 - figure out the assets
 - copy the template folders
 
-## Install:
+## Install
 
-- npx create-next-app@latest <app-name> --use-npm
-(use npm to avoid symlinks)
+- `npx create-next-app@latest <app-name> --use-npm` (use npm to avoid symlinks)
+- update next.config.mjs as follows
 
-- update next.config.mjs as follow
+  ```typescript
+  /** @type {import('next').NextConfig} */
+  const nextConfig = {
+    output: "standalone",
+    experimental: {
+      serverMinification: false,
+    },
+  };
 
-````
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  output: "standalone",
-  experimental: {
-    serverMinification: false,
-  },
-};
-
-export default nextConfig;
-```
+  export default nextConfig;
+  ```
 
 - add "node-url": "npm:url@^0.11.4" to the package.json
-
 - add a wrangler.toml int the generated app
 
-```
-#:schema node_modules/wrangler/config-schema.json
-name = "api"
-main = ".worker-next/index.mjs"
+  ```toml
+  #:schema node_modules/wrangler/config-schema.json
+  name = "api"
+  main = ".worker-next/index.mjs"
 
-compatibility_date = "2024-08-29"
-compatibility_flags = ["nodejs_compat_v2"]
-workers_dev = true
-minify = false
+  compatibility_date = "2024-08-29"
+  compatibility_flags = ["nodejs_compat_v2"]
+  workers_dev = true
+  minify = false
 
-# Use the new Workers + Assets to host the static frontend files
-experimental_assets = { directory = ".worker-next/assets", binding = "ASSETS" }
-```
+  # Use the new Workers + Assets to host the static frontend files
+  experimental_assets = { directory = ".worker-next/assets", binding = "ASSETS" }
+  ```
 
 - Build the builder
 
-```
-pnpm --filter builder build:watch
-```
+  ```sh
+  pnpm --filter builder build:watch
+  ```
 
 - To build for workers:
+  - Build the next app once:
 
-Build the next app once:
+    ```sh
+    node /path/to/poc-next/builder/dist/index.mjs && npx wrangler dev
+    ```
 
-```
-node /path/to/poc-next/builder/dist/index.mjs && npx wrangler dev
-```
+  - Then you can skip building the next app
 
-Then you can skip building the next app
-
-```
-SKIP_NEXT_APP_BUILD=1 node /path/to/poc-next/builder/dist/index.mjs && npx wrangler dev
-```
+    ```sh
+    SKIP_NEXT_APP_BUILD=1 node /path/to/poc-next/builder/dist/index.mjs && npx wrangler dev
+    ```
