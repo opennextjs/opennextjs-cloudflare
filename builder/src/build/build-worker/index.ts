@@ -90,6 +90,26 @@ export async function buildWorker(
 				*/ ""
 				}
 				globalThis.__dirname ??= "";
+
+// Do not crash on cache not supported
+let isPatchedAlready = globalThis.fetch.__nextPatched;
+const curFetch = globalThis.fetch;
+globalThis.fetch = (input, init) => {
+  console.log("globalThis.fetch", input);
+  if (init) delete init.cache;
+  return curFetch(input, init);
+};
+globalThis.fetch.__nextPatched = isPatchedAlready;
+fetch = globalThis.fetch;
+const CustomRequest = class extends globalThis.Request {
+  constructor(input, init) {
+    console.log("CustomRequest", input);
+    if (init) delete init.cache;
+    super(input, init);
+  }
+};
+globalThis.Request = CustomRequest;
+Request = globalThis.Request;
 			`,
 		},
 	});
@@ -184,6 +204,9 @@ function createFixRequiresESBuildPlugin(templateDir: string): Plugin {
 			// Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
 			build.onResolve({ filter: /^\.\/require-hook$/ }, (args) => ({
 				path: `${templateDir}/shims/empty.ts`,
+			}));
+			build.onResolve({ filter: /\.\/lib\/node-fs-methods$/ }, (args) => ({
+				path: `${templateDir}/shims/node-fs.ts`,
 			}));
 		},
 	};
