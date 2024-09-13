@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from "node:fs";
-import { NextjsAppPaths } from "builder/src/nextjsPaths";
+import { NextjsAppPaths } from "../../../../nextjsPaths";
 
 /**
  * The following avoid various Next.js specific files `require`d at runtime since we can just read

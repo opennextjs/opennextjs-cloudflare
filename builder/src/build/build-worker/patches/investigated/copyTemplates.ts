@@ -1,6 +1,6 @@
 import path from "node:path";
-import { NextjsAppPaths } from "builder/src/nextjsPaths";
-import { cpSync, mkdirSync } from "node:fs";
+import { NextjsAppPaths } from "../../../../nextjsPaths";
+import { cpSync } from "node:fs";
 
 /**
  * Copy templates in the standalone folder.
