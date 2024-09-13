@@ -19,10 +19,10 @@ DONE:
   ```typescript
   /** @type {import('next').NextConfig} */
   const nextConfig = {
-    output: "standalone",
-    experimental: {
-      serverMinification: false,
-    },
+  	output: "standalone",
+  	experimental: {
+  		serverMinification: false,
+  	},
   };
 
   export default nextConfig;
@@ -58,6 +58,7 @@ DONE:
   ```
 
 - To build for workers:
+
   - Build the next app once:
 
     ```sh
