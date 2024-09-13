@@ -10,7 +10,7 @@ This monorepo includes a POC to see if it is possible to get a Next.js applicati
 The repository contains two directories:
 
 - `builder` containing a package that can be used to build Cloudflare workers compatible output from Next.js applications
-- `next` containing Next.js application that use the above mentioned builder (currently it only contains `api`)
+- `examples` containing Next.js applications that use the above mentioned builder.
 
 ## How to try out/develop in the repository
 
