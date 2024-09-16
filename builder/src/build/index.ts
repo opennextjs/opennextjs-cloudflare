@@ -1,7 +1,7 @@
 import { rm } from "node:fs/promises";
 import { buildNextjsApp } from "./build-next-app";
 import { buildWorker } from "./build-worker";
-import { getNextjsAppPaths } from "../nextjsPaths";
+import { getNextjsAppPaths } from "../nextjs-paths";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { cpSync, rmSync } from "node:fs";

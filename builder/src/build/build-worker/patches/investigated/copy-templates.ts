@@ -1,5 +1,5 @@
 import path from "node:path";
-import { NextjsAppPaths } from "../../../../nextjsPaths";
+import { NextjsAppPaths } from "../../../../nextjs-paths";
 import { cpSync } from "node:fs";
 
 /**

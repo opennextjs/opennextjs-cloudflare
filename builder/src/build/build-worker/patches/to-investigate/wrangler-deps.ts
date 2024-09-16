@@ -1,6 +1,6 @@
 import path from "node:path";
 import fs, { writeFileSync } from "node:fs";
-import { NextjsAppPaths } from "../../../../nextjsPaths";
+import { NextjsAppPaths } from "../../../../nextjs-paths";
 
 export function patchWranglerDeps(paths: NextjsAppPaths) {
 	console.log("# patchWranglerDeps");

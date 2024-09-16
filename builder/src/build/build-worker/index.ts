@@ -1,17 +1,17 @@
-import { NextjsAppPaths } from "../../nextjsPaths";
+import { NextjsAppPaths } from "../../nextjs-paths";
 import { build, Plugin } from "esbuild";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { cp, readFile, writeFile } from "node:fs/promises";
 
-import { patchRequire } from "./patches/investigated/patchRequire";
-import { patchUrl } from "./patches/investigated/patchUrl";
-import { copyTemplates } from "./patches/investigated/copyTemplates";
+import { patchRequire } from "./patches/investigated/patch-require";
+import { patchUrl } from "./patches/investigated/patch-url";
+import { copyTemplates } from "./patches/investigated/copy-templates";
 
-import { patchReadFile } from "./patches/to-investigate/patchReadFile";
-import { patchFindDir } from "./patches/to-investigate/patchFindDir";
-import { inlineNextRequire } from "./patches/to-investigate/inlineNextRequire";
-import { inlineEvalManifest } from "./patches/to-investigate/inlineEvalManifest";
-import { patchWranglerDeps } from "./patches/to-investigate/wranglerDeps";
+import { patchReadFile } from "./patches/to-investigate/patch-read-file";
+import { patchFindDir } from "./patches/to-investigate/patch-find-dir";
+import { inlineNextRequire } from "./patches/to-investigate/inline-next-require";
+import { inlineEvalManifest } from "./patches/to-investigate/inline-eval-manifest";
+import { patchWranglerDeps } from "./patches/to-investigate/wrangler-deps";
 
 /**
  * Using the Next.js build output in the `.next` directory builds a workerd compatible output
@@ -92,6 +92,8 @@ export async function buildWorker(
 				globalThis.__dirname ??= "";
 
 // Do not crash on cache not supported
+// https://github.com/cloudflare/workerd/pull/2434
+// compatibility flag "cache_option_enabled" -> does not support "force-cache"
 let isPatchedAlready = globalThis.fetch.__nextPatched;
 const curFetch = globalThis.fetch;
 globalThis.fetch = (input, init) => {
