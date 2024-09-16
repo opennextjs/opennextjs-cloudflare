@@ -7,16 +7,14 @@ const inputNextAppDir = resolve(".");
 
 console.log({ inputNextAppDir });
 
-if (
-	!["js", "cjs", "mjs", "ts"].some((ext) => existsSync(`./next.config.${ext}`))
-) {
-	// TODO: we can add more validation later
-	throw new Error("Error: Not in a Next.js app project");
+if (!["js", "cjs", "mjs", "ts"].some((ext) => existsSync(`./next.config.${ext}`))) {
+  // TODO: we can add more validation later
+  throw new Error("Error: Not in a Next.js app project");
 }
 
 const { skipBuild, outputDir } = getArgs();
 
 await build(inputNextAppDir, {
-	outputDir,
-	skipBuild: !!skipBuild,
+  outputDir,
+  skipBuild: !!skipBuild,
 });

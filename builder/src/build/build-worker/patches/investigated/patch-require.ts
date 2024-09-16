@@ -5,8 +5,6 @@
  * James on Aug 29: `module.createRequire()` is planned.
  */
 export function patchRequire(code: string): string {
-	console.log("# patchRequire");
-	return code
-		.replace(/__require\d?\(/g, "require(")
-		.replace(/__require\d?\./g, "require.");
+  console.log("# patchRequire");
+  return code.replace(/__require\d?\(/g, "require(").replace(/__require\d?\./g, "require.");
 }

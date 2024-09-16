@@ -8,39 +8,33 @@ import { NextjsAppPaths } from "../../../../nextjs-paths";
  * Note: we could/should probably just patch readFileSync here or something, but here the issue is that after the readFileSync call
  * there is a vm `runInNewContext` call which we also don't support (source: https://github.com/vercel/next.js/blob/b1e32c5d1f/packages/next/src/server/load-manifest.ts#L88)
  */
-export function inlineEvalManifest(
-	code: string,
-	nextjsAppPaths: NextjsAppPaths
-): string {
-	console.log("# inlineEvalManifest");
-	const manifestJss = globSync(
-		`${nextjsAppPaths.standaloneAppDotNextDir}/**/*_client-reference-manifest.js`
-	).map((file) => file.replace(`${nextjsAppPaths.standaloneAppDir}/`, ""));
-	return code.replace(
-		/function evalManifest\((.+?), .+?\) {/,
-		`$&
+export function inlineEvalManifest(code: string, nextjsAppPaths: NextjsAppPaths): string {
+  console.log("# inlineEvalManifest");
+  const manifestJss = globSync(
+    `${nextjsAppPaths.standaloneAppDotNextDir}/**/*_client-reference-manifest.js`
+  ).map((file) => file.replace(`${nextjsAppPaths.standaloneAppDir}/`, ""));
+  return code.replace(
+    /function evalManifest\((.+?), .+?\) {/,
+    `$&
 		${manifestJss
-			.map(
-				(manifestJs) => `
+      .map(
+        (manifestJs) => `
 			  if ($1.endsWith("${manifestJs}")) {
 				require("${nextjsAppPaths.standaloneAppDir}/${manifestJs}");
 				return {
 				  __RSC_MANIFEST: {
 					"${manifestJs
-						.replace(".next/server/app", "")
-						.replace(
-							"_client-reference-manifest.js",
-							""
-						)}": globalThis.__RSC_MANIFEST["${manifestJs
-						.replace(".next/server/app", "")
-						.replace("_client-reference-manifest.js", "")}"],
+            .replace(".next/server/app", "")
+            .replace("_client-reference-manifest.js", "")}": globalThis.__RSC_MANIFEST["${manifestJs
+            .replace(".next/server/app", "")
+            .replace("_client-reference-manifest.js", "")}"],
 				  },
 				};
 			  }
 			`
-			)
-			.join("\n")}
+      )
+      .join("\n")}
 		throw new Error("Unknown evalManifest: " + $1);
 		`
-	);
+  );
 }

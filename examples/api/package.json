@@ -1,27 +1,27 @@
 {
-	"name": "api",
-	"version": "0.1.0",
-	"private": true,
-	"scripts": {
-		"dev": "next dev",
-		"build": "next build",
-		"start": "next start",
-		"lint": "next lint",
-		"build:worker": "builder",
-		"dev:worker": "wrangler dev --port 8770",
-		"preview:worker": "pnpm build:worker && pnpm dev:worker",
-		"e2e": "playwright test"
-	},
-	"dependencies": {
-		"next": "14.2.5",
-		"react": "^18",
-		"react-dom": "^18"
-	},
-	"devDependencies": {
-		"builder": "workspace:*",
-		"@playwright/test": "1.47.0",
-		"@types/node": "^22.2.0",
-		"node-url": "npm:url@^0.11.4",
-		"wrangler": "3.77.0"
-	}
+  "name": "api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "build:worker": "builder",
+    "dev:worker": "wrangler dev --port 8770",
+    "preview:worker": "pnpm build:worker && pnpm dev:worker",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "next": "14.2.5",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "devDependencies": {
+    "builder": "workspace:*",
+    "@playwright/test": "1.47.0",
+    "@types/node": "^22.2.0",
+    "node-url": "npm:url@^0.11.4",
+    "wrangler": "3.77.0"
+  }
 }

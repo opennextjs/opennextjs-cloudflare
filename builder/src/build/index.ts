@@ -17,48 +17,42 @@ const SAVE_DIR = ".save.next";
  * @param opts.outputDir the directory where to save the output (defaults to the app's directory)
  * @param opts.skipBuild boolean indicating whether the Next.js build should be skipped (i.e. if the `.next` dir is already built)
  */
-export async function build(
-	inputNextAppDir: string,
-	opts: BuildOptions
-): Promise<void> {
-	if (!opts.skipBuild) {
-		// Build the next app and save a copy in .save.next
-		buildNextjsApp(inputNextAppDir);
-		rmSync(`${inputNextAppDir}/${SAVE_DIR}`, {
-			recursive: true,
-			force: true,
-		});
-		cpSync(`${inputNextAppDir}/.next`, `${inputNextAppDir}/${SAVE_DIR}`, {
-			recursive: true,
-		});
-	} else {
-		// Skip the next build and restore the copy from .next.save
-		rmSync(`${inputNextAppDir}/.next`, { recursive: true, force: true });
-		cpSync(`${inputNextAppDir}/${SAVE_DIR}`, `${inputNextAppDir}/.next`, {
-			recursive: true,
-		});
-	}
+export async function build(inputNextAppDir: string, opts: BuildOptions): Promise<void> {
+  if (!opts.skipBuild) {
+    // Build the next app and save a copy in .save.next
+    buildNextjsApp(inputNextAppDir);
+    rmSync(`${inputNextAppDir}/${SAVE_DIR}`, {
+      recursive: true,
+      force: true,
+    });
+    cpSync(`${inputNextAppDir}/.next`, `${inputNextAppDir}/${SAVE_DIR}`, {
+      recursive: true,
+    });
+  } else {
+    // Skip the next build and restore the copy from .next.save
+    rmSync(`${inputNextAppDir}/.next`, { recursive: true, force: true });
+    cpSync(`${inputNextAppDir}/${SAVE_DIR}`, `${inputNextAppDir}/.next`, {
+      recursive: true,
+    });
+  }
 
-	const outputDir = `${opts.outputDir ?? inputNextAppDir}/.worker-next`;
-	await cleanDirectory(outputDir);
+  const outputDir = `${opts.outputDir ?? inputNextAppDir}/.worker-next`;
+  await cleanDirectory(outputDir);
 
-	const nextjsAppPaths = getNextjsAppPaths(inputNextAppDir);
+  const nextjsAppPaths = getNextjsAppPaths(inputNextAppDir);
 
-	const templateDir = path.join(
-		path.dirname(fileURLToPath(import.meta.url)),
-		"templates"
-	);
+  const templateDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "templates");
 
-	console.log({ outputDir, nextjsAppPaths, templateDir });
+  console.log({ outputDir, nextjsAppPaths, templateDir });
 
-	await buildWorker(outputDir, nextjsAppPaths, templateDir);
+  await buildWorker(outputDir, nextjsAppPaths, templateDir);
 }
 
 type BuildOptions = {
-	skipBuild: boolean;
-	outputDir?: string;
+  skipBuild: boolean;
+  outputDir?: string;
 };
 
 async function cleanDirectory(path: string): Promise<void> {
-	return await rm(path, { recursive: true, force: true });
+  return await rm(path, { recursive: true, force: true });
 }

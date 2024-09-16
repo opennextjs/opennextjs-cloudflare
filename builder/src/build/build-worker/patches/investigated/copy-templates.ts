@@ -9,12 +9,9 @@ import { cpSync } from "node:fs";
  * to resolve to files in the the node_module of the standalone app.=
  */
 export function copyTemplates(srcDir: string, nextjsAppPaths: NextjsAppPaths) {
-	console.log("# copyTemplates");
-	const destDir = path.join(
-		nextjsAppPaths.standaloneAppDir,
-		"node_modules/cf/templates"
-	);
+  console.log("# copyTemplates");
+  const destDir = path.join(nextjsAppPaths.standaloneAppDir, "node_modules/cf/templates");
 
-	cpSync(srcDir, destDir, { recursive: true });
-	return destDir;
+  cpSync(srcDir, destDir, { recursive: true });
+  return destDir;
 }
