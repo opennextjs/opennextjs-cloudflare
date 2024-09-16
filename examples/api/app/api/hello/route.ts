@@ -6,3 +6,7 @@ export async function GET() {
 	const sayHi = !!headersList.get("should-say-hi");
 	return new Response(sayHi ? "Hi World!" : "Hello World!");
 }
+
+export async function POST(request: Request) {
+	return new Response(`Hello post-World! body=${await request.text()}`);
+}
