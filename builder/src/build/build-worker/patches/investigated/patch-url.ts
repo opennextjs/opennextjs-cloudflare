@@ -5,10 +5,10 @@
  * Hopefully this should not be necessary after this unenv PR lands: https://github.com/unjs/unenv/pull/292
  */
 export function patchUrl(code: string): string {
-	console.log("# patchUrl");
-	return code.replace(
-		/ ([a-zA-Z0-9_]+) = require\("url"\);/g,
-		` $1 = require("url");
+  console.log("# patchUrl");
+  return code.replace(
+    / ([a-zA-Z0-9_]+) = require\("url"\);/g,
+    ` $1 = require("url");
       const nodeUrl = require("node-url");
       $1.parse = nodeUrl.parse.bind(nodeUrl);
       $1.format = nodeUrl.format.bind(nodeUrl);
@@ -17,5 +17,5 @@ export function patchUrl(code: string): string {
         return new URL("file://" + path);
       }
     `
-	);
+  );
 }
