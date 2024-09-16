@@ -19,10 +19,10 @@ DONE:
   ```typescript
   /** @type {import('next').NextConfig} */
   const nextConfig = {
-  	output: "standalone",
-  	experimental: {
-  		serverMinification: false,
-  	},
+   output: "standalone",
+   experimental: {
+    serverMinification: false,
+   },
   };
 
   export default nextConfig;
@@ -70,3 +70,42 @@ DONE:
     ```sh
     SKIP_NEXT_APP_BUILD=1 node /path/to/poc-next/builder/dist/index.mjs && npx wrangler dev
     ```
+
+## Open next [example app](https://github.com/sst/open-next/tree/main/example)
+
+Changes:
+
+- App: Patch the next.config.js
+- App: Update package.json
+
+```text
+  "scripts": {
+    "dev": "next dev",
+    ...
+  },
+  "dependencies": {
+    "next": "^14.2.11",
+    "next-auth": "latest",
+    ...
+  },
+  "devDependencies": {
+    "node-url": "npm:url@^0.11.4",
+    "wrangler": "^3.77.0"
+    ...
+  }
+```
+
+- wrangler, update bundle.ts (based on 3.76.0)
+
+```js
+  //l 354
+  conditions: [],
+  platform: "node",
+```
+
+The conditions (`export const BUILD_CONDITIONS = ["workerd", "worker", "browser"];`)
+would pull browser files that are not traced by nft.
+
+- Build the app
+
+- Use the updated wrangler `pnpm --filter wrangler start dev -c /path/to/open-next/example/wrangler.toml`
