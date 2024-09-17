@@ -43,8 +43,6 @@ export async function build(inputNextAppDir: string, opts: BuildOptions): Promis
 
   const templateDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "templates");
 
-  console.log({ outputDir, nextjsAppPaths, templateDir });
-
   await buildWorker(outputDir, nextjsAppPaths, templateDir);
 }
 

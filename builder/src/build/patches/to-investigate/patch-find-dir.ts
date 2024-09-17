@@ -1,4 +1,4 @@
-import { NextjsAppPaths } from "../../../../nextjs-paths";
+import { NextjsAppPaths } from "../../../nextjs-paths";
 import { existsSync } from "node:fs";
 
 /**

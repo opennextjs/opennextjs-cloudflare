@@ -1,4 +1,4 @@
-import { NextjsAppPaths } from "../../nextjs-paths";
+import { NextjsAppPaths } from "../nextjs-paths";
 import { build, Plugin } from "esbuild";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { cp, readFile, writeFile } from "node:fs/promises";

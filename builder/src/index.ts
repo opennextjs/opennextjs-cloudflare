@@ -1,11 +1,11 @@
 import { resolve } from "node:path";
 import { getArgs } from "./args";
 import { existsSync } from "node:fs";
-import { build } from "./build";
+import { build } from "./build/build";
 
-const inputNextAppDir = resolve(".");
+const nextAppDir = resolve(".");
 
-console.log({ inputNextAppDir });
+console.log(`Building the Next.js app in the current folder (${nextAppDir})`);
 
 if (!["js", "cjs", "mjs", "ts"].some((ext) => existsSync(`./next.config.${ext}`))) {
   // TODO: we can add more validation later
@@ -14,7 +14,7 @@ if (!["js", "cjs", "mjs", "ts"].some((ext) => existsSync(`./next.config.${ext}`)
 
 const { skipBuild, outputDir } = getArgs();
 
-await build(inputNextAppDir, {
+await build(nextAppDir, {
   outputDir,
   skipBuild: !!skipBuild,
 });

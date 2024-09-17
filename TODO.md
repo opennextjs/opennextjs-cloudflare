@@ -14,6 +14,7 @@ DONE:
 ## Install
 
 - `npx create-next-app@latest <app-name> --use-npm` (use npm to avoid symlinks)
+
 - update next.config.mjs as follows
 
   ```typescript

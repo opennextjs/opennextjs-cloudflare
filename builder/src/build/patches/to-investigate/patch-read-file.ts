@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { globSync } from "glob";
-import { NextjsAppPaths } from "../../../../nextjs-paths";
+import { NextjsAppPaths } from "../../../nextjs-paths";
 
 export function patchReadFile(code: string, nextjsAppPaths: NextjsAppPaths): string {
   console.log("# patchReadFile");
