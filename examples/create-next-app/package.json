@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "build:worker": "builder",
+    "build:worker": "pnpm builder",
     "dev:worker": "wrangler dev --port 8771",
     "preview:worker": "pnpm build:worker && pnpm dev:worker",
     "e2e": "playwright test -c e2e/playwright.config.ts"
@@ -18,7 +18,7 @@
     "next": "14.2.11"
   },
   "devDependencies": {
-    "builder": "workspace:*",
+    "@flarelabs-net/builder": "workspace:*",
     "@playwright/test": "1.47.0",
     "@types/node": "^20",
     "@types/react": "^18",

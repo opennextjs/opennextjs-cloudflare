@@ -1,13 +1,31 @@
 {
-  "name": "builder",
+  "name": "@flarelabs-net/builder",
+  "description": "Cloudflare builder for next apps",
+  "version": "0.0.1",
   "scripts": {
     "build": "tsup",
     "build:watch": "tsup --watch src"
   },
   "bin": "dist/index.mjs",
   "files": [
+    "README.md",
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/flarelabs-net/poc-next.git",
+    "directory": "builder"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "next.js"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/flarelabs-net/poc-next/issues"
+  },
+  "homepage": "https://github.com/flarelabs-net/poc-next",
   "devDependencies": {
     "@types/node": "^22.2.0",
     "esbuild": "^0.23.0",
