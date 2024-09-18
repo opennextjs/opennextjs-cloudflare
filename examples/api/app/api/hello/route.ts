@@ -8,5 +8,6 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  return new Response(`Hello post-World! body=${await request.text()}`);
+  const text = await request.text();
+  return new Response(`Hello post-World! body=${text}`);
 }

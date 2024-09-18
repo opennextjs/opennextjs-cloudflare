@@ -1,15 +1,13 @@
-import { Readable } from "node:stream";
-
+import Stream from "node:stream";
 import type { NextConfig } from "next";
 import { NodeNextRequest, NodeNextResponse } from "next/dist/server/base-http/node";
-import { createRequestResponseMocks } from "next/dist/server/lib/mock-request";
+import { MockedResponse } from "next/dist/server/lib/mock-request";
 import NextNodeServer, { NodeRequestHandler } from "next/dist/server/next-server";
+import type { IncomingMessage } from "node:http";
 
-/**
- * Injected at build time
- * (we practically follow what Next.js does here:
-    https://github.com/vercel/next.js/blob/68a7128/packages/next/src/build/utils.ts#L2137-L2139)
- */
+const NON_BODY_RESPONSES = new Set([101, 204, 205, 304]);
+
+// Injected at build time
 const nextConfig: NextConfig = JSON.parse(process.env.__NEXT_PRIVATE_STANDALONE_CONFIG ?? "{}");
 
 let requestHandler: NodeRequestHandler | null = null;
@@ -23,6 +21,7 @@ export default {
         customServer: false,
         dev: false,
         dir: "",
+        minimalMode: false,
       }).getRequestHandler();
     }
 
@@ -32,50 +31,98 @@ export default {
       let imageUrl =
         url.searchParams.get("url") ?? "https://developers.cloudflare.com/_astro/logo.BU9hiExz.svg";
       if (imageUrl.startsWith("/")) {
-        imageUrl = new URL(imageUrl, request.url).href;
+        return env.ASSETS.fetch(new URL(imageUrl, request.url));
       }
       return fetch(imageUrl, { cf: { cacheEverything: true } } as any);
     }
 
-    const resBody = new TransformStream();
-    const writer = resBody.writable.getWriter();
-
-    const reqBodyNodeStream = request.body ? Readable.fromWeb(request.body as any) : undefined;
-
-    const { req, res } = createRequestResponseMocks({
-      method: request.method,
-      url: url.href.slice(url.origin.length),
-      headers: Object.fromEntries([...request.headers]),
-      bodyReadable: reqBodyNodeStream,
-      resWriter: (chunk) => {
-        writer.write(chunk).catch(console.error);
-        return true;
-      },
-    });
-
-    let headPromiseResolve: any = null;
-    const headPromise = new Promise<void>((resolve) => {
-      headPromiseResolve = resolve;
-    });
-    res.flushHeaders = () => headPromiseResolve?.();
-
-    if (reqBodyNodeStream != null) {
-      const origPush = reqBodyNodeStream.push;
-      reqBodyNodeStream.push = (chunk: any) => {
-        req.push(chunk);
-        return origPush.call(reqBodyNodeStream, chunk);
-      };
-    }
-
-    ctx.waitUntil((res as any).hasStreamed.then(() => writer.close()));
+    const { req, res, webResponse } = getWrappedStreams(request, ctx);
 
     ctx.waitUntil(requestHandler(new NodeNextRequest(req), new NodeNextResponse(res)));
 
-    await Promise.race([res.headPromise, headPromise]);
-
-    return new Response(resBody.readable, {
-      status: res.statusCode,
-      headers: (res as any).headers,
-    });
+    return await webResponse();
   },
 };
+
+function getWrappedStreams(request: Request, ctx: any) {
+  const url = new URL(request.url);
+
+  const req = (
+    request.body ? Stream.Readable.fromWeb(request.body as any) : Stream.Readable.from([])
+  ) as IncomingMessage;
+  req.httpVersion = "1.0";
+  req.httpVersionMajor = 1;
+  req.httpVersionMinor = 0;
+  req.url = url.href.slice(url.origin.length);
+  req.headers = Object.fromEntries([...request.headers]);
+  req.method = request.method;
+  Object.defineProperty(req, "__node_stream__", {
+    value: true,
+    writable: false,
+  });
+  Object.defineProperty(req, "headersDistinct", {
+    get() {
+      const headers: Record<string, string[]> = {};
+      for (const [key, value] of Object.entries(req.headers)) {
+        if (!value) continue;
+        headers[key] = Array.isArray(value) ? value : [value];
+      }
+      return headers;
+    },
+  });
+
+  const { readable, writable } = new IdentityTransformStream();
+  const resBodyWriter = writable.getWriter();
+
+  const res = new MockedResponse({
+    resWriter: (chunk) => {
+      resBodyWriter.write(typeof chunk === "string" ? Buffer.from(chunk) : chunk).catch((err: any) => {
+        if (
+          err.message.includes("WritableStream has been closed") ||
+          err.message.includes("Network connection lost")
+        ) {
+          // safe to ignore
+          return;
+        }
+        console.error("Error in resBodyWriter.write");
+        console.error(err);
+      });
+      return true;
+    },
+  });
+
+  // It's implemented as a no-op, but really it should mark the headers as done
+  res.flushHeaders = () => (res as any).headPromiseResolve();
+
+  // Only allow statusCode to be modified if not sent
+  let { statusCode } = res;
+  Object.defineProperty(res, "statusCode", {
+    get: function () {
+      return statusCode;
+    },
+    set: function (val) {
+      if (this.finished || this.headersSent) {
+        console.error("headers already sent");
+        return;
+      }
+      statusCode = val;
+    },
+  });
+
+  // Make sure the writer is eventually closed
+  ctx.waitUntil((res as any).hasStreamed.finally(() => resBodyWriter.close().catch(() => {})));
+
+  return {
+    res,
+    req,
+    webResponse: async () => {
+      await res.headPromise;
+      // TODO: remove this once streaming with compression is working nicely
+      res.setHeader("content-encoding", "identity");
+      return new Response(NON_BODY_RESPONSES.has(res.statusCode) ? null : readable, {
+        status: res.statusCode,
+        headers: (res as any).headers,
+      });
+    },
+  };
+}
