@@ -100,12 +100,18 @@ globalThis.fetch = (input, init) => {
   if (init) delete init.cache;
   return curFetch(input, init);
 };
+import { Readable } from 'node:stream';
 globalThis.fetch.__nextPatched = isPatchedAlready;
 fetch = globalThis.fetch;
 const CustomRequest = class extends globalThis.Request {
   constructor(input, init) {
     console.log("CustomRequest", input);
-    if (init) delete init.cache;
+    if (init) {
+      delete init.cache;
+      if (init.body.__node_stream__) {
+        init.body = Readable.toWeb(init.body);
+      }
+    }
     super(input, init);
   }
 };
