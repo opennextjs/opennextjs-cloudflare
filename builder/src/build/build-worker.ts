@@ -108,7 +108,7 @@ const CustomRequest = class extends globalThis.Request {
     console.log("CustomRequest", input);
     if (init) {
       delete init.cache;
-      if (init.body.__node_stream__) {
+      if (init.body?.__node_stream__ === true) {
         init.body = Readable.toWeb(init.body);
       }
     }
