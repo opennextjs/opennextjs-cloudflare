@@ -9,8 +9,14 @@ test("the application's noop index page is visible and it allows navigating to t
   await expect(page.getByText("Hello World!")).toBeVisible();
 });
 
-test("the hello-world api route works as intended", async ({ page }) => {
+test("the hello-world api GET route works as intended", async ({ page }) => {
   const res = await page.request.get("/api/hello");
   expect(res.headers()["content-type"]).toContain("text/plain");
   expect(await res.text()).toEqual("Hello World!");
+});
+
+test("the hello-world api POST route works as intended", async ({ page }) => {
+  const res = await page.request.post("/api/hello", { data: "some body" });
+  expect(res.headers()["content-type"]).toContain("text/plain");
+  await expect(res.text()).resolves.toEqual("Hello post-World! body=some body");
 });
