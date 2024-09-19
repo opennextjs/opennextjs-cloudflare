@@ -4,7 +4,9 @@
   "version": "0.0.1",
   "scripts": {
     "build": "tsup",
-    "build:watch": "tsup --watch src"
+    "build:watch": "tsup --watch src",
+    "test": "vitest --run",
+    "test:watch": "vitest"
   },
   "bin": "dist/index.mjs",
   "files": [
@@ -33,6 +35,10 @@
     "glob": "^11.0.0",
     "next": "14.2.5",
     "tsup": "^8.2.4",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.1"
+  },
+  "dependencies": {
+    "ts-morph": "^23.0.0"
   }
 }
