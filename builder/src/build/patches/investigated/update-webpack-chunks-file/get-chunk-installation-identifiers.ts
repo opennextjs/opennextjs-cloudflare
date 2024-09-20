@@ -67,7 +67,7 @@ function getInstalledChunksDeclaration(
     (declaration) => declaration === installChunkDeclaration
   );
 
-  // the installedChunks declaration is comes right before the installChunk one
+  // the installedChunks declaration comes right before the installChunk one
   const installedChunksDeclaration = allVariableDeclarations[installChunkDeclarationIdx - 1];
 
   if (!installedChunksDeclaration?.getInitializer()?.isKind(ts.SyntaxKind.ObjectLiteralExpression)) {
