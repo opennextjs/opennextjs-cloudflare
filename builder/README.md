@@ -1,17 +1,20 @@
 # Next.js builder for Cloudflare
 
-## Build your app
+## Configure your app
 
 - add the following `devDependency` to the `package.json`:
 
-  ```json
-  "node-url": "npm:url@^0.11.4",
-  "wrangler": "^3.77.0"
+  ```bash
+  pnpm add -D wrangler@latest @opennextjs/cloudflare
   ```
 
-- Execute `npx @flarelabs-net/builder@latest` in your app folder
-
 ## Serve your app
+
+- build the app and adapt it for Cloudflare
+
+  ```bash
+  pnpx cloudflare
+  ```
 
 - add a `wrangler.toml` at the root of your project
 
@@ -22,11 +25,13 @@
 
   compatibility_date = "2024-08-29"
   compatibility_flags = ["nodejs_compat_v2"]
-  workers_dev = true
-  minify = false
 
   # Use the new Workers + Assets to host the static frontend files
   experimental_assets = { directory = ".worker-next/assets", binding = "ASSETS" }
   ```
 
-- Use `wrangler dev`
+- Preview the app in Wrangler
+
+  ```bash
+  pnpm wrangler dev
+  ```

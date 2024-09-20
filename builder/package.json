@@ -1,5 +1,5 @@
 {
-  "name": "@flarelabs-net/builder",
+  "name": "@opennextjs/cloudflare",
   "description": "Cloudflare builder for next apps",
   "version": "0.0.1",
   "scripts": {

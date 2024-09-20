@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "build:worker": "pnpm builder",
+    "build:worker": "pnpm cloudflare",
     "dev:worker": "wrangler dev --port 8771",
     "preview:worker": "pnpm build:worker && pnpm dev:worker",
     "e2e": "playwright test -c e2e/playwright.config.ts"
@@ -18,7 +18,7 @@
     "next": "catalog:"
   },
   "devDependencies": {
-    "@flarelabs-net/builder": "workspace:*",
+    "@opennextjs/cloudflare": "workspace:*",
     "@playwright/test": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
