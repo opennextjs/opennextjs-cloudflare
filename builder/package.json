@@ -29,16 +29,14 @@
   },
   "homepage": "https://github.com/flarelabs-net/poc-next",
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240909.0",
-    "@types/node": "^22.2.0",
-    "esbuild": "^0.23.0",
-    "glob": "^11.0.0",
-    "next": "14.2.5",
-    "tsup": "^8.2.4",
-    "typescript": "^5.5.4",
-    "vitest": "^2.1.1"
+    "@types/node": "catalog:",
+    "esbuild": "catalog:",
+    "glob": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "dependencies": {
-    "ts-morph": "^23.0.0"
+    "ts-morph": "catalog:"
   }
 }
