@@ -21,7 +21,6 @@
     "@flarelabs-net/builder": "workspace:*",
     "@playwright/test": "1.47.0",
     "@types/node": "^22.2.0",
-    "node-url": "npm:url@^0.11.4",
-    "wrangler": "3.77.0"
+    "wrangler": "3.78.6"
   }
 }
