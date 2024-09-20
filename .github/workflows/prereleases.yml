@@ -35,7 +35,7 @@ jobs:
         run: pnpm -F builder run build
 
       - name: Update package.json version
-        run: node .github/utils/version-script.cjs builder
+        run: node .github/utils/update-version.cjs builder
 
       - name: Publish to NPM
         run: pnpm publish -F cloudflare --no-git-checks
