@@ -3,7 +3,5 @@ name = "api"
 main = ".worker-next/index.mjs"
 compatibility_date = "2024-09-16"
 compatibility_flags = ["nodejs_compat_v2"]
-workers_dev = true
-minify = false                             # let's disable minification for easier debuggability
 
 experimental_assets = { directory = ".worker-next/assets", binding = "ASSETS" }
