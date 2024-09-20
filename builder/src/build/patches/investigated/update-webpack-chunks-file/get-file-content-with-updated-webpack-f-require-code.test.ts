@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { expect, test, describe } from "vitest";
 
 import { getFileContentWithUpdatedWebpackFRequireCode } from "./get-file-content-with-updated-webpack-f-require-code";
-import { getWebpackChunksFileTsSource } from "./get-webpack-chunks-file-ts-source";
+import { tsParseFile } from "../../../utils";
 
 describe("getFileContentWithUpdatedWebpackFRequireCode", () => {
   test("returns the updated content of the f.require function from unminified webpack runtime code", async () => {
@@ -11,7 +11,7 @@ describe("getFileContentWithUpdatedWebpackFRequireCode", () => {
       `${import.meta.dirname}/test-fixtures/unminified-webpacks-file.js`,
       "utf8"
     );
-    const tsSourceFile = getWebpackChunksFileTsSource(fileContent);
+    const tsSourceFile = tsParseFile(fileContent);
     const updatedFCode = await getFileContentWithUpdatedWebpackFRequireCode(
       tsSourceFile,
       { installChunk: "installChunk", installedChunks: "installedChunks" },
@@ -28,7 +28,7 @@ describe("getFileContentWithUpdatedWebpackFRequireCode", () => {
       `${import.meta.dirname}/test-fixtures/minified-webpacks-file.js`,
       "utf8"
     );
-    const tsSourceFile = getWebpackChunksFileTsSource(fileContent);
+    const tsSourceFile = tsParseFile(fileContent);
     const updatedFCode = await getFileContentWithUpdatedWebpackFRequireCode(
       tsSourceFile,
       { installChunk: "r", installedChunks: "e" },
