@@ -1,0 +1,44 @@
+name: Publish prereleases
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    if: ${{ github.repository_owner == 'flarelabs-net' }}
+    name: Publish builder package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.10.0
+
+      - name: Install Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install Dependencies
+        uses: pnpm i --frozen-lockfile
+
+      - name: Build
+        run: pnpm -F builder run build
+
+      - name: Update package.json version
+        run: node .github/utils/version-script.cjs builder
+
+      - name: Publish to NPM
+        run: pnpm publish -F cloudflare --no-git-checks
+        env:
+          NODE_ENV: "production"
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
