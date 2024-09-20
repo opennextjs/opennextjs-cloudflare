@@ -13,14 +13,14 @@
     "e2e": "playwright test"
   },
   "dependencies": {
-    "next": "14.2.5",
-    "react": "^18",
-    "react-dom": "^18"
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
   },
   "devDependencies": {
     "@flarelabs-net/builder": "workspace:*",
-    "@playwright/test": "1.47.0",
-    "@types/node": "^22.2.0",
-    "wrangler": "3.78.6"
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "wrangler": "catalog:"
   }
 }
