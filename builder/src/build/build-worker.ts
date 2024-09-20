@@ -1,6 +1,6 @@
 import { NextjsAppPaths } from "../nextjs-paths";
 import { build, Plugin } from "esbuild";
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { cp, readFile, writeFile } from "node:fs/promises";
 
 import { patchRequire } from "./patches/investigated/patch-require";
@@ -11,6 +11,7 @@ import { patchFindDir } from "./patches/to-investigate/patch-find-dir";
 import { inlineNextRequire } from "./patches/to-investigate/inline-next-require";
 import { inlineEvalManifest } from "./patches/to-investigate/inline-eval-manifest";
 import { patchWranglerDeps } from "./patches/to-investigate/wrangler-deps";
+import { updateWebpackChunksFile } from "./patches/investigated/update-webpack-chunks-file";
 
 /**
  * Using the Next.js build output in the `.next` directory builds a workerd compatible output
@@ -153,49 +154,6 @@ async function updateWorkerBundledCode(
   patchedCode = inlineEvalManifest(patchedCode, nextjsAppPaths);
 
   await writeFile(workerOutputFile, patchedCode);
-}
-
-/**
- * Fixes the webpack-runtime.js file by removing its webpack dynamic requires.
- *
- * This hack is especially bad for two reasons:
- *  - it requires setting `experimental.serverMinification` to `false` in the app's config file
- *  - indicates that files inside the output directory still get a hold of files from the outside: `${nextjsAppPaths.standaloneAppServerDir}/webpack-runtime.js`
- *    so this shows that not everything that's needed to deploy the application is in the output directory...
- */
-async function updateWebpackChunksFile(nextjsAppPaths: NextjsAppPaths) {
-  console.log("# updateWebpackChunksFile");
-  const webpackRuntimeFile = `${nextjsAppPaths.standaloneAppServerDir}/webpack-runtime.js`;
-
-  console.log({ webpackRuntimeFile });
-
-  const fileContent = readFileSync(webpackRuntimeFile, "utf-8");
-
-  const chunks = readdirSync(`${nextjsAppPaths.standaloneAppServerDir}/chunks`)
-    .filter((chunk) => /^\d+\.js$/.test(chunk))
-    .map((chunk) => {
-      console.log(` - chunk ${chunk}`);
-      return chunk.replace(/\.js$/, "");
-    });
-
-  const updatedFileContent = fileContent.replace(
-    "__webpack_require__.f.require = (chunkId, promises) => {",
-    `__webpack_require__.f.require = (chunkId, promises) => {
-	if (installedChunks[chunkId]) return;
-	${chunks
-    .map(
-      (chunk) => `
-	  if (chunkId === ${chunk}) {
-		installChunk(require("./chunks/${chunk}.js"));
-		return;
-	  }
-	`
-    )
-    .join("\n")}
-  `
-  );
-
-  writeFileSync(webpackRuntimeFile, updatedFileContent);
 }
 
 function createFixRequiresESBuildPlugin(templateDir: string): Plugin {

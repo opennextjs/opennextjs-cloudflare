@@ -2,20 +2,6 @@
 
 ## Build your app
 
-- update the `next.config.mjs` as follows
-
-  ```typescript
-  /** @type {import('next').NextConfig} */
-  const nextConfig = {
-    output: "standalone",
-    experimental: {
-      serverMinification: false,
-    },
-  };
-
-  export default nextConfig;
-  ```
-
 - add the following `devDependency` to the `package.json`:
 
   ```json

@@ -15,27 +15,13 @@ DONE:
 
 - `npx create-next-app@latest <app-name> --use-npm` (use npm to avoid symlinks)
 
-- update next.config.mjs as follows
-
-  ```typescript
-  /** @type {import('next').NextConfig} */
-  const nextConfig = {
-    output: "standalone",
-    experimental: {
-      serverMinification: false,
-    },
-  };
-
-  export default nextConfig;
-  ```
-
 - add the following devDependency to the package.json:
 
   ```json
   "wrangler": "^3.78.6"
   ```
 
-- add a wrangler.toml int the generated app
+- add a wrangler.toml into the generated app
 
   ```toml
   #:schema node_modules/wrangler/config-schema.json
