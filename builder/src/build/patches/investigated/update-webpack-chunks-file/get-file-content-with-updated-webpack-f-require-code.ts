@@ -1,8 +1,22 @@
 import * as ts from "ts-morph";
 
+/**
+ * Updates the function that in the unminified webpack runtime file appears as `__webpack_require__.f.require` which is a function that
+ * installs chunks by importing/requiring them at runtime.
+ *
+ * `__webpack_require__.f.require` example: https://github.com/webpack/webpack/blob/dae16ad11e/examples/module-worker/README.md?plain=1#L284-L304
+ *
+ * This function needs to be updated so that it requires chunks using the standard `require` function and not webpack's custom `require` logic
+ * which fails in the workerd runtime.
+ *
+ * @param sourceFile the webpack runtime file parsed with ts-morph (note: this gets side-effectfully updated)
+ * @param chunkInstallationIdentifiers the names of the `installedChunks` and `installChunk` variables
+ * @param chunks the identifiers of the chunks (found on the filesystem)
+ * @returns the content of the sourceFile but with the require function updated
+ */
 export async function getFileContentWithUpdatedWebpackFRequireCode(
   sourceFile: ts.SourceFile,
-  { installChunk, installedChunks }: { installChunk: string; installedChunks: string },
+  { installedChunks, installChunk }: { installedChunks: string; installChunk: string },
   chunks: string[]
 ): Promise<string> {
   const webpackFRequireFunction = sourceFile

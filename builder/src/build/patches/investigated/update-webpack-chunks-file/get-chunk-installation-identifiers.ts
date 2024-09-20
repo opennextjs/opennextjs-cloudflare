@@ -1,5 +1,13 @@
 import * as ts from "ts-morph";
 
+/**
+ * Gets the names of the variables that in the unminified webpack runtime file are called `installedChunks` and `installChunk`.
+ *
+ * Variables example: https://github.com/webpack/webpack/blob/dae16ad11e/examples/module-worker/README.md?plain=1#L256-L282
+ *
+ * @param sourceFile the webpack runtime file parsed with ts-morph
+ * @returns an object containing the two variable names
+ */
 export async function getChunkInstallationIdentifiers(sourceFile: ts.SourceFile): Promise<{
   installedChunks: string;
   installChunk: string;
@@ -13,6 +21,14 @@ export async function getChunkInstallationIdentifiers(sourceFile: ts.SourceFile)
   };
 }
 
+/**
+ * Gets the declaration for what in the unminified webpack runtime file is called `installChunk`(which is a function that registers the various chunks.
+ *
+ * `installChunk` example: https://github.com/webpack/webpack/blob/dae16ad11e/examples/module-worker/README.md?plain=1#L263-L282
+ *
+ * @param sourceFile the webpack runtime file parsed with ts-morph
+ * @returns the `installChunk` declaration
+ */
 function getInstallChunkDeclaration(sourceFile: ts.SourceFile): ts.VariableDeclaration {
   const installChunkDeclaration = sourceFile
     .getDescendantsOfKind(ts.SyntaxKind.VariableDeclaration)
@@ -58,6 +74,15 @@ function getInstallChunkDeclaration(sourceFile: ts.SourceFile): ts.VariableDecla
   return installChunkDeclaration;
 }
 
+/**
+ * Gets the declaration for what in the unminified webpack runtime file is called `installedChunks` which is an object that holds the various registered chunks.
+ *
+ * `installedChunks` example: https://github.com/webpack/webpack/blob/dae16ad11e/examples/module-worker/README.md?plain=1#L256-L261
+ *
+ * @param sourceFile the webpack runtime file parsed with ts-morph
+ * @param installChunkDeclaration the declaration for the `installChunk` variable
+ * @returns the `installedChunks` declaration
+ */
 function getInstalledChunksDeclaration(
   sourceFile: ts.SourceFile,
   installChunkDeclaration: ts.VariableDeclaration
