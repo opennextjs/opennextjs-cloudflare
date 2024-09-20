@@ -20,35 +20,41 @@ export async function getFileContentWithUpdatedWebpackFRequireCode(
   chunks: string[]
 ): Promise<string> {
   const webpackFRequireFunction = sourceFile
-    .getDescendantsOfKind(ts.SyntaxKind.BinaryExpression)
-    .map((binaryExpression) => {
+    .getDescendantsOfKind(ts.SyntaxKind.ArrowFunction)
+    .find((arrowFunction) => {
+      // the function is declared assigned in a binary expression, so let's check the binary expression
+      // to get more confidence that we've got the right arrow function
+      const binaryExpression = arrowFunction.getFirstAncestorByKind(ts.SyntaxKind.BinaryExpression);
+      if (!binaryExpression) return false;
+
+      // the variable being assigned always ands with .f.require (even in unminified files)
       const binaryExpressionLeft = binaryExpression.getLeft();
-      if (!binaryExpressionLeft.getText().endsWith(".f.require")) return;
+      if (!binaryExpressionLeft.getText().endsWith(".f.require")) return false;
 
+      // the binary expression is an assignment
       const binaryExpressionOperator = binaryExpression.getOperatorToken();
-      if (binaryExpressionOperator.getText() !== "=") return;
+      if (binaryExpressionOperator.getText() !== "=") return false;
 
+      // the right side of the expression is our arrow function
       const binaryExpressionRight = binaryExpression.getRight();
-      const binaryExpressionRightText = binaryExpressionRight.getText();
+      if (binaryExpressionRight !== arrowFunction) return false;
+
+      const arrowFunctionBody = arrowFunction.getBody();
+      if (!arrowFunctionBody.isKind(ts.SyntaxKind.Block)) return false;
+
+      const arrowFunctionBodyText = arrowFunctionBody.getText();
 
       const functionUsesChunkInstallationVariables =
-        binaryExpressionRightText.includes(installChunk) &&
-        binaryExpressionRightText.includes(installedChunks);
-      if (!functionUsesChunkInstallationVariables) return;
+        arrowFunctionBodyText.includes(installChunk) && arrowFunctionBodyText.includes(installedChunks);
+      if (!functionUsesChunkInstallationVariables) return false;
 
-      if (!binaryExpressionRight.isKind(ts.SyntaxKind.ArrowFunction)) return;
-
-      const arrowFunctionBody = binaryExpressionRight.getBody();
-      if (!arrowFunctionBody.isKind(ts.SyntaxKind.Block)) return;
-
-      const arrowFunction = binaryExpressionRight;
       const functionParameters = arrowFunction.getParameters();
-      if (functionParameters.length !== 2) return;
+      if (functionParameters.length !== 2) return false;
 
       const callsInstallChunk = arrowFunctionBody
         .getDescendantsOfKind(ts.SyntaxKind.CallExpression)
         .some((callExpression) => callExpression.getExpression().getText() === installChunk);
-      if (!callsInstallChunk) return;
+      if (!callsInstallChunk) return false;
 
       const functionFirstParameterName = functionParameters[0]?.getName();
       const accessesInstalledChunksUsingItsFirstParameter = arrowFunctionBody
@@ -59,11 +65,10 @@ export async function getFileContentWithUpdatedWebpackFRequireCode(
             elementAccess.getArgumentExpression()?.getText() === functionFirstParameterName
           );
         });
-      if (!accessesInstalledChunksUsingItsFirstParameter) return;
+      if (!accessesInstalledChunksUsingItsFirstParameter) return false;
 
-      return arrowFunction;
-    })
-    .find(Boolean);
+      return true;
+    });
 
   if (!webpackFRequireFunction) {
     throw new Error("ERROR: unable to find the webpack f require function declaration");
