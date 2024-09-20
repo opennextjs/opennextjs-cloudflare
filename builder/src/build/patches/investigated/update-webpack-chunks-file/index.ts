@@ -13,8 +13,6 @@ export async function updateWebpackChunksFile(nextjsAppPaths: NextjsAppPaths) {
   console.log("# updateWebpackChunksFile");
   const webpackRuntimeFile = `${nextjsAppPaths.standaloneAppServerDir}/webpack-runtime.js`;
 
-  console.log({ webpackRuntimeFile });
-
   const fileContent = readFileSync(webpackRuntimeFile, "utf-8");
 
   const chunks = readdirSync(`${nextjsAppPaths.standaloneAppServerDir}/chunks`)
