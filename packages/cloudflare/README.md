@@ -1,8 +1,10 @@
 # Next.js builder for Cloudflare
 
+How to update a Next.js application to run on Cloudflare.
+
 ## Configure your app
 
-- add the following `devDependency` to the `package.json`:
+- add the following `devDependencies` to the `package.json`:
 
   ```bash
   pnpm add -D wrangler@latest @opennextjs/cloudflare

@@ -1,6 +1,6 @@
 # [POC] Build Next.js app for cf workers
 
-This monorepo includes a POC to see if it is possible to get a Next.js application built via `next build` (in standalone mode) to run in the Cloudflare workerd runtime.
+This monorepo includes a package for adapting a Next.js application built via `next build` (in standalone mode) to run in the Cloudflare workerd runtime.
 
 > [!NOTE]
 > The code here is built based on the amazing work done by @mhart in <https://github.com/mhart/nextjs-commerce>
@@ -9,8 +9,8 @@ This monorepo includes a POC to see if it is possible to get a Next.js applicati
 
 The repository contains two directories:
 
-- `builder` containing a package that can be used to build Cloudflare workers compatible output from Next.js applications
-- `examples` containing Next.js applications that use the above mentioned builder.
+- `packages` containing a cloudflare package that can be used to build Cloudflare workers compatible output from Next.js applications
+- `examples` containing Next.js applications that use the above mentioned cloudflare.
 
 ## How to try out/develop in the repository
 
@@ -23,13 +23,13 @@ pnpm i
 build the worker with:
 
 ```sh
-pnpm --filter builder build
+pnpm --filter cloudflare build
 ```
 
 or in watch mode with:
 
 ```sh
-pnpm --filter builder build:watch
+pnpm --filter cloudflare build:watch
 ```
 
 build and preview the worker for the `api` application:

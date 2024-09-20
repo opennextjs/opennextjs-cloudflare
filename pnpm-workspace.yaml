@@ -1,5 +1,5 @@
 packages:
-  - "builder"
+  - "packages/*"
   - "examples/*"
 
 catalog:
