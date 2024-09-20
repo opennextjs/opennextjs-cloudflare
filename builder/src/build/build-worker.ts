@@ -4,7 +4,6 @@ import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { cp, readFile, writeFile } from "node:fs/promises";
 
 import { patchRequire } from "./patches/investigated/patch-require";
-import { patchUrl } from "./patches/investigated/patch-url";
 import { copyTemplates } from "./patches/investigated/copy-templates";
 
 import { patchReadFile } from "./patches/to-investigate/patch-read-file";
@@ -149,7 +148,6 @@ async function updateWorkerBundledCode(
 
   patchedCode = patchRequire(patchedCode);
   patchedCode = patchReadFile(patchedCode, nextjsAppPaths);
-  patchedCode = patchUrl(patchedCode);
   patchedCode = inlineNextRequire(patchedCode, nextjsAppPaths);
   patchedCode = patchFindDir(patchedCode, nextjsAppPaths);
   patchedCode = inlineEvalManifest(patchedCode, nextjsAppPaths);

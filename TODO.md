@@ -32,8 +32,7 @@ DONE:
 - add the following devDependency to the package.json:
 
   ```json
-  "node-url": "npm:url@^0.11.4",
-  "wrangler": "^3.77.0"
+  "wrangler": "^3.78.6"
   ```
 
 - add a wrangler.toml int the generated app
@@ -90,23 +89,11 @@ Changes:
     ...
   },
   "devDependencies": {
-    "node-url": "npm:url@^0.11.4",
-    "wrangler": "^3.77.0"
+    "wrangler": "^3.78.6"
     ...
   }
 ```
 
-- wrangler, update bundle.ts (based on 3.76.0)
-
-```js
-  //l 354
-  conditions: [],
-  platform: "node",
-```
-
-The conditions (`export const BUILD_CONDITIONS = ["workerd", "worker", "browser"];`)
-would pull browser files that are not traced by nft.
-
 - Build the app
 
-- Use the updated wrangler `pnpm --filter wrangler start dev -c /path/to/open-next/example/wrangler.toml`
+- Serve with `WRANGLER_BUILD_CONDITIONS="" WRANGLER_BUILD_PLATFORM="node" wrangler dev`
