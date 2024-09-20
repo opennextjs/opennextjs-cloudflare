@@ -7,13 +7,3 @@ workers_dev = true
 minify = false                             # let's disable minification for easier debuggability
 
 experimental_assets = { directory = ".worker-next/assets", binding = "ASSETS" }
-
-# The aliases below should not be needed (we don't want users to have to define the aliases themselves)
-[alias]
-# critters is `require`d from `pages.runtime.prod.js` when running wrangler dev, so we need to stub it out
-"critters" = "../../builder/src/build/build-worker/templates/shims/empty.ts"
-# @opentelemetry/api is `require`d when running wrangler dev, so we need to stub it out
-# IMPORTANT: we shim @opentelemetry/api to the throwing shim so that it will throw right away, this is so that we throw inside the
-#            try block here: https://github.com/vercel/next.js/blob/9e8266a7/packages/next/src/server/lib/trace/tracer.ts#L27-L31
-#            causing the code to require the 'next/dist/compiled/@opentelemetry/api' module instead (which properly works)
-"@opentelemetry/api" = "../../builder/src/build/build-worker/templates/shims/throw.ts"
