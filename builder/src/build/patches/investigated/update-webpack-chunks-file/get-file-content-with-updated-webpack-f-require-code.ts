@@ -27,7 +27,7 @@ export async function getFileContentWithUpdatedWebpackFRequireCode(
       const binaryExpression = arrowFunction.getFirstAncestorByKind(ts.SyntaxKind.BinaryExpression);
       if (!binaryExpression) return false;
 
-      // the variable being assigned always ands with .f.require (even in unminified files)
+      // the variable being assigned always ends with .f.require (even in unminified files)
       const binaryExpressionLeft = binaryExpression.getLeft();
       if (!binaryExpressionLeft.getText().endsWith(".f.require")) return false;
 
