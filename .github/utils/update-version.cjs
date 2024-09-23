@@ -16,7 +16,7 @@ const assert = require("node:assert");
 try {
   const packagePath = getArgs()[0];
   assert(packagePath, "Required package path missing.");
-  const packageJsonPath = `${packagePath}/package.json`;
+  const packageJsonPath = `packages/${packagePath}/package.json`;
   const pkg = JSON.parse(readFileSync(packageJsonPath));
   const stdout = execSync("git rev-parse --short HEAD", { encoding: "utf8" });
   pkg.version = "0.0.0-" + stdout.trim();
