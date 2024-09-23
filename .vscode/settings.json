@@ -1,6 +1,4 @@
 {
   "editor.formatOnSave": true,
-  "cSpell.words": [
-    "nextjs"
-  ]
+  "cSpell.words": ["nextjs"]
 }
