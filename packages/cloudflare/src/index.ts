@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { resolve } from "node:path";
 import { getArgs } from "./args";
 import { existsSync } from "node:fs";
