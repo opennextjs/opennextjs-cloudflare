@@ -32,10 +32,10 @@ jobs:
         run: pnpm i --frozen-lockfile
 
       - name: Build
-        run: pnpm -F builder run build
+        run: pnpm -F cloudflare run build
 
       - name: Update package.json version
-        run: node .github/utils/update-version.cjs builder
+        run: node .github/utils/update-version.cjs cloudflare
 
       - name: Publish to NPM
         run: pnpm publish -F cloudflare --no-git-checks
