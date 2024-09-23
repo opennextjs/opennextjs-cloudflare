@@ -6,7 +6,7 @@ on:
 
 jobs:
   release:
-    if: ${{ github.repository_owner == 'flarelabs-net' }}
+    if: ${{ github.repository_owner == 'opennextjs' }}
     name: Publish builder package
     runs-on: ubuntu-latest
 
