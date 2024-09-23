@@ -14,9 +14,9 @@ const { execSync } = require("node:child_process");
 const assert = require("node:assert");
 
 try {
-  const packagePath = getArgs()[0];
-  assert(packagePath, "Required package path missing.");
-  const packageJsonPath = `${packagePath}/package.json`;
+  const packageName = getArgs()[0];
+  assert(packageName, "Required package name missing.");
+  const packageJsonPath = `packages/${packageName}/package.json`;
   const pkg = JSON.parse(readFileSync(packageJsonPath));
   const stdout = execSync("git rev-parse --short HEAD", { encoding: "utf8" });
   pkg.version = "0.0.0-" + stdout.trim();
