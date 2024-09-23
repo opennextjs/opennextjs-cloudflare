@@ -1,6 +1,4 @@
-# Builder
-
-## TODO
+# TODO
 
 - move the wrangler.toml to the templates
 
@@ -32,6 +30,6 @@ Changes:
   }
 ```
 
-- Build the app
+- Build the app `pnpm cloudflare`
 
 - Serve with `WRANGLER_BUILD_CONDITIONS="" WRANGLER_BUILD_PLATFORM="node" pnpm wrangler dev`
