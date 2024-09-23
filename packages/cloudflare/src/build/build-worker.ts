@@ -2,6 +2,8 @@ import { NextjsAppPaths } from "../nextjs-paths";
 import { build, Plugin } from "esbuild";
 import { existsSync, readFileSync } from "node:fs";
 import { cp, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { patchRequire } from "./patches/investigated/patch-require";
 import { copyTemplates } from "./patches/investigated/copy-templates";
@@ -13,6 +15,9 @@ import { inlineEvalManifest } from "./patches/to-investigate/inline-eval-manifes
 import { patchWranglerDeps } from "./patches/to-investigate/wrangler-deps";
 import { updateWebpackChunksFile } from "./patches/investigated/update-webpack-chunks-file";
 
+/** The directory containing the Cloudflare template files. */
+const templateSrcDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "templates");
+
 /**
  * Using the Next.js build output in the `.next` directory builds a workerd compatible output
  *
@@ -20,10 +25,9 @@ import { updateWebpackChunksFile } from "./patches/investigated/update-webpack-c
  * @param nextjsAppPaths
  */
 export async function buildWorker(
-  inputNextAppDir: string,
+  appDir: string,
   outputDir: string,
-  nextjsAppPaths: NextjsAppPaths,
-  templateSrcDir: string
+  nextjsAppPaths: NextjsAppPaths
 ): Promise<void> {
   const templateDir = copyTemplates(templateSrcDir, nextjsAppPaths);
 
@@ -132,8 +136,8 @@ Request = globalThis.Request;
   });
 
   // Copy over any static files (e.g. images) from the source project
-  if (existsSync(`${inputNextAppDir}/public`)) {
-    await cp(`${inputNextAppDir}/public`, `${outputDir}/assets`, {
+  if (existsSync(`${appDir}/public`)) {
+    await cp(`${appDir}/public`, `${outputDir}/assets`, {
       recursive: true,
     });
   }

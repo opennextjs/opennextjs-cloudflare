@@ -2,48 +2,33 @@ import { rm } from "node:fs/promises";
 import { buildNextjsApp } from "./build-next-app";
 import { buildWorker } from "./build-worker";
 import { getNextjsAppPaths } from "../nextjs-paths";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { cpSync, rmSync } from "node:fs";
-
-const SAVE_DIR = ".save.next";
+import { cpSync } from "node:fs";
+import { resolve } from "node:path";
 
 /**
  * Builds the application in a format that can be passed to workerd
  *
  * It saves the output in a `.worker-next` directory
  *
- * @param inputNextAppDir the directory of the Next.js app to build
+ * @param appDir the directory of the Next.js app to build
  * @param opts.outputDir the directory where to save the output (defaults to the app's directory)
  * @param opts.skipBuild boolean indicating whether the Next.js build should be skipped (i.e. if the `.next` dir is already built)
  */
-export async function build(inputNextAppDir: string, opts: BuildOptions): Promise<void> {
+export async function build(appDir: string, opts: BuildOptions): Promise<void> {
   if (!opts.skipBuild) {
-    // Build the next app and save a copy in .save.next
-    buildNextjsApp(inputNextAppDir);
-    rmSync(`${inputNextAppDir}/${SAVE_DIR}`, {
-      recursive: true,
-      force: true,
-    });
-    cpSync(`${inputNextAppDir}/.next`, `${inputNextAppDir}/${SAVE_DIR}`, {
-      recursive: true,
-    });
-  } else {
-    // Skip the next build and restore the copy from .next.save
-    rmSync(`${inputNextAppDir}/.next`, { recursive: true, force: true });
-    cpSync(`${inputNextAppDir}/${SAVE_DIR}`, `${inputNextAppDir}/.next`, {
-      recursive: true,
-    });
+    // Build the next app
+    buildNextjsApp(appDir);
   }
 
-  const outputDir = `${opts.outputDir ?? inputNextAppDir}/.worker-next`;
+  // Create a clean output directory
+  const outputDir = resolve(opts.outputDir ?? appDir, ".worker-next");
   await cleanDirectory(outputDir);
 
-  const nextjsAppPaths = getNextjsAppPaths(inputNextAppDir);
+  // Copy the .next directory to the output directory so it can be mutated.
+  cpSync(resolve(`${appDir}/.next`), resolve(`${outputDir}/.next`), { recursive: true });
+  const nextjsAppPaths = getNextjsAppPaths(outputDir);
 
-  const templateDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "templates");
-
-  await buildWorker(inputNextAppDir, outputDir, nextjsAppPaths, templateDir);
+  await buildWorker(appDir, outputDir, nextjsAppPaths);
 }
 
 type BuildOptions = {

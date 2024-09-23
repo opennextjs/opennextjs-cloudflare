@@ -7,7 +7,6 @@ import path, { relative } from "node:path";
  * NOTE: WIP, we still need to discern which paths are relevant here!
  */
 export type NextjsAppPaths = {
-  appDir: string;
   /**
    * The path to the application's `.next` directory (where `next build` saves the build output)
    */
@@ -32,18 +31,17 @@ export type NextjsAppPaths = {
 /**
  * Collects all the paths necessary for dealing with the Next.js applications output
  *
- * @param nextAppDir The path to the Next.js app
+ * @param baseDir The path to the directory that contains the .next directory
  * @returns the various paths.
  */
-export function getNextjsAppPaths(nextAppDir: string): NextjsAppPaths {
-  const dotNextDir = getDotNextDirPath(nextAppDir);
+export function getNextjsAppPaths(baseDir: string): NextjsAppPaths {
+  const dotNextDir = getDotNextDirPath(baseDir);
 
   const appPath = getNextjsApplicationPath(dotNextDir).replace(/\/$/, "");
 
   const standaloneAppDir = path.join(dotNextDir, "standalone", appPath);
 
   return {
-    appDir: nextAppDir,
     dotNextDir,
     standaloneAppDir,
     standaloneAppDotNextDir: path.join(standaloneAppDir, ".next"),
