@@ -1,6 +1,6 @@
 import { NextjsAppPaths } from "../nextjs-paths";
 import { build, Plugin } from "esbuild";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { cp, readFile, writeFile } from "node:fs/promises";
 
 import { patchRequire } from "./patches/investigated/patch-require";
@@ -20,6 +20,7 @@ import { updateWebpackChunksFile } from "./patches/investigated/update-webpack-c
  * @param nextjsAppPaths
  */
 export async function buildWorker(
+  inputNextAppDir: string,
   outputDir: string,
   nextjsAppPaths: NextjsAppPaths,
   templateSrcDir: string
@@ -124,9 +125,18 @@ Request = globalThis.Request;
   await updateWorkerBundledCode(workerOutputFile, nextjsAppPaths);
 
   console.log(`\x1b[35m⚙️ Copying asset files...\n\x1b[0m`);
+
+  // Copy over client-side generated files
   await cp(`${nextjsAppPaths.dotNextDir}/static`, `${outputDir}/assets/_next/static`, {
     recursive: true,
   });
+
+  // Copy over any static files (e.g. images) from the source project
+  if (existsSync(`${inputNextAppDir}/public`)) {
+    await cp(`${inputNextAppDir}/public`, `${outputDir}/assets`, {
+      recursive: true,
+    });
+  }
 
   console.log(`\x1b[35mWorker saved in \`${workerOutputFile}\` 🚀\n\x1b[0m`);
 }
