@@ -1,4 +1,4 @@
-import { Config } from "../config";
+import { Config } from "../cli/config";
 import { build, Plugin } from "esbuild";
 import { existsSync, readFileSync, cpSync } from "node:fs";
 import { cp, readFile, writeFile } from "node:fs/promises";

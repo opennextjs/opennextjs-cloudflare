@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { Config } from "../../../../config";
+import { Config } from "../../../../cli/config";
 import { getUpdatedWebpackChunksFileContent } from "./get-updated-webpack-chunks-file-content";
 
 /**

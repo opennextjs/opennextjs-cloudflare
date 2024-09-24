@@ -8,7 +8,15 @@
     "test": "vitest --run",
     "test:watch": "vitest"
   },
-  "bin": "dist/index.mjs",
+  "bin": "dist/cli/index.mjs",
+  "main": "./dist/api/index.mjs",
+  "types": "./dist/api/index.d.mts",
+  "exports": {
+    ".": {
+      "import": "./dist/api/index.mjs",
+      "types": "./dist/api/index.d.mts"
+    }
+  },
   "files": [
     "README.md",
     "dist"

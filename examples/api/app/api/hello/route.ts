@@ -1,10 +1,18 @@
 import { headers } from "next/headers";
 
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+
 export async function GET() {
-  // Note: we use headers just so that the route is not built as a static one
   const headersList = headers();
-  const sayHi = !!headersList.get("should-say-hi");
-  return new Response(sayHi ? "Hi World!" : "Hello World!");
+
+  const fromCloudflareContext = !!headersList.get("from-cloudflare-context");
+
+  if (!fromCloudflareContext) {
+    return new Response("Hello World!");
+  }
+
+  const { env } = await getCloudflareContext();
+  return new Response(env.hello);
 }
 
 export async function POST(request: Request) {

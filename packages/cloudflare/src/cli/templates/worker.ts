@@ -4,8 +4,11 @@ import { NodeNextRequest, NodeNextResponse } from "next/dist/server/base-http/no
 import { MockedResponse } from "next/dist/server/lib/mock-request";
 import NextNodeServer, { NodeRequestHandler } from "next/dist/server/next-server";
 import type { IncomingMessage } from "node:http";
+import type { CloudflareContext } from "../../api";
 
 const NON_BODY_RESPONSES = new Set([101, 204, 205, 304]);
+
+const cloudflareContextSymbol = Symbol.for("__cloudflare-context__");
 
 // Injected at build time
 const nextConfig: NextConfig = JSON.parse(process.env.__NEXT_PRIVATE_STANDALONE_CONFIG ?? "{}");
@@ -14,6 +17,16 @@ let requestHandler: NodeRequestHandler | null = null;
 
 export default {
   async fetch(request: Request, env: any, ctx: any) {
+    (
+      globalThis as unknown as {
+        [cloudflareContextSymbol]: CloudflareContext | undefined;
+      }
+    )[cloudflareContextSymbol] = {
+      env,
+      ctx,
+      cf: (request as unknown as { cf: IncomingRequestCfProperties }).cf,
+    };
+
     if (requestHandler == null) {
       globalThis.process.env = { ...globalThis.process.env, ...env };
       requestHandler = new NextNodeServer({

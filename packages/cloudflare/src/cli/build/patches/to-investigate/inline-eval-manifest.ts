@@ -1,6 +1,6 @@
 import { globSync } from "glob";
 import path from "node:path";
-import { Config } from "../../../config";
+import { Config } from "../../../cli/config";
 
 /**
  * `evalManifest` relies on readFileSync so we need to patch the function so that it instead returns the content of the manifest files
