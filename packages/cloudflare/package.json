@@ -29,9 +29,11 @@
   },
   "homepage": "https://github.com/opennextjs/opennextjs-cloudflare",
   "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
     "@types/node": "catalog:",
     "esbuild": "catalog:",
     "glob": "catalog:",
+    "next": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

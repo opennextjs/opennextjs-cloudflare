@@ -1,11 +1,9 @@
 import path from "node:path";
 import fs, { writeFileSync } from "node:fs";
-import { NextjsAppPaths } from "../../../nextjs-paths";
+import { Config } from "../../../config";
 
-export function patchWranglerDeps(paths: NextjsAppPaths) {
+export function patchWranglerDeps(config: Config) {
   console.log("# patchWranglerDeps");
-
-  console.log({ base: paths.standaloneAppDotNextDir });
 
   // Patch .next/standalone/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js
   //
@@ -15,7 +13,7 @@ export function patchWranglerDeps(paths: NextjsAppPaths) {
   // # critters is `require`d from `pages.runtime.prod.js` when running wrangler dev, so we need to stub it out
   // "critters" = "./.next/standalone/node_modules/cf/templates/shims/empty.ts"
   const pagesRuntimeFile = path.join(
-    paths.standaloneAppDir,
+    config.paths.standaloneApp,
     "node_modules",
     "next",
     "dist",
@@ -41,7 +39,7 @@ export function patchWranglerDeps(paths: NextjsAppPaths) {
   // #            causing the code to require the 'next/dist/compiled/@opentelemetry/api' module instead (which properly works)
   // #"@opentelemetry/api" = "./.next/standalone/node_modules/cf/templates/shims/throw.ts"
   const tracerFile = path.join(
-    paths.standaloneAppDir,
+    config.paths.standaloneApp,
     "node_modules",
     "next",
     "dist",

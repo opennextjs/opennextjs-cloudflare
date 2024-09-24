@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { globSync } from "glob";
-import { NextjsAppPaths } from "../../../nextjs-paths";
+import { Config } from "../../../config";
+import path from "node:path";
 
-export function patchReadFile(code: string, nextjsAppPaths: NextjsAppPaths): string {
+export function patchReadFile(code: string, config: Config): string {
   console.log("# patchReadFile");
   // The next-server code gets the buildId from the filesystem, resulting in a `[unenv] fs.readFileSync is not implemented yet!` error
   // so we add an early return to the `getBuildId` function so that the `readyFileSync` is never encountered
@@ -11,15 +12,15 @@ export function patchReadFile(code: string, nextjsAppPaths: NextjsAppPaths): str
   code = code.replace(
     "getBuildId() {",
     `getBuildId() {
-      return ${JSON.stringify(readFileSync(`${nextjsAppPaths.standaloneAppDotNextDir}/BUILD_ID`, "utf-8"))};
+      return ${JSON.stringify(readFileSync(path.join(config.paths.standaloneAppDotNext, "BUILD_ID"), "utf-8"))};
     `
   );
 
   // Same as above, the next-server code loads the manifests with `readyFileSync` and we want to avoid that
   // (source: https://github.com/vercel/next.js/blob/15aeb92e/packages/next/src/server/load-manifest.ts#L34-L56)
   // Note: we could/should probably just patch readFileSync here or something!
-  const manifestJsons = globSync(`${nextjsAppPaths.standaloneAppDotNextDir}/**/*-manifest.json`).map((file) =>
-    file.replace(nextjsAppPaths.standaloneAppDir + "/", "")
+  const manifestJsons = globSync(path.join(config.paths.standaloneAppDotNext, "**", "*-manifest.json")).map(
+    (file) => file.replace(config.paths.standaloneApp + "/", "")
   );
   code = code.replace(
     /function loadManifest\((.+?), .+?\) {/,
@@ -28,7 +29,7 @@ export function patchReadFile(code: string, nextjsAppPaths: NextjsAppPaths): str
       .map(
         (manifestJson) => `
           if ($1.endsWith("${manifestJson}")) {
-            return ${readFileSync(`${nextjsAppPaths.standaloneAppDir}/${manifestJson}`, "utf-8")};
+            return ${readFileSync(path.join(config.paths.standaloneApp, manifestJson), "utf-8")};
           }
         `
       )

@@ -1,5 +1,6 @@
 import { globSync } from "glob";
-import { NextjsAppPaths } from "../../../nextjs-paths";
+import path from "node:path";
+import { Config } from "../../../config";
 
 /**
  * `evalManifest` relies on readFileSync so we need to patch the function so that it instead returns the content of the manifest files
@@ -8,11 +9,11 @@ import { NextjsAppPaths } from "../../../nextjs-paths";
  * Note: we could/should probably just patch readFileSync here or something, but here the issue is that after the readFileSync call
  * there is a vm `runInNewContext` call which we also don't support (source: https://github.com/vercel/next.js/blob/b1e32c5d1f/packages/next/src/server/load-manifest.ts#L88)
  */
-export function inlineEvalManifest(code: string, nextjsAppPaths: NextjsAppPaths): string {
+export function inlineEvalManifest(code: string, config: Config): string {
   console.log("# inlineEvalManifest");
   const manifestJss = globSync(
-    `${nextjsAppPaths.standaloneAppDotNextDir}/**/*_client-reference-manifest.js`
-  ).map((file) => file.replace(`${nextjsAppPaths.standaloneAppDir}/`, ""));
+    path.join(config.paths.standaloneAppDotNext, "**", "*_client-reference-manifest.js")
+  ).map((file) => file.replace(`${config.paths.standaloneApp}/`, ""));
   return code.replace(
     /function evalManifest\((.+?), .+?\) {/,
     `$&
@@ -20,7 +21,7 @@ export function inlineEvalManifest(code: string, nextjsAppPaths: NextjsAppPaths)
       .map(
         (manifestJs) => `
 			  if ($1.endsWith("${manifestJs}")) {
-				require("${nextjsAppPaths.standaloneAppDir}/${manifestJs}");
+				require("${path.join(config.paths.standaloneApp, manifestJs)}");
 				return {
 				  __RSC_MANIFEST: {
 					"${manifestJs
