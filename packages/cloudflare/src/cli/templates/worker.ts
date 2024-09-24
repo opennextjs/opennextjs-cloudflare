@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import Stream from "node:stream";
 import type { NextConfig } from "next";
 import { NodeNextRequest, NodeNextResponse } from "next/dist/server/base-http/node";
@@ -8,7 +9,18 @@ import type { CloudflareContext } from "../../api";
 
 const NON_BODY_RESPONSES = new Set([101, 204, 205, 304]);
 
-const cloudflareContextSymbol = Symbol.for("__cloudflare-context__");
+const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
+
+(globalThis as Record<symbol, unknown>)[Symbol.for("__cloudflare-context__")] = new Proxy(
+  {},
+  {
+    ownKeys: () => Reflect.ownKeys(cloudflareContextALS.getStore()!),
+    getOwnPropertyDescriptor: (_, ...args) =>
+      Reflect.getOwnPropertyDescriptor(cloudflareContextALS.getStore()!, ...args),
+    get: (_, property) => Reflect.get(cloudflareContextALS.getStore()!, property),
+    set: (_, property, value) => Reflect.set(cloudflareContextALS.getStore()!, property, value),
+  }
+);
 
 // Injected at build time
 const nextConfig: NextConfig = JSON.parse(process.env.__NEXT_PRIVATE_STANDALONE_CONFIG ?? "{}");
@@ -17,43 +29,36 @@ let requestHandler: NodeRequestHandler | null = null;
 
 export default {
   async fetch(request: Request, env: any, ctx: any) {
-    (
-      globalThis as unknown as {
-        [cloudflareContextSymbol]: CloudflareContext | undefined;
+    const cf = (request as unknown as { cf: IncomingRequestCfProperties }).cf;
+    return cloudflareContextALS.run({ env, ctx, cf }, async () => {
+      if (requestHandler == null) {
+        globalThis.process.env = { ...globalThis.process.env, ...env };
+        requestHandler = new NextNodeServer({
+          conf: { ...nextConfig, env },
+          customServer: false,
+          dev: false,
+          dir: "",
+          minimalMode: false,
+        }).getRequestHandler();
       }
-    )[cloudflareContextSymbol] = {
-      env,
-      ctx,
-      cf: (request as unknown as { cf: IncomingRequestCfProperties }).cf,
-    };
 
-    if (requestHandler == null) {
-      globalThis.process.env = { ...globalThis.process.env, ...env };
-      requestHandler = new NextNodeServer({
-        conf: { ...nextConfig, env },
-        customServer: false,
-        dev: false,
-        dir: "",
-        minimalMode: false,
-      }).getRequestHandler();
-    }
+      const url = new URL(request.url);
 
-    const url = new URL(request.url);
-
-    if (url.pathname === "/_next/image") {
-      let imageUrl =
-        url.searchParams.get("url") ?? "https://developers.cloudflare.com/_astro/logo.BU9hiExz.svg";
-      if (imageUrl.startsWith("/")) {
-        return env.ASSETS.fetch(new URL(imageUrl, request.url));
+      if (url.pathname === "/_next/image") {
+        let imageUrl =
+          url.searchParams.get("url") ?? "https://developers.cloudflare.com/_astro/logo.BU9hiExz.svg";
+        if (imageUrl.startsWith("/")) {
+          return env.ASSETS.fetch(new URL(imageUrl, request.url));
+        }
+        return fetch(imageUrl, { cf: { cacheEverything: true } } as any);
       }
-      return fetch(imageUrl, { cf: { cacheEverything: true } } as any);
-    }
 
-    const { req, res, webResponse } = getWrappedStreams(request, ctx);
+      const { req, res, webResponse } = getWrappedStreams(request, ctx);
 
-    ctx.waitUntil(requestHandler(new NodeNextRequest(req), new NodeNextResponse(res)));
+      ctx.waitUntil(requestHandler(new NodeNextRequest(req), new NodeNextResponse(res)));
 
-    return await webResponse();
+      return await webResponse();
+    });
   },
 };
 
