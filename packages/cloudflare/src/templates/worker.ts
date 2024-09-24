@@ -102,7 +102,6 @@ function getWrappedStreams(request: Request, ctx: any) {
     },
     set: function (val) {
       if (this.finished || this.headersSent) {
-        console.error("headers already sent");
         return;
       }
       statusCode = val;

@@ -1,12 +1,12 @@
-import { NextjsAppPaths } from "../nextjs-paths";
+import { Config } from "../config";
 import { build, Plugin } from "esbuild";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, cpSync } from "node:fs";
 import { cp, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { patchRequire } from "./patches/investigated/patch-require";
-import { copyTemplates } from "./patches/investigated/copy-templates";
+import { copyPackage } from "./patches/investigated/copy-package";
 
 import { patchReadFile } from "./patches/to-investigate/patch-read-file";
 import { patchFindDir } from "./patches/to-investigate/patch-find-dir";
@@ -14,34 +14,53 @@ import { inlineNextRequire } from "./patches/to-investigate/inline-next-require"
 import { inlineEvalManifest } from "./patches/to-investigate/inline-eval-manifest";
 import { patchWranglerDeps } from "./patches/to-investigate/wrangler-deps";
 import { updateWebpackChunksFile } from "./patches/investigated/update-webpack-chunks-file";
+import { patchCache } from "./patches/investigated/patch-cache";
 
 /** The directory containing the Cloudflare template files. */
-const templateSrcDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "templates");
+const packageDir = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Using the Next.js build output in the `.next` directory builds a workerd compatible output
  *
  * @param outputDir the directory where to save the output
- * @param nextjsAppPaths
+ * @param config
  */
-export async function buildWorker(
-  appDir: string,
-  outputDir: string,
-  nextjsAppPaths: NextjsAppPaths
-): Promise<void> {
-  const templateDir = copyTemplates(templateSrcDir, nextjsAppPaths);
+export async function buildWorker(config: Config): Promise<void> {
+  console.log(`\x1b[35m⚙️ Copying files...\n\x1b[0m`);
 
-  const workerEntrypoint = `${templateDir}/worker.ts`;
-  const workerOutputFile = `${outputDir}/index.mjs`;
+  // Copy over client-side generated files
+  await cp(
+    path.join(config.paths.dotNext, "static"),
+    path.join(config.paths.builderOutput, "assets", "_next", "static"),
+    {
+      recursive: true,
+    }
+  );
+
+  // Copy over any static files (e.g. images) from the source project
+  const publicDir = path.join(config.paths.nextApp, "public");
+  if (existsSync(publicDir)) {
+    await cp(publicDir, path.join(config.paths.builderOutput, "assets"), {
+      recursive: true,
+    });
+  }
+
+  copyPackage(packageDir, config);
+
+  const templateDir = path.join(config.paths.internalPackage, "templates");
+
+  const workerEntrypoint = path.join(templateDir, "worker.ts");
+  const workerOutputFile = path.join(config.paths.builderOutput, "index.mjs");
+
   const nextConfigStr =
-    readFileSync(nextjsAppPaths.standaloneAppDir + "/server.js", "utf8")?.match(
+    readFileSync(path.join(config.paths.standaloneApp, "/server.js"), "utf8")?.match(
       /const nextConfig = ({.+?})\n/
     )?.[1] ?? {};
 
   console.log(`\x1b[35m⚙️ Bundling the worker file...\n\x1b[0m`);
 
-  patchWranglerDeps(nextjsAppPaths);
-  updateWebpackChunksFile(nextjsAppPaths);
+  patchWranglerDeps(config);
+  updateWebpackChunksFile(config);
 
   await build({
     entryPoints: [workerEntrypoint],
@@ -55,15 +74,15 @@ export async function buildWorker(
       // Note: we apply an empty shim to next/dist/compiled/ws because it generates two `eval`s:
       //   eval("require")("bufferutil");
       //   eval("require")("utf-8-validate");
-      "next/dist/compiled/ws": `${templateDir}/shims/empty.ts`,
+      "next/dist/compiled/ws": path.join(templateDir, "shims", "empty.ts"),
       // Note: we apply an empty shim to next/dist/compiled/edge-runtime since (amongst others) it generated the following `eval`:
       //   eval(getModuleCode)(module, module.exports, throwingRequire, params.context, ...Object.values(params.scopedContext));
       //   which comes from https://github.com/vercel/edge-runtime/blob/6e96b55f/packages/primitives/src/primitives/load.js#L57-L63
       // QUESTION: Why did I encountered this but mhart didn't?
-      "next/dist/compiled/edge-runtime": `${templateDir}/shims/empty.ts`,
+      "next/dist/compiled/edge-runtime": path.join(templateDir, "shims", "empty.ts"),
       // `@next/env` is a library Next.js uses for loading dotenv files, for obvious reasons we need to stub it here
       // source: https://github.com/vercel/next.js/tree/0ac10d79720/packages/next-env
-      "@next/env": `${templateDir}/shims/env.ts`,
+      "@next/env": path.join(templateDir, "shims", "env.ts"),
     },
     define: {
       // config file used by Next.js, see: https://github.com/vercel/next.js/blob/68a7128/packages/next/src/build/utils.ts#L2137-L2139
@@ -98,22 +117,21 @@ export async function buildWorker(
 // Do not crash on cache not supported
 // https://github.com/cloudflare/workerd/pull/2434
 // compatibility flag "cache_option_enabled" -> does not support "force-cache"
-let isPatchedAlready = globalThis.fetch.__nextPatched;
 const curFetch = globalThis.fetch;
 globalThis.fetch = (input, init) => {
-  console.log("globalThis.fetch", input);
-  if (init) delete init.cache;
+  if (init) {
+    delete init.cache;
+  }
   return curFetch(input, init);
 };
 import { Readable } from 'node:stream';
-globalThis.fetch.__nextPatched = isPatchedAlready;
 fetch = globalThis.fetch;
 const CustomRequest = class extends globalThis.Request {
   constructor(input, init) {
-    console.log("CustomRequest", input);
     if (init) {
       delete init.cache;
       if (init.body?.__node_stream__ === true) {
+        // https://github.com/cloudflare/workerd/issues/2746
         init.body = Readable.toWeb(init.body);
       }
     }
@@ -122,25 +140,11 @@ const CustomRequest = class extends globalThis.Request {
 };
 globalThis.Request = CustomRequest;
 Request = globalThis.Request;
-			`,
+`,
     },
   });
 
-  await updateWorkerBundledCode(workerOutputFile, nextjsAppPaths);
-
-  console.log(`\x1b[35m⚙️ Copying asset files...\n\x1b[0m`);
-
-  // Copy over client-side generated files
-  await cp(`${nextjsAppPaths.dotNextDir}/static`, `${outputDir}/assets/_next/static`, {
-    recursive: true,
-  });
-
-  // Copy over any static files (e.g. images) from the source project
-  if (existsSync(`${appDir}/public`)) {
-    await cp(`${appDir}/public`, `${outputDir}/assets`, {
-      recursive: true,
-    });
-  }
+  await updateWorkerBundledCode(workerOutputFile, config);
 
   console.log(`\x1b[35mWorker saved in \`${workerOutputFile}\` 🚀\n\x1b[0m`);
 }
@@ -151,21 +155,19 @@ Request = globalThis.Request;
  * Needless to say all the logic in this function is something we should avoid as much as possible!
  *
  * @param workerOutputFile
- * @param nextjsAppPaths
+ * @param config
  */
-async function updateWorkerBundledCode(
-  workerOutputFile: string,
-  nextjsAppPaths: NextjsAppPaths
-): Promise<void> {
+async function updateWorkerBundledCode(workerOutputFile: string, config: Config): Promise<void> {
   const originalCode = await readFile(workerOutputFile, "utf8");
 
   let patchedCode = originalCode;
 
   patchedCode = patchRequire(patchedCode);
-  patchedCode = patchReadFile(patchedCode, nextjsAppPaths);
-  patchedCode = inlineNextRequire(patchedCode, nextjsAppPaths);
-  patchedCode = patchFindDir(patchedCode, nextjsAppPaths);
-  patchedCode = inlineEvalManifest(patchedCode, nextjsAppPaths);
+  patchedCode = patchReadFile(patchedCode, config);
+  patchedCode = inlineNextRequire(patchedCode, config);
+  patchedCode = patchFindDir(patchedCode, config);
+  patchedCode = inlineEvalManifest(patchedCode, config);
+  patchedCode = patchCache(patchedCode, config);
 
   await writeFile(workerOutputFile, patchedCode);
 }
@@ -176,10 +178,10 @@ function createFixRequiresESBuildPlugin(templateDir: string): Plugin {
     setup(build) {
       // Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
       build.onResolve({ filter: /^\.\/require-hook$/ }, (args) => ({
-        path: `${templateDir}/shims/empty.ts`,
+        path: path.join(templateDir, "shims", "empty.ts"),
       }));
       build.onResolve({ filter: /\.\/lib\/node-fs-methods$/ }, (args) => ({
-        path: `${templateDir}/shims/node-fs.ts`,
+        path: path.join(templateDir, "shims", "empty.ts"),
       }));
     },
   };

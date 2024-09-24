@@ -3,6 +3,7 @@ packages:
   - "examples/*"
 
 catalog:
+  "@cloudflare/workers-types": "^4.20240919.0"
   "@playwright/test": 1.47.0
   "@types/node": ^22.2.0
   "@types/react": ^18

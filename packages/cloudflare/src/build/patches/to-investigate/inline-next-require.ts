@@ -1,14 +1,15 @@
 import { readFileSync, existsSync } from "node:fs";
-import { NextjsAppPaths } from "../../../nextjs-paths";
+import { Config } from "../../../config";
+import path from "node:path";
 
 /**
  * The following avoid various Next.js specific files `require`d at runtime since we can just read
  * and inline their content during build time
  */
-export function inlineNextRequire(code: string, nextjsAppPaths: NextjsAppPaths) {
+export function inlineNextRequire(code: string, config: Config) {
   console.log("# inlineNextRequire");
-  const pagesManifestFile = `${nextjsAppPaths.standaloneAppServerDir}/pages-manifest.json`;
-  const appPathsManifestFile = `${nextjsAppPaths.standaloneAppServerDir}/app-paths-manifest.json`;
+  const pagesManifestFile = path.join(config.paths.standaloneAppServer, "pages-manifest.json");
+  const appPathsManifestFile = path.join(config.paths.standaloneAppServer, "app-paths-manifest.json");
 
   const pagesManifestFiles = existsSync(pagesManifestFile)
     ? Object.values(JSON.parse(readFileSync(pagesManifestFile, "utf-8"))).map(
@@ -32,7 +33,7 @@ export function inlineNextRequire(code: string, nextjsAppPaths: NextjsAppPaths) 
       .map(
         (htmlPage) => `
           if (pagePath.endsWith("${htmlPage}")) {
-            return ${JSON.stringify(readFileSync(`${nextjsAppPaths.standaloneAppDir}/${htmlPage}`, "utf-8"))};
+            return ${JSON.stringify(readFileSync(path.join(config.paths.standaloneApp, htmlPage), "utf-8"))};
           }
         `
       )
@@ -41,7 +42,7 @@ export function inlineNextRequire(code: string, nextjsAppPaths: NextjsAppPaths) 
       .map(
         (module) => `
           if (pagePath.endsWith("${module}")) {
-            return require("${nextjsAppPaths.standaloneAppDir}/${module}");
+            return require("${path.join(config.paths.standaloneApp, module)}");
           }
         `
       )
