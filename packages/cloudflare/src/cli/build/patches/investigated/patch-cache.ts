@@ -1,5 +1,5 @@
 import path from "node:path";
-import { Config } from "../../../cli/config";
+import { Config } from "../../../config";
 
 /**
  * Install the cloudflare KV cache handler
@@ -7,7 +7,7 @@ import { Config } from "../../../cli/config";
 export function patchCache(code: string, config: Config): string {
   console.log("# patchCached");
 
-  const cacheHandler = path.join(config.paths.internalPackage, "cache-handler.mjs");
+  const cacheHandler = path.join(config.paths.internalPackage, "cli", "cache-handler.mjs");
 
   const patchedCode = code.replace(
     "const { cacheHandler } = this.nextConfig;",
