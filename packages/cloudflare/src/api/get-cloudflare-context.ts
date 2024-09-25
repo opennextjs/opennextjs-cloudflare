@@ -9,23 +9,24 @@ export type CloudflareContext<
   CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
   Context = ExecutionContext,
 > = {
+  /**
+   * object containing the worker's bindings ([docs](https://developers.cloudflare.com/workers/runtime-apis/bindings/))
+   */
   env: CloudflareEnv;
+  /**
+   * object containing information regarding the current request ([docs](https://developers.cloudflare.com/workers/runtime-apis/request/#the-cf-property-requestinitcfproperties))
+   */
   cf: CfProperties;
+  /**
+   * the current execution context object ([docs](https://developers.cloudflare.com/workers/runtime-apis/context))
+   */
   ctx: Context;
 };
 
 const cloudflareContextSymbol = Symbol.for("__cloudflare-context__");
 
 /**
- * Utility to get the current Cloudflare context.
- *
- * Such context contains three values:
- *  - `env`: object containing the worker's bindings
- *          (https://developers.cloudflare.com/workers/runtime-apis/bindings/)
- *  - `ctx`: the current execution context object
- *          (https://developers.cloudflare.com/workers/runtime-apis/context)
- *  - `cf`: object containing information regarding the current request
- *          (https://developers.cloudflare.com/workers/runtime-apis/request/#the-cf-property-requestinitcfproperties)
+ * Utility to get the current Cloudflare context
  *
  * @returns the cloudflare context
  */
