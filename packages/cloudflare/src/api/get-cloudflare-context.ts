@@ -37,17 +37,49 @@ export async function getCloudflareContext<
   CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
   Context = ExecutionContext,
 >(): Promise<CloudflareContext<CfProperties, Context>> {
-  const cloudflareContext = (
-    globalThis as unknown as {
-      [cloudflareContextSymbol]: CloudflareContext<CfProperties, Context> | undefined;
-    }
-  )[cloudflareContextSymbol];
+  const global = globalThis as unknown as {
+    [cloudflareContextSymbol]: CloudflareContext<CfProperties, Context> | undefined;
+  };
+
+  const cloudflareContext = global[cloudflareContextSymbol];
 
   if (!cloudflareContext) {
-    // TODO: cloudflareContext should always be present in production/preview, if not it means that this
-    //       is running under `next dev`, in this case use `getPlatformProxy` to return local proxies
-    throw new Error("Cloudflare context is not defined!");
+    // the cloudflare context is initialized by the worker and is always present in production/preview,
+    // so, it not being present means that the application is running under `next dev`
+    return getCloudflareContextInNextDev();
   }
 
   return cloudflareContext;
+}
+
+const cloudflareContextInNextDevSymbol = Symbol.for("__next-dev/cloudflare-context__");
+
+/**
+ * Gets a local proxy version of the cloudflare context (created using `getPlatformProxy`) when
+ * running in the standard next dev server (via `next dev`)
+ *
+ * @returns the local proxy version of the cloudflare context
+ */
+async function getCloudflareContextInNextDev<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(): Promise<CloudflareContext<CfProperties, Context>> {
+  const global = globalThis as unknown as {
+    [cloudflareContextInNextDevSymbol]: CloudflareContext<CfProperties, Context> | undefined;
+  };
+
+  if (!global[cloudflareContextInNextDevSymbol]) {
+    // Note: we need to add the webpackIgnore comment to the dynamic import because
+    // the next dev server transpiled modules on the fly but we don't want it to try
+    // to also transpile the wrangler code
+    const { getPlatformProxy } = await import(/* webpackIgnore: true */ "wrangler");
+    const { env, cf, ctx } = await getPlatformProxy();
+    global[cloudflareContextInNextDevSymbol] = {
+      env,
+      cf: cf as unknown as CfProperties,
+      ctx: ctx as Context,
+    };
+  }
+
+  return global[cloudflareContextInNextDevSymbol]!;
 }

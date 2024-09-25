@@ -8,6 +8,7 @@ const cliConfig = defineConfig({
   format: ["esm"],
   platform: "node",
   external: ["esbuild"],
+  clean: true,
   onSuccess: async () => {
     await cp(`${__dirname}/src/cli/templates`, `${__dirname}/dist/cli/templates`, {
       recursive: true,
@@ -22,6 +23,7 @@ const apiConfig = defineConfig({
   format: ["esm"],
   platform: "node",
   external: ["server-only"],
+  clean: true,
 });
 
 export default [cliConfig, apiConfig];
