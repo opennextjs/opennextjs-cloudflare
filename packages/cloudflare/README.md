@@ -30,6 +30,25 @@ You can use [`create-next-app`](https://nextjs.org/docs/pages/api-reference/cli/
   experimental_assets = { directory = ".worker-next/assets", binding = "ASSETS" }
   ```
 
+You can enable Incremental Static Regeneration ([ISR](https://nextjs.org/docs/app/building-your-application/data-fetching/incremental-static-regeneration)) by adding a KV binding named `NEXT_CACHE_WORKERS_KV` to your `wrangler.toml`:
+
+- Create the binding
+
+  ```bash
+  npx wrangler kv namespace create NEXT_CACHE_WORKERS_KV
+  ```
+
+- Paste the snippet to your `wrangler.toml`:
+
+  ```bash
+  [[kv_namespaces]]
+  binding = "NEXT_CACHE_WORKERS_KV"
+  id = "..."
+  ```
+
+> [!WARNING]
+> The current support for ISR is limited.
+
 ## Local development
 
 - you can use the regular `next` CLI to start the Next.js dev server:
