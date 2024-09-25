@@ -5,7 +5,7 @@ import { NodeNextRequest, NodeNextResponse } from "next/dist/server/base-http/no
 import { MockedResponse } from "next/dist/server/lib/mock-request";
 import NextNodeServer, { NodeRequestHandler } from "next/dist/server/next-server";
 import type { IncomingMessage } from "node:http";
-import type { CloudflareContext } from "../../api";
+import { cloudflareContextSymbol, type CloudflareContext } from "../../api";
 
 const NON_BODY_RESPONSES = new Set([101, 204, 205, 304]);
 
@@ -28,9 +28,8 @@ const nextConfig: NextConfig = JSON.parse(process.env.__NEXT_PRIVATE_STANDALONE_
 let requestHandler: NodeRequestHandler | null = null;
 
 export default {
-  async fetch(request: Request, env: any, ctx: any) {
-    const cf = (request as unknown as { cf: IncomingRequestCfProperties }).cf;
-    return cloudflareContextALS.run({ env, ctx, cf }, async () => {
+  async fetch(request: Request & { cf: IncomingRequestCfProperties }, env: any, ctx: any) {
+    return cloudflareContextALS.run({ env, ctx, cf: request.cf }, async () => {
       if (requestHandler == null) {
         globalThis.process.env = { ...globalThis.process.env, ...env };
         requestHandler = new NextNodeServer({
