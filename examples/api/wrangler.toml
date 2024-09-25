@@ -5,3 +5,6 @@ compatibility_date = "2024-09-16"
 compatibility_flags = ["nodejs_compat_v2"]
 
 experimental_assets = { directory = ".worker-next/assets", binding = "ASSETS" }
+
+[vars]
+hello = 'Hello World from the cloudflare context!'

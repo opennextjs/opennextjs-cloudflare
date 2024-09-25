@@ -1,12 +1,12 @@
 import { Config } from "../config";
 import { build, Plugin } from "esbuild";
-import { existsSync, readFileSync, cpSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { cp, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { patchRequire } from "./patches/investigated/patch-require";
-import { copyPackage } from "./patches/investigated/copy-package";
+import { copyPackageCliFiles } from "./patches/investigated/copy-package-cli-files";
 
 import { patchReadFile } from "./patches/to-investigate/patch-read-file";
 import { patchFindDir } from "./patches/to-investigate/patch-find-dir";
@@ -16,8 +16,8 @@ import { patchWranglerDeps } from "./patches/to-investigate/wrangler-deps";
 import { updateWebpackChunksFile } from "./patches/investigated/update-webpack-chunks-file";
 import { patchCache } from "./patches/investigated/patch-cache";
 
-/** The directory containing the Cloudflare template files. */
-const packageDir = path.dirname(fileURLToPath(import.meta.url));
+/** The dist directory of the Cloudflare adapter package */
+const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
  * Using the Next.js build output in the `.next` directory builds a workerd compatible output
@@ -45,9 +45,9 @@ export async function buildWorker(config: Config): Promise<void> {
     });
   }
 
-  copyPackage(packageDir, config);
+  copyPackageCliFiles(packageDistDir, config);
 
-  const templateDir = path.join(config.paths.internalPackage, "templates");
+  const templateDir = path.join(config.paths.internalPackage, "cli", "templates");
 
   const workerEntrypoint = path.join(templateDir, "worker.ts");
   const workerOutputFile = path.join(config.paths.builderOutput, "index.mjs");

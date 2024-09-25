@@ -10,7 +10,8 @@
     "build:worker": "pnpm cloudflare",
     "dev:worker": "wrangler dev --port 8770",
     "preview:worker": "pnpm build:worker && pnpm dev:worker",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv"
   },
   "dependencies": {
     "next": "catalog:",

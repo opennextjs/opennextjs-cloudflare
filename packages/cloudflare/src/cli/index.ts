@@ -2,7 +2,7 @@
 import { resolve } from "node:path";
 import { getArgs } from "./args";
 import { existsSync } from "node:fs";
-import { build } from "./build/build";
+import { build } from "./build";
 
 const nextAppDir = resolve(".");
 

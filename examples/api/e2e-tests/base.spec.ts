@@ -15,6 +15,16 @@ test("the hello-world api GET route works as intended", async ({ page }) => {
   expect(await res.text()).toEqual("Hello World!");
 });
 
+test("returns a hello world string from the cloudflare context env", async ({ page }) => {
+  const res = await page.request.get("/api/hello", {
+    headers: {
+      "from-cloudflare-context": "true",
+    },
+  });
+  expect(res.headers()["content-type"]).toContain("text/plain");
+  expect(await res.text()).toEqual("Hello World from the cloudflare context!");
+});
+
 test("the hello-world api POST route works as intended", async ({ page }) => {
   const res = await page.request.post("/api/hello", { data: "some body" });
   expect(res.headers()["content-type"]).toContain("text/plain");

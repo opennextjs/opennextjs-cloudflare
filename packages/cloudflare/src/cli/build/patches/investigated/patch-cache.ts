@@ -7,7 +7,7 @@ import { Config } from "../../../config";
 export function patchCache(code: string, config: Config): string {
   console.log("# patchCached");
 
-  const cacheHandler = path.join(config.paths.internalPackage, "cache-handler.mjs");
+  const cacheHandler = path.join(config.paths.internalPackage, "cli", "cache-handler.mjs");
 
   const patchedCode = code.replace(
     "const { cacheHandler } = this.nextConfig;",

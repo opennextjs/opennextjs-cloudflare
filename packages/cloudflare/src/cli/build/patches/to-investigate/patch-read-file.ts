@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { globSync } from "glob";
-import { Config } from "../../../config";
+import { Config } from "../../../cli/config";
 import path from "node:path";
 
 export function patchReadFile(code: string, config: Config): string {

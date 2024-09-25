@@ -1,16 +1,27 @@
 import { cp } from "fs/promises";
 import { defineConfig } from "tsup";
 
-export default defineConfig({
-  entry: ["src/index.ts", "src/cache-handler.ts"],
-  outDir: "dist",
+const cliConfig = defineConfig({
+  entry: ["src/cli/index.ts", "src/cli/cache-handler.ts"],
+  outDir: "dist/cli",
   dts: false,
   format: ["esm"],
   platform: "node",
   external: ["esbuild"],
   onSuccess: async () => {
-    await cp(`${__dirname}/src/templates`, `${__dirname}/dist/templates`, {
+    await cp(`${__dirname}/src/cli/templates`, `${__dirname}/dist/cli/templates`, {
       recursive: true,
     });
   },
 });
+
+const apiConfig = defineConfig({
+  entry: ["src/api"],
+  outDir: "dist/api",
+  dts: true,
+  format: ["esm"],
+  platform: "node",
+  external: ["server-only"],
+});
+
+export default [cliConfig, apiConfig];
