@@ -5,13 +5,14 @@ import { NodeNextRequest, NodeNextResponse } from "next/dist/server/base-http/no
 import { MockedResponse } from "next/dist/server/lib/mock-request";
 import NextNodeServer, { NodeRequestHandler } from "next/dist/server/next-server";
 import type { IncomingMessage } from "node:http";
-import { cloudflareContextSymbol, type CloudflareContext } from "../../api";
+import { type CloudflareContext } from "../../api";
 
 const NON_BODY_RESPONSES = new Set([101, 204, 205, 304]);
 
 const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
 
-(globalThis as any)[cloudflareContextSymbol] = new Proxy(
+// Note: this symbol needs to be kept in sync with the one defined in `src/api/get-cloudflare-context.ts`
+(globalThis as any)[Symbol.for("__cloudflare-context__")] = new Proxy(
   {},
   {
     ownKeys: () => Reflect.ownKeys(cloudflareContextALS.getStore()!),
