@@ -69,10 +69,10 @@ async function getCloudflareContextInNextDev<
   };
 
   if (!global[cloudflareContextInNextDevSymbol]) {
-    // Note: we need to add the webpackIgnore comment to the dynamic import because
-    // the next dev server transpiled modules on the fly but we don't want it to try
-    // to also transpile the wrangler code
-    const { getPlatformProxy } = await import(/* webpackIgnore: true */ "wrangler");
+    // Note: we never want wrangler to be bundled in the Next.js app, that's why the import below looks like it does
+    const { getPlatformProxy } = await import(
+      /* webpackIgnore: true */ `${"__wrangler".replaceAll("_", "")}`
+    );
     const { env, cf, ctx } = await getPlatformProxy();
     global[cloudflareContextInNextDevSymbol] = {
       env,
