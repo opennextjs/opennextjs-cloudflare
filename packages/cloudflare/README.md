@@ -34,7 +34,6 @@ You can use [`create-next-app`](https://nextjs.org/docs/pages/api-reference/cli/
 
 - you can use the regular `next` CLI to start the Next.js dev server:
 
-
 ## Local preview
 
 Run the following commands to preview the production build of your application locally:
@@ -44,6 +43,7 @@ Run the following commands to preview the production build of your application l
   ```bash
   pnpx cloudflare
   ```
+
 - Preview the app in Wrangler
 
   ```bash
@@ -60,6 +60,6 @@ Deploy your application to production with the following:
   pnpx cloudflare
   ```
 
-```bash
-pnpm wrangler deploy
-```
+  ```bash
+  pnpm wrangler deploy
+  ```

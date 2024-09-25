@@ -1,4 +1,4 @@
-# Deploy Next.js apps to Cloudflare!
+# Deploy Next.js apps to Cloudflare
 
 OpenNext for Cloudflare is Cloudflare specific adapter that enables deployment of Next.js applications to Cloudflare.
 
