@@ -5,7 +5,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 export async function GET() {
   const headersList = headers();
 
-  const fromCloudflareContext = !!headersList.get("from-cloudflare-context");
+  const fromCloudflareContext = headersList.has("from-cloudflare-context");
 
   if (!fromCloudflareContext) {
     return new Response("Hello World!");
