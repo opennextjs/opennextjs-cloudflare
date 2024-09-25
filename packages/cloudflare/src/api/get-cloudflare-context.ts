@@ -29,25 +29,55 @@ const cloudflareContextSymbol = Symbol.for("__cloudflare-context__");
 /**
  * Utility to get the current Cloudflare context
  *
- * Throws an error if the context could not be retrieved
- *
  * @returns the cloudflare context
  */
 export async function getCloudflareContext<
   CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
   Context = ExecutionContext,
 >(): Promise<CloudflareContext<CfProperties, Context>> {
-  const cloudflareContext = (
-    globalThis as unknown as {
-      [cloudflareContextSymbol]: CloudflareContext<CfProperties, Context> | undefined;
-    }
-  )[cloudflareContextSymbol];
+  const global = globalThis as unknown as {
+    [cloudflareContextSymbol]: CloudflareContext<CfProperties, Context> | undefined;
+  };
+
+  const cloudflareContext = global[cloudflareContextSymbol];
 
   if (!cloudflareContext) {
-    // TODO: cloudflareContext should always be present in production/preview, if not it means that this
-    //       is running under `next dev`, in this case use `getPlatformProxy` to return local proxies
-    throw new Error("Cloudflare context is not defined!");
+    // the cloudflare context is initialized by the worker and is always present in production/preview,
+    // so, it not being present means that the application is running under `next dev`
+    return getCloudflareContextInNextDev();
   }
 
   return cloudflareContext;
+}
+
+const cloudflareContextInNextDevSymbol = Symbol.for("__next-dev/cloudflare-context__");
+
+/**
+ * Gets a local proxy version of the cloudflare context (created using `getPlatformProxy`) when
+ * running in the standard next dev server (via `next dev`)
+ *
+ * @returns the local proxy version of the cloudflare context
+ */
+async function getCloudflareContextInNextDev<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(): Promise<CloudflareContext<CfProperties, Context>> {
+  const global = globalThis as unknown as {
+    [cloudflareContextInNextDevSymbol]: CloudflareContext<CfProperties, Context> | undefined;
+  };
+
+  if (!global[cloudflareContextInNextDevSymbol]) {
+    // Note: we never want wrangler to be bundled in the Next.js app, that's why the import below looks like it does
+    const { getPlatformProxy } = await import(
+      /* webpackIgnore: true */ `${"__wrangler".replaceAll("_", "")}`
+    );
+    const { env, cf, ctx } = await getPlatformProxy();
+    global[cloudflareContextInNextDevSymbol] = {
+      env,
+      cf: cf as unknown as CfProperties,
+      ctx: ctx as Context,
+    };
+  }
+
+  return global[cloudflareContextInNextDevSymbol]!;
 }

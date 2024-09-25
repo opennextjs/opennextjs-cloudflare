@@ -48,5 +48,8 @@
   },
   "dependencies": {
     "ts-morph": "catalog:"
+  },
+  "peerDependencies": {
+    "wrangler": "catalog:"
   }
 }

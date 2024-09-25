@@ -17,7 +17,7 @@ jobs:
         run: npm install -g pnpm && pnpm install
       - name: Install Playwright browsers
         run: pnpm run install-playwright
-      - name: Run playwright tests (api)
-        run: pnpm -F api run e2e
-      - name: Run playwright tests (create-next-app)
-        run: pnpm -F create-next-app run e2e
+      - name: Run playwright tests
+        run: pnpm e2e
+      - name: Run playwright dev tests
+        run: pnpm e2e:dev

@@ -11,6 +11,7 @@
     "prettier:fix": "prettier --write .",
     "postinstall": "pnpm --filter cloudflare build",
     "install-playwright": "playwright install --with-deps",
-    "e2e": "pnpm -r e2e"
+    "e2e": "pnpm -r e2e",
+    "e2e:dev": "pnpm -r e2e:dev"
   }
 }
