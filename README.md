@@ -1,18 +1,23 @@
-# [POC] Build Next.js app for cf workers
+# Deploy Next.js apps to Cloudflare!
 
-This monorepo includes a package for adapting a Next.js application built via `next build` (in standalone mode) to run in the Cloudflare workerd runtime.
+OpenNext for Cloudflare is Cloudflare specific adapter that enables deployment of Next.js applications to Cloudflare.
 
-> [!NOTE]
-> The code here is built based on the amazing work done by @mhart in <https://github.com/mhart/nextjs-commerce>
+This monorepo includes a package for adapting a Next.js application built via `next build` (in standalone mode) to run in the Cloudflare workerd runtime using the [Workers Node.js compatibility layer](https://developers.cloudflare.com/workers/runtime-apis/nodejs/).
 
-## The repository
+## Get started
+
+Follow instructions at [`@opennextjs/cloudflare`](https://www.npmjs.com/package/@opennextjs/cloudflare).
+
+## Contributing
+
+### The repository
 
 The repository contains two directories:
 
 - `packages` containing a cloudflare package that can be used to build Cloudflare workers compatible output from Next.js applications
 - `examples` containing Next.js applications that use the above mentioned cloudflare.
 
-## How to try out/develop in the repository
+### How to try out/develop in the repository
 
 Install the dependencies:
 
