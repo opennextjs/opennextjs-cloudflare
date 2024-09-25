@@ -10,15 +10,15 @@ export type CloudflareContext<
   Context = ExecutionContext,
 > = {
   /**
-   * the worker's bindings ([docs](https://developers.cloudflare.com/workers/runtime-apis/bindings/))
+   * the worker's [bindings](https://developers.cloudflare.com/workers/runtime-apis/bindings/)
    */
   env: CloudflareEnv;
   /**
-   * information regarding the current request ([docs](https://developers.cloudflare.com/workers/runtime-apis/request/#the-cf-property-requestinitcfproperties))
+   * the request's [cf properties](https://developers.cloudflare.com/workers/runtime-apis/request/#the-cf-property-requestinitcfproperties)
    */
   cf: CfProperties;
   /**
-   * the current execution context object ([docs](https://developers.cloudflare.com/workers/runtime-apis/context))
+   * the current [execution context](https://developers.cloudflare.com/workers/runtime-apis/context)
    */
   ctx: Context;
 };
