@@ -46,7 +46,7 @@ You can enable Incremental Static Regeneration ([ISR](https://nextjs.org/docs/ap
   id = "..."
   ```
 
-> **Note**
+> [!WARNING]
 > The current support for ISR is limited.
 
 ## Local development
