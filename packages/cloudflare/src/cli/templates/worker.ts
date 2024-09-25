@@ -11,7 +11,7 @@ const NON_BODY_RESPONSES = new Set([101, 204, 205, 304]);
 
 const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
 
-(globalThis as Record<symbol, unknown>)[Symbol.for("__cloudflare-context__")] = new Proxy(
+(globalThis as any)[cloudflareContextSymbol] = new Proxy(
   {},
   {
     ownKeys: () => Reflect.ownKeys(cloudflareContextALS.getStore()!),
