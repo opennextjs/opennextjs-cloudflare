@@ -10,11 +10,11 @@ export type CloudflareContext<
   Context = ExecutionContext,
 > = {
   /**
-   * object containing the worker's bindings ([docs](https://developers.cloudflare.com/workers/runtime-apis/bindings/))
+   * the worker's bindings ([docs](https://developers.cloudflare.com/workers/runtime-apis/bindings/))
    */
   env: CloudflareEnv;
   /**
-   * object containing information regarding the current request ([docs](https://developers.cloudflare.com/workers/runtime-apis/request/#the-cf-property-requestinitcfproperties))
+   * information regarding the current request ([docs](https://developers.cloudflare.com/workers/runtime-apis/request/#the-cf-property-requestinitcfproperties))
    */
   cf: CfProperties;
   /**
