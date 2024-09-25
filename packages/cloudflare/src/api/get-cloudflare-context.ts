@@ -29,8 +29,6 @@ const cloudflareContextSymbol = Symbol.for("__cloudflare-context__");
 /**
  * Utility to get the current Cloudflare context
  *
- * Throws an error if the context could not be retrieved
- *
  * @returns the cloudflare context
  */
 export async function getCloudflareContext<
