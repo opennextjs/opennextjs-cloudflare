@@ -1,6 +1,6 @@
 # Deploy Next.js apps to Cloudflare
 
-OpenNext for Cloudflare is Cloudflare specific adapter that enables deployment of Next.js applications to Cloudflare.
+[OpenNext for Cloudflare](https://opennext.js.org/cloudflare) is Cloudflare specific adapter that enables deployment of Next.js applications to Cloudflare.
 
 This monorepo includes a package for adapting a Next.js application built via `next build` (in standalone mode) to run in the Cloudflare workerd runtime using the [Workers Node.js compatibility layer](https://developers.cloudflare.com/workers/runtime-apis/nodejs/).
 
