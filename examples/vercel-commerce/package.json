@@ -1,4 +1,5 @@
 {
+  "name": "vercel-commerce",
   "private": true,
   "engines": {
     "node": ">=20",
@@ -20,7 +21,8 @@
     "next": "15.0.0-canary.113",
     "react": "19.0.0-rc-3208e73e-20240730",
     "react-dom": "19.0.0-rc-3208e73e-20240730",
-    "sonner": "^1.5.0"
+    "sonner": "^1.5.0",
+    "wrangler": "catalog:"
   },
   "devDependencies": {
     "@tailwindcss/container-queries": "^0.1.1",
