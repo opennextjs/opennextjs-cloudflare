@@ -181,7 +181,10 @@ const reshapeProduct = (product: ShopifyProduct, filterHiddenProducts: boolean =
   return {
     ...rest,
     images: reshapeImages(images, product.title),
-    variants: removeEdgesAndNodes(variants)
+    variants: removeEdgesAndNodes(variants).map((v) =>
+      // We'll make at least one variant unavailable for sale to demonstrate the feature.
+      v.title === 'Vintage Black / L' ? { ...v, availableForSale: false } : v
+    )
   };
 };
 
@@ -333,7 +336,12 @@ export async function getCollections(): Promise<Collection[]> {
     // Filter out the `hidden` collections.
     // Collections that start with `hidden-*` need to be hidden on the search page.
     ...reshapeCollections(shopifyCollections).filter(
-      (collection) => !collection.handle.startsWith('hidden')
+      (collection) =>
+        !collection.handle.startsWith('hidden') &&
+        // These collections have no products
+        !['antiperistaltic-gold-socks', 'blistered-aluminum-boat', 'frontpage'].includes(
+          collection.handle
+        )
     )
   ];
 
@@ -341,6 +349,16 @@ export async function getCollections(): Promise<Collection[]> {
 }
 
 export async function getMenu(handle: string): Promise<Menu[]> {
+  if (handle === 'next-js-frontend-header-menu') {
+    return [
+      { title: 'All', path: '/search' },
+      { title: 'Latest Stuff', path: '/search/latest-stuff' },
+      { title: 'Casual Things', path: '/search/casual-things' }
+    ];
+  } else if (handle === 'next-js-frontend-footer-menu') {
+    return [{ title: 'Home', path: '/' }];
+  }
+
   const res = await shopifyFetch<ShopifyMenuOperation>({
     query: getMenuQuery,
     tags: [TAGS.collections],
