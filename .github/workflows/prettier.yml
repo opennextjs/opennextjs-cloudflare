@@ -1,4 +1,4 @@
-name: Prettier check
+name: Code checks
 on:
   push:
     branches: [main]
@@ -17,3 +17,5 @@ jobs:
         run: npm install -g pnpm && pnpm install
       - name: Check formatting
         run: pnpm prettier:check
+      - name: Check linting
+        run: pnpm lint:check

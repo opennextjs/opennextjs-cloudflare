@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsup",
     "build:watch": "tsup --watch src",
-    "lint": "eslint",
+    "lint:check": "eslint",
     "test": "vitest --run",
     "test:watch": "vitest"
   },
