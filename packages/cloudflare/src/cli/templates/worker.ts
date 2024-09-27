@@ -68,8 +68,9 @@ export default {
 function getWrappedStreams(request: Request, ctx: ExecutionContext) {
   const url = new URL(request.url);
 
-  const req = // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (request.body ? Stream.Readable.fromWeb(request.body as any) : Stream.Readable.from([])) as IncomingMessage;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const reqBody = request.body && Stream.Readable.fromWeb(request.body as any);
+  const req = (reqBody ?? Stream.Readable.from([])) as IncomingMessage;
   req.httpVersion = "1.0";
   req.httpVersionMajor = 1;
   req.httpVersionMinor = 0;
