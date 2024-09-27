@@ -1,8 +1,7 @@
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
-import path from "node:path";
-
-import { Config } from "../../../../cli/config";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { Config } from "../../../../config";
 import { getUpdatedWebpackChunksFileContent } from "./get-updated-webpack-chunks-file-content";
+import path from "node:path";
 
 /**
  * Fixes the webpack-runtime.js file by removing its webpack dynamic requires.

@@ -1,9 +1,9 @@
-import { rm } from "node:fs/promises";
+import { containsDotNextDir, getConfig } from "../config";
 import { buildNextjsApp } from "./build-next-app";
 import { buildWorker } from "./build-worker";
-import { containsDotNextDir, getConfig } from "../config";
 import { cpSync } from "node:fs";
 import path from "node:path";
+import { rm } from "node:fs/promises";
 
 /**
  * Builds the application in a format that can be passed to workerd

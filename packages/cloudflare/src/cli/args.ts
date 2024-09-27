@@ -1,4 +1,4 @@
-import { mkdirSync, type Stats, statSync } from "node:fs";
+import { type Stats, mkdirSync, statSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 

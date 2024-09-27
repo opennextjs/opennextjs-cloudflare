@@ -1,5 +1,5 @@
-import { readdirSync, statSync } from "node:fs";
 import path, { relative } from "node:path";
+import { readdirSync, statSync } from "node:fs";
 
 const PACKAGE_NAME = "@opennextjs/cloudflare";
 

@@ -1,7 +1,7 @@
+import eslintPluginUnicorn from 'eslint-plugin-unicorn';
 import globals from "globals";
 import pluginJs from "@eslint/js";
 import tseslint from "typescript-eslint";
-import eslintPluginUnicorn from 'eslint-plugin-unicorn';
 
 export default [
   {
@@ -23,7 +23,8 @@ export default [
     },
     "rules": {
       "@typescript-eslint/ban-ts-comment": "off",
-      "unicorn/prefer-node-protocol": "error"
+      "unicorn/prefer-node-protocol": "error",
+      "sort-imports": "error"
     }
   }
 ];

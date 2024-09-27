@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
+import { Config } from "../../../config";
 import { globSync } from "glob";
-import { Config } from "../../../cli/config";
 import path from "node:path";
+import { readFileSync } from "node:fs";
 
 export function patchReadFile(code: string, config: Config): string {
   console.log("# patchReadFile");
