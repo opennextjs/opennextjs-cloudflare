@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { build } from "./build";
-import { existsSync } from "fs";
+import { existsSync } from "node:fs";
 import { getArgs } from "./args";
 import { resolve } from "node:path";
 

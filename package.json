@@ -10,6 +10,7 @@
     "prettier:check": "prettier --check .",
     "prettier:fix": "prettier --write .",
     "lint:check": "pnpm -r lint:check",
+    "lint:fix": "pnpm -r lint:fix",
     "postinstall": "pnpm --filter cloudflare build",
     "install-playwright": "playwright install --with-deps",
     "e2e": "pnpm -r e2e",
