@@ -15,7 +15,5 @@ jobs:
           node-version: lts/*
       - name: Install dependencies
         run: npm install -g pnpm && pnpm install
-      - name: Check formatting
-        run: pnpm prettier:check
-      - name: Check linting
-        run: pnpm lint:check
+      - name: Run code checks
+        run: pnpm checks
