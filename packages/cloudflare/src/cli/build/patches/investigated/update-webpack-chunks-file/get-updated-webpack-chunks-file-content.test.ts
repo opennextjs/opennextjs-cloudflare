@@ -1,8 +1,6 @@
-import { readFile } from "node:fs/promises";
-
-import { expect, test, describe } from "vitest";
-
+import { describe, expect, test } from "vitest";
 import { getUpdatedWebpackChunksFileContent } from "./get-updated-webpack-chunks-file-content";
+import { readFile } from "node:fs/promises";
 
 describe("getUpdatedWebpackChunksFileContent", () => {
   test("returns the updated content of a webpack runtime chunks unminified file", async () => {

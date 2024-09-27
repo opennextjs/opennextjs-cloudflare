@@ -1,6 +1,6 @@
-import path from "node:path";
-import { Config } from "../../../cli/config";
+import { Config } from "../../../config";
 import { existsSync } from "node:fs";
+import path from "node:path";
 
 /**
  * Here we patch `findDir` so that the next server can detect whether the `app` or `pages` directory exists

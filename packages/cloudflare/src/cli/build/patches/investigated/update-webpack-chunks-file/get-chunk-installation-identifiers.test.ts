@@ -1,8 +1,6 @@
-import { readFile } from "node:fs/promises";
-
-import { expect, test, describe } from "vitest";
-
+import { describe, expect, test } from "vitest";
 import { getChunkInstallationIdentifiers } from "./get-chunk-installation-identifiers";
+import { readFile } from "node:fs/promises";
 import { tsParseFile } from "../../../utils";
 
 describe("getChunkInstallationIdentifiers", () => {

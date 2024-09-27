@@ -1,5 +1,5 @@
-import path from "node:path";
 import { Config } from "../../../config";
+import path from "node:path";
 
 /**
  * Install the cloudflare KV cache handler

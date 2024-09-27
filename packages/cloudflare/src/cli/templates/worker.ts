@@ -1,17 +1,18 @@
-import { AsyncLocalStorage } from "node:async_hooks";
-import Stream from "node:stream";
-import type { NextConfig } from "next";
-import { NodeNextRequest, NodeNextResponse } from "next/dist/server/base-http/node";
-import { MockedResponse } from "next/dist/server/lib/mock-request";
 import NextNodeServer, { NodeRequestHandler } from "next/dist/server/next-server";
-import type { IncomingMessage } from "node:http";
+import { NodeNextRequest, NodeNextResponse } from "next/dist/server/base-http/node";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { type CloudflareContext } from "../../api";
+import type { IncomingMessage } from "node:http";
+import { MockedResponse } from "next/dist/server/lib/mock-request";
+import type { NextConfig } from "next";
+import Stream from "node:stream";
 
 const NON_BODY_RESPONSES = new Set([101, 204, 205, 304]);
 
 const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
 
 // Note: this symbol needs to be kept in sync with the one defined in `src/api/get-cloudflare-context.ts`
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any)[Symbol.for("__cloudflare-context__")] = new Proxy(
   {},
   {
@@ -29,6 +30,7 @@ const nextConfig: NextConfig = JSON.parse(process.env.__NEXT_PRIVATE_STANDALONE_
 let requestHandler: NodeRequestHandler | null = null;
 
 export default {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async fetch(request: Request & { cf: IncomingRequestCfProperties }, env: any, ctx: any) {
     return cloudflareContextALS.run({ env, ctx, cf: request.cf }, async () => {
       if (requestHandler == null) {
@@ -45,12 +47,13 @@ export default {
       const url = new URL(request.url);
 
       if (url.pathname === "/_next/image") {
-        let imageUrl =
+        const imageUrl =
           url.searchParams.get("url") ?? "https://developers.cloudflare.com/_astro/logo.BU9hiExz.svg";
         if (imageUrl.startsWith("/")) {
           return env.ASSETS.fetch(new URL(imageUrl, request.url));
         }
-        return fetch(imageUrl, { cf: { cacheEverything: true } } as any);
+        // @ts-ignore
+        return fetch(imageUrl, { cf: { cacheEverything: true } } as unknown);
       }
 
       const { req, res, webResponse } = getWrappedStreams(request, ctx);
@@ -62,12 +65,12 @@ export default {
   },
 };
 
-function getWrappedStreams(request: Request, ctx: any) {
+function getWrappedStreams(request: Request, ctx: ExecutionContext) {
   const url = new URL(request.url);
 
-  const req = (
-    request.body ? Stream.Readable.fromWeb(request.body as any) : Stream.Readable.from([])
-  ) as IncomingMessage;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const reqBody = request.body && Stream.Readable.fromWeb(request.body as any);
+  const req = (reqBody ?? Stream.Readable.from([])) as IncomingMessage;
   req.httpVersion = "1.0";
   req.httpVersionMajor = 1;
   req.httpVersionMinor = 0;
@@ -94,7 +97,7 @@ function getWrappedStreams(request: Request, ctx: any) {
 
   const res = new MockedResponse({
     resWriter: (chunk) => {
-      resBodyWriter.write(typeof chunk === "string" ? Buffer.from(chunk) : chunk).catch((err: any) => {
+      resBodyWriter.write(typeof chunk === "string" ? Buffer.from(chunk) : chunk).catch((err) => {
         if (
           err.message.includes("WritableStream has been closed") ||
           err.message.includes("Network connection lost")
@@ -110,6 +113,7 @@ function getWrappedStreams(request: Request, ctx: any) {
   });
 
   // It's implemented as a no-op, but really it should mark the headers as done
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   res.flushHeaders = () => (res as any).headPromiseResolve();
 
   // Only allow statusCode to be modified if not sent
@@ -127,6 +131,7 @@ function getWrappedStreams(request: Request, ctx: any) {
   });
 
   // Make sure the writer is eventually closed
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ctx.waitUntil((res as any).hasStreamed.finally(() => resBodyWriter.close().catch(() => {})));
 
   return {
@@ -138,6 +143,7 @@ function getWrappedStreams(request: Request, ctx: any) {
       res.setHeader("content-encoding", "identity");
       return new Response(NON_BODY_RESPONSES.has(res.statusCode) ? null : readable, {
         status: res.statusCode,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         headers: (res as any).headers,
       });
     },

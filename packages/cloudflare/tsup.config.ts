@@ -1,4 +1,4 @@
-import { cp } from "fs/promises";
+import { cp } from "node:fs/promises";
 import { defineConfig } from "tsup";
 
 const cliConfig = defineConfig({

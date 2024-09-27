@@ -1,6 +1,6 @@
-import path from "node:path";
 import fs, { writeFileSync } from "node:fs";
-import { Config } from "../../../cli/config";
+import { Config } from "../../../config";
+import path from "node:path";
 
 export function patchWranglerDeps(config: Config) {
   console.log("# patchWranglerDeps");
@@ -33,7 +33,7 @@ export function patchWranglerDeps(config: Config) {
   // Remove the need for an alias in wrangler.toml:
   //
   // [alias]
-  // # @opentelemetry/api is `require`d when running wrangler dev, so we need to stub it out
+  // # @opentelemetry/api is `require`d when running wrangler dev, so we need to stub it out
   // # IMPORTANT: we shim @opentelemetry/api to the throwing shim so that it will throw right away, this is so that we throw inside the
   // #            try block here: https://github.com/vercel/next.js/blob/9e8266a7/packages/next/src/server/lib/trace/tracer.ts#L27-L31
   // #            causing the code to require the 'next/dist/compiled/@opentelemetry/api' module instead (which properly works)

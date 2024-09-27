@@ -1,20 +1,18 @@
-import { Config } from "../config";
-import { build, Plugin } from "esbuild";
-import { existsSync, readFileSync } from "node:fs";
+import { Plugin, build } from "esbuild";
 import { cp, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-import { patchRequire } from "./patches/investigated/patch-require";
+import { existsSync, readFileSync } from "node:fs";
+import { Config } from "../config";
 import { copyPackageCliFiles } from "./patches/investigated/copy-package-cli-files";
-
-import { patchReadFile } from "./patches/to-investigate/patch-read-file";
-import { patchFindDir } from "./patches/to-investigate/patch-find-dir";
-import { inlineNextRequire } from "./patches/to-investigate/inline-next-require";
+import { fileURLToPath } from "node:url";
 import { inlineEvalManifest } from "./patches/to-investigate/inline-eval-manifest";
-import { patchWranglerDeps } from "./patches/to-investigate/wrangler-deps";
-import { updateWebpackChunksFile } from "./patches/investigated/update-webpack-chunks-file";
+import { inlineNextRequire } from "./patches/to-investigate/inline-next-require";
 import { patchCache } from "./patches/investigated/patch-cache";
+import { patchFindDir } from "./patches/to-investigate/patch-find-dir";
+import { patchReadFile } from "./patches/to-investigate/patch-read-file";
+import { patchRequire } from "./patches/investigated/patch-require";
+import { patchWranglerDeps } from "./patches/to-investigate/wrangler-deps";
+import path from "node:path";
+import { updateWebpackChunksFile } from "./patches/investigated/update-webpack-chunks-file";
 
 /** The dist directory of the Cloudflare adapter package */
 const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -177,10 +175,10 @@ function createFixRequiresESBuildPlugin(templateDir: string): Plugin {
     name: "replaceRelative",
     setup(build) {
       // Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
-      build.onResolve({ filter: /^\.\/require-hook$/ }, (args) => ({
+      build.onResolve({ filter: /^\.\/require-hook$/ }, () => ({
         path: path.join(templateDir, "shims", "empty.ts"),
       }));
-      build.onResolve({ filter: /\.\/lib\/node-fs-methods$/ }, (args) => ({
+      build.onResolve({ filter: /\.\/lib\/node-fs-methods$/ }, () => ({
         path: path.join(templateDir, "shims", "empty.ts"),
       }));
     },
