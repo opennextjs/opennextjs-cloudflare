@@ -177,10 +177,10 @@ function createFixRequiresESBuildPlugin(templateDir: string): Plugin {
     name: "replaceRelative",
     setup(build) {
       // Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
-      build.onResolve({ filter: /^\.\/require-hook$/ }, (args) => ({
+      build.onResolve({ filter: /^\.\/require-hook$/ }, () => ({
         path: path.join(templateDir, "shims", "empty.ts"),
       }));
-      build.onResolve({ filter: /\.\/lib\/node-fs-methods$/ }, (args) => ({
+      build.onResolve({ filter: /\.\/lib\/node-fs-methods$/ }, () => ({
         path: path.join(templateDir, "shims", "empty.ts"),
       }));
     },

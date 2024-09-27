@@ -76,7 +76,7 @@ export function getConfig(appDir: string, outputDir: string): Config {
 export function containsDotNextDir(folder: string): boolean {
   try {
     return statSync(path.join(folder, ".next")).isDirectory();
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -105,7 +105,9 @@ function findServerParentPath(parentPath: string): string | undefined {
     if (statSync(path.join(parentPath, ".next", "server")).isDirectory()) {
       return parentPath;
     }
-  } catch {}
+  } catch {
+    /* empty */
+  }
 
   const folders = readdirSync(parentPath);
 

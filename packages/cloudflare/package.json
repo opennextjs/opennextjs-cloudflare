@@ -5,6 +5,7 @@
   "scripts": {
     "build": "tsup",
     "build:watch": "tsup --watch src",
+    "lint": "eslint",
     "test": "vitest --run",
     "test:watch": "vitest"
   },
@@ -38,12 +39,16 @@
   "homepage": "https://github.com/opennextjs/opennextjs-cloudflare",
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
+    "@eslint/js": "catalog:",
     "@types/node": "catalog:",
     "esbuild": "catalog:",
+    "eslint": "catalog:",
     "glob": "catalog:",
+    "globals": "catalog:",
     "next": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
     "vitest": "catalog:"
   },
   "dependencies": {

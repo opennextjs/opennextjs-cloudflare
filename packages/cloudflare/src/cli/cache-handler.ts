@@ -25,7 +25,8 @@ export default class CfWorkersKvCacheHandler implements CacheHandler {
   async set(
     key: string,
     entry: IncrementalCacheValue | null,
-    ctx: {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _ctx: {
       revalidate?: number | false;
       fetchCache?: boolean;
       fetchUrl?: string;

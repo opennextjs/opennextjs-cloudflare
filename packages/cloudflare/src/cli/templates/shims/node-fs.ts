@@ -17,7 +17,7 @@ function existsSync(path: string) {
   return FILES.has(path);
 }
 
-async function readFile(path: string, options: unknown): Promise<any> {
+async function readFile(path: string, options: unknown): Promise<unknown> {
   console.log(
     "readFile",
     { path, options }
