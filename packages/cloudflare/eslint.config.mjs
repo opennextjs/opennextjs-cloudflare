@@ -1,6 +1,7 @@
 import globals from "globals";
 import pluginJs from "@eslint/js";
 import tseslint from "typescript-eslint";
+import eslintPluginUnicorn from 'eslint-plugin-unicorn';
 
 export default [
   {
@@ -10,13 +11,19 @@ export default [
     files: ["**/*.{js,mjs,cjs,ts}"],
   },
   {
-    languageOptions: { globals: globals.node },
+    languageOptions: {
+      globals: globals.node
+    },
   },
   pluginJs.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    plugins: {
+      unicorn: eslintPluginUnicorn,
+    },
     "rules": {
-      "@typescript-eslint/ban-ts-comment": "off"
+      "@typescript-eslint/ban-ts-comment": "off",
+      "unicorn/prefer-node-protocol": "error"
     }
   }
 ];

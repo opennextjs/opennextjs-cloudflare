@@ -43,6 +43,7 @@
     "@types/node": "catalog:",
     "esbuild": "catalog:",
     "eslint": "catalog:",
+    "eslint-plugin-unicorn": "^55.0.0",
     "glob": "catalog:",
     "globals": "catalog:",
     "next": "catalog:",
