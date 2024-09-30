@@ -11,7 +11,11 @@ import { execSync } from "node:child_process";
 export async function buildNextjsApp(nextAppDir: string): Promise<void> {
   const pm = await detect();
 
-  runNextBuildCommand(pm?.name ?? "npm", nextAppDir);
+  if (!pm) {
+    throw new Error("Fatal Error: package manager detection failed, aborting");
+  }
+
+  runNextBuildCommand(pm.name, nextAppDir);
 }
 
 // equivalent to: https://github.com/sst/open-next/blob/f61b0e94/packages/open-next/src/build.ts#L175-L186
