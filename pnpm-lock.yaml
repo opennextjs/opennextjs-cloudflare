@@ -185,6 +185,9 @@ importers:
         specifier: 'catalog:'
         version: 3.78.10(@cloudflare/workers-types@4.20240925.0)
     devDependencies:
+      '@opennextjs/cloudflare':
+        specifier: workspace:*
+        version: link:../../packages/cloudflare
       '@tailwindcss/container-queries':
         specifier: ^0.1.1
         version: 0.1.1(tailwindcss@3.4.11)
