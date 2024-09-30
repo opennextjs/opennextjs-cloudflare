@@ -48,6 +48,7 @@
     "glob": "catalog:",
     "globals": "catalog:",
     "next": "catalog:",
+    "package-manager-detector": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",
