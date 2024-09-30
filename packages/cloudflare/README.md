@@ -18,6 +18,8 @@ You can use [`create-next-app`](https://nextjs.org/docs/pages/api-reference/cli/
   pnpm add -D wrangler@latest @opennextjs/cloudflare
   # or
   yarn add -D wrangler@latest @opennextjs/cloudflare
+  # or
+  bun add -D wrangler@latest @opennextjs/cloudflare
   ```
 
 - add a `wrangler.toml` at the root of your project
@@ -44,6 +46,8 @@ You can enable Incremental Static Regeneration ([ISR](https://nextjs.org/docs/ap
   pnpm wrangler kv namespace create NEXT_CACHE_WORKERS_KV
   # or
   yarn wrangler kv namespace create NEXT_CACHE_WORKERS_KV
+  # or
+  bun wrangler kv namespace create NEXT_CACHE_WORKERS_KV
   ```
 
 - Paste the snippet to your `wrangler.toml`:
@@ -73,6 +77,8 @@ Run the following commands to preview the production build of your application l
   pnpm cloudflare
   # or
   yarn cloudflare
+  # or
+  bun cloudflare
   ```
 
 - Preview the app in Wrangler
@@ -83,6 +89,8 @@ Run the following commands to preview the production build of your application l
   pnpm wrangler dev
   # or
   yarn wrangler dev
+  # or
+  bun wrangler dev
   ```
 
 ## Deploy your app
@@ -97,4 +105,6 @@ Deploy your application to production with the following:
   pnpm cloudflare && pnpm wrangler deploy
   # or
   yarn cloudflare && yarn wrangler deploy
+  # or
+  bun cloudflare && bun wrangler deploy
   ```
