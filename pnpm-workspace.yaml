@@ -24,3 +24,4 @@ catalog:
   "globals": ^15.9.0
   "typescript-eslint": ^8.7.0
   "eslint-plugin-unicorn": ^55.0.0
+  "package-manager-detector": ^0.2.0

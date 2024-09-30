@@ -17,7 +17,7 @@ import { rm } from "node:fs/promises";
 export async function build(appDir: string, opts: BuildOptions): Promise<void> {
   if (!opts.skipBuild) {
     // Build the next app
-    buildNextjsApp(appDir);
+    await buildNextjsApp(appDir);
   }
 
   if (!containsDotNextDir(appDir)) {
