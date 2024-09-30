@@ -13,7 +13,13 @@ You can use [`create-next-app`](https://nextjs.org/docs/pages/api-reference/cli/
 - add the following `devDependencies` to the `package.json`:
 
   ```bash
+  npm add -D wrangler@latest @opennextjs/cloudflare
+  # or
   pnpm add -D wrangler@latest @opennextjs/cloudflare
+  # or
+  yarn add -D wrangler@latest @opennextjs/cloudflare
+  # or
+  bun add -D wrangler@latest @opennextjs/cloudflare
   ```
 
 - add a `wrangler.toml` at the root of your project
@@ -36,6 +42,12 @@ You can enable Incremental Static Regeneration ([ISR](https://nextjs.org/docs/ap
 
   ```bash
   npx wrangler kv namespace create NEXT_CACHE_WORKERS_KV
+  # or
+  pnpm wrangler kv namespace create NEXT_CACHE_WORKERS_KV
+  # or
+  yarn wrangler kv namespace create NEXT_CACHE_WORKERS_KV
+  # or
+  bun wrangler kv namespace create NEXT_CACHE_WORKERS_KV
   ```
 
 - Paste the snippet to your `wrangler.toml`:
@@ -60,13 +72,25 @@ Run the following commands to preview the production build of your application l
 - build the app and adapt it for Cloudflare
 
   ```bash
-  pnpx cloudflare
+  npx cloudflare
+  # or
+  pnpm cloudflare
+  # or
+  yarn cloudflare
+  # or
+  bun cloudflare
   ```
 
 - Preview the app in Wrangler
 
   ```bash
+  npx wrangler dev
+  # or
   pnpm wrangler dev
+  # or
+  yarn wrangler dev
+  # or
+  bun wrangler dev
   ```
 
 ## Deploy your app
@@ -76,9 +100,11 @@ Deploy your application to production with the following:
 - build the app and adapt it for Cloudflare
 
   ```bash
-  pnpx cloudflare
-  ```
-
-  ```bash
-  pnpm wrangler deploy
+  npx cloudflare && npx wrangler deploy
+  # or
+  pnpm cloudflare && pnpm wrangler deploy
+  # or
+  yarn cloudflare && yarn wrangler deploy
+  # or
+  bun cloudflare && bun wrangler deploy
   ```
