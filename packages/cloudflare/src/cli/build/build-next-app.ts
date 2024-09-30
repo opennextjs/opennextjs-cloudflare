@@ -1,4 +1,4 @@
-import { detect } from "package-manager-detector";
+import { type AgentName as PackageManager, detect } from "package-manager-detector";
 import { execSync } from "node:child_process";
 
 /**
@@ -19,7 +19,7 @@ export async function buildNextjsApp(nextAppDir: string): Promise<void> {
 }
 
 // equivalent to: https://github.com/sst/open-next/blob/f61b0e94/packages/open-next/src/build.ts#L175-L186
-function runNextBuildCommand(packager: "npm" | "pnpm" | "yarn" | "bun", nextAppDir: string) {
+function runNextBuildCommand(packager: PackageManager, nextAppDir: string) {
   const command = `${packager === "npm" ? "npx" : packager} next build`;
   execSync(command, {
     stdio: "inherit",
