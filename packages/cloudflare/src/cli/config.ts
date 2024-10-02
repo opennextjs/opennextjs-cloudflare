@@ -18,6 +18,8 @@ export type Config = {
     builderOutput: string;
     // Path to the app's `.next` directory (where `next build` saves the build output)
     dotNext: string;
+    // Path to the application standalone root directory
+    standaloneRoot: string;
     // Path to the application standalone directory (where `next build` saves the standalone app)
     standaloneApp: string;
     // Path to the `.next` directory specific to the standalone application
@@ -47,7 +49,8 @@ export type Config = {
 export function getConfig(appDir: string, outputDir: string): Config {
   const dotNext = path.join(outputDir, ".next");
   const appPath = getNextjsApplicationPath(dotNext).replace(/\/$/, "");
-  const standaloneApp = path.join(dotNext, "standalone", appPath);
+  const standaloneRoot = path.join(dotNext, "standalone");
+  const standaloneApp = path.join(standaloneRoot, appPath);
   const standaloneAppDotNext = path.join(standaloneApp, ".next");
   const standaloneAppServer = path.join(standaloneAppDotNext, "server");
 
@@ -59,6 +62,7 @@ export function getConfig(appDir: string, outputDir: string): Config {
       nextApp: appDir,
       builderOutput: outputDir,
       dotNext,
+      standaloneRoot,
       standaloneApp,
       standaloneAppDotNext,
       standaloneAppServer,
