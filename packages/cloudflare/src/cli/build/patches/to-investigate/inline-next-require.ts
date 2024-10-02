@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { Config } from "../../../cli/config";
+import { Config } from "../../../config";
 import path from "node:path";
 
 /**
