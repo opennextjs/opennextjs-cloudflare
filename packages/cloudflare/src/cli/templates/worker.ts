@@ -64,7 +64,7 @@ export default {
 
       const { req, res, webResponse } = getWrappedStreams(request, ctx);
 
-      ctx.waitUntil(requestHandler(new NodeNextRequest(req), new NodeNextResponse(res)));
+      ctx.waitUntil(requestHandler!(new NodeNextRequest(req), new NodeNextResponse(res)));
 
       return await webResponse();
     });
