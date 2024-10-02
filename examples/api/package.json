@@ -10,7 +10,7 @@
     "build:worker": "pnpm cloudflare",
     "dev:worker": "wrangler dev --port 8770",
     "preview:worker": "pnpm build:worker && pnpm dev:worker",
-    "e2e": "playwright test -c e2e/playwright.dev.config.ts",
+    "e2e": "playwright test -c e2e/playwright.config.ts",
     "e2e:dev": "playwright test -c e2e/playwright.dev.config.ts",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv"
   },
