@@ -1,10 +1,10 @@
-import NextNodeServer, { NodeRequestHandler } from "next/dist/server/next-server";
 import { NodeNextRequest, NodeNextResponse } from "next/dist/server/base-http/node";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { type CloudflareContext } from "../../api";
 import type { IncomingMessage } from "node:http";
 import { MockedResponse } from "next/dist/server/lib/mock-request";
 import type { NextConfig } from "next";
+import { type NodeRequestHandler } from "next/dist/server/next-server";
 import Stream from "node:stream";
 
 const NON_BODY_RESPONSES = new Set([101, 204, 205, 304]);
@@ -35,6 +35,12 @@ export default {
     return cloudflareContextALS.run({ env, ctx, cf: request.cf }, async () => {
       if (requestHandler == null) {
         globalThis.process.env = { ...globalThis.process.env, ...env };
+        // Note: "next/dist/server/next-server" is a cjs module so we have to `require` it not to confuse esbuild
+        //       (since esbuild can run in projects with different module resolutions)
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const NextNodeServer = require("next/dist/server/next-server")
+          .default as typeof import("next/dist/server/next-server").default;
+
         requestHandler = new NextNodeServer({
           conf: { ...nextConfig, env },
           customServer: false,
@@ -58,7 +64,7 @@ export default {
 
       const { req, res, webResponse } = getWrappedStreams(request, ctx);
 
-      ctx.waitUntil(requestHandler(new NodeNextRequest(req), new NodeNextResponse(res)));
+      ctx.waitUntil(requestHandler!(new NodeNextRequest(req), new NodeNextResponse(res)));
 
       return await webResponse();
     });
