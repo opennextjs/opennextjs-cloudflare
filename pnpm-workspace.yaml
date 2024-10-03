@@ -3,25 +3,24 @@ packages:
   - "examples/*"
 
 catalog:
-  "@cloudflare/workers-types": "^4.20240925.0"
+  "@cloudflare/workers-types": ^4.20240925.0
+  "@eslint/js": ^9.11.1
   "@playwright/test": 1.47.0
   "@types/node": ^22.2.0
   "@types/react": ^18
   "@types/react-dom": ^18
-  "eslint-config-next": 14.2.11
+  "esbuild": ^0.23.0
+  "eslint": ^9.11.1
+  "eslint-plugin-unicorn": ^55.0.0
+  "glob": ^11.0.0
+  "globals": ^15.9.0
   "next": 14.2.11
+  "package-manager-detector": ^0.2.0
   "react": ^18
   "react-dom": ^18
-  "typescript": ^5.5.4
-  "wrangler": ^3.78.10
-  "tsup": ^8.2.4
-  "glob": ^11.0.0
-  "esbuild": ^0.23.0
-  "vitest": ^2.1.1
   "ts-morph": ^23.0.0
-  "@eslint/js": ^9.11.1
-  "eslint": ^9.11.1
-  "globals": ^15.9.0
+  "tsup": ^8.2.4
+  "typescript": ^5.5.4
   "typescript-eslint": ^8.7.0
-  "eslint-plugin-unicorn": ^55.0.0
-  "package-manager-detector": ^0.2.0
+  "vitest": ^2.1.1
+  "wrangler": ^3.78.10
