@@ -3,8 +3,9 @@
   "version": "0.0.0.0",
   "private": true,
   "devDependencies": {
-    "prettier": "3.3.3",
-    "@playwright/test": "1.47.0"
+    "@playwright/test": "1.47.0",
+    "pkg-pr-new": "^0.0.29",
+    "prettier": "3.3.3"
   },
   "scripts": {
     "prettier:check": "prettier --check .",

@@ -1,8 +1,6 @@
 name: Publish prereleases
-on:
-  push:
-    branches:
-      - main
+
+on: pull_request
 
 jobs:
   release:
@@ -34,11 +32,5 @@ jobs:
       - name: Build
         run: pnpm -F cloudflare run build
 
-      - name: Update package.json version
-        run: node .github/utils/update-version.cjs cloudflare
-
       - name: Publish to NPM
-        run: pnpm publish -F cloudflare --no-git-checks
-        env:
-          NODE_ENV: "production"
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        run: pnpm exec pkg-pr-new publish --pnpm --compact './packages/cloudflare'
