@@ -33,4 +33,4 @@ jobs:
         run: pnpm -F cloudflare run build
 
       - name: Publish to NPM
-        run: pnpm exec pkg-pr-new publish --compact './packages/cloudflare'
+        run: pnpm exec pkg-pr-new publish --pnpm --compact './packages/cloudflare'
