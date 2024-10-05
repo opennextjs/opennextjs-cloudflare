@@ -1,25 +1,40 @@
 name: Playwright Tests
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+
 jobs:
   test:
-    timeout-minutes: 60
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          node-version: lts/*
+          version: 9
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
       - name: Install dependencies
-        run: npm install -g pnpm && pnpm install
-      - name: build all workers
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run install-playwright
+
+      - name: Build all workers
         run: pnpm -r build:worker
-      - name: Install Playwright browsers
-        run: pnpm run install-playwright
+
       - name: Run playwright tests
         run: pnpm e2e
+
       - name: Run playwright dev tests
         run: pnpm e2e:dev

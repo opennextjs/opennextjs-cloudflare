@@ -8,10 +8,12 @@
     "prettier": "3.3.3"
   },
   "scripts": {
-    "prettier:check": "prettier --check .",
+    "prettier": "prettier --check .",
     "prettier:fix": "prettier --write .",
-    "lint:check": "pnpm -r lint:check",
+    "lint": "pnpm -r lint:check",
     "lint:fix": "pnpm -r lint:fix",
+    "ts-check": "pnpm -r ts-check",
+    "test": "pnpm -r test",
     "code:checks": "pnpm lint:check && pnpm lint:check",
     "code:fixes": "pnpm prettier:fix && pnpm lint:fix",
     "postinstall": "pnpm --filter cloudflare build",

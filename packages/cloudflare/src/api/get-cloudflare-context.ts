@@ -16,7 +16,7 @@ export type CloudflareContext<
   /**
    * the request's [cf properties](https://developers.cloudflare.com/workers/runtime-apis/request/#the-cf-property-requestinitcfproperties)
    */
-  cf: CfProperties;
+  cf: CfProperties | undefined;
   /**
    * the current [execution context](https://developers.cloudflare.com/workers/runtime-apis/context)
    */

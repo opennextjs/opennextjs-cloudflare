@@ -1,4 +1,4 @@
-import fs, { writeFileSync } from "node:fs";
+import { readFileSync, statSync, writeFileSync } from "node:fs";
 import { Config } from "../../../config";
 import path from "node:path";
 
@@ -15,11 +15,12 @@ export function patchWranglerDeps(config: Config) {
   // "critters" = "./.next/standalone/node_modules/cf/templates/shims/empty.ts"
   const pagesRuntimeFile = path.join(distPath, "compiled", "next-server", "pages.runtime.prod.js");
 
-  const patchedPagesRuntime = fs
-    .readFileSync(pagesRuntimeFile, "utf-8")
-    .replace(`e.exports=require("critters")`, `e.exports={}`);
+  const patchedPagesRuntime = readFileSync(pagesRuntimeFile, "utf-8").replace(
+    `e.exports=require("critters")`,
+    `e.exports={}`
+  );
 
-  fs.writeFileSync(pagesRuntimeFile, patchedPagesRuntime);
+  writeFileSync(pagesRuntimeFile, patchedPagesRuntime);
 
   // Patch .next/standalone/node_modules/next/dist/server/lib/trace/tracer.js
   //
@@ -33,11 +34,12 @@ export function patchWranglerDeps(config: Config) {
   // #"@opentelemetry/api" = "./.next/standalone/node_modules/cf/templates/shims/throw.ts"
   const tracerFile = path.join(distPath, "server", "lib", "trace", "tracer.js");
 
-  const pacthedTracer = fs
-    .readFileSync(tracerFile, "utf-8")
-    .replaceAll(/\w+\s*=\s*require\([^/]*opentelemetry.*\)/g, `throw new Error("@opentelemetry/api")`);
+  const patchedTracer = readFileSync(tracerFile, "utf-8").replaceAll(
+    /\w+\s*=\s*require\([^/]*opentelemetry.*\)/g,
+    `throw new Error("@opentelemetry/api")`
+  );
 
-  writeFileSync(tracerFile, pacthedTracer);
+  writeFileSync(tracerFile, patchedTracer);
 }
 
 /**
@@ -56,7 +58,7 @@ function getDistPath(config: Config): string {
   for (const root of [config.paths.standaloneApp, config.paths.standaloneRoot]) {
     try {
       const distPath = path.join(root, "node_modules", "next", "dist");
-      if (fs.statSync(distPath).isDirectory()) return distPath;
+      if (statSync(distPath).isDirectory()) return distPath;
     } catch {
       /* empty */
     }
