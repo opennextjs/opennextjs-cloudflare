@@ -8,6 +8,7 @@ import { inlineEvalManifest } from "./patches/to-investigate/inline-eval-manifes
 import { inlineMiddlewareManifestRequire } from "./patches/to-investigate/inline-middleware-manifest-require";
 import { inlineNextRequire } from "./patches/to-investigate/inline-next-require";
 import { patchCache } from "./patches/investigated/patch-cache";
+import { patchExceptionBubbling } from "./patches/to-investigate/patch-exception-bubbling";
 import { patchFindDir } from "./patches/to-investigate/patch-find-dir";
 import { patchReadFile } from "./patches/to-investigate/patch-read-file";
 import { patchRequire } from "./patches/investigated/patch-require";
@@ -164,6 +165,7 @@ async function updateWorkerBundledCode(workerOutputFile: string, config: Config)
   patchedCode = inlineEvalManifest(patchedCode, config);
   patchedCode = patchCache(patchedCode, config);
   patchedCode = inlineMiddlewareManifestRequire(patchedCode, config);
+  patchedCode = patchExceptionBubbling(patchedCode);
 
   await writeFile(workerOutputFile, patchedCode);
 }
