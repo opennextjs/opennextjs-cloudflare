@@ -8,13 +8,13 @@
     "prettier": "3.3.3"
   },
   "scripts": {
-    "prettier": "prettier --check .",
+    "prettier:check": "prettier --check .",
     "prettier:fix": "prettier --write .",
-    "lint": "pnpm -r lint:check",
+    "lint:check": "pnpm -r lint:check",
     "lint:fix": "pnpm -r lint:fix",
-    "ts-check": "pnpm -r ts-check",
+    "ts:check": "pnpm -r ts-check",
     "test": "pnpm -r test",
-    "code:checks": "pnpm lint:check && pnpm lint:check",
+    "code:checks": "pnpm prettier:check && pnpm lint:check && pnpm ts:check",
     "code:fixes": "pnpm prettier:fix && pnpm lint:fix",
     "postinstall": "pnpm --filter cloudflare build",
     "install-playwright": "playwright install --with-deps",

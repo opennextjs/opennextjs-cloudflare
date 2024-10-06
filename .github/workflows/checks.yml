@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        script: [prettier, lint, ts-check, test]
+        script: [prettier:check, lint:check, ts:check, test]
     steps:
       - name: Check out code
         uses: actions/checkout@v4

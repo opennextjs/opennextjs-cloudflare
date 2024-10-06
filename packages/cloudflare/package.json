@@ -7,7 +7,7 @@
     "build:watch": "tsup --watch src",
     "lint:check": "eslint",
     "lint:fix": "eslint --fix",
-    "ts-check": "tsc --noEmit",
+    "ts:check": "tsc --noEmit",
     "test": "vitest --run",
     "test:watch": "vitest"
   },
