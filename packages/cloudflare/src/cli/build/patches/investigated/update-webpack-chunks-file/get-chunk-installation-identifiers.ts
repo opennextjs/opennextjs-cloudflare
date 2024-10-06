@@ -55,7 +55,7 @@ function getInstallChunkDeclaration(sourceFile: ts.SourceFile): ts.VariableDecla
 
       // the function we're looking for accesses its parameter three times, and it
       // accesses its `modules`, `ids` and `runtime` properties (in this order)
-      const parameterName = functionParameters[0].getText();
+      const parameterName = functionParameters[0]!.getText();
       const functionParameterAccessedProperties = arrowFunctionBodyBlock
         .getDescendantsOfKind(ts.SyntaxKind.PropertyAccessExpression)
         .filter(

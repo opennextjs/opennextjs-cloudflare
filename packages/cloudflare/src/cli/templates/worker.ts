@@ -1,10 +1,11 @@
+import type { ExportedHandler, Fetcher } from "@cloudflare/workers-types";
 import { NodeNextRequest, NodeNextResponse } from "next/dist/server/base-http/node";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { type CloudflareContext } from "../../api";
+import type { CloudflareContext } from "../../api";
 import type { IncomingMessage } from "node:http";
 import { MockedResponse } from "next/dist/server/lib/mock-request";
 import type { NextConfig } from "next";
-import { type NodeRequestHandler } from "next/dist/server/next-server";
+import type { NodeRequestHandler } from "next/dist/server/next-server";
 import Stream from "node:stream";
 
 const NON_BODY_RESPONSES = new Set([101, 204, 205, 304]);
@@ -30,8 +31,7 @@ const nextConfig: NextConfig = JSON.parse(process.env.__NEXT_PRIVATE_STANDALONE_
 let requestHandler: NodeRequestHandler | null = null;
 
 export default {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async fetch(request: Request & { cf: IncomingRequestCfProperties }, env: any, ctx: any) {
+  async fetch(request, env, ctx) {
     return cloudflareContextALS.run({ env, ctx, cf: request.cf }, async () => {
       if (requestHandler == null) {
         globalThis.process.env = { ...globalThis.process.env, ...env };
@@ -42,7 +42,7 @@ export default {
           .default as typeof import("next/dist/server/next-server").default;
 
         requestHandler = new NextNodeServer({
-          conf: { ...nextConfig, env },
+          conf: nextConfig,
           customServer: false,
           dev: false,
           dir: "",
@@ -58,18 +58,17 @@ export default {
         if (imageUrl.startsWith("/")) {
           return env.ASSETS.fetch(new URL(imageUrl, request.url));
         }
-        // @ts-ignore
-        return fetch(imageUrl, { cf: { cacheEverything: true } } as unknown);
+        return fetch(imageUrl, { cf: { cacheEverything: true } });
       }
 
       const { req, res, webResponse } = getWrappedStreams(request, ctx);
 
-      ctx.waitUntil(requestHandler!(new NodeNextRequest(req), new NodeNextResponse(res)));
+      ctx.waitUntil(Promise.resolve(requestHandler(new NodeNextRequest(req), new NodeNextResponse(res))));
 
       return await webResponse();
     });
   },
-};
+} as ExportedHandler<{ ASSETS: Fetcher }>;
 
 function getWrappedStreams(request: Request, ctx: ExecutionContext) {
   const url = new URL(request.url);

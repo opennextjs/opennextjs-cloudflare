@@ -1,12 +1,18 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@tsconfig/strictest/tsconfig.json",
   "compilerOptions": {
     "target": "ESNext",
     "module": "ESNext",
+    "lib": ["ESNext"],
     "moduleResolution": "Bundler",
-    "esModuleInterop": true,
+
+    "types": ["@cloudflare/workers-types"],
+
     "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "types": ["@cloudflare/workers-types"]
-  }
+    "noImplicitReturns": false,
+    "exactOptionalPropertyTypes": false
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["dist"]
 }

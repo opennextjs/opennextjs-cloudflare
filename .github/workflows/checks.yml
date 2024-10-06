@@ -1,19 +1,36 @@
 name: Code checks
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+
 jobs:
-  test:
-    timeout-minutes: 60
+  checks:
+    name: ${{ matrix.script }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        script: ["prettier:check", "lint:check", "ts:check", "test"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          node-version: lts/*
+          version: 9
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
       - name: Install dependencies
-        run: npm install -g pnpm && pnpm install
-      - name: Run code checks
-        run: pnpm code:checks
+        run: pnpm install --frozen-lockfile
+
+      - name: ${{ matrix.script }}
+        run: pnpm run ${{ matrix.script }}

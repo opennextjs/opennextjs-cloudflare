@@ -7,6 +7,7 @@
     "build:watch": "tsup --watch src",
     "lint:check": "eslint",
     "lint:fix": "eslint --fix",
+    "ts:check": "tsc --noEmit",
     "test": "vitest --run",
     "test:watch": "vitest"
   },
@@ -41,6 +42,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
     "@eslint/js": "catalog:",
+    "@tsconfig/strictest": "catalog:",
     "@types/node": "catalog:",
     "esbuild": "catalog:",
     "eslint": "catalog:",
