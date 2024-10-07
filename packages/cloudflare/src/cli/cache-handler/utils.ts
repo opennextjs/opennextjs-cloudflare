@@ -23,15 +23,15 @@ async function getAsset<T>(key: string, cb: (resp: Response) => T): Promise<Awai
 }
 
 export function getSeedBodyFile(key: string, suffix: string) {
-  return getAsset(`${key}${suffix}`, (resp) => resp.arrayBuffer() as Promise<Buffer>);
+  return getAsset(key + suffix, (resp) => resp.arrayBuffer() as Promise<Buffer>);
 }
 
 export function getSeedTextFile(key: string, suffix: string) {
-  return getAsset(`${key}${suffix}`, (resp) => resp.text());
+  return getAsset(key + suffix, (resp) => resp.text());
 }
 
 export function getSeedMetaFile(key: string) {
-  return getAsset(`${key}${NEXT_META_SUFFIX}`, (resp) => resp.json<PrerenderedRouteMeta>());
+  return getAsset(key + NEXT_META_SUFFIX, (resp) => resp.json<PrerenderedRouteMeta>());
 }
 
 export function parseCtx(ctx: Parameters<IncrementalCache["get"]>[1] = {}) {

@@ -5,4 +5,4 @@ export const NEXT_META_SUFFIX = ".meta";
 export const NEXT_BODY_SUFFIX = ".body";
 export const NEXT_HTML_SUFFIX = ".html";
 
-export const SEED_DATA_DIR = "_cf_seed_data";
+export const SEED_DATA_DIR = "cdn-cgi/_cf_seed_data";
