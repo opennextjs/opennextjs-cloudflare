@@ -38,7 +38,7 @@ export function copyPrerenderedRoutes(config: Config) {
 
     if (fullPath.endsWith(NEXT_META_SUFFIX)) {
       const data = JSON.parse(readFileSync(fullPath, "utf8"));
-      writeFileSync(destPath, JSON.stringify({ ...data, lastModified: config.timestamp }));
+      writeFileSync(destPath, JSON.stringify({ ...data, lastModified: config.buildTimestamp }));
     } else {
       copyFileSync(fullPath, destPath);
     }
