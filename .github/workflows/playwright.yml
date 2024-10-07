@@ -20,6 +20,9 @@ jobs:
       - name: Install Playwright
         run: pnpm run install-playwright
 
+      - name: Build the tool
+        run: pnpm build
+
       - name: Build all workers
         run: pnpm -r build:worker
 

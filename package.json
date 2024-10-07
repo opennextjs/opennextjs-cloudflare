@@ -3,6 +3,7 @@
   "version": "0.0.0.0",
   "private": true,
   "devDependencies": {
+    "@changesets/cli": "^2.27.9",
     "@playwright/test": "1.47.0",
     "pkg-pr-new": "^0.0.29",
     "prettier": "3.3.3"
@@ -16,9 +17,10 @@
     "test": "pnpm -r test",
     "code:checks": "pnpm prettier:check && pnpm lint:check && pnpm ts:check",
     "code:fixes": "pnpm prettier:fix && pnpm lint:fix",
-    "postinstall": "pnpm --filter cloudflare build",
     "install-playwright": "playwright install --with-deps",
-    "e2e": "pnpm -r e2e",
-    "e2e:dev": "pnpm -r e2e:dev"
+    "postinstall": "pnpm --filter cloudflare build",
+    "build": "pnpm --filter cloudflare build",
+    "e2e": "pnpm build && pnpm -r e2e",
+    "e2e:dev": "pnpm build && pnpm -r e2e:dev"
   }
 }
