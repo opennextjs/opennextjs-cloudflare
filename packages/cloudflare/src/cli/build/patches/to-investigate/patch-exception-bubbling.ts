@@ -7,5 +7,11 @@
 export function patchExceptionBubbling(code: string) {
   console.log("# patchExceptionBubbling");
 
-  return code.replace(/_nextBubbleNoFallback = "1"/, "_nextBubbleNoFallback = undefined");
+  const patchedCode = code.replace('_nextBubbleNoFallback = "1"', "_nextBubbleNoFallback = undefined");
+
+  if (patchedCode === code) {
+    throw new Error("Cache patch not applied");
+  }
+
+  return patchedCode;
 }

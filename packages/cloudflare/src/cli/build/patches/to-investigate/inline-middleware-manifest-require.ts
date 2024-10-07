@@ -15,5 +15,14 @@ export function inlineMiddlewareManifestRequire(code: string, config: Config) {
     ? JSON.parse(readFileSync(middlewareManifestPath, "utf-8"))
     : {};
 
-  return code.replace(/require\(this.middlewareManifestPath\)/, JSON.stringify(middlewareManifest));
+  const patchedCode = code.replace(
+    "require(this.middlewareManifestPath)",
+    JSON.stringify(middlewareManifest)
+  );
+
+  if (patchedCode === code) {
+    throw new Error("Cache patch not applied");
+  }
+
+  return patchedCode;
 }
