@@ -46,7 +46,7 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: "pnpm preview:worker --inspector-port 9330",
+    command: "pnpm preview:worker",
     url: "http://localhost:8770",
     reuseExistingServer: !process.env.CI,
   },
