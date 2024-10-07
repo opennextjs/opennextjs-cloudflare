@@ -3,6 +3,7 @@ import { cp, readFile, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { Config } from "../config";
 import { copyPackageCliFiles } from "./patches/investigated/copy-package-cli-files";
+import { copyPrerenderedRoutes } from "./utils";
 import { fileURLToPath } from "node:url";
 import { inlineEvalManifest } from "./patches/to-investigate/inline-eval-manifest";
 import { inlineMiddlewareManifestRequire } from "./patches/to-investigate/inline-middleware-manifest-require";
@@ -44,6 +45,9 @@ export async function buildWorker(config: Config): Promise<void> {
       recursive: true,
     });
   }
+
+  // Copy over prerendered assets (e.g. SSG routes)
+  copyPrerenderedRoutes(config);
 
   copyPackageCliFiles(packageDistDir, config);
 

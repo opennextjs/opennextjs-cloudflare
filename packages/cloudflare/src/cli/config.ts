@@ -11,6 +11,9 @@ const UserConfig = {
 };
 
 export type Config = {
+  // Timestamp for when the build was started
+  buildTimestamp: number;
+
   paths: {
     // Path to the next application
     nextApp: string;
@@ -58,6 +61,8 @@ export function getConfig(appDir: string, outputDir: string): Config {
   const internalPackage = path.join(nodeModules, ...PACKAGE_NAME.split("/"));
 
   return {
+    buildTimestamp: Date.now(),
+
     paths: {
       nextApp: appDir,
       builderOutput: outputDir,

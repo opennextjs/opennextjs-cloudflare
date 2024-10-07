@@ -2,7 +2,7 @@ import { cp } from "node:fs/promises";
 import { defineConfig } from "tsup";
 
 const cliConfig = defineConfig({
-  entry: ["src/cli/index.ts", "src/cli/cache-handler.ts"],
+  entry: ["src/cli/index.ts", "src/cli/cache-handler/index.ts"],
   outDir: "dist/cli",
   dts: false,
   format: ["esm"],

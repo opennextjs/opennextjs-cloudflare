@@ -7,12 +7,12 @@ import path from "node:path";
 export function patchCache(code: string, config: Config): string {
   console.log("# patchCache");
 
-  const cacheHandler = path.join(config.paths.internalPackage, "cli", "cache-handler.mjs");
+  const cacheHandler = path.join(config.paths.internalPackage, "cli", "cache-handler", "index.mjs");
 
   const patchedCode = code.replace(
     "const { cacheHandler } = this.nextConfig;",
     `const cacheHandler = null;
-CacheHandler = (await import('${cacheHandler}')).default;
+CacheHandler = (await import('${cacheHandler}')).OpenNextCacheHandler;
 CacheHandler.maybeKVNamespace = process.env["${config.cache.kvBindingName}"];
 `
   );
