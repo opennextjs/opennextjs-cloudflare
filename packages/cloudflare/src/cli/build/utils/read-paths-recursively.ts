@@ -11,12 +11,10 @@ export function readPathsRecursively(dir: string): string[] {
   try {
     const files = readdirSync(dir, { withFileTypes: true });
 
-    const paths = files.map((file) => {
+    return files.flatMap((file) => {
       const filePath = join(dir, file.name);
-      return file.isDirectory() ? readPathsRecursively(filePath) : [filePath];
+      return file.isDirectory() ? readPathsRecursively(filePath) : filePath;
     });
-
-    return paths.flat();
   } catch {
     return [];
   }
