@@ -19,32 +19,4 @@ The repository contains two directories:
 
 ### How to try out/develop in the repository
 
-Install the dependencies:
-
-```sh
-pnpm i
-```
-
-build the worker with:
-
-```sh
-pnpm --filter cloudflare build
-```
-
-or in watch mode with:
-
-```sh
-pnpm --filter cloudflare build:watch
-```
-
-build and preview the worker for the `api` application:
-
-```sh
-pnpm --filter api preview:worker
-```
-
-You can skip building the next app when it has not been modified:
-
-```sh
-SKIP_NEXT_APP_BUILD=true pnpm --filter api preview:worker
-```
+See the [CONTRIBUTING](./CONTRIBUTING.md) page for how to get started with this repository.
