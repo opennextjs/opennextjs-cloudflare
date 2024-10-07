@@ -5,7 +5,7 @@ import path from "node:path";
  * Install the cloudflare KV cache handler
  */
 export function patchCache(code: string, config: Config): string {
-  console.log("# patchCached");
+  console.log("# patchCache");
 
   const cacheHandler = path.join(config.paths.internalPackage, "cli", "cache-handler.mjs");
 

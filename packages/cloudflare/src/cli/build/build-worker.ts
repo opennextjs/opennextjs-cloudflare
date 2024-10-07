@@ -5,8 +5,10 @@ import { Config } from "../config";
 import { copyPackageCliFiles } from "./patches/investigated/copy-package-cli-files";
 import { fileURLToPath } from "node:url";
 import { inlineEvalManifest } from "./patches/to-investigate/inline-eval-manifest";
+import { inlineMiddlewareManifestRequire } from "./patches/to-investigate/inline-middleware-manifest-require";
 import { inlineNextRequire } from "./patches/to-investigate/inline-next-require";
 import { patchCache } from "./patches/investigated/patch-cache";
+import { patchExceptionBubbling } from "./patches/to-investigate/patch-exception-bubbling";
 import { patchFindDir } from "./patches/to-investigate/patch-find-dir";
 import { patchReadFile } from "./patches/to-investigate/patch-read-file";
 import { patchRequire } from "./patches/investigated/patch-require";
@@ -90,10 +92,6 @@ export async function buildWorker(config: Config): Promise<void> {
       // Note: we need the __non_webpack_require__ variable declared as it is used by next-server:
       // https://github.com/vercel/next.js/blob/be0c3283/packages/next/src/server/next-server.ts#L116-L119
       __non_webpack_require__: "require",
-      // The next.js server can run in minimal mode: https://github.com/vercel/next.js/blob/aa90fe9bb/packages/next/src/server/base-server.ts#L510-L511
-      // this avoids some extra (/problematic) `require` calls, such as here: https://github.com/vercel/next.js/blob/aa90fe9bb/packages/next/src/server/next-server.ts#L1259
-      // that's wht we enable it
-      "process.env.NEXT_PRIVATE_MINIMAL_MODE": "true",
       // Ask mhart if he can explain why the `define`s below are necessary
       "process.env.NEXT_RUNTIME": '"nodejs"',
       "process.env.NODE_ENV": '"production"',
@@ -166,6 +164,8 @@ async function updateWorkerBundledCode(workerOutputFile: string, config: Config)
   patchedCode = patchFindDir(patchedCode, config);
   patchedCode = inlineEvalManifest(patchedCode, config);
   patchedCode = patchCache(patchedCode, config);
+  patchedCode = inlineMiddlewareManifestRequire(patchedCode, config);
+  patchedCode = patchExceptionBubbling(patchedCode);
 
   await writeFile(workerOutputFile, patchedCode);
 }
