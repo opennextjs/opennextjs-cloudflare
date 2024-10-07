@@ -21,7 +21,7 @@ export function inlineMiddlewareManifestRequire(code: string, config: Config) {
   );
 
   if (patchedCode === code) {
-    throw new Error("Cache patch not applied");
+    throw new Error("Cache patch `inlineMiddlewareManifestRequire` not applied");
   }
 
   return patchedCode;

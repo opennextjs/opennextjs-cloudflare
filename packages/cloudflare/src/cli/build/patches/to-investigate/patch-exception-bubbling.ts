@@ -10,7 +10,7 @@ export function patchExceptionBubbling(code: string) {
   const patchedCode = code.replace('_nextBubbleNoFallback = "1"', "_nextBubbleNoFallback = undefined");
 
   if (patchedCode === code) {
-    throw new Error("Cache patch not applied");
+    throw new Error("Cache patch `patchExceptionBubbling` not applied");
   }
 
   return patchedCode;
