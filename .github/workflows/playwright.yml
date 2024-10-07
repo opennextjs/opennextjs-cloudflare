@@ -14,21 +14,14 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
+      - name: Install Dependencies
+        uses: ./.github/actions/install-dependencies
 
-      - name: Setup Node.js environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: "pnpm"
+      - name: Install Playwright
+        run: pnpm run install-playwright
 
-      - name: Install dependencies
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm run install-playwright
+      - name: Build the tool
+        run: pnpm build
 
       - name: Build all workers
         run: pnpm -r build:worker

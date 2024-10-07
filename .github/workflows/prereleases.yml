@@ -14,20 +14,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9.10.0
-
-      - name: Install Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: "pnpm"
-          registry-url: "https://registry.npmjs.org"
-
       - name: Install Dependencies
-        run: pnpm i --frozen-lockfile
+        uses: ./.github/actions/install-dependencies
 
       - name: Build
         run: pnpm -F cloudflare run build
