@@ -102,7 +102,7 @@ pnpm run code:checks
 Attempt to auto-fix any issues with the format, lint and type checks:
 
 ```sh
-pnpm run fix:checks
+pnpm run code:fixes
 ```
 
 ## Testing the code
