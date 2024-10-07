@@ -27,9 +27,6 @@ jobs:
       - name: Create Version PR or Publish to NPM
         id: changesets
         uses: changesets/action@v1
-        with:
-          version: node .github/utils/custom-changeset-version.mjs
-          publish: pnpm exec changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
