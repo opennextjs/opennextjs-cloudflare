@@ -1,4 +1,4 @@
-import { NEXT_META_SUFFIX, SEED_DATA_DIR } from "../../cache-handler";
+import { NEXT_META_SUFFIX, SEED_DATA_DIR } from "../../templates/cache-handler";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { Config } from "../../config";

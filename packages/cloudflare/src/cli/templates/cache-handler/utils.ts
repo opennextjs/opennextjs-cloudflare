@@ -1,4 +1,4 @@
-import { IncrementalCache } from "next/dist/server/lib/incremental-cache";
+import type { IncrementalCache } from "next/dist/server/lib/incremental-cache";
 import { NEXT_META_SUFFIX } from "./constants";
 
 type PrerenderedRouteMeta = {

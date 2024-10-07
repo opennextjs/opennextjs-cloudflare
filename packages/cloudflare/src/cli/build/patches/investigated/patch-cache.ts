@@ -1,24 +1,20 @@
-import { Config } from "../../../config";
-import path from "node:path";
+export const cacheHandlerFileName = "cache-handler.mjs";
 
 /**
  * Install the cloudflare KV cache handler
  */
-export function patchCache(code: string, config: Config): string {
+export function patchCache(code: string): string {
   console.log("# patchCache");
-
-  const cacheHandler = path.join(config.paths.internalPackage, "cli", "cache-handler", "index.mjs");
 
   const patchedCode = code.replace(
     "const { cacheHandler } = this.nextConfig;",
     `const cacheHandler = null;
-CacheHandler = (await import('${cacheHandler}')).OpenNextCacheHandler;
-CacheHandler.maybeKVNamespace = process.env["${config.cache.kvBindingName}"];
+CacheHandler = (await import('./${cacheHandlerFileName}')).OpenNextCacheHandler;
 `
   );
 
   if (patchedCode === code) {
-    throw new Error("Cache patch not applied");
+    throw new Error("Patch `patchCache` not applied");
   }
 
   return patchedCode;

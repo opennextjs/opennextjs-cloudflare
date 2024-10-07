@@ -1,4 +1,5 @@
 import { Plugin, build } from "esbuild";
+import { cacheHandlerFileName, patchCache } from "./patches/investigated/patch-cache";
 import { cp, readFile, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { Config } from "../config";
@@ -8,7 +9,6 @@ import { fileURLToPath } from "node:url";
 import { inlineEvalManifest } from "./patches/to-investigate/inline-eval-manifest";
 import { inlineMiddlewareManifestRequire } from "./patches/to-investigate/inline-middleware-manifest-require";
 import { inlineNextRequire } from "./patches/to-investigate/inline-next-require";
-import { patchCache } from "./patches/investigated/patch-cache";
 import { patchExceptionBubbling } from "./patches/to-investigate/patch-exception-bubbling";
 import { patchFindDir } from "./patches/to-investigate/patch-find-dir";
 import { patchReadFile } from "./patches/to-investigate/patch-read-file";
@@ -53,6 +53,9 @@ export async function buildWorker(config: Config): Promise<void> {
 
   const templateDir = path.join(config.paths.internalPackage, "cli", "templates");
 
+  const cacheHandlerEntrypoint = path.join(templateDir, "cache-handler", "index.ts");
+  const cacheHandlerOutputFile = path.join(config.paths.builderOutput, cacheHandlerFileName);
+
   const workerEntrypoint = path.join(templateDir, "worker.ts");
   const workerOutputFile = path.join(config.paths.builderOutput, "index.mjs");
 
@@ -65,6 +68,18 @@ export async function buildWorker(config: Config): Promise<void> {
 
   patchWranglerDeps(config);
   updateWebpackChunksFile(config);
+
+  await build({
+    entryPoints: [cacheHandlerEntrypoint],
+    bundle: true,
+    outfile: cacheHandlerOutputFile,
+    format: "esm",
+    target: "esnext",
+    minify: true,
+    define: {
+      "process.env.__OPENNEXT_KV_BINDING_NAME": `"${config.cache.kvBindingName}"`,
+    },
+  });
 
   await build({
     entryPoints: [workerEntrypoint],
@@ -167,7 +182,7 @@ async function updateWorkerBundledCode(workerOutputFile: string, config: Config)
   patchedCode = inlineNextRequire(patchedCode, config);
   patchedCode = patchFindDir(patchedCode, config);
   patchedCode = inlineEvalManifest(patchedCode, config);
-  patchedCode = patchCache(patchedCode, config);
+  patchedCode = patchCache(patchedCode);
   patchedCode = inlineMiddlewareManifestRequire(patchedCode, config);
   patchedCode = patchExceptionBubbling(patchedCode);
 
