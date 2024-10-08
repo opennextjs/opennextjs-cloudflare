@@ -51,9 +51,7 @@ export async function buildWorker(config: Config): Promise<void> {
 
   copyPackageCliFiles(packageDistDir, config);
 
-  const templateDir = path.join(config.paths.internalPackage, "cli", "templates");
-
-  const workerEntrypoint = path.join(templateDir, "worker.ts");
+  const workerEntrypoint = path.join(config.paths.internalTemplates, "worker.ts");
   const workerOutputFile = path.join(config.paths.builderOutput, "index.mjs");
 
   const nextConfigStr =
@@ -73,20 +71,20 @@ export async function buildWorker(config: Config): Promise<void> {
     format: "esm",
     target: "esnext",
     minify: false,
-    plugins: [createFixRequiresESBuildPlugin(templateDir)],
+    plugins: [createFixRequiresESBuildPlugin(config)],
     alias: {
       // Note: we apply an empty shim to next/dist/compiled/ws because it generates two `eval`s:
       //   eval("require")("bufferutil");
       //   eval("require")("utf-8-validate");
-      "next/dist/compiled/ws": path.join(templateDir, "shims", "empty.ts"),
+      "next/dist/compiled/ws": path.join(config.paths.internalTemplates, "shims", "empty.ts"),
       // Note: we apply an empty shim to next/dist/compiled/edge-runtime since (amongst others) it generated the following `eval`:
       //   eval(getModuleCode)(module, module.exports, throwingRequire, params.context, ...Object.values(params.scopedContext));
       //   which comes from https://github.com/vercel/edge-runtime/blob/6e96b55f/packages/primitives/src/primitives/load.js#L57-L63
       // QUESTION: Why did I encountered this but mhart didn't?
-      "next/dist/compiled/edge-runtime": path.join(templateDir, "shims", "empty.ts"),
+      "next/dist/compiled/edge-runtime": path.join(config.paths.internalTemplates, "shims", "empty.ts"),
       // `@next/env` is a library Next.js uses for loading dotenv files, for obvious reasons we need to stub it here
       // source: https://github.com/vercel/next.js/tree/0ac10d79720/packages/next-env
-      "@next/env": path.join(templateDir, "shims", "env.ts"),
+      "@next/env": path.join(config.paths.internalTemplates, "shims", "env.ts"),
     },
     define: {
       // config file used by Next.js, see: https://github.com/vercel/next.js/blob/68a7128/packages/next/src/build/utils.ts#L2137-L2139
@@ -167,23 +165,23 @@ async function updateWorkerBundledCode(workerOutputFile: string, config: Config)
   patchedCode = inlineNextRequire(patchedCode, config);
   patchedCode = patchFindDir(patchedCode, config);
   patchedCode = inlineEvalManifest(patchedCode, config);
-  patchedCode = patchCache(patchedCode, config);
+  patchedCode = await patchCache(patchedCode, config);
   patchedCode = inlineMiddlewareManifestRequire(patchedCode, config);
   patchedCode = patchExceptionBubbling(patchedCode);
 
   await writeFile(workerOutputFile, patchedCode);
 }
 
-function createFixRequiresESBuildPlugin(templateDir: string): Plugin {
+function createFixRequiresESBuildPlugin(config: Config): Plugin {
   return {
     name: "replaceRelative",
     setup(build) {
       // Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
       build.onResolve({ filter: /^\.\/require-hook$/ }, () => ({
-        path: path.join(templateDir, "shims", "empty.ts"),
+        path: path.join(config.paths.internalTemplates, "shims", "empty.ts"),
       }));
       build.onResolve({ filter: /\.\/lib\/node-fs-methods$/ }, () => ({
-        path: path.join(templateDir, "shims", "empty.ts"),
+        path: path.join(config.paths.internalTemplates, "shims", "empty.ts"),
       }));
     },
   };

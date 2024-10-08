@@ -10,10 +10,10 @@ import {
   RSC_PREFETCH_SUFFIX,
   RSC_SUFFIX,
   SEED_DATA_DIR,
-} from "./constants";
+} from "../../constants/incremental-cache";
 import { getSeedBodyFile, getSeedMetaFile, getSeedTextFile, parseCtx } from "./utils";
 import type { IncrementalCacheValue } from "next/dist/server/response-cache";
-import { KVNamespace } from "@cloudflare/workers-types";
+import type { KVNamespace } from "@cloudflare/workers-types";
 
 type CacheEntry = {
   lastModified: number;
@@ -21,11 +21,13 @@ type CacheEntry = {
 };
 
 export class OpenNextCacheHandler implements CacheHandler {
-  static maybeKVNamespace: KVNamespace | undefined = undefined;
+  protected kv: KVNamespace | undefined;
 
   protected debug: boolean = !!process.env.NEXT_PRIVATE_DEBUG_CACHE;
 
-  constructor(protected ctx: CacheHandlerContext) {}
+  constructor(protected ctx: CacheHandlerContext) {
+    this.kv = process.env[process.env.__OPENNEXT_KV_BINDING_NAME] as KVNamespace | undefined;
+  }
 
   async get(...args: Parameters<CacheHandler["get"]>): Promise<CacheHandlerValue | null> {
     const [key, _ctx] = args;
@@ -33,9 +35,9 @@ export class OpenNextCacheHandler implements CacheHandler {
 
     if (this.debug) console.log(`cache - get: ${key}, ${ctx?.kind}`);
 
-    if (OpenNextCacheHandler.maybeKVNamespace !== undefined) {
+    if (this.kv !== undefined) {
       try {
-        const value = await OpenNextCacheHandler.maybeKVNamespace.get<CacheEntry>(key, "json");
+        const value = await this.kv.get<CacheEntry>(key, "json");
         if (value) return value;
       } catch (e) {
         console.error(`Failed to get value for key = ${key}: ${e}`);
@@ -115,7 +117,7 @@ export class OpenNextCacheHandler implements CacheHandler {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [key, entry, _ctx] = args;
 
-    if (OpenNextCacheHandler.maybeKVNamespace === undefined) {
+    if (this.kv === undefined) {
       return;
     }
 
@@ -127,7 +129,7 @@ export class OpenNextCacheHandler implements CacheHandler {
     };
 
     try {
-      await OpenNextCacheHandler.maybeKVNamespace.put(key, JSON.stringify(data));
+      await this.kv.put(key, JSON.stringify(data));
     } catch (e) {
       console.error(`Failed to set value for key = ${key}: ${e}`);
     }
@@ -135,7 +137,7 @@ export class OpenNextCacheHandler implements CacheHandler {
 
   async revalidateTag(...args: Parameters<CacheHandler["revalidateTag"]>) {
     const [tags] = args;
-    if (OpenNextCacheHandler.maybeKVNamespace === undefined) {
+    if (this.kv === undefined) {
       return;
     }
 

@@ -2,7 +2,7 @@ import { cp } from "node:fs/promises";
 import { defineConfig } from "tsup";
 
 const cliConfig = defineConfig({
-  entry: ["src/cli/index.ts", "src/cli/cache-handler/index.ts"],
+  entry: ["src/cli/index.ts"],
   outDir: "dist/cli",
   dts: false,
   format: ["esm"],
@@ -10,6 +10,9 @@ const cliConfig = defineConfig({
   external: ["esbuild"],
   clean: true,
   onSuccess: async () => {
+    await cp(`${__dirname}/src/cli/constants`, `${__dirname}/dist/cli/constants`, {
+      recursive: true,
+    });
     await cp(`${__dirname}/src/cli/templates`, `${__dirname}/dist/cli/templates`, {
       recursive: true,
     });
