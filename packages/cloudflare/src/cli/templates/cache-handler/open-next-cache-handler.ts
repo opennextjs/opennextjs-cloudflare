@@ -10,7 +10,7 @@ import {
   RSC_PREFETCH_SUFFIX,
   RSC_SUFFIX,
   SEED_DATA_DIR,
-} from "./constants";
+} from "../../constants/incremental-cache";
 import { getSeedBodyFile, getSeedMetaFile, getSeedTextFile, parseCtx } from "./utils";
 import type { IncrementalCacheValue } from "next/dist/server/response-cache";
 import type { KVNamespace } from "@cloudflare/workers-types";

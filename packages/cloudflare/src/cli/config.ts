@@ -31,6 +31,8 @@ export type Config = {
     standaloneAppServer: string;
     // Package in the standalone node_modules
     internalPackage: string;
+    // Templates in the package in the standalone node_modules
+    internalTemplates: string;
   };
 
   cache: {
@@ -59,6 +61,7 @@ export function getConfig(appDir: string, outputDir: string): Config {
 
   const nodeModules = path.join(standaloneApp, "node_modules");
   const internalPackage = path.join(nodeModules, ...PACKAGE_NAME.split("/"));
+  const internalTemplates = path.join(internalPackage, "cli", "templates");
 
   return {
     buildTimestamp: Date.now(),
@@ -72,6 +75,7 @@ export function getConfig(appDir: string, outputDir: string): Config {
       standaloneAppDotNext,
       standaloneAppServer,
       internalPackage,
+      internalTemplates,
     },
 
     cache: {

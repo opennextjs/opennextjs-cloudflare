@@ -10,6 +10,9 @@ const cliConfig = defineConfig({
   external: ["esbuild"],
   clean: true,
   onSuccess: async () => {
+    await cp(`${__dirname}/src/cli/constants`, `${__dirname}/dist/cli/constants`, {
+      recursive: true,
+    });
     await cp(`${__dirname}/src/cli/templates`, `${__dirname}/dist/cli/templates`, {
       recursive: true,
     });
