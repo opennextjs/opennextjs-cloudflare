@@ -3,7 +3,15 @@ import { build } from "esbuild";
 import { join } from "node:path";
 
 /**
- * Install the cloudflare KV cache handler
+ * Sets up the OpenNext cache handler in a Next.js build.
+ *
+ * The cache handler used by Next.js is normally defined in the config file as a path. At runtime,
+ * Next.js would then do a dynamic require on a transformed version of the path to retrieve the
+ * cache handler and create a new instance of it.
+ *
+ * This is problematic in workerd due to the dynamic import of the file that is not known from
+ * build-time. Therefore, we have to manually override the default way that the cache handler is
+ * instantiated with a dynamic require that uses a string literal for the path.
  */
 export async function patchCache(code: string, config: Config): Promise<string> {
   console.log("# patchCache");

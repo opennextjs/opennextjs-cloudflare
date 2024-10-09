@@ -3,13 +3,6 @@ import { readdirSync, statSync } from "node:fs";
 
 const PACKAGE_NAME = "@opennextjs/cloudflare";
 
-// Make this user configurable
-const UserConfig = {
-  cache: {
-    bindingName: "NEXT_CACHE_WORKERS_KV",
-  },
-};
-
 export type Config = {
   // Timestamp for when the build was started
   buildTimestamp: number;
@@ -63,6 +56,8 @@ export function getConfig(appDir: string, outputDir: string): Config {
   const internalPackage = path.join(nodeModules, ...PACKAGE_NAME.split("/"));
   const internalTemplates = path.join(internalPackage, "cli", "templates");
 
+  process.env.__OPENNEXT_KV_BINDING_NAME ??= "NEXT_CACHE_WORKERS_KV";
+
   return {
     buildTimestamp: Date.now(),
 
@@ -79,7 +74,7 @@ export function getConfig(appDir: string, outputDir: string): Config {
     },
 
     cache: {
-      kvBindingName: UserConfig.cache.bindingName,
+      kvBindingName: process.env.__OPENNEXT_KV_BINDING_NAME,
     },
 
     internalPackageName: PACKAGE_NAME,
