@@ -16,11 +16,15 @@ export function patchReadFile(code: string, config: Config): string {
     `
   );
 
-  // Same as above, the next-server code loads the manifests with `readyFileSync` and we want to avoid that
+  // Same as above, the next-server code loads the manifests with `readFileSync` and we want to avoid that
   // (source: https://github.com/vercel/next.js/blob/15aeb92e/packages/next/src/server/load-manifest.ts#L34-L56)
   // Note: we could/should probably just patch readFileSync here or something!
-  const manifestJsons = globSync(path.join(config.paths.standaloneAppDotNext, "**", "*-manifest.json")).map(
-    (file) => file.replace(config.paths.standaloneApp + "/", "")
+  const manifestJsons = globSync(
+    path.join(config.paths.standaloneAppDotNext, "**", "*-manifest.json").replaceAll(path.sep, path.posix.sep)
+  ).map((file) =>
+    file
+      .replaceAll(path.sep, path.posix.sep)
+      .replace(config.paths.standaloneApp.replaceAll(path.sep, path.posix.sep) + path.posix.sep, "")
   );
   code = code.replace(
     /function loadManifest\((.+?), .+?\) {/,

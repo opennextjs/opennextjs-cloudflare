@@ -42,7 +42,7 @@ export function inlineNextRequire(code: string, config: Config) {
       .map(
         (module) => `
           if (pagePath.endsWith("${module}")) {
-            return require("${path.join(config.paths.standaloneApp, module)}");
+            return require(${JSON.stringify(path.join(config.paths.standaloneApp, module))});
           }
         `
       )

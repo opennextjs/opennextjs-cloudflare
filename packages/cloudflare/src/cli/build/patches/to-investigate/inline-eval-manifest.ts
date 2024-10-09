@@ -12,8 +12,14 @@ import path from "node:path";
 export function inlineEvalManifest(code: string, config: Config): string {
   console.log("# inlineEvalManifest");
   const manifestJss = globSync(
-    path.join(config.paths.standaloneAppDotNext, "**", "*_client-reference-manifest.js")
-  ).map((file) => file.replace(`${config.paths.standaloneApp}/`, ""));
+    path
+      .join(config.paths.standaloneAppDotNext, "**", "*_client-reference-manifest.js")
+      .replaceAll(path.sep, path.posix.sep)
+  ).map((file) =>
+    file
+      .replaceAll(path.sep, path.posix.sep)
+      .replace(config.paths.standaloneApp.replaceAll(path.sep, path.posix.sep) + path.posix.sep, "")
+  );
   return code.replace(
     /function evalManifest\((.+?), .+?\) {/,
     `$&
@@ -21,7 +27,7 @@ export function inlineEvalManifest(code: string, config: Config): string {
       .map(
         (manifestJs) => `
 			  if ($1.endsWith("${manifestJs}")) {
-				require("${path.join(config.paths.standaloneApp, manifestJs)}");
+				require(${JSON.stringify(path.join(config.paths.standaloneApp, manifestJs))});
 				return {
 				  __RSC_MANIFEST: {
 					"${manifestJs
