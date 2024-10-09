@@ -13,7 +13,9 @@ export function inlineEvalManifest(code: string, config: Config): string {
   console.log("# inlineEvalManifest");
   const manifestJss = globSync(
     path.join(config.paths.standaloneAppDotNext, "**", "*_client-reference-manifest.js").replaceAll("\\", "/")
-  ).map((file) => file.replaceAll("\\", "/").replace(`${config.paths.standaloneApp.replaceAll("\\", "/")}/`, ""));
+  ).map((file) =>
+    file.replaceAll("\\", "/").replace(`${config.paths.standaloneApp.replaceAll("\\", "/")}/`, "")
+  );
   return code.replace(
     /function evalManifest\((.+?), .+?\) {/,
     `$&
