@@ -24,7 +24,7 @@ export function patchReadFile(code: string, config: Config): string {
   ).map((file) =>
     file
       .replaceAll(path.sep, path.posix.sep)
-      .replace(config.paths.standaloneApp.replaceAll(path.sep, path.posix.sep) + "/", "")
+      .replace(config.paths.standaloneApp.replaceAll(path.sep, path.posix.sep) + path.posix.sep, "")
   );
   code = code.replace(
     /function loadManifest\((.+?), .+?\) {/,
