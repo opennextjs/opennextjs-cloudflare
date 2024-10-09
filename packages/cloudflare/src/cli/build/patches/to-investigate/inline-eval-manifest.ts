@@ -12,9 +12,13 @@ import path from "node:path";
 export function inlineEvalManifest(code: string, config: Config): string {
   console.log("# inlineEvalManifest");
   const manifestJss = globSync(
-    path.join(config.paths.standaloneAppDotNext, "**", "*_client-reference-manifest.js").replaceAll("\\", "/")
+    path
+      .join(config.paths.standaloneAppDotNext, "**", "*_client-reference-manifest.js")
+      .replaceAll(path.sep, path.posix.sep)
   ).map((file) =>
-    file.replaceAll("\\", "/").replace(`${config.paths.standaloneApp.replaceAll("\\", "/")}/`, "")
+    file
+      .replaceAll(path.sep, path.posix.sep)
+      .replace(`${config.paths.standaloneApp.replaceAll(path.sep, path.posix.sep)}/`, "")
   );
   return code.replace(
     /function evalManifest\((.+?), .+?\) {/,
