@@ -1,5 +1,15 @@
 # @opennextjs/cloudflare
 
+## 0.1.1
+
+### Patch Changes
+
+- 66ba0ff: enhancement: Expand missing next.config error message
+
+  Found out that next dev can run the a Next.js app without next.config but
+  if we are using the adapter we throw an error if we don't find the config.
+  So expanded the error for users.
+
 ## 0.1.0
 
 ### Minor Changes
