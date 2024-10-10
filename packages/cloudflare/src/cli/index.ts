@@ -10,7 +10,10 @@ console.log(`Building the Next.js app in the current folder (${nextAppDir})`);
 
 if (!["js", "cjs", "mjs", "ts"].some((ext) => existsSync(`./next.config.${ext}`))) {
   // TODO: we can add more validation later
-  throw new Error("Error: Not in a Next.js app project");
+  console.error(
+    "Error: next.config file not found. Please make sure you run the command inside a Next.js app"
+  );
+  process.exit(1);
 }
 
 const { skipBuild, outputDir } = getArgs();
