@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 export function getArgs(): {
   skipBuild: boolean;
   outputDir?: string;
-  noMinify?: boolean;
+  minify?: boolean;
 } {
   const {
     values: { skipBuild, output, noMinify },
@@ -36,7 +36,7 @@ export function getArgs(): {
   return {
     outputDir,
     skipBuild: skipBuild || ["1", "true", "yes"].includes(String(process.env.SKIP_NEXT_APP_BUILD)),
-    noMinify,
+    minify: !noMinify,
   };
 }
 

@@ -16,11 +16,11 @@ if (!["js", "cjs", "mjs", "ts"].some((ext) => existsSync(`./next.config.${ext}`)
   process.exit(1);
 }
 
-const { skipBuild, outputDir, noMinify } = getArgs();
+const { skipBuild, outputDir, minify } = getArgs();
 
 await build({
   sourceDir: nextAppDir,
   outputDir: resolve(outputDir ?? nextAppDir, ".worker-next"),
   skipBuild,
-  noMinify,
+  minify,
 });

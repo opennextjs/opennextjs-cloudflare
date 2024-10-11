@@ -66,7 +66,7 @@ export function getConfig(projectOpts: ProjectOptions): Config {
     build: {
       timestamp: Date.now(),
       skipNextBuild: !!projectOpts.skipBuild,
-      shouldMinify: !projectOpts.noMinify,
+      shouldMinify: !!projectOpts.minify,
     },
 
     paths: {
@@ -104,8 +104,8 @@ export type ProjectOptions = {
   outputDir: string;
   // Whether the Next.js build should be skipped (i.e. if the `.next` dir is already built)
   skipBuild?: boolean;
-  // Whether minification of the worker should be disabled
-  noMinify?: boolean;
+  // Whether minification of the worker should be enabled
+  minify?: boolean;
 };
 
 /**
