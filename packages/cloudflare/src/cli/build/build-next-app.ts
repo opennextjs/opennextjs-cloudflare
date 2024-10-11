@@ -18,7 +18,7 @@ export async function buildNextjsApp(nextAppDir: string): Promise<void> {
   runNextBuildCommand(pm.name, nextAppDir);
 }
 
-// equivalent to: https://github.com/sst/open-next/blob/f61b0e94/packages/open-next/src/build.ts#L175-L186
+// equivalent to: https://github.com/opennextjs/opennextjs-aws/blob/f61b0e94/packages/open-next/src/build.ts#L175-L186
 function runNextBuildCommand(packager: PackageManager, nextAppDir: string) {
   const command = `${packager === "npm" ? "npx" : packager} next build`;
   execSync(command, {
@@ -26,7 +26,7 @@ function runNextBuildCommand(packager: PackageManager, nextAppDir: string) {
     cwd: nextAppDir,
     env: {
       ...process.env,
-      // equivalent to: https://github.com/sst/open-next/blob/f61b0e9/packages/open-next/src/build.ts#L168-L173
+      // equivalent to: https://github.com/opennextjs/opennextjs-aws/blob/f61b0e9/packages/open-next/src/build.ts#L168-L173
       // Equivalent to setting `output: "standalone"` in next.config.js
       NEXT_PRIVATE_STANDALONE: "true",
     },

@@ -8,7 +8,7 @@ DONE:
 - figure out the assets
 - copy the template folders
 
-## Open next [example app](https://github.com/sst/open-next/tree/main/example)
+## Open next [example app](https://github.com/opennextjs/opennextjs-aws/tree/main/example)
 
 Changes:
 
