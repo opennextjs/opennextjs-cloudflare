@@ -3,11 +3,12 @@ import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 
 export function getArgs(): {
-  skipBuild: boolean;
+  skipNextBuild: boolean;
   outputDir?: string;
+  minify: boolean;
 } {
   const {
-    values: { skipBuild, output },
+    values: { skipBuild, output, noMinify },
   } = parseArgs({
     options: {
       skipBuild: {
@@ -18,6 +19,10 @@ export function getArgs(): {
       output: {
         type: "string",
         short: "o",
+      },
+      noMinify: {
+        type: "boolean",
+        default: false,
       },
     },
     allowPositionals: false,
@@ -31,7 +36,8 @@ export function getArgs(): {
 
   return {
     outputDir,
-    skipBuild: skipBuild || ["1", "true", "yes"].includes(String(process.env.SKIP_NEXT_APP_BUILD)),
+    skipNextBuild: skipBuild || ["1", "true", "yes"].includes(String(process.env.SKIP_NEXT_APP_BUILD)),
+    minify: !noMinify,
   };
 }
 
