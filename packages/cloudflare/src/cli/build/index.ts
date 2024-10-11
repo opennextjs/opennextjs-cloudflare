@@ -1,8 +1,9 @@
 import { containsDotNextDir, getConfig } from "../config";
+import type { ProjectOptions } from "../config";
 import { buildNextjsApp } from "./build-next-app";
 import { buildWorker } from "./build-worker";
 import { cpSync } from "node:fs";
-import path from "node:path";
+import { join } from "node:path";
 import { rm } from "node:fs/promises";
 
 /**
@@ -10,36 +11,28 @@ import { rm } from "node:fs/promises";
  *
  * It saves the output in a `.worker-next` directory
  *
- * @param appDir the directory of the Next.js app to build
- * @param opts.outputDir the directory where to save the output (defaults to the app's directory)
- * @param opts.skipBuild boolean indicating whether the Next.js build should be skipped (i.e. if the `.next` dir is already built)
+ * @param projectOpts The options for the project
  */
-export async function build(appDir: string, opts: BuildOptions): Promise<void> {
-  if (!opts.skipBuild) {
+export async function build(projectOpts: ProjectOptions): Promise<void> {
+  if (!projectOpts.skipBuild) {
     // Build the next app
-    await buildNextjsApp(appDir);
+    await buildNextjsApp(projectOpts.sourceDir);
   }
 
-  if (!containsDotNextDir(appDir)) {
-    throw new Error(`.next folder not found in ${appDir}`);
+  if (!containsDotNextDir(projectOpts.sourceDir)) {
+    throw new Error(`.next folder not found in ${projectOpts.sourceDir}`);
   }
 
-  // Create a clean output directory
-  const outputDir = path.resolve(opts.outputDir ?? appDir, ".worker-next");
-  await cleanDirectory(outputDir);
+  // Clean the output directory
+  await cleanDirectory(projectOpts.outputDir);
 
   // Copy the .next directory to the output directory so it can be mutated.
-  cpSync(path.join(appDir, ".next"), path.join(outputDir, ".next"), { recursive: true });
+  cpSync(join(projectOpts.sourceDir, ".next"), join(projectOpts.outputDir, ".next"), { recursive: true });
 
-  const config = getConfig(appDir, outputDir);
+  const config = getConfig(projectOpts);
 
   await buildWorker(config);
 }
-
-type BuildOptions = {
-  skipBuild: boolean;
-  outputDir?: string;
-};
 
 async function cleanDirectory(path: string): Promise<void> {
   return await rm(path, { recursive: true, force: true });
