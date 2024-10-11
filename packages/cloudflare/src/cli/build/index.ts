@@ -14,7 +14,7 @@ import { rm } from "node:fs/promises";
  * @param projectOpts The options for the project
  */
 export async function build(projectOpts: ProjectOptions): Promise<void> {
-  if (!projectOpts.skipBuild) {
+  if (!projectOpts.skipNextBuild) {
     // Build the next app
     await buildNextjsApp(projectOpts.sourceDir);
   }
