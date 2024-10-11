@@ -15,7 +15,7 @@ export type Config = {
     // Timestamp for when the build was started
     timestamp: number;
     // Whether to skip building the Next.js app or not
-    shouldSkip: boolean;
+    skipNextBuild: boolean;
   };
 
   paths: {
@@ -50,14 +50,11 @@ export type Config = {
 /**
  * Computes the configuration.
  *
- * @param opts.sourceDir Next app root folder
- * @param opts.outputDir The directory where to save the output (defaults to the app's directory)
- * @param opts.skipBuild Whether the Next.js build should be skipped (i.e. if the `.next` dir is already built)
- *
+ * @param projectOpts The options for the project
  * @returns The configuration, see `Config`
  */
-export function getConfig(opts: ProjectOptions): Config {
-  const dotNext = path.join(opts.outputDir, ".next");
+export function getConfig(projectOpts: ProjectOptions): Config {
+  const dotNext = path.join(projectOpts.outputDir, ".next");
   const appPath = getNextjsApplicationPath(dotNext).replace(/\/$/, "");
   const standaloneRoot = path.join(dotNext, "standalone");
   const standaloneApp = path.join(standaloneRoot, appPath);
@@ -71,12 +68,12 @@ export function getConfig(opts: ProjectOptions): Config {
   return {
     build: {
       timestamp: Date.now(),
-      shouldSkip: !!opts.skipBuild,
+      skipNextBuild: !!projectOpts.skipBuild,
     },
 
     paths: {
-      sourceDir: opts.sourceDir,
-      outputDir: opts.outputDir,
+      sourceDir: projectOpts.sourceDir,
+      outputDir: projectOpts.outputDir,
       dotNext,
       standaloneRoot,
       standaloneApp,
@@ -103,8 +100,11 @@ export function containsDotNextDir(folder: string): boolean {
 }
 
 export type ProjectOptions = {
+  // Next app root folder
   sourceDir: string;
+  // The directory to save the output to (defaults to the app's directory)
   outputDir: string;
+  // Whether the Next.js build should be skipped (i.e. if the `.next` dir is already built)
   skipBuild?: boolean;
 };
 

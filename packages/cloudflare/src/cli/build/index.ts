@@ -11,25 +11,25 @@ import { rm } from "node:fs/promises";
  *
  * It saves the output in a `.worker-next` directory
  *
- * @param opts The options for the project
+ * @param projectOpts The options for the project
  */
-export async function build(opts: ProjectOptions): Promise<void> {
-  if (!opts.skipBuild) {
+export async function build(projectOpts: ProjectOptions): Promise<void> {
+  if (!projectOpts.skipBuild) {
     // Build the next app
-    await buildNextjsApp(opts.sourceDir);
+    await buildNextjsApp(projectOpts.sourceDir);
   }
 
-  if (!containsDotNextDir(opts.sourceDir)) {
-    throw new Error(`.next folder not found in ${opts.sourceDir}`);
+  if (!containsDotNextDir(projectOpts.sourceDir)) {
+    throw new Error(`.next folder not found in ${projectOpts.sourceDir}`);
   }
 
   // Clean the output directory
-  await cleanDirectory(opts.outputDir);
+  await cleanDirectory(projectOpts.outputDir);
 
   // Copy the .next directory to the output directory so it can be mutated.
-  cpSync(join(opts.sourceDir, ".next"), join(opts.outputDir, ".next"), { recursive: true });
+  cpSync(join(projectOpts.sourceDir, ".next"), join(projectOpts.outputDir, ".next"), { recursive: true });
 
-  const config = getConfig(opts);
+  const config = getConfig(projectOpts);
 
   await buildWorker(config);
 }
