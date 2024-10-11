@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 0.2.0
+
+### Minor Changes
+
+- 6acf0fd: feat: cli arg to disable minification
+
+  The cache handler currently forces minification. There is now a CLI arg to disable minification for the build. At the moment, this only applies to the cache handler but may be used for other parts of the build in the future when minification is introduced to them. By default, minification is enabled, but can be disabled by passing `--noMinify`.
+
 ## 0.1.1
 
 ### Patch Changes
