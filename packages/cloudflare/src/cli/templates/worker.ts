@@ -7,6 +7,7 @@ import { MockedResponse } from "next/dist/server/lib/mock-request";
 import type { NextConfig } from "next";
 import type { NodeRequestHandler } from "next/dist/server/next-server";
 import Stream from "node:stream";
+import { createALSProxy } from "./utils";
 
 const NON_BODY_RESPONSES = new Set([101, 204, 205, 304]);
 
@@ -14,16 +15,7 @@ const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
 
 // Note: this symbol needs to be kept in sync with the one defined in `src/api/get-cloudflare-context.ts`
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-(globalThis as any)[Symbol.for("__cloudflare-context__")] = new Proxy(
-  {},
-  {
-    ownKeys: () => Reflect.ownKeys(cloudflareContextALS.getStore()!),
-    getOwnPropertyDescriptor: (_, ...args) =>
-      Reflect.getOwnPropertyDescriptor(cloudflareContextALS.getStore()!, ...args),
-    get: (_, property) => Reflect.get(cloudflareContextALS.getStore()!, property),
-    set: (_, property, value) => Reflect.set(cloudflareContextALS.getStore()!, property, value),
-  }
-);
+(globalThis as any)[Symbol.for("__cloudflare-context__")] = createALSProxy(cloudflareContextALS);
 
 // Injected at build time
 const nextConfig: NextConfig = JSON.parse(process.env.__NEXT_PRIVATE_STANDALONE_CONFIG ?? "{}");
