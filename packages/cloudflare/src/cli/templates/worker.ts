@@ -7,6 +7,7 @@ import { MockedResponse } from "next/dist/server/lib/mock-request";
 import type { NextConfig } from "next";
 import type { NodeRequestHandler } from "next/dist/server/next-server";
 import Stream from "node:stream";
+import type { __ApiPreviewProps } from "next/dist/server/api-utils";
 
 const NON_BODY_RESPONSES = new Set([101, 204, 205, 304]);
 
@@ -27,6 +28,9 @@ const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
 
 // Injected at build time
 const nextConfig: NextConfig = JSON.parse(process.env.__NEXT_PRIVATE_STANDALONE_CONFIG ?? "{}");
+const nextPreviewConfig: __ApiPreviewProps = JSON.parse(
+  process.env.__NEXT_PRERENDER_MANIFEST_PREVIEW_CONFIG ?? "{}"
+);
 
 let requestHandler: NodeRequestHandler | null = null;
 
@@ -34,7 +38,14 @@ export default {
   async fetch(request, env, ctx) {
     return cloudflareContextALS.run({ env, ctx, cf: request.cf }, async () => {
       if (requestHandler == null) {
-        globalThis.process.env = { ...globalThis.process.env, ...env };
+        globalThis.process.env = {
+          __NEXT_PREVIEW_MODE_ID: nextPreviewConfig.previewModeId,
+          __NEXT_PREVIEW_MODE_ENCRYPTION_KEY: nextPreviewConfig.previewModeEncryptionKey,
+          __NEXT_PREVIEW_MODE_SIGNING_KEY: nextPreviewConfig.previewModeSigningKey,
+          ...globalThis.process.env,
+          ...env,
+        };
+
         // Note: "next/dist/server/next-server" is a cjs module so we have to `require` it not to confuse esbuild
         //       (since esbuild can run in projects with different module resolutions)
         // eslint-disable-next-line @typescript-eslint/no-require-imports

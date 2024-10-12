@@ -1,9 +1,9 @@
 import { Plugin, build } from "esbuild";
+import { copyPrerenderedRoutes, getPrerenderManifest } from "./utils";
 import { cp, readFile, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { Config } from "../config";
 import { copyPackageCliFiles } from "./patches/investigated/copy-package-cli-files";
-import { copyPrerenderedRoutes } from "./utils";
 import { fileURLToPath } from "node:url";
 import { inlineEvalManifest } from "./patches/to-investigate/inline-eval-manifest";
 import { inlineMiddlewareManifestRequire } from "./patches/to-investigate/inline-middleware-manifest-require";
@@ -46,8 +46,10 @@ export async function buildWorker(config: Config): Promise<void> {
     });
   }
 
+  const prerenderManifest = getPrerenderManifest(config);
+
   // Copy over prerendered assets (e.g. SSG routes)
-  copyPrerenderedRoutes(config);
+  copyPrerenderedRoutes(config, prerenderManifest);
 
   copyPackageCliFiles(packageDistDir, config);
 
@@ -98,6 +100,12 @@ export async function buildWorker(config: Config): Promise<void> {
       "process.env.NEXT_RUNTIME": '"nodejs"',
       "process.env.NODE_ENV": '"production"',
       "process.env.NEXT_MINIMAL": "true",
+      ...(prerenderManifest?.preview && {
+        // Used for Next.js Draft Mode internal variables - https://nextjs.org/docs/app/building-your-application/configuring/draft-mode
+        "process.env.__NEXT_PRERENDER_MANIFEST_PREVIEW_CONFIG": JSON.stringify(
+          JSON.stringify(prerenderManifest.preview)
+        ),
+      }),
     },
     // We need to set platform to node so that esbuild doesn't complain about the node imports
     platform: "node",
