@@ -47,6 +47,7 @@ export async function buildWorker(config: Config): Promise<void> {
   }
 
   const prerenderManifest = getPrerenderManifest(config);
+
   // Copy over prerendered assets (e.g. SSG routes)
   copyPrerenderedRoutes(config, prerenderManifest);
 
@@ -99,6 +100,12 @@ export async function buildWorker(config: Config): Promise<void> {
       "process.env.NEXT_RUNTIME": '"nodejs"',
       "process.env.NODE_ENV": '"production"',
       "process.env.NEXT_MINIMAL": "true",
+      ...(prerenderManifest?.preview && {
+        // Used for Next.js Draft Mode internal variables - https://nextjs.org/docs/app/building-your-application/configuring/draft-mode
+        "process.env.__NEXT_PRERENDER_MANIFEST_PREVIEW_CONFIG": JSON.stringify(
+          JSON.stringify(prerenderManifest.preview)
+        ),
+      }),
     },
     // We need to set platform to node so that esbuild doesn't complain about the node imports
     platform: "node",

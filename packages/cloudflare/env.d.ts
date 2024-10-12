@@ -6,6 +6,7 @@ declare global {
       SKIP_NEXT_APP_BUILD?: string;
       NEXT_PRIVATE_DEBUG_CACHE?: string;
       __OPENNEXT_KV_BINDING_NAME: string;
+      __NEXT_PRERENDER_MANIFEST_PREVIEW_CONFIG?: string;
       [key: string]: string | Fetcher;
     }
   }
