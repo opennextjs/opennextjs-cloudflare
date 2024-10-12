@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { IncomingMessage } from "node:http";
 import Stream from "node:stream";
+import { createALSProxy } from "./utils";
 
 import type { ExportedHandler, Fetcher } from "@cloudflare/workers-types";
 import type { NextConfig } from "next";
@@ -16,16 +17,7 @@ const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
 
 // Note: this symbol needs to be kept in sync with the one defined in `src/api/get-cloudflare-context.ts`
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-(globalThis as any)[Symbol.for("__cloudflare-context__")] = new Proxy(
-  {},
-  {
-    ownKeys: () => Reflect.ownKeys(cloudflareContextALS.getStore()!),
-    getOwnPropertyDescriptor: (_, ...args) =>
-      Reflect.getOwnPropertyDescriptor(cloudflareContextALS.getStore()!, ...args),
-    get: (_, property) => Reflect.get(cloudflareContextALS.getStore()!, property),
-    set: (_, property, value) => Reflect.set(cloudflareContextALS.getStore()!, property, value),
-  }
-);
+(globalThis as any)[Symbol.for("__cloudflare-context__")] = createALSProxy(cloudflareContextALS);
 
 // Injected at build time
 const nextConfig: NextConfig = JSON.parse(process.env.__NEXT_PRIVATE_STANDALONE_CONFIG ?? "{}");
