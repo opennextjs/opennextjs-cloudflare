@@ -1,9 +1,9 @@
 import { Plugin, build } from "esbuild";
+import { copyPrerenderedRoutes, getPrerenderManifest } from "./utils";
 import { cp, readFile, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { Config } from "../config";
 import { copyPackageCliFiles } from "./patches/investigated/copy-package-cli-files";
-import { copyPrerenderedRoutes } from "./utils";
 import { fileURLToPath } from "node:url";
 import { inlineEvalManifest } from "./patches/to-investigate/inline-eval-manifest";
 import { inlineMiddlewareManifestRequire } from "./patches/to-investigate/inline-middleware-manifest-require";
@@ -46,8 +46,9 @@ export async function buildWorker(config: Config): Promise<void> {
     });
   }
 
+  const prerenderManifest = getPrerenderManifest(config);
   // Copy over prerendered assets (e.g. SSG routes)
-  copyPrerenderedRoutes(config);
+  copyPrerenderedRoutes(config, prerenderManifest);
 
   copyPackageCliFiles(packageDistDir, config);
 

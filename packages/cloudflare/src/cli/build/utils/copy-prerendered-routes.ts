@@ -1,8 +1,8 @@
 import { NEXT_META_SUFFIX, SEED_DATA_DIR } from "../../constants/incremental-cache";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { Config } from "../../config";
-import type { PrerenderManifest } from "next/dist/build";
+import type { Config } from "../../config";
+import type { PrerenderManifest } from "./get-prerender-manifest";
 import { readPathsRecursively } from "./read-paths-recursively";
 
 /**
@@ -13,19 +13,15 @@ import { readPathsRecursively } from "./read-paths-recursively";
  * the incremental cache to determine whether an entry is _fresh_ or not.
  *
  * @param config Build config.
+ * @param manifest Prerender manifest.
  */
-export function copyPrerenderedRoutes(config: Config) {
+export function copyPrerenderedRoutes(config: Config, manifest: PrerenderManifest | null) {
   console.log("# copyPrerenderedRoutes");
 
   const serverAppDirPath = join(config.paths.standaloneAppServer, "app");
-  const prerenderManifestPath = join(config.paths.standaloneAppDotNext, "prerender-manifest.json");
   const outputPath = join(config.paths.outputDir, "assets", SEED_DATA_DIR);
 
-  const prerenderManifest: PrerenderManifest = existsSync(prerenderManifestPath)
-    ? JSON.parse(readFileSync(prerenderManifestPath, "utf8"))
-    : {};
-  const prerenderedRoutes = Object.keys(prerenderManifest.routes);
-
+  const prerenderedRoutes = Object.keys(manifest?.routes ?? {});
   const prerenderedAssets = readPathsRecursively(serverAppDirPath)
     .map((fullPath) => ({ fullPath, relativePath: fullPath.replace(serverAppDirPath, "") }))
     .filter(({ relativePath }) =>
