@@ -2,6 +2,7 @@
 import { build } from "./build";
 import { existsSync } from "node:fs";
 import { getArgs } from "./args";
+import { getConfig } from "./config";
 import { resolve } from "node:path";
 
 const nextAppDir = resolve(".");
@@ -18,9 +19,11 @@ if (!["js", "cjs", "mjs", "ts"].some((ext) => existsSync(`./next.config.${ext}`)
 
 const { skipNextBuild, outputDir, minify } = getArgs();
 
-await build({
+const config = getConfig({
   sourceDir: nextAppDir,
   outputDir: resolve(outputDir ?? nextAppDir, ".worker-next"),
   skipNextBuild,
   minify,
 });
+
+await build(config);

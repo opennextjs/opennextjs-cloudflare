@@ -1,7 +1,7 @@
-import { containsDotNextDir, getConfig } from "../config";
-import type { ProjectOptions } from "../config";
+import type { Config } from "../config";
 import { buildNextjsApp } from "./build-next-app";
 import { buildWorker } from "./build-worker";
+import { containsDotNextDir } from "../config";
 import { cpSync } from "node:fs";
 import { join } from "node:path";
 import { rm } from "node:fs/promises";
@@ -11,25 +11,23 @@ import { rm } from "node:fs/promises";
  *
  * It saves the output in a `.worker-next` directory
  *
- * @param projectOpts The options for the project
+ * @param config Build config
  */
-export async function build(projectOpts: ProjectOptions): Promise<void> {
-  if (!projectOpts.skipNextBuild) {
+export async function build(config: Config): Promise<void> {
+  if (!config.build.skipNextBuild) {
     // Build the next app
-    await buildNextjsApp(projectOpts.sourceDir);
+    await buildNextjsApp(config.paths.sourceDir);
   }
 
-  if (!containsDotNextDir(projectOpts.sourceDir)) {
-    throw new Error(`.next folder not found in ${projectOpts.sourceDir}`);
+  if (!containsDotNextDir(config.paths.sourceDir)) {
+    throw new Error(`.next folder not found in ${config.paths.sourceDir}`);
   }
 
   // Clean the output directory
-  await cleanDirectory(projectOpts.outputDir);
+  await cleanDirectory(config.paths.outputDir);
 
   // Copy the .next directory to the output directory so it can be mutated.
-  cpSync(join(projectOpts.sourceDir, ".next"), join(projectOpts.outputDir, ".next"), { recursive: true });
-
-  const config = getConfig(projectOpts);
+  cpSync(join(config.paths.sourceDir, ".next"), join(config.paths.outputDir, ".next"), { recursive: true });
 
   await buildWorker(config);
 }
