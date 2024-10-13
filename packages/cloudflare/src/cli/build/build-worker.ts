@@ -1,5 +1,6 @@
 import { Plugin, build } from "esbuild";
 import { cp, readFile, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import { Config } from "../config";
 import { copyPackageCliFiles } from "./patches/investigated/copy-package-cli-files";
@@ -14,11 +15,10 @@ import { patchFindDir } from "./patches/to-investigate/patch-find-dir";
 import { patchReadFile } from "./patches/to-investigate/patch-read-file";
 import { patchRequire } from "./patches/investigated/patch-require";
 import { patchWranglerDeps } from "./patches/to-investigate/wrangler-deps";
-import path from "node:path";
 import { updateWebpackChunksFile } from "./patches/investigated/update-webpack-chunks-file";
 
 /** The dist directory of the Cloudflare adapter package */
-const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+const packageDistDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
  * Using the Next.js build output in the `.next` directory builds a workerd compatible output
@@ -30,18 +30,14 @@ export async function buildWorker(config: Config): Promise<void> {
   console.log(`\x1b[35m⚙️ Copying files...\n\x1b[0m`);
 
   // Copy over client-side generated files
-  await cp(
-    path.join(config.paths.dotNext, "static"),
-    path.join(config.paths.outputDir, "assets", "_next", "static"),
-    {
-      recursive: true,
-    }
-  );
+  await cp(join(config.paths.dotNext, "static"), join(config.paths.outputDir, "assets", "_next", "static"), {
+    recursive: true,
+  });
 
   // Copy over any static files (e.g. images) from the source project
-  const publicDir = path.join(config.paths.sourceDir, "public");
+  const publicDir = join(config.paths.sourceDir, "public");
   if (existsSync(publicDir)) {
-    await cp(publicDir, path.join(config.paths.outputDir, "assets"), {
+    await cp(publicDir, join(config.paths.outputDir, "assets"), {
       recursive: true,
     });
   }
@@ -51,11 +47,11 @@ export async function buildWorker(config: Config): Promise<void> {
 
   copyPackageCliFiles(packageDistDir, config);
 
-  const workerEntrypoint = path.join(config.paths.internalTemplates, "worker.ts");
-  const workerOutputFile = path.join(config.paths.outputDir, "index.mjs");
+  const workerEntrypoint = join(config.paths.internalTemplates, "worker.ts");
+  const workerOutputFile = join(config.paths.outputDir, "index.mjs");
 
   const nextConfigStr =
-    readFileSync(path.join(config.paths.standaloneApp, "/server.js"), "utf8")?.match(
+    readFileSync(join(config.paths.standaloneApp, "/server.js"), "utf8")?.match(
       /const nextConfig = ({.+?})\n/
     )?.[1] ?? {};
 
@@ -76,15 +72,15 @@ export async function buildWorker(config: Config): Promise<void> {
       // Note: we apply an empty shim to next/dist/compiled/ws because it generates two `eval`s:
       //   eval("require")("bufferutil");
       //   eval("require")("utf-8-validate");
-      "next/dist/compiled/ws": path.join(config.paths.internalTemplates, "shims", "empty.ts"),
+      "next/dist/compiled/ws": join(config.paths.internalTemplates, "shims", "empty.ts"),
       // Note: we apply an empty shim to next/dist/compiled/edge-runtime since (amongst others) it generated the following `eval`:
       //   eval(getModuleCode)(module, module.exports, throwingRequire, params.context, ...Object.values(params.scopedContext));
       //   which comes from https://github.com/vercel/edge-runtime/blob/6e96b55f/packages/primitives/src/primitives/load.js#L57-L63
       // QUESTION: Why did I encountered this but mhart didn't?
-      "next/dist/compiled/edge-runtime": path.join(config.paths.internalTemplates, "shims", "empty.ts"),
+      "next/dist/compiled/edge-runtime": join(config.paths.internalTemplates, "shims", "empty.ts"),
       // `@next/env` is a library Next.js uses for loading dotenv files, for obvious reasons we need to stub it here
       // source: https://github.com/vercel/next.js/tree/0ac10d79720/packages/next-env
-      "@next/env": path.join(config.paths.internalTemplates, "shims", "env.ts"),
+      "@next/env": join(config.paths.internalTemplates, "shims", "env.ts"),
     },
     define: {
       // config file used by Next.js, see: https://github.com/vercel/next.js/blob/68a7128/packages/next/src/build/utils.ts#L2137-L2139
@@ -178,10 +174,10 @@ function createFixRequiresESBuildPlugin(config: Config): Plugin {
     setup(build) {
       // Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
       build.onResolve({ filter: /^\.\/require-hook$/ }, () => ({
-        path: path.join(config.paths.internalTemplates, "shims", "empty.ts"),
+        path: join(config.paths.internalTemplates, "shims", "empty.ts"),
       }));
       build.onResolve({ filter: /\.\/lib\/node-fs-methods$/ }, () => ({
-        path: path.join(config.paths.internalTemplates, "shims", "empty.ts"),
+        path: join(config.paths.internalTemplates, "shims", "empty.ts"),
       }));
     },
   };
