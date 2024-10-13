@@ -1,6 +1,6 @@
+import { join, posix } from "node:path";
 import { Config } from "../../../config";
 import { globSync } from "glob";
-import path from "node:path";
 import { normalizePath } from "../../utils";
 import { readFileSync } from "node:fs";
 
@@ -13,7 +13,7 @@ export function patchReadFile(code: string, config: Config): string {
   code = code.replace(
     "getBuildId() {",
     `getBuildId() {
-      return ${JSON.stringify(readFileSync(path.join(config.paths.standaloneAppDotNext, "BUILD_ID"), "utf-8"))};
+      return ${JSON.stringify(readFileSync(join(config.paths.standaloneAppDotNext, "BUILD_ID"), "utf-8"))};
     `
   );
 
@@ -21,10 +21,8 @@ export function patchReadFile(code: string, config: Config): string {
   // (source: https://github.com/vercel/next.js/blob/15aeb92e/packages/next/src/server/load-manifest.ts#L34-L56)
   // Note: we could/should probably just patch readFileSync here or something!
   const manifestJsons = globSync(
-    normalizePath(path.join(config.paths.standaloneAppDotNext, "**", "*-manifest.json"))
-  ).map((file) =>
-    normalizePath(file).replace(normalizePath(config.paths.standaloneApp) + path.posix.sep, "")
-  );
+    normalizePath(join(config.paths.standaloneAppDotNext, "**", "*-manifest.json"))
+  ).map((file) => normalizePath(file).replace(normalizePath(config.paths.standaloneApp) + posix.sep, ""));
   code = code.replace(
     /function loadManifest\((.+?), .+?\) {/,
     `$&
@@ -32,7 +30,7 @@ export function patchReadFile(code: string, config: Config): string {
       .map(
         (manifestJson) => `
           if ($1.endsWith("${manifestJson}")) {
-            return ${readFileSync(path.join(config.paths.standaloneApp, manifestJson), "utf-8")};
+            return ${readFileSync(join(config.paths.standaloneApp, manifestJson), "utf-8")};
           }
         `
       )

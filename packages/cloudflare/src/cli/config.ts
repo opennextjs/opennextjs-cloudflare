@@ -1,4 +1,4 @@
-import path, { relative } from "node:path";
+import { join, relative } from "node:path";
 import { readdirSync, statSync } from "node:fs";
 
 const PACKAGE_NAME = "@opennextjs/cloudflare";
@@ -49,16 +49,16 @@ export type Config = {
  * @returns The configuration, see `Config`
  */
 export function getConfig(projectOpts: ProjectOptions): Config {
-  const dotNext = path.join(projectOpts.outputDir, ".next");
+  const dotNext = join(projectOpts.outputDir, ".next");
   const appPath = getNextjsApplicationPath(dotNext).replace(/\/$/, "");
-  const standaloneRoot = path.join(dotNext, "standalone");
-  const standaloneApp = path.join(standaloneRoot, appPath);
-  const standaloneAppDotNext = path.join(standaloneApp, ".next");
-  const standaloneAppServer = path.join(standaloneAppDotNext, "server");
+  const standaloneRoot = join(dotNext, "standalone");
+  const standaloneApp = join(standaloneRoot, appPath);
+  const standaloneAppDotNext = join(standaloneApp, ".next");
+  const standaloneAppServer = join(standaloneAppDotNext, "server");
 
-  const nodeModules = path.join(standaloneApp, "node_modules");
-  const internalPackage = path.join(nodeModules, ...PACKAGE_NAME.split("/"));
-  const internalTemplates = path.join(internalPackage, "cli", "templates");
+  const nodeModules = join(standaloneApp, "node_modules");
+  const internalPackage = join(nodeModules, ...PACKAGE_NAME.split("/"));
+  const internalTemplates = join(internalPackage, "cli", "templates");
 
   process.env.__OPENNEXT_KV_BINDING_NAME ??= "NEXT_CACHE_WORKERS_KV";
 
@@ -91,7 +91,7 @@ export function getConfig(projectOpts: ProjectOptions): Config {
 
 export function containsDotNextDir(folder: string): boolean {
   try {
-    return statSync(path.join(folder, ".next")).isDirectory();
+    return statSync(join(folder, ".next")).isDirectory();
   } catch {
     return false;
   }
@@ -124,12 +124,12 @@ function getNextjsApplicationPath(dotNextDir: string): string {
     throw new Error(`Unexpected Error: no \`.next/server\` folder could be found in \`${serverPath}\``);
   }
 
-  return relative(path.join(dotNextDir, "standalone"), serverPath);
+  return relative(join(dotNextDir, "standalone"), serverPath);
 }
 
 function findServerParentPath(parentPath: string): string | undefined {
   try {
-    if (statSync(path.join(parentPath, ".next", "server")).isDirectory()) {
+    if (statSync(join(parentPath, ".next", "server")).isDirectory()) {
       return parentPath;
     }
   } catch {
@@ -139,8 +139,8 @@ function findServerParentPath(parentPath: string): string | undefined {
   const folders = readdirSync(parentPath);
 
   for (const folder of folders) {
-    const subFolder = path.join(parentPath, folder);
-    if (statSync(path.join(parentPath, folder)).isDirectory()) {
+    const subFolder = join(parentPath, folder);
+    if (statSync(join(parentPath, folder)).isDirectory()) {
       const dirServerPath = findServerParentPath(subFolder);
       if (dirServerPath) {
         return dirServerPath;

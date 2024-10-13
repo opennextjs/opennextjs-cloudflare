@@ -1,6 +1,6 @@
 import { Config } from "../../../config";
 import { existsSync } from "node:fs";
-import path from "node:path";
+import { join } from "node:path";
 
 /**
  * Here we patch `findDir` so that the next server can detect whether the `app` or `pages` directory exists
@@ -15,10 +15,10 @@ export function patchFindDir(code: string, config: Config): string {
     `function findDir(dir, name) {
 			if (dir.endsWith(".next/server")) {
 			if (name === "app") {
-			  return ${existsSync(`${path.join(config.paths.standaloneAppServer, "app")}`)};
+			  return ${existsSync(`${join(config.paths.standaloneAppServer, "app")}`)};
 	    }
 			if (name === "pages") {
-			  return ${existsSync(`${path.join(config.paths.standaloneAppServer, "pages")}`)};
+			  return ${existsSync(`${join(config.paths.standaloneAppServer, "pages")}`)};
 	    }
 		}
 		throw new Error("Unknown findDir call: " + dir + " " + name);
