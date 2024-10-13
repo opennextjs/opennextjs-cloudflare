@@ -1,6 +1,7 @@
 import { Config } from "../../../config";
 import { globSync } from "glob";
 import path from "node:path";
+import { normalizePath } from "../../utils";
 
 /**
  * `evalManifest` relies on readFileSync so we need to patch the function so that it instead returns the content of the manifest files
@@ -12,13 +13,9 @@ import path from "node:path";
 export function inlineEvalManifest(code: string, config: Config): string {
   console.log("# inlineEvalManifest");
   const manifestJss = globSync(
-    path
-      .join(config.paths.standaloneAppDotNext, "**", "*_client-reference-manifest.js")
-      .replaceAll(path.sep, path.posix.sep)
+    normalizePath(path.join(config.paths.standaloneAppDotNext, "**", "*_client-reference-manifest.js"))
   ).map((file) =>
-    file
-      .replaceAll(path.sep, path.posix.sep)
-      .replace(config.paths.standaloneApp.replaceAll(path.sep, path.posix.sep) + path.posix.sep, "")
+    normalizePath(file).replace(normalizePath(config.paths.standaloneApp) + path.posix.sep, "")
   );
   return code.replace(
     /function evalManifest\((.+?), .+?\) {/,

@@ -1,6 +1,7 @@
 import { Config } from "../../../config";
 import { globSync } from "glob";
 import path from "node:path";
+import { normalizePath } from "../../utils";
 import { readFileSync } from "node:fs";
 
 export function patchReadFile(code: string, config: Config): string {
@@ -20,11 +21,9 @@ export function patchReadFile(code: string, config: Config): string {
   // (source: https://github.com/vercel/next.js/blob/15aeb92e/packages/next/src/server/load-manifest.ts#L34-L56)
   // Note: we could/should probably just patch readFileSync here or something!
   const manifestJsons = globSync(
-    path.join(config.paths.standaloneAppDotNext, "**", "*-manifest.json").replaceAll(path.sep, path.posix.sep)
+    normalizePath(path.join(config.paths.standaloneAppDotNext, "**", "*-manifest.json"))
   ).map((file) =>
-    file
-      .replaceAll(path.sep, path.posix.sep)
-      .replace(config.paths.standaloneApp.replaceAll(path.sep, path.posix.sep) + path.posix.sep, "")
+    normalizePath(file).replace(normalizePath(config.paths.standaloneApp) + path.posix.sep, "")
   );
   code = code.replace(
     /function loadManifest\((.+?), .+?\) {/,
