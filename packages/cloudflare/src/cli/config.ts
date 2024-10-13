@@ -27,8 +27,6 @@ export type Config = {
       root: string;
       // Path to the OpenNext static assets directory
       assets: string;
-      // Path to the app's `.next` directory in the OpenNext output directory
-      dotNext: string;
       // Path to the application standalone root directory
       standaloneRoot: string;
       // Path to the application standalone directory (where `next build` saves the standalone app)
@@ -62,10 +60,9 @@ export type Config = {
  */
 export function getConfig(projectOpts: ProjectOptions): Config {
   const sourceDirDotNext = join(projectOpts.sourceDir, ".next");
-
-  const dotNext = join(projectOpts.outputDir, ".next");
   const appPath = getNextjsApplicationPath(sourceDirDotNext).replace(/\/$/, "");
-  const standaloneRoot = join(dotNext, "standalone");
+
+  const standaloneRoot = join(projectOpts.outputDir, ".next", "standalone");
   const standaloneApp = join(standaloneRoot, appPath);
   const standaloneAppDotNext = join(standaloneApp, ".next");
   const standaloneAppServer = join(standaloneAppDotNext, "server");
@@ -92,7 +89,6 @@ export function getConfig(projectOpts: ProjectOptions): Config {
       output: {
         root: projectOpts.outputDir,
         assets: join(projectOpts.outputDir, "assets"),
-        dotNext,
         standaloneRoot,
         standaloneApp,
         standaloneAppDotNext,

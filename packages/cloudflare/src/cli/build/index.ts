@@ -3,7 +3,6 @@ import { buildNextjsApp } from "./build-next-app";
 import { buildWorker } from "./build-worker";
 import { containsDotNextDir } from "../config";
 import { cpSync } from "node:fs";
-import { join } from "node:path";
 import { rm } from "node:fs/promises";
 
 /**
@@ -26,8 +25,8 @@ export async function build(config: Config): Promise<void> {
   // Clean the output directory
   await cleanDirectory(config.paths.output.root);
 
-  // Copy the .next directory to the output directory so it can be mutated.
-  cpSync(join(config.paths.source.root, ".next"), join(config.paths.output.root, ".next"), {
+  // Copy the .next/standalone directory to the output directory so it can be mutated.
+  cpSync(config.paths.source.standaloneRoot, config.paths.output.standaloneRoot, {
     recursive: true,
   });
 
