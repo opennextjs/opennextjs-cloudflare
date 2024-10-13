@@ -16,18 +16,20 @@ import { rm } from "node:fs/promises";
 export async function build(config: Config): Promise<void> {
   if (!config.build.skipNextBuild) {
     // Build the next app
-    await buildNextjsApp(config.paths.sourceDir);
+    await buildNextjsApp(config.paths.source.root);
   }
 
-  if (!containsDotNextDir(config.paths.sourceDir)) {
-    throw new Error(`.next folder not found in ${config.paths.sourceDir}`);
+  if (!containsDotNextDir(config.paths.source.root)) {
+    throw new Error(`.next folder not found in ${config.paths.source.root}`);
   }
 
   // Clean the output directory
-  await cleanDirectory(config.paths.outputDir);
+  await cleanDirectory(config.paths.output.root);
 
   // Copy the .next directory to the output directory so it can be mutated.
-  cpSync(join(config.paths.sourceDir, ".next"), join(config.paths.outputDir, ".next"), { recursive: true });
+  cpSync(join(config.paths.source.root, ".next"), join(config.paths.output.root, ".next"), {
+    recursive: true,
+  });
 
   await buildWorker(config);
 }

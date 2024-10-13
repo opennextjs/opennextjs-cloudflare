@@ -8,7 +8,7 @@ import { join } from "node:path";
 export function copyPackageCliFiles(packageDistDir: string, config: Config) {
   console.log("# copyPackageTemplateFiles");
   const sourceDir = join(packageDistDir, "cli");
-  const destinationDir = join(config.paths.internalPackage, "cli");
+  const destinationDir = join(config.paths.internal.package, "cli");
 
   cpSync(sourceDir, destinationDir, { recursive: true });
 }
