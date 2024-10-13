@@ -27,8 +27,12 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
   // Clean the output directory
   await cleanDirectory(projectOpts.outputDir);
 
-  // Copy the .next directory to the output directory so it can be mutated.
-  cpSync(join(projectOpts.sourceDir, ".next"), join(projectOpts.outputDir, ".next"), { recursive: true });
+  // Copy the .next/standalone directory to the output directory so it can be mutated.
+  cpSync(
+    join(projectOpts.sourceDir, ".next", "standalone"),
+    join(projectOpts.outputDir, ".next", "standalone"),
+    { recursive: true }
+  );
 
   const config = getConfig(projectOpts);
 
