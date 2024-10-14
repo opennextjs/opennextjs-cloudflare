@@ -1,7 +1,7 @@
 {
   "name": "@opennextjs/cloudflare",
   "description": "Cloudflare builder for next apps",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "scripts": {
     "build": "tsup",
     "build:watch": "tsup --watch src",

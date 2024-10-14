@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 0.2.1
+
+### Patch Changes
+
+- 5bceecc: example: Add vercel blog starter
+
+  Update the examples with vercel blog starter and adapt it to run on cf workers
+
 ## 0.2.0
 
 ### Minor Changes
