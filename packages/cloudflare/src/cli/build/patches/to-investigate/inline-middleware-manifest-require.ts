@@ -9,7 +9,7 @@ import { join } from "node:path";
 export function inlineMiddlewareManifestRequire(code: string, config: Config) {
   console.log("# inlineMiddlewareManifestRequire");
 
-  const middlewareManifestPath = join(config.paths.standaloneAppServer, "middleware-manifest.json");
+  const middlewareManifestPath = join(config.paths.output.standaloneAppServer, "middleware-manifest.json");
 
   const middlewareManifest = existsSync(middlewareManifestPath)
     ? JSON.parse(readFileSync(middlewareManifestPath, "utf-8"))
