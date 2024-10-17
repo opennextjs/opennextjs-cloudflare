@@ -64,7 +64,7 @@ export function getConfig(projectOpts: ProjectOptions): Config {
   const sourceDirDotNext = join(projectOpts.sourceDir, ".next");
 
   const dotNext = join(projectOpts.outputDir, ".next");
-  const appPath = getNextjsApplicationPath(sourceDirDotNext).replace(/\/$/, "");
+  const appPath = getNextjsApplicationPath(dotNext).replace(/\/$/, "");
   const standaloneRoot = join(dotNext, "standalone");
   const standaloneApp = join(standaloneRoot, appPath);
   const standaloneAppDotNext = join(standaloneApp, ".next");
