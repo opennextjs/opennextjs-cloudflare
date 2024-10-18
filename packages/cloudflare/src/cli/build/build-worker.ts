@@ -32,16 +32,14 @@ export async function buildWorker(config: Config): Promise<void> {
   console.log(`\x1b[35m⚙️ Copying files...\n\x1b[0m`);
 
   // Copy over client-side generated files
-  await cp(join(config.paths.dotNext, "static"), join(config.paths.outputDir, "assets", "_next", "static"), {
+  await cp(join(config.paths.source.dotNext, "static"), join(config.paths.output.assets, "_next", "static"), {
     recursive: true,
   });
 
   // Copy over any static files (e.g. images) from the source project
-  const publicDir = join(config.paths.sourceDir, "public");
+  const publicDir = join(config.paths.source.root, "public");
   if (existsSync(publicDir)) {
-    await cp(publicDir, join(config.paths.outputDir, "assets"), {
-      recursive: true,
-    });
+    await cp(publicDir, config.paths.output.assets, { recursive: true });
   }
 
   // Copy over prerendered assets (e.g. SSG routes)
@@ -49,11 +47,11 @@ export async function buildWorker(config: Config): Promise<void> {
 
   copyPackageCliFiles(packageDistDir, config);
 
-  const workerEntrypoint = join(config.paths.internalTemplates, "worker.ts");
-  const workerOutputFile = join(config.paths.outputDir, "index.mjs");
+  const workerEntrypoint = join(config.paths.internal.templates, "worker.ts");
+  const workerOutputFile = join(config.paths.output.root, "index.mjs");
 
   const nextConfigStr =
-    readFileSync(join(config.paths.standaloneApp, "/server.js"), "utf8")?.match(
+    readFileSync(join(config.paths.output.standaloneApp, "/server.js"), "utf8")?.match(
       /const nextConfig = ({.+?})\n/
     )?.[1] ?? {};
 
@@ -74,15 +72,15 @@ export async function buildWorker(config: Config): Promise<void> {
       // Note: we apply an empty shim to next/dist/compiled/ws because it generates two `eval`s:
       //   eval("require")("bufferutil");
       //   eval("require")("utf-8-validate");
-      "next/dist/compiled/ws": join(config.paths.internalTemplates, "shims", "empty.ts"),
+      "next/dist/compiled/ws": join(config.paths.internal.templates, "shims", "empty.ts"),
       // Note: we apply an empty shim to next/dist/compiled/edge-runtime since (amongst others) it generated the following `eval`:
       //   eval(getModuleCode)(module, module.exports, throwingRequire, params.context, ...Object.values(params.scopedContext));
       //   which comes from https://github.com/vercel/edge-runtime/blob/6e96b55f/packages/primitives/src/primitives/load.js#L57-L63
       // QUESTION: Why did I encountered this but mhart didn't?
-      "next/dist/compiled/edge-runtime": join(config.paths.internalTemplates, "shims", "empty.ts"),
+      "next/dist/compiled/edge-runtime": join(config.paths.internal.templates, "shims", "empty.ts"),
       // `@next/env` is a library Next.js uses for loading dotenv files, for obvious reasons we need to stub it here
       // source: https://github.com/vercel/next.js/tree/0ac10d79720/packages/next-env
-      "@next/env": join(config.paths.internalTemplates, "shims", "env.ts"),
+      "@next/env": join(config.paths.internal.templates, "shims", "env.ts"),
     },
     define: {
       // config file used by Next.js, see: https://github.com/vercel/next.js/blob/68a7128/packages/next/src/build/utils.ts#L2137-L2139
@@ -176,10 +174,10 @@ function createFixRequiresESBuildPlugin(config: Config): Plugin {
     setup(build) {
       // Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
       build.onResolve({ filter: /^\.\/require-hook$/ }, () => ({
-        path: join(config.paths.internalTemplates, "shims", "empty.ts"),
+        path: join(config.paths.internal.templates, "shims", "empty.ts"),
       }));
       build.onResolve({ filter: /\.\/lib\/node-fs-methods$/ }, () => ({
-        path: join(config.paths.internalTemplates, "shims", "empty.ts"),
+        path: join(config.paths.internal.templates, "shims", "empty.ts"),
       }));
     },
   };

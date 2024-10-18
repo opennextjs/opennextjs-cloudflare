@@ -16,10 +16,10 @@ export function patchFindDir(code: string, config: Config): string {
     `function findDir(dir, name) {
 			if (dir.endsWith(".next/server")) {
 			if (name === "app") {
-			  return ${existsSync(`${join(config.paths.standaloneAppServer, "app")}`)};
+			  return ${existsSync(`${join(config.paths.output.standaloneAppServer, "app")}`)};
 	    }
 			if (name === "pages") {
-			  return ${existsSync(`${join(config.paths.standaloneAppServer, "pages")}`)};
+			  return ${existsSync(`${join(config.paths.output.standaloneAppServer, "pages")}`)};
 	    }
 		}
 		throw new Error("Unknown findDir call: " + dir + " " + name);

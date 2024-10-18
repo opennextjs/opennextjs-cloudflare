@@ -19,9 +19,9 @@ import { readPathsRecursively } from "./read-paths-recursively";
 export function copyPrerenderedRoutes(config: Config) {
   console.log("# copyPrerenderedRoutes");
 
-  const serverAppDirPath = join(config.paths.standaloneAppServer, "app");
-  const prerenderManifestPath = join(config.paths.standaloneAppDotNext, "prerender-manifest.json");
-  const outputPath = join(config.paths.outputDir, "assets", SEED_DATA_DIR);
+  const serverAppDirPath = join(config.paths.output.standaloneAppServer, "app");
+  const prerenderManifestPath = join(config.paths.output.standaloneAppDotNext, "prerender-manifest.json");
+  const outputPath = join(config.paths.output.assets, SEED_DATA_DIR);
 
   const prerenderManifest: PrerenderManifest = existsSync(prerenderManifestPath)
     ? JSON.parse(readFileSync(prerenderManifestPath, "utf8"))

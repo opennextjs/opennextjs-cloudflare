@@ -15,8 +15,10 @@ import { normalizePath } from "../../utils";
 export function inlineEvalManifest(code: string, config: Config): string {
   console.log("# inlineEvalManifest");
   const manifestJss = globSync(
-    normalizePath(join(config.paths.standaloneAppDotNext, "**", "*_client-reference-manifest.js"))
-  ).map((file) => normalizePath(file).replace(normalizePath(config.paths.standaloneApp) + posix.sep, ""));
+    normalizePath(join(config.paths.output.standaloneAppDotNext, "**", "*_client-reference-manifest.js"))
+  ).map((file) =>
+    normalizePath(file).replace(normalizePath(config.paths.output.standaloneApp) + posix.sep, "")
+  );
   return code.replace(
     /function evalManifest\((.+?), .+?\) {/,
     `$&
@@ -24,7 +26,7 @@ export function inlineEvalManifest(code: string, config: Config): string {
       .map(
         (manifestJs) => `
 			  if ($1.endsWith("${manifestJs}")) {
-				require(${JSON.stringify(join(config.paths.standaloneApp, manifestJs))});
+				require(${JSON.stringify(join(config.paths.output.standaloneApp, manifestJs))});
 				return {
 				  __RSC_MANIFEST: {
 					"${manifestJs

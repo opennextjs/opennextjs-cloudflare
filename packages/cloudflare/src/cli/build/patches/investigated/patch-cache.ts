@@ -19,8 +19,8 @@ export async function patchCache(code: string, config: Config): Promise<string> 
   console.log("# patchCache");
 
   const cacheHandlerFileName = "cache-handler.mjs";
-  const cacheHandlerEntrypoint = join(config.paths.internalTemplates, "cache-handler", "index.ts");
-  const cacheHandlerOutputFile = join(config.paths.outputDir, cacheHandlerFileName);
+  const cacheHandlerEntrypoint = join(config.paths.internal.templates, "cache-handler", "index.ts");
+  const cacheHandlerOutputFile = join(config.paths.output.root, cacheHandlerFileName);
 
   await build({
     entryPoints: [cacheHandlerEntrypoint],
