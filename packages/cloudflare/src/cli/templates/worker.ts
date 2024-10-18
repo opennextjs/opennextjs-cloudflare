@@ -1,7 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { IncomingMessage } from "node:http";
 import Stream from "node:stream";
-import { createALSProxy } from "./utils";
 
 import type { ExportedHandler, Fetcher } from "@cloudflare/workers-types";
 import type { NextConfig } from "next";
@@ -10,6 +9,7 @@ import { MockedResponse } from "next/dist/server/lib/mock-request";
 import type { NodeRequestHandler } from "next/dist/server/next-server";
 
 import type { CloudflareContext } from "../../api";
+import { createALSProxy } from "./utils";
 
 const NON_BODY_RESPONSES = new Set([101, 204, 205, 304]);
 

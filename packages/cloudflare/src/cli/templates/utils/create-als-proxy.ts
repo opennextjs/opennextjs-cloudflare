@@ -1,9 +1,9 @@
 import type { AsyncLocalStorage } from "node:async_hooks";
 
 /**
- * Creates a proxy for to use for an instance of AsyncLocalStorage.
+ * Creates a proxy that exposes values from an AsyncLocalStorage store
  *
- * @param als AsyncLocalStorage instance.
+ * @param als AsyncLocalStorage instance
  */
 export function createALSProxy<T>(als: AsyncLocalStorage<T>) {
   return new Proxy(
