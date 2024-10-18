@@ -1,8 +1,11 @@
+import type { KVNamespace } from "@cloudflare/workers-types";
 import type {
   CacheHandler,
   CacheHandlerContext,
   CacheHandlerValue,
 } from "next/dist/server/lib/incremental-cache";
+import type { IncrementalCacheValue } from "next/dist/server/response-cache";
+
 import {
   NEXT_BODY_SUFFIX,
   NEXT_DATA_SUFFIX,
@@ -12,8 +15,6 @@ import {
   SEED_DATA_DIR,
 } from "../../constants/incremental-cache";
 import { getSeedBodyFile, getSeedMetaFile, getSeedTextFile, parseCtx } from "./utils";
-import type { IncrementalCacheValue } from "next/dist/server/response-cache";
-import type { KVNamespace } from "@cloudflare/workers-types";
 
 type CacheEntry = {
   lastModified: number;

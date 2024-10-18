@@ -1,6 +1,8 @@
-import { Config } from "../../../config";
-import { build } from "esbuild";
 import { join } from "node:path";
+
+import { build } from "esbuild";
+
+import { Config } from "../../../config";
 
 /**
  * Sets up the OpenNext cache handler in a Next.js build.

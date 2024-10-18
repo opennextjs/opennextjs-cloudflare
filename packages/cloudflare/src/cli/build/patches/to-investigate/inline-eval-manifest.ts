@@ -1,6 +1,8 @@
 import { join, posix } from "node:path";
-import { Config } from "../../../config";
+
 import { globSync } from "glob";
+
+import { Config } from "../../../config";
 import { normalizePath } from "../../utils";
 
 /**

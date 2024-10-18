@@ -1,5 +1,5 @@
-import { join } from "node:path";
 import { readdirSync } from "node:fs";
+import { join } from "node:path";
 
 /**
  * Recursively reads all file paths in a directory.

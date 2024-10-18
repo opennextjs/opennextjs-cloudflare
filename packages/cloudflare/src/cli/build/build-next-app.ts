@@ -1,5 +1,6 @@
-import { type AgentName as PackageManager, detect } from "package-manager-detector";
 import { execSync } from "node:child_process";
+
+import { type AgentName as PackageManager, detect } from "package-manager-detector";
 
 /**
  * Builds the Next.js app in the standard Next.js cli way (this outputs a `.next` directory)

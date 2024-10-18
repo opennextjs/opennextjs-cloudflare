@@ -1,8 +1,10 @@
-import { NEXT_META_SUFFIX, SEED_DATA_DIR } from "../../constants/incremental-cache";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { Config } from "../../config";
+
 import type { PrerenderManifest } from "next/dist/build";
+
+import { Config } from "../../config";
+import { NEXT_META_SUFFIX, SEED_DATA_DIR } from "../../constants/incremental-cache";
 import { readPathsRecursively } from "./read-paths-recursively";
 
 /**
