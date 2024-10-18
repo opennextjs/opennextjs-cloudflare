@@ -1,8 +1,10 @@
-import { join, posix } from "node:path";
-import { Config } from "../../../config";
-import { globSync } from "glob";
-import { normalizePath } from "../../utils";
 import { readFileSync } from "node:fs";
+import { join, posix } from "node:path";
+
+import { globSync } from "glob";
+
+import { Config } from "../../../config";
+import { normalizePath } from "../../utils";
 
 export function patchReadFile(code: string, config: Config): string {
   console.log("# patchReadFile");

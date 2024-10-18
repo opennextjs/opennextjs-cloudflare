@@ -1,21 +1,23 @@
-import { Plugin, build } from "esbuild";
+import { existsSync, readFileSync } from "node:fs";
 import { cp, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+import { build, Plugin } from "esbuild";
+
 import { Config } from "../config";
 import { copyPackageCliFiles } from "./patches/investigated/copy-package-cli-files";
-import { copyPrerenderedRoutes } from "./utils";
-import { fileURLToPath } from "node:url";
+import { patchCache } from "./patches/investigated/patch-cache";
+import { patchRequire } from "./patches/investigated/patch-require";
+import { updateWebpackChunksFile } from "./patches/investigated/update-webpack-chunks-file";
 import { inlineEvalManifest } from "./patches/to-investigate/inline-eval-manifest";
 import { inlineMiddlewareManifestRequire } from "./patches/to-investigate/inline-middleware-manifest-require";
 import { inlineNextRequire } from "./patches/to-investigate/inline-next-require";
-import { patchCache } from "./patches/investigated/patch-cache";
 import { patchExceptionBubbling } from "./patches/to-investigate/patch-exception-bubbling";
 import { patchFindDir } from "./patches/to-investigate/patch-find-dir";
 import { patchReadFile } from "./patches/to-investigate/patch-read-file";
-import { patchRequire } from "./patches/investigated/patch-require";
 import { patchWranglerDeps } from "./patches/to-investigate/wrangler-deps";
-import { updateWebpackChunksFile } from "./patches/investigated/update-webpack-chunks-file";
+import { copyPrerenderedRoutes } from "./utils";
 
 /** The dist directory of the Cloudflare adapter package */
 const packageDistDir = join(dirname(fileURLToPath(import.meta.url)), "..");

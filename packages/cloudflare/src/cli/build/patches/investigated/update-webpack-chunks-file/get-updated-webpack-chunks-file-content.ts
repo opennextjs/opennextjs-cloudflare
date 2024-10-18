@@ -1,6 +1,6 @@
+import { tsParseFile } from "../../../utils";
 import { getChunkInstallationIdentifiers } from "./get-chunk-installation-identifiers";
 import { getFileContentWithUpdatedWebpackFRequireCode } from "./get-file-content-with-updated-webpack-f-require-code";
-import { tsParseFile } from "../../../utils";
 
 /**
  * Updates the content of the webpack runtime file in a manner so that it doesn't perform runtime dynamic `require` calls which fail in our runtime.

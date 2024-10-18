@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-import { build } from "./build";
 import { existsSync } from "node:fs";
-import { getArgs } from "./args";
 import { resolve } from "node:path";
+
+import { getArgs } from "./args";
+import { build } from "./build";
 
 const nextAppDir = resolve(".");
 

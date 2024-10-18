@@ -1,7 +1,9 @@
-import { describe, expect, test } from "vitest";
-import { getFileContentWithUpdatedWebpackFRequireCode } from "./get-file-content-with-updated-webpack-f-require-code";
 import { readFile } from "node:fs/promises";
+
+import { describe, expect, test } from "vitest";
+
 import { tsParseFile } from "../../../utils";
+import { getFileContentWithUpdatedWebpackFRequireCode } from "./get-file-content-with-updated-webpack-f-require-code";
 
 describe("getFileContentWithUpdatedWebpackFRequireCode", () => {
   test("returns the updated content of the f.require function from unminified webpack runtime code", async () => {

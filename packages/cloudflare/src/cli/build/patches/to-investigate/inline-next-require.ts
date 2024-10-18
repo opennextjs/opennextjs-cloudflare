@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
-import { Config } from "../../../config";
 import { join } from "node:path";
+
+import { Config } from "../../../config";
 
 /**
  * The following avoid various Next.js specific files `require`d at runtime since we can just read
