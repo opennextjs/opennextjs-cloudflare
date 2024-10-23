@@ -20,11 +20,8 @@ const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any)[Symbol.for("__cloudflare-context__")] = createALSProxy(cloudflareContextALS);
 
-globalThis.process = {
-  ...globalThis.process,
-  // @ts-expect-error - populated when we run inside the ALS context
-  env: createALSProxy(processEnvALS),
-};
+// @ts-expect-error - populated when we run inside the ALS context
+globalThis.process.env = createALSProxy(processEnvALS);
 
 // Injected at build time
 const nextConfig: NextConfig = JSON.parse(process.env.__NEXT_PRIVATE_STANDALONE_CONFIG ?? "{}");
