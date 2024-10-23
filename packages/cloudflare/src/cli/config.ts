@@ -27,8 +27,6 @@ export type Config = {
       root: string;
       // Path to the OpenNext static assets directory
       assets: string;
-      // Path to the app's `.next` directory in the OpenNext output directory
-      dotNext: string;
       // Path to the application standalone root directory
       standaloneRoot: string;
       // Path to the application standalone directory (where `next build` saves the standalone app)
@@ -92,7 +90,6 @@ export function getConfig(projectOpts: ProjectOptions): Config {
       output: {
         root: projectOpts.outputDir,
         assets: join(projectOpts.outputDir, "assets"),
-        dotNext,
         standaloneRoot,
         standaloneApp,
         standaloneAppDotNext,
