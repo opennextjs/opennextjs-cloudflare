@@ -12,11 +12,11 @@ import { getUpdatedWebpackChunksFileContent } from "./get-updated-webpack-chunks
  */
 export async function updateWebpackChunksFile(config: Config) {
   console.log("# updateWebpackChunksFile");
-  const webpackRuntimeFile = join(config.paths.standaloneAppServer, "webpack-runtime.js");
+  const webpackRuntimeFile = join(config.paths.output.standaloneAppServer, "webpack-runtime.js");
 
   const fileContent = readFileSync(webpackRuntimeFile, "utf-8");
 
-  const chunks = readdirSync(join(config.paths.standaloneAppServer, "chunks"))
+  const chunks = readdirSync(join(config.paths.output.standaloneAppServer, "chunks"))
     .filter((chunk) => /^\d+\.js$/.test(chunk))
     .map((chunk) => {
       console.log(` - chunk ${chunk}`);

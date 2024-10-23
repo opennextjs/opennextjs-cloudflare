@@ -14,24 +14,36 @@ export type Config = {
   };
 
   paths: {
-    // Path to the next application
-    sourceDir: string;
-    // Path to the output folder
-    outputDir: string;
-    // Path to the app's `.next` directory (where `next build` saves the build output)
-    dotNext: string;
-    // Path to the application standalone root directory
-    standaloneRoot: string;
-    // Path to the application standalone directory (where `next build` saves the standalone app)
-    standaloneApp: string;
-    // Path to the `.next` directory specific to the standalone application
-    standaloneAppDotNext: string;
-    // Path to the `server` directory specific to the standalone application
-    standaloneAppServer: string;
-    // Package in the standalone node_modules
-    internalPackage: string;
-    // Templates in the package in the standalone node_modules
-    internalTemplates: string;
+    source: {
+      // Path to the next application
+      root: string;
+      // Path to the app's `.next` directory (where `next build` saves the build output)
+      dotNext: string;
+      // Path to the application standalone root directory
+      standaloneRoot: string;
+    };
+    output: {
+      // Path to the output directory
+      root: string;
+      // Path to the OpenNext static assets directory
+      assets: string;
+      // Path to the app's `.next` directory in the OpenNext output directory
+      dotNext: string;
+      // Path to the application standalone root directory
+      standaloneRoot: string;
+      // Path to the application standalone directory (where `next build` saves the standalone app)
+      standaloneApp: string;
+      // Path to the `.next` directory specific to the standalone application
+      standaloneAppDotNext: string;
+      // Path to the `server` directory specific to the standalone application
+      standaloneAppServer: string;
+    };
+    internal: {
+      // Package in the standalone node_modules
+      package: string;
+      // Templates in the package in the standalone node_modules
+      templates: string;
+    };
   };
 
   cache: {
@@ -49,6 +61,8 @@ export type Config = {
  * @returns The configuration, see `Config`
  */
 export function getConfig(projectOpts: ProjectOptions): Config {
+  const sourceDirDotNext = join(projectOpts.sourceDir, ".next");
+
   const dotNext = join(projectOpts.outputDir, ".next");
   const appPath = getNextjsApplicationPath(dotNext).replace(/\/$/, "");
   const standaloneRoot = join(dotNext, "standalone");
@@ -70,15 +84,24 @@ export function getConfig(projectOpts: ProjectOptions): Config {
     },
 
     paths: {
-      sourceDir: projectOpts.sourceDir,
-      outputDir: projectOpts.outputDir,
-      dotNext,
-      standaloneRoot,
-      standaloneApp,
-      standaloneAppDotNext,
-      standaloneAppServer,
-      internalPackage,
-      internalTemplates,
+      source: {
+        root: projectOpts.sourceDir,
+        dotNext: sourceDirDotNext,
+        standaloneRoot: join(sourceDirDotNext, "standalone"),
+      },
+      output: {
+        root: projectOpts.outputDir,
+        assets: join(projectOpts.outputDir, "assets"),
+        dotNext,
+        standaloneRoot,
+        standaloneApp,
+        standaloneAppDotNext,
+        standaloneAppServer,
+      },
+      internal: {
+        package: internalPackage,
+        templates: internalTemplates,
+      },
     },
 
     cache: {

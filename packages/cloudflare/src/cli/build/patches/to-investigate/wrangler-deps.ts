@@ -56,7 +56,7 @@ export function patchWranglerDeps(config: Config) {
  * @returns the node_modules/next/dist directory path
  */
 function getDistPath(config: Config): string {
-  for (const root of [config.paths.standaloneApp, config.paths.standaloneRoot]) {
+  for (const root of [config.paths.output.standaloneApp, config.paths.output.standaloneRoot]) {
     try {
       const distPath = join(root, "node_modules", "next", "dist");
       if (statSync(distPath).isDirectory()) return distPath;

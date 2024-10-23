@@ -9,8 +9,8 @@ import { Config } from "../../../config";
  */
 export function inlineNextRequire(code: string, config: Config) {
   console.log("# inlineNextRequire");
-  const pagesManifestFile = join(config.paths.standaloneAppServer, "pages-manifest.json");
-  const appPathsManifestFile = join(config.paths.standaloneAppServer, "app-paths-manifest.json");
+  const pagesManifestFile = join(config.paths.output.standaloneAppServer, "pages-manifest.json");
+  const appPathsManifestFile = join(config.paths.output.standaloneAppServer, "app-paths-manifest.json");
 
   const pagesManifestFiles = existsSync(pagesManifestFile)
     ? Object.values(JSON.parse(readFileSync(pagesManifestFile, "utf-8"))).map(
@@ -34,7 +34,7 @@ export function inlineNextRequire(code: string, config: Config) {
       .map(
         (htmlPage) => `
           if (pagePath.endsWith("${htmlPage}")) {
-            return ${JSON.stringify(readFileSync(join(config.paths.standaloneApp, htmlPage), "utf-8"))};
+            return ${JSON.stringify(readFileSync(join(config.paths.output.standaloneApp, htmlPage), "utf-8"))};
           }
         `
       )
@@ -43,7 +43,7 @@ export function inlineNextRequire(code: string, config: Config) {
       .map(
         (module) => `
           if (pagePath.endsWith("${module}")) {
-            return require(${JSON.stringify(join(config.paths.standaloneApp, module))});
+            return require(${JSON.stringify(join(config.paths.output.standaloneApp, module))});
           }
         `
       )
