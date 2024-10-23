@@ -13,18 +13,14 @@ import { createALSProxy } from "./utils";
 
 const NON_BODY_RESPONSES = new Set([101, 204, 205, 304]);
 
-const processEnvALS = new AsyncLocalStorage<Record<string, unknown>>();
+const processALS = new AsyncLocalStorage<typeof process>();
 const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
 
 // Note: this symbol needs to be kept in sync with the one defined in `src/api/get-cloudflare-context.ts`
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any)[Symbol.for("__cloudflare-context__")] = createALSProxy(cloudflareContextALS);
 
-globalThis.process = {
-  ...globalThis.process,
-  // @ts-expect-error - populated when we run inside the ALS context
-  env: createALSProxy(processEnvALS),
-};
+globalThis.process = createALSProxy(processALS);
 
 // Injected at build time
 const nextConfig: NextConfig = JSON.parse(process.env.__NEXT_PRIVATE_STANDALONE_CONFIG ?? "{}");
@@ -33,42 +29,45 @@ let requestHandler: NodeRequestHandler | null = null;
 
 export default {
   async fetch(request, env, ctx) {
-    return processEnvALS.run({ NODE_ENV: "production", ...env }, () => {
-      return cloudflareContextALS.run({ env, ctx, cf: request.cf }, async () => {
-        if (requestHandler == null) {
-          // Note: "next/dist/server/next-server" is a cjs module so we have to `require` it not to confuse esbuild
-          //       (since esbuild can run in projects with different module resolutions)
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          const NextNodeServer = require("next/dist/server/next-server")
-            .default as typeof import("next/dist/server/next-server").default;
+    return processALS.run(
+      { ...globalThis.process, env: { ...globalThis.process.env, NODE_ENV: "production", ...env } },
+      () => {
+        return cloudflareContextALS.run({ env, ctx, cf: request.cf }, async () => {
+          if (requestHandler == null) {
+            // Note: "next/dist/server/next-server" is a cjs module so we have to `require` it not to confuse esbuild
+            //       (since esbuild can run in projects with different module resolutions)
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const NextNodeServer = require("next/dist/server/next-server")
+              .default as typeof import("next/dist/server/next-server").default;
 
-          requestHandler = new NextNodeServer({
-            conf: nextConfig,
-            customServer: false,
-            dev: false,
-            dir: "",
-            minimalMode: false,
-          }).getRequestHandler();
-        }
-
-        const url = new URL(request.url);
-
-        if (url.pathname === "/_next/image") {
-          const imageUrl =
-            url.searchParams.get("url") ?? "https://developers.cloudflare.com/_astro/logo.BU9hiExz.svg";
-          if (imageUrl.startsWith("/")) {
-            return env.ASSETS.fetch(new URL(imageUrl, request.url));
+            requestHandler = new NextNodeServer({
+              conf: nextConfig,
+              customServer: false,
+              dev: false,
+              dir: "",
+              minimalMode: false,
+            }).getRequestHandler();
           }
-          return fetch(imageUrl, { cf: { cacheEverything: true } });
-        }
 
-        const { req, res, webResponse } = getWrappedStreams(request, ctx);
+          const url = new URL(request.url);
 
-        ctx.waitUntil(Promise.resolve(requestHandler(new NodeNextRequest(req), new NodeNextResponse(res))));
+          if (url.pathname === "/_next/image") {
+            const imageUrl =
+              url.searchParams.get("url") ?? "https://developers.cloudflare.com/_astro/logo.BU9hiExz.svg";
+            if (imageUrl.startsWith("/")) {
+              return env.ASSETS.fetch(new URL(imageUrl, request.url));
+            }
+            return fetch(imageUrl, { cf: { cacheEverything: true } });
+          }
 
-        return await webResponse();
-      });
-    });
+          const { req, res, webResponse } = getWrappedStreams(request, ctx);
+
+          ctx.waitUntil(Promise.resolve(requestHandler(new NodeNextRequest(req), new NodeNextResponse(res))));
+
+          return await webResponse();
+        });
+      }
+    );
   },
 } as ExportedHandler<{ ASSETS: Fetcher }>;
 
