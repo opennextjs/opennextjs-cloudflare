@@ -68,6 +68,7 @@ export async function buildWorker(config: Config): Promise<void> {
     target: "esnext",
     minify: false,
     plugins: [createFixRequiresESBuildPlugin(config)],
+    external: ["./middleware/handler.mjs"],
     alias: {
       // Note: we apply an empty shim to next/dist/compiled/ws because it generates two `eval`s:
       //   eval("require")("bufferutil");
@@ -134,6 +135,8 @@ const CustomRequest = class extends globalThis.Request {
 };
 globalThis.Request = CustomRequest;
 Request = globalThis.Request;
+// Makes the edge converter returns either a Response or a Request.
+globalThis.__dangerous_ON_edge_converter_returns_request = true;
 `,
     },
   });
