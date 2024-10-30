@@ -13,6 +13,9 @@ export default function Home() {
       <p>
         <Link href="/about2">Go to about 2 page (no redirect or rewrite)</Link>
       </p>
+      <p>
+        <Link href="/middleware">Go to middleware page (using NextResponse.next())</Link>
+      </p>
     </div>
   );
 }
