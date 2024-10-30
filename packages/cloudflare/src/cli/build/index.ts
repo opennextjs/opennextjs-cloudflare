@@ -1,11 +1,17 @@
 import { cpSync } from "node:fs";
-import { rm } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { createRequire } from "node:module";
 
 import type { ProjectOptions } from "../config";
 import { containsDotNextDir, getConfig } from "../config";
-import { buildNextjsApp } from "./build-next-app";
 import { buildWorker } from "./build-worker";
+import { printHeader, showWarningOnWindows } from "@opennextjs/aws/build/utils.js";
+import { compileOpenNextConfig } from "@opennextjs/aws/build/compileConfig.js";
+import logger from "@opennextjs/aws/logger.js";
+import * as buildHelper from "@opennextjs/aws/build/helper.js";
+import { buildNextjsApp, setStandaloneBuildMode } from "@opennextjs/aws/build/buildNextApp.js";
+import { createMiddleware } from "@opennextjs/aws/build/createMiddleware.js";
+import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 
 /**
  * Builds the application in a format that can be passed to workerd
@@ -15,26 +21,84 @@ import { buildWorker } from "./build-worker";
  * @param projectOpts The options for the project
  */
 export async function build(projectOpts: ProjectOptions): Promise<void> {
-  if (!projectOpts.skipNextBuild) {
+  printHeader("Cloudflare build");
+
+  showWarningOnWindows();
+
+  const baseDir = projectOpts.sourceDir;
+  const require = createRequire(import.meta.url);
+  const openNextDistDir = dirname(require.resolve("@opennextjs/aws/index.js"));
+
+  const { config, buildDir } = await compileOpenNextConfig(baseDir);
+
+  ensureCloudflareConfig(config);
+
+  // Initialize options
+  const options = buildHelper.normalizeOptions(config, openNextDistDir, buildDir);
+  logger.setLevel(options.debug ? "debug" : "info");
+
+  // Pre-build validation
+  buildHelper.checkRunningInsideNextjsApp(options);
+  logger.info(`App directory: ${options.appPath}`);
+  buildHelper.printNextjsVersion(options);
+  buildHelper.printOpenNextVersion(options);
+
+  if (projectOpts.skipNextBuild) {
+    logger.warn("Skipping Next.js build");
+  } else {
     // Build the next app
-    await buildNextjsApp(projectOpts.sourceDir);
+    printHeader("Building Next.js app");
+    setStandaloneBuildMode(options);
+    buildNextjsApp(options);
   }
 
   if (!containsDotNextDir(projectOpts.sourceDir)) {
     throw new Error(`.next folder not found in ${projectOpts.sourceDir}`);
   }
 
-  // Clean the output directory
-  await cleanDirectory(projectOpts.outputDir);
+  // Generate deployable bundle
+  printHeader("Generating bundle");
+  buildHelper.initOutputDir(options);
+
+  // Compile middleware
+  await createMiddleware(options, { forceOnlyBuildOnce: true });
 
   // Copy the .next directory to the output directory so it can be mutated.
   cpSync(join(projectOpts.sourceDir, ".next"), join(projectOpts.outputDir, ".next"), { recursive: true });
 
-  const config = getConfig(projectOpts);
+  const projConfig = getConfig(projectOpts);
 
-  await buildWorker(config);
+  await buildWorker(projConfig);
+
+  logger.info("OpenNext build complete.");
 }
 
-async function cleanDirectory(path: string): Promise<void> {
-  return await rm(path, { recursive: true, force: true });
+/**
+ * Ensures open next is configured for cloudflare.
+ *
+ * @param config OpenNext configuration.
+ */
+function ensureCloudflareConfig(config: OpenNextConfig) {
+  const requirements = {
+    isExternal: config.middleware?.external == true,
+    useCloudflareWrapper: config.middleware?.override?.wrapper === "cloudflare",
+    useEdgeConverter: config.middleware?.override?.converter === "edge",
+    disableCacheInterception: config.dangerous?.enableCacheInterception !== true,
+  };
+
+  if (Object.values(requirements).some((satisfied) => !satisfied)) {
+    throw new Error(`open-next.config.ts should contain:
+{
+  "middleware": {
+    "external": true,
+    "override": {
+      "wrapper": "cloudflare",
+      "converter": "edge"
+    }
+  },
+  "dangerous": {
+    "enableCacheInterception": false
+  }
+}`);
+  }
 }
