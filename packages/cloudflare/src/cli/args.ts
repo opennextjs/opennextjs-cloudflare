@@ -7,9 +7,7 @@ export function getArgs(): {
   outputDir?: string;
   minify: boolean;
 } {
-  const {
-    values: { skipBuild, output, noMinify },
-  } = parseArgs({
+  const { skipBuild, output, noMinify } = parseArgs({
     options: {
       skipBuild: {
         type: "boolean",
@@ -26,7 +24,7 @@ export function getArgs(): {
       },
     },
     allowPositionals: false,
-  });
+  }).values;
 
   const outputDir = output ? resolve(output) : undefined;
 

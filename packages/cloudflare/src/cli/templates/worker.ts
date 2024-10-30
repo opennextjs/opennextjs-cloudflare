@@ -2,13 +2,15 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import type { IncomingMessage } from "node:http";
 import Stream from "node:stream";
 
-import type { ExportedHandler, Fetcher } from "@cloudflare/workers-types";
 import type { NextConfig } from "next";
 import { NodeNextRequest, NodeNextResponse } from "next/dist/server/base-http/node";
 import { MockedResponse } from "next/dist/server/lib/mock-request";
 import type { NodeRequestHandler } from "next/dist/server/next-server";
 
 import type { CloudflareContext } from "../../api";
+
+// @ts-expect-error: resolved by wrangler build
+import { handler as middlewareHandler } from "./middleware/handler.mjs";
 
 const NON_BODY_RESPONSES = new Set([101, 204, 205, 304]);
 
@@ -35,6 +37,17 @@ let requestHandler: NodeRequestHandler | null = null;
 export default {
   async fetch(request, env, ctx) {
     return cloudflareContextALS.run({ env, ctx, cf: request.cf }, async () => {
+      // The Middleware handler can return either a `Response` or a `Request`:
+      // - `Response`s should be returned early
+      // - `Request`s are handled by the Next server
+      const reqOrResp = await middlewareHandler(request, env);
+
+      if (reqOrResp instanceof Response) {
+        return reqOrResp;
+      }
+
+      request = reqOrResp;
+
       if (requestHandler == null) {
         globalThis.process.env = { ...globalThis.process.env, ...env };
         // Note: "next/dist/server/next-server" is a cjs module so we have to `require` it not to confuse esbuild
