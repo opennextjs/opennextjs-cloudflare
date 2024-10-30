@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
+  console.log("middleware");
   if (request.nextUrl.pathname === "/about") {
     return NextResponse.redirect(new URL("/redirected", request.url));
   }
@@ -11,5 +12,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/about/:path*", "/another/:path*"],
+  matcher: ["/about/:path*", "/another/:path*", "/middleware/:path*"],
 };
