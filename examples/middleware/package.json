@@ -7,8 +7,9 @@
     "start": "next start",
     "lint": "next lint",
     "build:worker": "pnpm cloudflare",
-    "dev:worker": "wrangler dev --port 8770 --inspector-port 9330",
-    "preview:worker": "pnpm build:worker && pnpm dev:worker"
+    "dev:worker": "wrangler dev --port 8774 --inspector-port 9334",
+    "preview:worker": "pnpm build:worker && pnpm dev:worker",
+    "e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "dependencies": {
     "next": "catalog:",
@@ -17,7 +18,8 @@
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "workspace:*",
-    "@types/node": "18.0.0",
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "eslint": "catalog:",
