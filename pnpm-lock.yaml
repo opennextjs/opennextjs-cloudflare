@@ -194,6 +194,9 @@ importers:
       '@opennextjs/cloudflare':
         specifier: workspace:*
         version: link:../../packages/cloudflare
+      '@playwright/test':
+        specifier: 'catalog:'
+        version: 1.47.0
       '@types/node':
         specifier: 18.0.0
         version: 18.0.0
