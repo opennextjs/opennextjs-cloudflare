@@ -1,6 +1,10 @@
 name: Publish prereleases
 
-on: pull_request
+on:
+  push:
+    branches: [main, experimental]
+  pull_request:
+    branches: [main, experimental]
 
 jobs:
   release:
