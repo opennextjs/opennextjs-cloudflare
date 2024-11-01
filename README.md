@@ -33,7 +33,7 @@ You can simply install the package from npm as specified in the [OpenNext docume
 >   Updated with every push to the `experimental` branch (when present), this prerelease contains the latest experimental version of the package (containing features
 >   that we want to test/experiment on before committing to).
 >
-> Which you can simply install directly with your package manager of choice, for example: `npm i https://pkg.pr.new/@opennextjs/cloudflare@main`
+> Which you can simply install directly with your package manager of choice, for example: `npm i https://pkg.pr.new/@opennextjs/cloudflare@experimental`
 
 ### How to develop in the repository
 
