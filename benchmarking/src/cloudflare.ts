@@ -21,10 +21,16 @@ export async function collectAppPathsToBenchmark(): Promise<
 > {
   const allExampleNames = await nodeFsPromises.readdir("../examples");
 
-  const examplesToIgnore = new Set(["vercel-commerce"]);
+  /**
+   * Example applications that we don't want to benchmark
+   *
+   * Currently we only want to skip the `vercel-commerce` example, and that's simply
+   * because it requires a shopify specific setup and secrets.
+   */
+  const exampleAppsNotToBenchmark = new Set(["vercel-commerce"]);
 
   const examplePaths = allExampleNames
-    .filter((exampleName) => !examplesToIgnore.has(exampleName))
+    .filter((exampleName) => !exampleAppsNotToBenchmark.has(exampleName))
     .map((exampleName) => ({
       name: exampleName,
       path: nodePath.resolve(`../examples/${exampleName}`),
