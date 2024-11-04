@@ -1,7 +1,7 @@
 import ora from "ora";
 
 /**
- * Runs a number of operations while presenting a loading spinner with some text
+ * Runs a list of operations while presenting a loading spinner with some text
  *
  * @param spinnerText The text to add to the spinner
  * @param operations The operations to run
