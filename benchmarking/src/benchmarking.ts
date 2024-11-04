@@ -3,8 +3,8 @@ import nodeFsPromises from "node:fs/promises";
 import nodePath from "node:path";
 
 export type FetchBenchmark = {
-  calls: number[];
-  average: number;
+  callDurationsMs: number[];
+  averageMs: number;
 };
 
 export type BenchmarkingResults = {
@@ -40,13 +40,13 @@ export async function benchmarkApplicationResponseTime({
 
 type BenchmarkFetchOptions = {
   numberOfCalls?: number;
-  randomDelayMax?: number;
+  maxRandomDelayMs?: number;
   fetch: (deploymentUrl: string) => Promise<Response>;
 };
 
 const defaultOptions: Required<Omit<BenchmarkFetchOptions, "fetch">> = {
   numberOfCalls: 20,
-  randomDelayMax: 15_000,
+  maxRandomDelayMs: 15_000,
 };
 
 /**
@@ -58,33 +58,33 @@ const defaultOptions: Required<Omit<BenchmarkFetchOptions, "fetch">> = {
  */
 async function benchmarkFetch(url: string, options: BenchmarkFetchOptions): Promise<FetchBenchmark> {
   const benchmarkFetchCall = async () => {
-    const preTime = performance.now();
+    const preTimeMs = performance.now();
     const resp = await options.fetch(url);
-    const postTime = performance.now();
+    const postTimeMs = performance.now();
 
     if (!resp.ok) {
       throw new Error(`Error: Failed to fetch from "${url}"`);
     }
 
-    return postTime - preTime;
+    return postTimeMs - preTimeMs;
   };
 
-  const calls = await Promise.all(
+  const callDurationsMs = await Promise.all(
     new Array(options?.numberOfCalls ?? defaultOptions.numberOfCalls).fill(null).map(async () => {
       // let's add a random delay before we make the fetch
       await nodeTimesPromises.setTimeout(
-        Math.round(Math.random() * (options?.randomDelayMax ?? defaultOptions.randomDelayMax))
+        Math.round(Math.random() * (options?.maxRandomDelayMs ?? defaultOptions.maxRandomDelayMs))
       );
 
       return benchmarkFetchCall();
     })
   );
 
-  const average = calls.reduce((time, sum) => sum + time) / calls.length;
+  const averageMs = callDurationsMs.reduce((time, sum) => sum + time) / callDurationsMs.length;
 
   return {
-    calls,
-    average,
+    callDurationsMs,
+    averageMs,
   };
 }
 

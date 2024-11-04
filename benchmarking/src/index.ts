@@ -32,7 +32,7 @@ console.log(`The benchmarking results have been written in ${outputFile}`);
 console.log("\n\nSummary: ");
 const summary = benchmarkingResults.map(({ name, fetchBenchmark }) => ({
   name,
-  "average fetch duration (ms)": Math.round(fetchBenchmark.average),
+  "average fetch duration (ms)": Math.round(fetchBenchmark.averageMs),
 }));
 console.table(summary);
 
