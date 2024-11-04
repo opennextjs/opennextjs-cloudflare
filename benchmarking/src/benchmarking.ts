@@ -97,7 +97,7 @@ async function benchmarkFetch(url: string, options: BenchmarkFetchOptions): Prom
 export async function saveResultsToDisk(results: BenchmarkingResults): Promise<string> {
   const date = new Date();
 
-  const fileName = `${date.toISOString().split(".")[0]!.replace("T", "_").replaceAll(":", "-")}.json`;
+  const fileName = `${toSimpleDateString(date)}.json`;
 
   const outputFile = nodePath.resolve(`./results/${fileName}`);
 
@@ -107,4 +107,21 @@ export async function saveResultsToDisk(results: BenchmarkingResults): Promise<s
   await nodeFsPromises.writeFile(outputFile, resultStr);
 
   return outputFile;
+}
+
+/**
+ * Takes a date and coverts it to a simple format that can be used as
+ * a filename (which is human readable and doesn't contain special
+ * characters)
+ *
+ * The format being: `YYYY-MM-DD_hh-mm-ss`
+ *
+ * @param date the date to convert
+ * @returns a string representing the date
+ */
+function toSimpleDateString(date: Date): string {
+  const isoString = date.toISOString();
+  const isoDate = isoString.split(".")[0]!;
+
+  return isoDate.replace("T", "_").replaceAll(":", "-");
 }
