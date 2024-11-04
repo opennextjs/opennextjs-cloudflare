@@ -1,17 +1,18 @@
 import { cpSync } from "node:fs";
-import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
+
+import { buildNextjsApp, setStandaloneBuildMode } from "@opennextjs/aws/build/buildNextApp.js";
+import { compileOpenNextConfig } from "@opennextjs/aws/build/compileConfig.js";
+import { createMiddleware } from "@opennextjs/aws/build/createMiddleware.js";
+import * as buildHelper from "@opennextjs/aws/build/helper.js";
+import { printHeader, showWarningOnWindows } from "@opennextjs/aws/build/utils.js";
+import logger from "@opennextjs/aws/logger.js";
+import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 
 import type { ProjectOptions } from "../config";
 import { containsDotNextDir, getConfig } from "../config";
 import { buildWorker } from "./build-worker";
-import { printHeader, showWarningOnWindows } from "@opennextjs/aws/build/utils.js";
-import { compileOpenNextConfig } from "@opennextjs/aws/build/compileConfig.js";
-import logger from "@opennextjs/aws/logger.js";
-import * as buildHelper from "@opennextjs/aws/build/helper.js";
-import { buildNextjsApp, setStandaloneBuildMode } from "@opennextjs/aws/build/buildNextApp.js";
-import { createMiddleware } from "@opennextjs/aws/build/createMiddleware.js";
-import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 
 /**
  * Builds the application in a format that can be passed to workerd
