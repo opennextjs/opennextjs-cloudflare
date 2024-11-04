@@ -8,7 +8,6 @@ import { MockedResponse } from "next/dist/server/lib/mock-request";
 import type { NodeRequestHandler } from "next/dist/server/next-server";
 
 import type { CloudflareContext } from "../../api";
-
 // @ts-expect-error: resolved by wrangler build
 import { handler as middlewareHandler } from "./middleware/handler.mjs";
 
