@@ -20,6 +20,7 @@ const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any)[Symbol.for("__cloudflare-context__")] = createALSProxy(cloudflareContextALS);
 
+const originalEnv: Partial<typeof process.env> = { ...globalThis.process.env };
 // @ts-expect-error - populated when we run inside the ALS context
 globalThis.process.env = createALSProxy(processEnvALS);
 
@@ -30,7 +31,7 @@ let requestHandler: NodeRequestHandler | null = null;
 
 export default {
   async fetch(request, env, ctx) {
-    return processEnvALS.run({ NODE_ENV: "production", ...env }, () => {
+    return processEnvALS.run({ NODE_ENV: "production", ...originalEnv, ...env }, () => {
       return cloudflareContextALS.run({ env, ctx, cf: request.cf }, async () => {
         if (requestHandler == null) {
           // Note: "next/dist/server/next-server" is a cjs module so we have to `require` it not to confuse esbuild
