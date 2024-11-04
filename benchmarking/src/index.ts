@@ -1,11 +1,11 @@
 import nodeTimesPromises from "node:timers/promises";
 import * as cloudflare from "./cloudflare";
 import { benchmarkApplicationResponseTime, BenchmarkingResults, saveResultsToDisk } from "./benchmarking";
-import { runOperationsWithSpinner } from "./utils";
+import { parallelRunWithSpinner } from "./utils";
 
 const appPathsToBenchmark = await cloudflare.collectAppPathsToBenchmark();
 
-const benchmarkingResults: BenchmarkingResults = await runOperationsWithSpinner(
+const benchmarkingResults: BenchmarkingResults = await parallelRunWithSpinner(
   "Benchmarking Apps",
   appPathsToBenchmark.map(({ name, path }, i) => async () => {
     await nodeTimesPromises.setTimeout(i * 1_000);

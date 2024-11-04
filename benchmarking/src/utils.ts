@@ -1,13 +1,13 @@
 import ora from "ora";
 
 /**
- * Runs a list of operations while presenting a loading spinner with some text
+ * Runs a list of operations in parallel while presenting a loading spinner with some text
  *
  * @param spinnerText The text to add to the spinner
  * @param operations The operations to run
  * @returns The operations results
  */
-export async function runOperationsWithSpinner<T>(
+export async function parallelRunWithSpinner<T>(
   spinnerText: string,
   operations: (() => Promise<T>)[]
 ): Promise<T[]> {
