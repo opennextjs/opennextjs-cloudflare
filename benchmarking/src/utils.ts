@@ -37,3 +37,25 @@ export async function parallelRunWithSpinner<T>(
 
   return results;
 }
+
+/**
+ * Gets a specific percentile for a given set of numbers
+ *
+ * @param data the data which percentile value needs to be computed
+ * @param percentile the requested percentile (a number between 0 and 100)
+ * @returns the computed percentile
+ */
+export function getPercentile(data: number[], percentile: number): number {
+  if (Number.isNaN(percentile) || percentile < 0 || percentile > 100) {
+    throw new Error(`A percentile needs to be between 0 and 100, found: ${percentile}`);
+  }
+
+  data = data.sort((a, b) => a - b);
+
+  const rank = (percentile / 100) * (data.length - 1);
+
+  const rankInt = Math.floor(rank);
+  const rankFract = rank - rankInt;
+
+  return Math.round(data[rankInt]! + rankFract * (data[rankInt + 1]! - data[rankInt]!));
+}

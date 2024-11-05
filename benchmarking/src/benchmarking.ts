@@ -1,10 +1,12 @@
 import nodeTimesPromises from "node:timers/promises";
 import nodeFsPromises from "node:fs/promises";
 import nodePath from "node:path";
+import { getPercentile } from "./utils";
 
 export type FetchBenchmark = {
   callDurationsMs: number[];
   averageMs: number;
+  p90Ms: number;
 };
 
 export type BenchmarkingResults = {
@@ -82,9 +84,12 @@ async function benchmarkFetch(url: string, options: BenchmarkFetchOptions): Prom
 
   const averageMs = callDurationsMs.reduce((time, sum) => sum + time) / callDurationsMs.length;
 
+  const p90Ms = getPercentile(callDurationsMs, 90);
+
   return {
     callDurationsMs,
     averageMs,
+    p90Ms,
   };
 }
 

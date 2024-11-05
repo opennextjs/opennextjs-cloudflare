@@ -33,6 +33,7 @@ console.log("\n\nSummary: ");
 const summary = benchmarkingResults.map(({ name, fetchBenchmark }) => ({
   name,
   "average fetch duration (ms)": Math.round(fetchBenchmark.averageMs),
+  "90th percentile (ms)": Math.round(fetchBenchmark.p90Ms),
 }));
 console.table(summary);
 
