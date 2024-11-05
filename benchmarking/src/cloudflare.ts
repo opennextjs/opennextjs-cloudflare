@@ -2,9 +2,6 @@ import nodeFsPromises from "node:fs/promises";
 import nodeFs from "node:fs";
 import nodePath from "node:path";
 import nodeChildProcess from "node:child_process";
-import nodeUtil from "node:util";
-
-const promiseExec = nodeUtil.promisify(nodeChildProcess.exec);
 
 await ensureWranglerSetup();
 
@@ -61,7 +58,14 @@ export async function buildApp(dir: string): Promise<void> {
 
   const command = `pnpm ${buildScript}`;
 
-  await promiseExec(command, { cwd: dir });
+  return new Promise((resolve, reject) => {
+    nodeChildProcess.exec(command, { cwd: dir }, (error) => {
+      if (error) {
+        return reject(error);
+      }
+      return resolve();
+    });
+  });
 }
 
 /**
@@ -71,15 +75,21 @@ export async function buildApp(dir: string): Promise<void> {
  * @returns the url of the deployed application
  */
 export async function deployBuiltApp(dir: string): Promise<string> {
-  const { stdout } = await promiseExec("pnpm exec wrangler deploy", { cwd: dir });
+  return new Promise<string>((resolve, reject) => {
+    nodeChildProcess.exec("pnpm exec wrangler deploy", { cwd: dir }, (error, stdout) => {
+      if (error) {
+        return reject(error);
+      }
 
-  const deploymentUrl = stdout.match(/\bhttps:\/\/(?:[a-zA-Z0-9.\-])*\.workers\.dev\b/)?.[0];
+      const deploymentUrl = stdout.match(/\bhttps:\/\/(?:[a-zA-Z0-9.\-])*\.workers\.dev\b/)?.[0];
 
-  if (!deploymentUrl) {
-    throw new Error(`Could not obtain a deployment url for app at "${dir}"`);
-  }
+      if (!deploymentUrl) {
+        return reject(new Error(`Could not obtain a deployment url for app at "${dir}"`));
+      }
 
-  return deploymentUrl;
+      return resolve(deploymentUrl);
+    });
+  });
 }
 
 /**
@@ -89,15 +99,25 @@ export async function deployBuiltApp(dir: string): Promise<string> {
  *  - if they have more than one account they have set a CLOUDFLARE_ACCOUNT_ID env variable
  */
 async function ensureWranglerSetup(): Promise<void> {
-  const { stdout } = await promiseExec("pnpm dlx wrangler whoami");
+  return new Promise((resolve, reject) => {
+    nodeChildProcess.exec("pnpm dlx wrangler whoami", (error, stdout) => {
+      if (error) {
+        return reject(error);
+      }
 
-  if (stdout.includes("You are not authenticated")) {
-    throw new Error("Please log in using wrangler by running `pnpm dlx wrangler login`");
-  }
+      if (stdout.includes("You are not authenticated")) {
+        reject(new Error("Please log in using wrangler by running `pnpm dlx wrangler login`"));
+      }
 
-  if (!(process.env as Record<string, unknown>)["CLOUDFLARE_ACCOUNT_ID"]) {
-    throw new Error(
-      "Please set the CLOUDFLARE_ACCOUNT_ID environment variable to the id of the account you want to use to deploy the applications"
-    );
-  }
+      if (!(process.env as Record<string, unknown>)["CLOUDFLARE_ACCOUNT_ID"]) {
+        reject(
+          new Error(
+            "Please set the CLOUDFLARE_ACCOUNT_ID environment variable to the id of the account you want to use to deploy the applications"
+          )
+        );
+      }
+
+      return resolve();
+    });
+  });
 }
