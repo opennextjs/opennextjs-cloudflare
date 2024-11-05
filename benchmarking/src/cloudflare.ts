@@ -53,11 +53,13 @@ export async function buildApp(dir: string): Promise<void> {
 
   const packageJsonContent = JSON.parse(await nodeFsPromises.readFile(packageJsonPath, "utf8"));
 
-  if (!("scripts" in packageJsonContent) || !("build:worker" in packageJsonContent.scripts)) {
-    throw new Error(`Error: package.json for app at "${dir}" does not include a "build:worker" script`);
+  const buildScript = "build:worker";
+
+  if (!packageJsonContent.scripts?.[buildScript]) {
+    throw new Error(`Error: package.json for app at "${dir}" does not include a "${buildScript}" script`);
   }
 
-  const command = "pnpm build:worker";
+  const command = `pnpm ${buildScript}`;
 
   await promiseExec(command, { cwd: dir });
 }

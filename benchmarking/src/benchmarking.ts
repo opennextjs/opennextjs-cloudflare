@@ -4,7 +4,7 @@ import nodePath from "node:path";
 import { getPercentile } from "./utils";
 
 export type FetchBenchmark = {
-  callDurationsMs: number[];
+  iterationsMs: number[];
   averageMs: number;
   p90Ms: number;
 };
@@ -14,6 +14,17 @@ export type BenchmarkingResults = {
   path: string;
   fetchBenchmark: FetchBenchmark;
 }[];
+
+type BenchmarkFetchOptions = {
+  numberOfIterations?: number;
+  maxRandomDelayMs?: number;
+  fetch: (deploymentUrl: string) => Promise<Response>;
+};
+
+const defaultOptions: Required<Omit<BenchmarkFetchOptions, "fetch">> = {
+  numberOfIterations: 20,
+  maxRandomDelayMs: 15_000,
+};
 
 /**
  * Benchmarks the response time of an application end-to-end by:
@@ -40,17 +51,6 @@ export async function benchmarkApplicationResponseTime({
   return benchmarkFetch(deploymentUrl, { fetch });
 }
 
-type BenchmarkFetchOptions = {
-  numberOfCalls?: number;
-  maxRandomDelayMs?: number;
-  fetch: (deploymentUrl: string) => Promise<Response>;
-};
-
-const defaultOptions: Required<Omit<BenchmarkFetchOptions, "fetch">> = {
-  numberOfCalls: 20,
-  maxRandomDelayMs: 15_000,
-};
-
 /**
  * Benchmarks a fetch operation by running it multiple times and computing the average time (in milliseconds) such fetch operation takes.
  *
@@ -71,23 +71,23 @@ async function benchmarkFetch(url: string, options: BenchmarkFetchOptions): Prom
     return postTimeMs - preTimeMs;
   };
 
-  const callDurationsMs = await Promise.all(
-    new Array(options?.numberOfCalls ?? defaultOptions.numberOfCalls).fill(null).map(async () => {
+  const resolvedOptions = { ...defaultOptions, ...options };
+
+  const iterationsMs = await Promise.all(
+    new Array(resolvedOptions.numberOfIterations).fill(null).map(async () => {
       // let's add a random delay before we make the fetch
-      await nodeTimesPromises.setTimeout(
-        Math.round(Math.random() * (options?.maxRandomDelayMs ?? defaultOptions.maxRandomDelayMs))
-      );
+      await nodeTimesPromises.setTimeout(Math.round(Math.random() * resolvedOptions.maxRandomDelayMs));
 
       return benchmarkFetchCall();
     })
   );
 
-  const averageMs = callDurationsMs.reduce((time, sum) => sum + time) / callDurationsMs.length;
+  const averageMs = iterationsMs.reduce((time, sum) => sum + time) / iterationsMs.length;
 
-  const p90Ms = getPercentile(callDurationsMs, 90);
+  const p90Ms = getPercentile(iterationsMs, 90);
 
   return {
-    callDurationsMs,
+    iterationsMs,
     averageMs,
     p90Ms,
   };
