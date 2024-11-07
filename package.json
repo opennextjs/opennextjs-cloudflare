@@ -21,6 +21,7 @@
     "postinstall": "pnpm --filter cloudflare build",
     "build": "pnpm --filter cloudflare build",
     "e2e": "pnpm build && pnpm -r e2e",
-    "e2e:dev": "pnpm build && pnpm -r e2e:dev"
+    "e2e:dev": "pnpm build && pnpm -r e2e:dev",
+    "benchmark": "pnpm run --filter benchmarking benchmark"
   }
 }
