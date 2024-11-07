@@ -1,0 +1,79 @@
+name: "Bug Report"
+description: "Create a report to help us improve"
+title: "[BUG] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+      placeholder: When I try to..., the error occurs...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps to reproduce the behavior (linking a repo with a reproduction will help for non trivial issues)
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+
+  - type: input
+    id: opennext-version
+    attributes:
+      label: "@opennextjs/cloudflare version"
+      placeholder: "0.2.1"
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: "Node.js version"
+      placeholder: "18.x"
+    validations:
+      required: true
+
+  - type: input
+    id: wrangler-version
+    attributes:
+      label: "Wrangler version"
+      placeholder: "3.x"
+    validations:
+      required: true
+
+  - type: textarea
+    id: next-info
+    attributes:
+      label: "next info output"
+      description: "Please run `next info` in your project directory and paste the output"
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here.
+    validations:
+      required: false
