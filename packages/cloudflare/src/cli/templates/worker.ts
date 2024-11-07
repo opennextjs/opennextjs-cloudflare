@@ -64,17 +64,6 @@ export default {
         }).getRequestHandler();
       }
 
-      const url = new URL(request.url);
-
-      if (url.pathname === "/_next/image") {
-        const imageUrl =
-          url.searchParams.get("url") ?? "https://developers.cloudflare.com/_astro/logo.BU9hiExz.svg";
-        if (imageUrl.startsWith("/")) {
-          return env.ASSETS.fetch(new URL(imageUrl, request.url));
-        }
-        return fetch(imageUrl, { cf: { cacheEverything: true } });
-      }
-
       const { req, res, webResponse } = getWrappedStreams(request, ctx);
 
       ctx.waitUntil(Promise.resolve(requestHandler(new NodeNextRequest(req), new NodeNextResponse(res))));

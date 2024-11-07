@@ -13,6 +13,7 @@ import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 import type { ProjectOptions } from "../config";
 import { containsDotNextDir, getConfig } from "../config";
 import { buildWorker } from "./build-worker";
+import { createStaticAssets } from "@opennextjs/aws/build/createAssets.js";
 
 /**
  * Builds the application in a format that can be passed to workerd
@@ -63,6 +64,8 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
 
   // Compile middleware
   await createMiddleware(options, { forceOnlyBuildOnce: true });
+
+  createStaticAssets(options);
 
   // Copy the .next directory to the output directory so it can be mutated.
   cpSync(join(projectOpts.sourceDir, ".next"), join(projectOpts.outputDir, ".next"), { recursive: true });
