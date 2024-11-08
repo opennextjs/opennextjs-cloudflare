@@ -1,7 +1,7 @@
-name: 'Feature Request'
-description: 'Suggest an idea for this project'
-title: '[FEATURE] '
-labels: ['enhancement', 'triage']
+name: "Feature Request"
+description: "Suggest an idea for this project"
+title: "[FEATURE] "
+labels: ["enhancement", "triage"]
 body:
   - type: markdown
     attributes:
@@ -42,9 +42,9 @@ body:
   - type: input
     id: opennext-version
     attributes:
-      label: '@opennextjs/cloudflare version'
+      label: "@opennextjs/cloudflare version"
       description: What version of @opennextjs/cloudflare does this apply to?
-      placeholder: '0.2.1'
+      placeholder: "0.2.1"
     validations:
       required: true
 
