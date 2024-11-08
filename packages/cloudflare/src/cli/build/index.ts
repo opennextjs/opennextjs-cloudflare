@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 
 import { buildNextjsApp, setStandaloneBuildMode } from "@opennextjs/aws/build/buildNextApp.js";
 import { compileOpenNextConfig } from "@opennextjs/aws/build/compileConfig.js";
+import { createStaticAssets } from "@opennextjs/aws/build/createAssets.js";
 import { createMiddleware } from "@opennextjs/aws/build/createMiddleware.js";
 import * as buildHelper from "@opennextjs/aws/build/helper.js";
 import { printHeader, showWarningOnWindows } from "@opennextjs/aws/build/utils.js";
@@ -63,6 +64,8 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
 
   // Compile middleware
   await createMiddleware(options, { forceOnlyBuildOnce: true });
+
+  createStaticAssets(options);
 
   // Copy the .next directory to the output directory so it can be mutated.
   cpSync(join(projectOpts.sourceDir, ".next"), join(projectOpts.outputDir, ".next"), { recursive: true });

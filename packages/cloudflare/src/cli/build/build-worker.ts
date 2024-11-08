@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
-import { cp, readFile, writeFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -29,19 +29,6 @@ const packageDistDir = join(dirname(fileURLToPath(import.meta.url)), "..");
  * @param config
  */
 export async function buildWorker(config: Config): Promise<void> {
-  console.log(`\x1b[35m⚙️ Copying files...\n\x1b[0m`);
-
-  // Copy over client-side generated files
-  await cp(join(config.paths.source.dotNext, "static"), join(config.paths.output.assets, "_next", "static"), {
-    recursive: true,
-  });
-
-  // Copy over any static files (e.g. images) from the source project
-  const publicDir = join(config.paths.source.root, "public");
-  if (existsSync(publicDir)) {
-    await cp(publicDir, config.paths.output.assets, { recursive: true });
-  }
-
   // Copy over prerendered assets (e.g. SSG routes)
   copyPrerenderedRoutes(config);
 
