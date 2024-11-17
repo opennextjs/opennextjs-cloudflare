@@ -18,7 +18,7 @@ import { getCacheStore } from "./cache-store";
 import { getSeedBodyFile, getSeedMetaFile, getSeedTextFile, parseCtx } from "./utils";
 
 export class OpenNextCacheHandler implements CacheHandler {
-  protected cache: CacheStore | undefined;
+  protected cache: CacheStore;
 
   protected debug: boolean = !!process.env.NEXT_PRIVATE_DEBUG_CACHE;
 
@@ -32,13 +32,11 @@ export class OpenNextCacheHandler implements CacheHandler {
 
     if (this.debug) console.log(`cache - get: ${key}, ${ctx?.kind}`);
 
-    if (this.cache !== undefined) {
-      try {
-        const value = await this.cache.get(key);
-        if (value) return value;
-      } catch (e) {
-        console.error(`Failed to get value for key = ${key}: ${e}`);
-      }
+    try {
+      const value = await this.cache.get(key);
+      if (value) return value;
+    } catch (e) {
+      console.error(`Failed to get value for key = ${key}: ${e}`);
     }
 
     // Check for seed data from the file-system.
@@ -114,10 +112,6 @@ export class OpenNextCacheHandler implements CacheHandler {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [key, entry, _ctx] = args;
 
-    if (this.cache === undefined) {
-      return;
-    }
-
     if (this.debug) console.log(`cache - set: ${key}`);
 
     const data: CacheEntry = {
@@ -134,9 +128,6 @@ export class OpenNextCacheHandler implements CacheHandler {
 
   async revalidateTag(...args: Parameters<CacheHandler["revalidateTag"]>) {
     const [tags] = args;
-    if (this.cache === undefined) {
-      return;
-    }
 
     if (this.debug) console.log(`cache - revalidateTag: ${JSON.stringify([tags].flat())}`);
   }
