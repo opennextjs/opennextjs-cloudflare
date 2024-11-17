@@ -1,4 +1,3 @@
-import type { KVNamespace } from "@cloudflare/workers-types";
 import type {
   CacheHandler,
   CacheHandlerContext,
@@ -14,20 +13,17 @@ import {
   RSC_SUFFIX,
   SEED_DATA_DIR,
 } from "../../constants/incremental-cache";
+import type { CacheEntry, CacheStore } from "./cache-store";
+import { getCacheStore } from "./cache-store";
 import { getSeedBodyFile, getSeedMetaFile, getSeedTextFile, parseCtx } from "./utils";
 
-type CacheEntry = {
-  lastModified: number;
-  value: IncrementalCacheValue | null;
-};
-
 export class OpenNextCacheHandler implements CacheHandler {
-  protected kv: KVNamespace | undefined;
+  protected cache: CacheStore | undefined;
 
   protected debug: boolean = !!process.env.NEXT_PRIVATE_DEBUG_CACHE;
 
   constructor(protected ctx: CacheHandlerContext) {
-    this.kv = process.env[process.env.__OPENNEXT_KV_BINDING_NAME] as KVNamespace | undefined;
+    this.cache = getCacheStore();
   }
 
   async get(...args: Parameters<CacheHandler["get"]>): Promise<CacheHandlerValue | null> {
@@ -36,9 +32,9 @@ export class OpenNextCacheHandler implements CacheHandler {
 
     if (this.debug) console.log(`cache - get: ${key}, ${ctx?.kind}`);
 
-    if (this.kv !== undefined) {
+    if (this.cache !== undefined) {
       try {
-        const value = await this.kv.get<CacheEntry>(key, "json");
+        const value = await this.cache.get(key);
         if (value) return value;
       } catch (e) {
         console.error(`Failed to get value for key = ${key}: ${e}`);
@@ -118,7 +114,7 @@ export class OpenNextCacheHandler implements CacheHandler {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [key, entry, _ctx] = args;
 
-    if (this.kv === undefined) {
+    if (this.cache === undefined) {
       return;
     }
 
@@ -130,7 +126,7 @@ export class OpenNextCacheHandler implements CacheHandler {
     };
 
     try {
-      await this.kv.put(key, JSON.stringify(data));
+      await this.cache.put(key, data);
     } catch (e) {
       console.error(`Failed to set value for key = ${key}: ${e}`);
     }
@@ -138,7 +134,7 @@ export class OpenNextCacheHandler implements CacheHandler {
 
   async revalidateTag(...args: Parameters<CacheHandler["revalidateTag"]>) {
     const [tags] = args;
-    if (this.kv === undefined) {
+    if (this.cache === undefined) {
       return;
     }
 
