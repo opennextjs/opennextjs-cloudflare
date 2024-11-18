@@ -19,7 +19,7 @@ export function getCacheStore() {
   return new CacheAPIStore();
 }
 
-const defaultTTL = 31536000; // 1 year
+const oneYearInMs = 31536000;
 
 class KVStore implements CacheStore {
   constructor(private store: KVNamespace) {}
@@ -28,7 +28,7 @@ class KVStore implements CacheStore {
     return this.store.get<CacheEntry>(key, "json");
   }
 
-  put(key: string, entry: CacheEntry, ttl = defaultTTL) {
+  put(key: string, entry: CacheEntry, ttl = oneYearInMs) {
     return this.store.put(key, JSON.stringify(entry), {
       expirationTtl: ttl,
     });
@@ -49,7 +49,7 @@ class CacheAPIStore implements CacheStore {
     return null;
   }
 
-  async put(key: string, entry: CacheEntry, ttl = defaultTTL) {
+  async put(key: string, entry: CacheEntry, ttl = oneYearInMs) {
     const cache = await caches.open(this.name);
 
     const response = new Response(JSON.stringify(entry), {
