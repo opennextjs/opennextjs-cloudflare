@@ -39,7 +39,7 @@ export default {
       // The Middleware handler can return either a `Response` or a `Request`:
       // - `Response`s should be returned early
       // - `Request`s are handled by the Next server
-      const reqOrResp = await middlewareHandler(request, env);
+      const reqOrResp = await middlewareHandler(request, env, ctx);
 
       if (reqOrResp instanceof Response) {
         return reqOrResp;
