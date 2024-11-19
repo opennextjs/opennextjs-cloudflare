@@ -60,7 +60,7 @@
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@opennextjs/aws": "https://pkg.pr.new/@opennextjs/aws@3b372b6",
+    "@opennextjs/aws": "https://pkg.pr.new/@opennextjs/aws@5c0e121",
     "ts-morph": "catalog:"
   },
   "peerDependencies": {
