@@ -6,8 +6,12 @@ declare global {
       SKIP_NEXT_APP_BUILD?: string;
       NEXT_PRIVATE_DEBUG_CACHE?: string;
       __OPENNEXT_KV_BINDING_NAME: string;
-      [key: string]: string | Fetcher;
+      OPEN_NEXT_ORIGIN: string;
     }
+  }
+
+  interface Window {
+    [key: string]: string | Fetcher;
   }
 }
 

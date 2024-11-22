@@ -1,8 +1,9 @@
-import { readFileSync } from "node:fs";
+import fs from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { build, Plugin } from "esbuild";
 
 import { Config } from "../config";
@@ -20,37 +21,37 @@ import { patchWranglerDeps } from "./patches/to-investigate/wrangler-deps";
 import { copyPrerenderedRoutes } from "./utils";
 
 /** The dist directory of the Cloudflare adapter package */
-const packageDistDir = join(dirname(fileURLToPath(import.meta.url)), "..");
+const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
- * Using the Next.js build output in the `.next` directory builds a workerd compatible output
- *
- * @param outputDir the directory where to save the output
- * @param config
+ * Bundle the Open Next server.
  */
-export async function buildWorker(config: Config): Promise<void> {
+export async function bundleServer(config: Config, openNextOptions: BuildOptions): Promise<void> {
   // Copy over prerendered assets (e.g. SSG routes)
   copyPrerenderedRoutes(config);
 
-  copyPackageCliFiles(packageDistDir, config);
-
-  const workerEntrypoint = join(config.paths.internal.templates, "worker.ts");
-  const workerOutputFile = join(config.paths.output.root, "index.mjs");
+  copyPackageCliFiles(packageDistDir, config, openNextOptions);
 
   const nextConfigStr =
-    readFileSync(join(config.paths.output.standaloneApp, "/server.js"), "utf8")?.match(
-      /const nextConfig = ({.+?})\n/
-    )?.[1] ?? {};
+    fs
+      .readFileSync(path.join(config.paths.output.standaloneApp, "/server.js"), "utf8")
+      ?.match(/const nextConfig = ({.+?})\n/)?.[1] ?? {};
 
-  console.log(`\x1b[35m⚙️ Bundling the worker file...\n\x1b[0m`);
+  console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
 
   patchWranglerDeps(config);
   updateWebpackChunksFile(config);
 
+  const { appBuildOutputPath, appPath, outputDir, monorepoRoot } = openNextOptions;
+  const outputPath = path.join(outputDir, "server-functions", "default");
+  const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
+  const openNextServer = path.join(outputPath, packagePath, `index.mjs`);
+  const openNextServerBundle = path.join(outputPath, packagePath, `handler.mjs`);
+
   await build({
-    entryPoints: [workerEntrypoint],
+    entryPoints: [openNextServer],
     bundle: true,
-    outfile: workerOutputFile,
+    outfile: openNextServerBundle,
     format: "esm",
     target: "esnext",
     minify: false,
@@ -60,15 +61,15 @@ export async function buildWorker(config: Config): Promise<void> {
       // Note: we apply an empty shim to next/dist/compiled/ws because it generates two `eval`s:
       //   eval("require")("bufferutil");
       //   eval("require")("utf-8-validate");
-      "next/dist/compiled/ws": join(config.paths.internal.templates, "shims", "empty.ts"),
+      "next/dist/compiled/ws": path.join(config.paths.internal.templates, "shims", "empty.ts"),
       // Note: we apply an empty shim to next/dist/compiled/edge-runtime since (amongst others) it generated the following `eval`:
       //   eval(getModuleCode)(module, module.exports, throwingRequire, params.context, ...Object.values(params.scopedContext));
       //   which comes from https://github.com/vercel/edge-runtime/blob/6e96b55f/packages/primitives/src/primitives/load.js#L57-L63
       // QUESTION: Why did I encountered this but mhart didn't?
-      "next/dist/compiled/edge-runtime": join(config.paths.internal.templates, "shims", "empty.ts"),
+      "next/dist/compiled/edge-runtime": path.join(config.paths.internal.templates, "shims", "empty.ts"),
       // `@next/env` is a library Next.js uses for loading dotenv files, for obvious reasons we need to stub it here
       // source: https://github.com/vercel/next.js/tree/0ac10d79720/packages/next-env
-      "@next/env": join(config.paths.internal.templates, "shims", "env.ts"),
+      "@next/env": path.join(config.paths.internal.templates, "shims", "env.ts"),
     },
     define: {
       // config file used by Next.js, see: https://github.com/vercel/next.js/blob/68a7128/packages/next/src/build/utils.ts#L2137-L2139
@@ -86,15 +87,11 @@ export async function buildWorker(config: Config): Promise<void> {
     // We need to set platform to node so that esbuild doesn't complain about the node imports
     platform: "node",
     banner: {
+      // `__dirname` is used by unbundled js files (which don't inherit the `__dirname` present in the `define` field)
+      // so we also need to set it on the global scope
+      // Note: this was hit in the `next/dist/compiled/@opentelemetry/api` module
       js: `
-				${
-          /*
-					`__dirname` is used by unbundled js files (which don't inherit the `__dirname` present in the `define` field)
-					so we also need to set it on the global scope
-					Note: this was hit in the `next/dist/compiled/@opentelemetry/api` module
-				*/ ""
-        }
-				globalThis.__dirname ??= "";
+globalThis.__dirname ??= "";
 
 // Do not crash on cache not supported
 // https://github.com/cloudflare/workerd/pull/2434
@@ -106,7 +103,7 @@ globalThis.fetch = (input, init) => {
   }
   return curFetch(input, init);
 };
-import { Readable } from 'node:stream';
+import __cf_stream from 'node:stream';
 fetch = globalThis.fetch;
 const CustomRequest = class extends globalThis.Request {
   constructor(input, init) {
@@ -114,7 +111,7 @@ const CustomRequest = class extends globalThis.Request {
       delete init.cache;
       if (init.body?.__node_stream__ === true) {
         // https://github.com/cloudflare/workerd/issues/2746
-        init.body = Readable.toWeb(init.body);
+        init.body = __cf_stream.Readable.toWeb(init.body);
       }
     }
     super(input, init);
@@ -128,9 +125,18 @@ globalThis.__dangerous_ON_edge_converter_returns_request = true;
     },
   });
 
-  await updateWorkerBundledCode(workerOutputFile, config);
+  await updateWorkerBundledCode(openNextServerBundle, config, openNextOptions);
 
-  console.log(`\x1b[35mWorker saved in \`${workerOutputFile}\` 🚀\n\x1b[0m`);
+  const isMonorepo = monorepoRoot !== appPath;
+  if (isMonorepo) {
+    const packagePosixPath = packagePath.split(path.sep).join(path.posix.sep);
+    fs.writeFileSync(
+      path.join(outputPath, "handler.mjs"),
+      `export * from "./${packagePosixPath}/handler.mjs";`
+    );
+  }
+
+  console.log(`\x1b[35mWorker saved in \`${openNextServerBundle}\` 🚀\n\x1b[0m`);
 }
 
 /**
@@ -141,7 +147,11 @@ globalThis.__dangerous_ON_edge_converter_returns_request = true;
  * @param workerOutputFile
  * @param config
  */
-async function updateWorkerBundledCode(workerOutputFile: string, config: Config): Promise<void> {
+async function updateWorkerBundledCode(
+  workerOutputFile: string,
+  config: Config,
+  openNextOptions: BuildOptions
+): Promise<void> {
   const originalCode = await readFile(workerOutputFile, "utf8");
 
   let patchedCode = originalCode;
@@ -151,9 +161,14 @@ async function updateWorkerBundledCode(workerOutputFile: string, config: Config)
   patchedCode = inlineNextRequire(patchedCode, config);
   patchedCode = patchFindDir(patchedCode, config);
   patchedCode = inlineEvalManifest(patchedCode, config);
-  patchedCode = await patchCache(patchedCode, config);
+  patchedCode = await patchCache(patchedCode, openNextOptions);
   patchedCode = inlineMiddlewareManifestRequire(patchedCode, config);
   patchedCode = patchExceptionBubbling(patchedCode);
+
+  patchedCode = patchedCode
+    // workers do not support dynamic require nor require.resolve
+    .replace("patchAsyncStorage();", "//patchAsyncStorage();")
+    .replace('require.resolve("./cache.cjs")', '"unused"');
 
   await writeFile(workerOutputFile, patchedCode);
 }
@@ -164,10 +179,10 @@ function createFixRequiresESBuildPlugin(config: Config): Plugin {
     setup(build) {
       // Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
       build.onResolve({ filter: /^\.\/require-hook$/ }, () => ({
-        path: join(config.paths.internal.templates, "shims", "empty.ts"),
+        path: path.join(config.paths.internal.templates, "shims", "empty.ts"),
       }));
       build.onResolve({ filter: /\.\/lib\/node-fs-methods$/ }, () => ({
-        path: join(config.paths.internal.templates, "shims", "empty.ts"),
+        path: path.join(config.paths.internal.templates, "shims", "empty.ts"),
       }));
     },
   };
