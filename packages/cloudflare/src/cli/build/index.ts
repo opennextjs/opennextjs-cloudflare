@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 
 import { buildNextjsApp, setStandaloneBuildMode } from "@opennextjs/aws/build/buildNextApp.js";
+import { compileCache } from "@opennextjs/aws/build/compileCache.js";
 import { compileOpenNextConfig } from "@opennextjs/aws/build/compileConfig.js";
 import { createStaticAssets } from "@opennextjs/aws/build/createAssets.js";
 import { createMiddleware } from "@opennextjs/aws/build/createMiddleware.js";
@@ -13,7 +14,8 @@ import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 
 import type { ProjectOptions } from "../config";
 import { containsDotNextDir, getConfig } from "../config";
-import { buildWorker } from "./build-worker";
+import { bundleServer } from "./bundle-server";
+import { createServerBundle } from "./open-next/createServerBundle";
 
 /**
  * Builds the application in a format that can be passed to workerd
@@ -62,17 +64,24 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
   printHeader("Generating bundle");
   buildHelper.initOutputDir(options);
 
+  // Compile cache.ts
+  compileCache(options);
+
   // Compile middleware
   await createMiddleware(options, { forceOnlyBuildOnce: true });
 
   createStaticAssets(options);
 
+  await createServerBundle(options);
+
+  // TODO: drop this copy.
   // Copy the .next directory to the output directory so it can be mutated.
   cpSync(join(projectOpts.sourceDir, ".next"), join(projectOpts.outputDir, ".next"), { recursive: true });
 
   const projConfig = getConfig(projectOpts);
 
-  await buildWorker(projConfig);
+  // TODO: rely on options only.
+  await bundleServer(projConfig, options);
 
   logger.info("OpenNext build complete.");
 }
@@ -84,22 +93,40 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
  */
 function ensureCloudflareConfig(config: OpenNextConfig) {
   const requirements = {
-    isExternal: config.middleware?.external == true,
-    useCloudflareWrapper: config.middleware?.override?.wrapper === "cloudflare",
-    useEdgeConverter: config.middleware?.override?.converter === "edge",
+    dftUseCloudflareWrapper: config.default?.override?.wrapper === "cloudflare-streaming",
+    dftUseEdgeConverter: config.default?.override?.converter === "edge",
+    dftUseDummyCache:
+      config.default?.override?.incrementalCache === "dummy" &&
+      config.default?.override?.tagCache === "dummy" &&
+      config.default?.override?.queue === "dummy",
     disableCacheInterception: config.dangerous?.enableCacheInterception !== true,
+    mwIsMiddlewareExternal: config.middleware?.external == true,
+    mwUseCloudflareWrapper: config.middleware?.override?.wrapper === "cloudflare",
+    mwUseEdgeConverter: config.middleware?.override?.converter === "edge",
   };
 
   if (Object.values(requirements).some((satisfied) => !satisfied)) {
     throw new Error(`open-next.config.ts should contain:
 {
-  "middleware": {
-    "external": true,
-    "override": {
-      "wrapper": "cloudflare",
-      "converter": "edge"
-    }
+  default: {
+    override: {
+      wrapper: "cloudflare-streaming",
+      converter: "edge",
+      incrementalCache: "dummy",
+      tagCache: "dummy",
+      queue: "dummy",
+    },
   },
+
+  middleware: {
+    external: true,
+    override: {
+      wrapper: "cloudflare",
+      converter: "edge",
+      proxyExternalRequest: "fetch",
+    },
+  },
+
   "dangerous": {
     "enableCacheInterception": false
   }
