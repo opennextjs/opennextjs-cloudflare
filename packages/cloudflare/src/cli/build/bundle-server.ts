@@ -140,6 +140,24 @@ globalThis.__dangerous_ON_edge_converter_returns_request = true;
 }
 
 /**
+ * Next.js sets this `__import_unsupported` on `globalThis`:
+ * https://github.com/vercel/next.js/blob/5b7833e3/packages/next/src/server/web/globals.ts#L94-L98
+ *
+ * For some reason on us this gets run more than once causing a `Cannot redefine property: __import_unsupported`
+ * runtime error.
+ *
+ * So here we patch the function to only define the property if it is not already there
+ *
+ * TODO: this should ideally be done in a more robust way with ts-morph
+ */
+export function patchEnhanceGlobals(code: string) {
+  return code.replace(
+    `Object.defineProperty(globalThis, "__import_unsupported",`,
+    `if(!("__import_unsupported" in globalThis)) Object.defineProperty(globalThis, "__import_unsupported",`
+  );
+}
+
+/**
  * This function applies string replacements on the bundled worker code necessary to get it to run in workerd
  *
  * Needless to say all the logic in this function is something we should avoid as much as possible!
@@ -164,6 +182,7 @@ async function updateWorkerBundledCode(
   patchedCode = await patchCache(patchedCode, openNextOptions);
   patchedCode = inlineMiddlewareManifestRequire(patchedCode, config);
   patchedCode = patchExceptionBubbling(patchedCode);
+  patchedCode = patchEnhanceGlobals(patchedCode);
 
   patchedCode = patchedCode
     // workers do not support dynamic require nor require.resolve
