@@ -134,6 +134,41 @@ globalThis.__dangerous_ON_edge_converter_returns_request = true;
 }
 
 /**
+ * Next.js sets this `__import_unsupported` on `globalThis`:
+ * https://github.com/vercel/next.js/blob/5b7833e3/packages/next/src/server/web/globals.ts#L94-L98
+ *
+ * For some reason on us this gets run more than once causing a `Cannot redefine property: __import_unsupported`
+ * runtime error.
+ *
+ * So here we patch the function to only define the property if it is not already there
+ *
+ * TODO: this should ideally be done in a more robust way with ts-morph
+ */
+export function patchEnhanceGlobals(code: string) {
+  return code.replace(
+    `Object.defineProperty(globalThis, "__import_unsupported",`,
+    `if(!("__import_unsupported" in globalThis)) Object.defineProperty(globalThis, "__import_unsupported",`
+  );
+}
+
+/**
+ *
+ * `loadInstrumentationModule` (https://github.com/vercel/next.js/blob/5b7833e3/packages/next/src/server/next-server.ts#L301)
+ * calls `module.findSourceMap` (https://nodejs.org/api/module.html#modulefindsourcemappath) which we haven't implemented
+ * causing a runtime error.
+ *
+ * TODO: this should ideally be done in a more robust way with ts-morph
+ *
+ * TODO: investigate and better understand the issue, is it ok to skip this function?
+ */
+export function patchLoadInstrumentationModule(code: string) {
+  return code.replaceAll(
+    `async loadInstrumentationModule() {`,
+    `async loadInstrumentationModule() { return;`
+  );
+}
+
+/**
  * This function applies string replacements on the bundled worker code necessary to get it to run in workerd
  *
  * Needless to say all the logic in this function is something we should avoid as much as possible!
@@ -154,6 +189,8 @@ async function updateWorkerBundledCode(workerOutputFile: string, config: Config)
   patchedCode = await patchCache(patchedCode, config);
   patchedCode = inlineMiddlewareManifestRequire(patchedCode, config);
   patchedCode = patchExceptionBubbling(patchedCode);
+  patchedCode = patchEnhanceGlobals(patchedCode);
+  patchedCode = patchLoadInstrumentationModule(patchedCode);
 
   await writeFile(workerOutputFile, patchedCode);
 }
