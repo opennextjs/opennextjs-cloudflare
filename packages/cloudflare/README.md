@@ -27,7 +27,7 @@ You can use [`create-next-app`](https://nextjs.org/docs/pages/api-reference/cli/
   ```toml
   #:schema node_modules/wrangler/config-schema.json
   name = "<your-app-name>"
-  main = ".open-next/index.mjs"
+  main = ".open-next/worker.ts"
 
   compatibility_date = "2024-09-23"
   compatibility_flags = ["nodejs_compat"]
@@ -44,8 +44,12 @@ import type { OpenNextConfig } from "open-next/types/open-next";
 const config: OpenNextConfig = {
   default: {
     override: {
-      wrapper: "cloudflare",
+      wrapper: "cloudflare-streaming",
       converter: "edge",
+      // Unused implementation
+      incrementalCache: "dummy",
+      tagCache: "dummy",
+      queue: "dummy",
     },
   },
 
@@ -54,42 +58,20 @@ const config: OpenNextConfig = {
     override: {
       wrapper: "cloudflare",
       converter: "edge",
+      proxyExternalRequest: "fetch",
     },
-  },
-
-  dangerous: {
-    disableTagCache: true,
-    disableIncrementalCache: true,
   },
 };
 
 export default config;
 ```
 
-You can enable Incremental Static Regeneration ([ISR](https://nextjs.org/docs/app/building-your-application/data-fetching/incremental-static-regeneration)) by adding a KV binding named `NEXT_CACHE_WORKERS_KV` to your `wrangler.toml`:
+## Know issues
 
-- Create the binding
-
-  ```bash
-  npx wrangler kv namespace create NEXT_CACHE_WORKERS_KV
-  # or
-  pnpm wrangler kv namespace create NEXT_CACHE_WORKERS_KV
-  # or
-  yarn wrangler kv namespace create NEXT_CACHE_WORKERS_KV
-  # or
-  bun wrangler kv namespace create NEXT_CACHE_WORKERS_KV
-  ```
-
-- Paste the snippet to your `wrangler.toml`:
-
-  ```bash
-  [[kv_namespaces]]
-  binding = "NEXT_CACHE_WORKERS_KV"
-  id = "..."
-  ```
-
-> [!WARNING]
-> The current support for ISR is limited.
+- Next cache is not supported in the experimental branch yet
+- `▲ [WARNING] Suspicious assignment to defined constant "process.env.NODE_ENV" [assign-to-define]` can safely be ignored
+- You should test with cache disabled in the developper tools
+- Maybe more, still experimental...
 
 ## Local development
 

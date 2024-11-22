@@ -1,8 +1,6 @@
-import { join } from "node:path";
+import path from "node:path";
 
-import { build } from "esbuild";
-
-import { Config } from "../../../config";
+import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 
 /**
  * Sets up the OpenNext cache handler in a Next.js build.
@@ -15,29 +13,20 @@ import { Config } from "../../../config";
  * build-time. Therefore, we have to manually override the default way that the cache handler is
  * instantiated with a dynamic require that uses a string literal for the path.
  */
-export async function patchCache(code: string, config: Config): Promise<string> {
+export async function patchCache(code: string, openNextOptions: BuildOptions): Promise<string> {
   console.log("# patchCache");
 
-  const cacheHandlerFileName = "cache-handler.mjs";
-  const cacheHandlerEntrypoint = join(config.paths.internal.templates, "cache-handler", "index.ts");
-  const cacheHandlerOutputFile = join(config.paths.output.root, cacheHandlerFileName);
+  const { appBuildOutputPath, outputDir, monorepoRoot } = openNextOptions;
 
-  await build({
-    entryPoints: [cacheHandlerEntrypoint],
-    bundle: true,
-    outfile: cacheHandlerOutputFile,
-    format: "esm",
-    target: "esnext",
-    minify: config.build.shouldMinify,
-    define: {
-      "process.env.__OPENNEXT_KV_BINDING_NAME": `"${config.cache.kvBindingName}"`,
-    },
-  });
+  // TODO: switch to cache.mjs
+  const outputPath = path.join(outputDir, "server-functions", "default");
+  const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
+  const cacheFile = path.join(outputPath, packagePath, "cache.cjs");
 
   const patchedCode = code.replace(
     "const { cacheHandler } = this.nextConfig;",
     `const cacheHandler = null;
-CacheHandler = (await import('./${cacheHandlerFileName}')).OpenNextCacheHandler;
+CacheHandler = require('${cacheFile}').default;
 `
   );
 
