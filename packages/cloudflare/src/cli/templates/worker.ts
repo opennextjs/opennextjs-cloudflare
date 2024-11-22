@@ -1,17 +1,10 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import type { IncomingMessage } from "node:http";
-import Stream from "node:stream";
-
-import type { NextConfig } from "next";
-import { NodeNextRequest, NodeNextResponse } from "next/dist/server/base-http/node";
-import { MockedResponse } from "next/dist/server/lib/mock-request";
-import type { NodeRequestHandler } from "next/dist/server/next-server";
 
 import type { CloudflareContext } from "../../api";
 // @ts-expect-error: resolved by wrangler build
 import { handler as middlewareHandler } from "./middleware/handler.mjs";
-
-const NON_BODY_RESPONSES = new Set([101, 204, 205, 304]);
+// @ts-expect-error: resolved by wrangler build
+import { handler as serverHandler } from "./server-functions/default/handler.mjs";
 
 const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
 
@@ -28,14 +21,19 @@ const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
   }
 );
 
-// Injected at build time
-const nextConfig: NextConfig = JSON.parse(process.env.__NEXT_PRIVATE_STANDALONE_CONFIG ?? "{}");
-
-let requestHandler: NodeRequestHandler | null = null;
-
 export default {
   async fetch(request, env, ctx) {
     return cloudflareContextALS.run({ env, ctx, cf: request.cf }, async () => {
+      // Set the default Origin for the origin resolver.
+      const url = new URL(request.url);
+      process.env.OPEN_NEXT_ORIGIN = JSON.stringify({
+        default: {
+          host: url.hostname,
+          protocol: url.protocol.slice(0, -1),
+          port: url.port,
+        },
+      });
+
       // The Middleware handler can return either a `Response` or a `Request`:
       // - `Response`s should be returned early
       // - `Request`s are handled by the Next server
@@ -45,115 +43,7 @@ export default {
         return reqOrResp;
       }
 
-      request = reqOrResp;
-
-      if (requestHandler == null) {
-        globalThis.process.env = { ...globalThis.process.env, ...env };
-        // Note: "next/dist/server/next-server" is a cjs module so we have to `require` it not to confuse esbuild
-        //       (since esbuild can run in projects with different module resolutions)
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const NextNodeServer = require("next/dist/server/next-server")
-          .default as typeof import("next/dist/server/next-server").default;
-
-        requestHandler = new NextNodeServer({
-          conf: nextConfig,
-          customServer: false,
-          dev: false,
-          dir: "",
-          minimalMode: false,
-        }).getRequestHandler();
-      }
-
-      const { req, res, webResponse } = getWrappedStreams(request, ctx);
-
-      ctx.waitUntil(Promise.resolve(requestHandler(new NodeNextRequest(req), new NodeNextResponse(res))));
-
-      return await webResponse();
+      return serverHandler(reqOrResp, env, ctx);
     });
   },
 } as ExportedHandler<{ ASSETS: Fetcher }>;
-
-function getWrappedStreams(request: Request, ctx: ExecutionContext) {
-  const url = new URL(request.url);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const reqBody = request.body && Stream.Readable.fromWeb(request.body as any);
-  const req = (reqBody ?? Stream.Readable.from([])) as IncomingMessage;
-  req.httpVersion = "1.0";
-  req.httpVersionMajor = 1;
-  req.httpVersionMinor = 0;
-  req.url = url.href.slice(url.origin.length);
-  req.headers = Object.fromEntries([...request.headers]);
-  req.method = request.method;
-  Object.defineProperty(req, "__node_stream__", {
-    value: true,
-    writable: false,
-  });
-  Object.defineProperty(req, "headersDistinct", {
-    get() {
-      const headers: Record<string, string[]> = {};
-      for (const [key, value] of Object.entries(req.headers)) {
-        if (!value) continue;
-        headers[key] = Array.isArray(value) ? value : [value];
-      }
-      return headers;
-    },
-  });
-
-  const { readable, writable } = new IdentityTransformStream();
-  const resBodyWriter = writable.getWriter();
-
-  const res = new MockedResponse({
-    resWriter: (chunk) => {
-      resBodyWriter.write(typeof chunk === "string" ? Buffer.from(chunk) : chunk).catch((err) => {
-        if (
-          err.message.includes("WritableStream has been closed") ||
-          err.message.includes("Network connection lost")
-        ) {
-          // safe to ignore
-          return;
-        }
-        console.error("Error in resBodyWriter.write");
-        console.error(err);
-      });
-      return true;
-    },
-  });
-
-  // It's implemented as a no-op, but really it should mark the headers as done
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  res.flushHeaders = () => (res as any).headPromiseResolve();
-
-  // Only allow statusCode to be modified if not sent
-  let { statusCode } = res;
-  Object.defineProperty(res, "statusCode", {
-    get: function () {
-      return statusCode;
-    },
-    set: function (val) {
-      if (this.finished || this.headersSent) {
-        return;
-      }
-      statusCode = val;
-    },
-  });
-
-  // Make sure the writer is eventually closed
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ctx.waitUntil((res as any).hasStreamed.finally(() => resBodyWriter.close().catch(() => {})));
-
-  return {
-    res,
-    req,
-    webResponse: async () => {
-      await res.headPromise;
-      // TODO: remove this once streaming with compression is working nicely
-      res.setHeader("content-encoding", "identity");
-      return new Response(NON_BODY_RESPONSES.has(res.statusCode) ? null : readable, {
-        status: res.statusCode,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        headers: (res as any).headers,
-      });
-    },
-  };
-}
