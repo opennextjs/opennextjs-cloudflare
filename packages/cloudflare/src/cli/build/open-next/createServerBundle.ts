@@ -274,6 +274,7 @@ function addMonorepoEntrypoint(outputPath: string, packagePath: string) {
   //       the root of the bundle. We will create a dummy `index.mjs`
   //       that re-exports the real handler.
 
+  // TOOD: use helper
   // Always use posix path for import path
   const packagePosixPath = packagePath.split(path.sep).join(path.posix.sep);
   fs.writeFileSync(path.join(outputPath, "index.mjs"), `export * from "./${packagePosixPath}/index.mjs";`);

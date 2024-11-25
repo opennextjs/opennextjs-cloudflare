@@ -34,7 +34,7 @@ export async function bundleServer(config: Config, openNextOptions: BuildOptions
 
   const nextConfigStr =
     fs
-      .readFileSync(path.join(config.paths.output.standaloneApp, "/server.js"), "utf8")
+      .readFileSync(path.join(config.paths.output.standaloneApp, "server.js"), "utf8")
       ?.match(/const nextConfig = ({.+?})\n/)?.[1] ?? {};
 
   console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
@@ -87,10 +87,11 @@ export async function bundleServer(config: Config, openNextOptions: BuildOptions
     // We need to set platform to node so that esbuild doesn't complain about the node imports
     platform: "node",
     banner: {
-      // `__dirname` is used by unbundled js files (which don't inherit the `__dirname` present in the `define` field)
-      // so we also need to set it on the global scope
-      // Note: this was hit in the `next/dist/compiled/@opentelemetry/api` module
       js: `
+// __dirname is used by unbundled js files (which don't inherit the __dirname present in the define field)
+// so we also need to set it on the global scope
+// Note: this was hit in the next/dist/compiled/@opentelemetry/api module
+
 globalThis.__dirname ??= "";
 
 // Do not crash on cache not supported
