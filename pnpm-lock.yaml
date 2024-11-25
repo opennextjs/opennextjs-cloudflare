@@ -341,8 +341,8 @@ importers:
   packages/cloudflare:
     dependencies:
       '@opennextjs/aws':
-        specifier: https://pkg.pr.new/@opennextjs/aws@0ac604e
-        version: https://pkg.pr.new/@opennextjs/aws@0ac604e
+        specifier: https://pkg.pr.new/@opennextjs/aws@2202f36
+        version: https://pkg.pr.new/@opennextjs/aws@2202f36
       ts-morph:
         specifier: 'catalog:'
         version: 23.0.0
@@ -1749,8 +1749,8 @@ packages:
   '@octokit/types@13.6.1':
     resolution: {integrity: sha512-PHZE9Z+kWXb23Ndik8MKPirBPziOc0D2/3KH1P+6jK5nGWe96kadZuE4jev2/Jq7FvIfTlT2Ltg8Fv2x1v0a5g==}
 
-  '@opennextjs/aws@https://pkg.pr.new/@opennextjs/aws@0ac604e':
-    resolution: {tarball: https://pkg.pr.new/@opennextjs/aws@0ac604e}
+  '@opennextjs/aws@https://pkg.pr.new/@opennextjs/aws@2202f36':
+    resolution: {tarball: https://pkg.pr.new/@opennextjs/aws@2202f36}
     version: 3.2.2
     hasBin: true
 
@@ -6694,7 +6694,7 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 22.2.0
 
-  '@opennextjs/aws@https://pkg.pr.new/@opennextjs/aws@0ac604e':
+  '@opennextjs/aws@https://pkg.pr.new/@opennextjs/aws@2202f36':
     dependencies:
       '@aws-sdk/client-dynamodb': 3.682.0
       '@aws-sdk/client-lambda': 3.682.0
