@@ -44,7 +44,7 @@ import type { OpenNextConfig } from "open-next/types/open-next";
 const config: OpenNextConfig = {
   default: {
     override: {
-      wrapper: "cloudflare-streaming",
+      wrapper: "cloudflare-node",
       converter: "edge",
       // Unused implementation
       incrementalCache: "dummy",
@@ -56,7 +56,7 @@ const config: OpenNextConfig = {
   middleware: {
     external: true,
     override: {
-      wrapper: "cloudflare",
+      wrapper: "cloudflare-edge",
       converter: "edge",
       proxyExternalRequest: "fetch",
     },

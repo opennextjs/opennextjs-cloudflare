@@ -93,7 +93,7 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
  */
 function ensureCloudflareConfig(config: OpenNextConfig) {
   const requirements = {
-    dftUseCloudflareWrapper: config.default?.override?.wrapper === "cloudflare-streaming",
+    dftUseCloudflareWrapper: config.default?.override?.wrapper === "cloudflare-node",
     dftUseEdgeConverter: config.default?.override?.converter === "edge",
     dftUseDummyCache:
       config.default?.override?.incrementalCache === "dummy" &&
@@ -101,8 +101,9 @@ function ensureCloudflareConfig(config: OpenNextConfig) {
       config.default?.override?.queue === "dummy",
     disableCacheInterception: config.dangerous?.enableCacheInterception !== true,
     mwIsMiddlewareExternal: config.middleware?.external == true,
-    mwUseCloudflareWrapper: config.middleware?.override?.wrapper === "cloudflare",
+    mwUseCloudflareWrapper: config.middleware?.override?.wrapper === "cloudflare-edge",
     mwUseEdgeConverter: config.middleware?.override?.converter === "edge",
+    mwUseFetchProxy: config.middleware?.override?.proxyExternalRequest === "fetch",
   };
 
   if (Object.values(requirements).some((satisfied) => !satisfied)) {
@@ -110,7 +111,7 @@ function ensureCloudflareConfig(config: OpenNextConfig) {
 {
   default: {
     override: {
-      wrapper: "cloudflare-streaming",
+      wrapper: "cloudflare-node",
       converter: "edge",
       incrementalCache: "dummy",
       tagCache: "dummy",
@@ -121,7 +122,7 @@ function ensureCloudflareConfig(config: OpenNextConfig) {
   middleware: {
     external: true,
     override: {
-      wrapper: "cloudflare",
+      wrapper: "cloudflare-edge",
       converter: "edge",
       proxyExternalRequest: "fetch",
     },
