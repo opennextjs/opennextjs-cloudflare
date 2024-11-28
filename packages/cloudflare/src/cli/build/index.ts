@@ -41,6 +41,10 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
   const options = buildHelper.normalizeOptions(config, openNextDistDir, buildDir);
   logger.setLevel(options.debug ? "debug" : "info");
 
+  // Do not minify the code so that we can apply string replacement patch.
+  // Note that wrangler will still minify the bundle.
+  options.minify = false;
+
   // Pre-build validation
   buildHelper.checkRunningInsideNextjsApp(options);
   logger.info(`App directory: ${options.appPath}`);

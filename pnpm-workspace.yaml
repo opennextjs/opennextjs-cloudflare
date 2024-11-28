@@ -26,4 +26,4 @@ catalog:
   "tsx": ^4.19.2
   "typescript-eslint": ^8.7.0
   "vitest": ^2.1.1
-  "wrangler": ^3.87.0
+  "wrangler": ^3.91.0
