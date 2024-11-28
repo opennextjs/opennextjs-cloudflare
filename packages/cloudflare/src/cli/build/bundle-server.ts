@@ -91,7 +91,6 @@ export async function bundleServer(config: Config, openNextOptions: BuildOptions
 // __dirname is used by unbundled js files (which don't inherit the __dirname present in the define field)
 // so we also need to set it on the global scope
 // Note: this was hit in the next/dist/compiled/@opentelemetry/api module
-
 globalThis.__dirname ??= "";
 
 // Do not crash on cache not supported
@@ -168,6 +167,7 @@ async function updateWorkerBundledCode(
 
   patchedCode = patchedCode
     // workers do not support dynamic require nor require.resolve
+    // TODO: implement for cf (possibly in @opennextjs/aws)
     .replace("patchAsyncStorage();", "//patchAsyncStorage();")
     .replace('require.resolve("./cache.cjs")', '"unused"');
 
