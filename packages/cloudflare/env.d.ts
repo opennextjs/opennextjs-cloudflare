@@ -9,10 +9,6 @@ declare global {
       OPEN_NEXT_ORIGIN: string;
     }
   }
-
-  interface Window {
-    [key: string]: string | Fetcher;
-  }
 }
 
 export {};
