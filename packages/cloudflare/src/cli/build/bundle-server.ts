@@ -167,7 +167,7 @@ async function updateWorkerBundledCode(
 
   patchedCode = patchedCode
     // workers do not support dynamic require nor require.resolve
-    // TODO: implement for cf
+    // TODO: implement for cf (possibly in @opennextjs/aws)
     .replace("patchAsyncStorage();", "//patchAsyncStorage();")
     .replace('require.resolve("./cache.cjs")', '"unused"');
 
