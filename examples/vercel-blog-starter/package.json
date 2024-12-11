@@ -5,7 +5,7 @@
     "dev": "next",
     "build": "next build",
     "start": "next start",
-    "build:worker": "cloudflare",
+    "build:worker": "opennextjs-cloudflare",
     "dev:worker": "wrangler dev --port 8773",
     "preview:worker": "pnpm build:worker && pnpm dev:worker"
   },

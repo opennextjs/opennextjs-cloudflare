@@ -30,6 +30,6 @@ Changes:
   }
 ```
 
-- Build the app `pnpm cloudflare`
+- Build the app `pnpm opennextjs-cloudflare`
 
 - Serve with `WRANGLER_BUILD_CONDITIONS="" WRANGLER_BUILD_PLATFORM="node" pnpm wrangler dev`
