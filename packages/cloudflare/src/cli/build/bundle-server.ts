@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { build, Plugin } from "esbuild";
+import * as ts from "ts-morph";
 
 import { Config } from "../config";
 import { copyPackageCliFiles } from "./patches/investigated/copy-package-cli-files";
@@ -18,7 +19,7 @@ import { patchExceptionBubbling } from "./patches/to-investigate/patch-exception
 import { patchFindDir } from "./patches/to-investigate/patch-find-dir";
 import { patchReadFile } from "./patches/to-investigate/patch-read-file";
 import { patchWranglerDeps } from "./patches/to-investigate/wrangler-deps";
-import { copyPrerenderedRoutes } from "./utils";
+import { copyPrerenderedRoutes, tsParseFile } from "./utils";
 
 /** The dist directory of the Cloudflare adapter package */
 const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -140,6 +141,39 @@ globalThis.__dangerous_ON_edge_converter_returns_request = true;
 }
 
 /**
+ * The `loadInstrumentationModule` method (source: https://github.com/vercel/next.js/blob/5b7833e3/packages/next/src/server/next-server.ts#L301)
+ * calls `module.findSourceMap` (https://nodejs.org/api/module.html#modulefindsourcemappath) which we haven't implemented causing a runtime error.
+ *
+ * To solve this issue this function gets all the `loadInstrumentationModule` declarations found in the file and removes all the statements
+ * from their bodies (making them no-op methods).
+ *
+ * Instrumentation is a Next.js feature for monitoring and logging (see: https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation),
+ * the removal of this method's logic most likely breaks this feature (see: https://nextjs.org/docs/app/api-reference/file-conventions/instrumentation),
+ * so this function is likely temporary and something that we'll have to fix in the future.
+ */
+export function patchLoadInstrumentationModule(file: ts.SourceFile): ts.SourceFile {
+  const loadInstrumentationModuleDeclarations = file
+    .getDescendantsOfKind(ts.SyntaxKind.MethodDeclaration)
+    .filter((methodDeclaration) => {
+      if (methodDeclaration.getName() !== "loadInstrumentationModule") {
+        return false;
+      }
+      const methodModifierKinds = methodDeclaration.getModifiers().map((modifier) => modifier.getKind());
+      if (methodModifierKinds.length !== 1 || methodModifierKinds[0] !== ts.SyntaxKind.AsyncKeyword) {
+        return false;
+      }
+
+      return true;
+    });
+
+  loadInstrumentationModuleDeclarations.forEach((loadInstrumentationModuleDeclaration) => {
+    loadInstrumentationModuleDeclaration.setBodyText("");
+  });
+
+  return file;
+}
+
+/**
  * This function applies string replacements on the bundled worker code necessary to get it to run in workerd
  *
  * Needless to say all the logic in this function is something we should avoid as much as possible!
@@ -164,6 +198,7 @@ async function updateWorkerBundledCode(
   patchedCode = await patchCache(patchedCode, openNextOptions);
   patchedCode = inlineMiddlewareManifestRequire(patchedCode, config);
   patchedCode = patchExceptionBubbling(patchedCode);
+  patchedCode = patchLoadInstrumentationModule(tsParseFile(patchedCode)).print();
 
   patchedCode = patchedCode
     // workers do not support dynamic require nor require.resolve
