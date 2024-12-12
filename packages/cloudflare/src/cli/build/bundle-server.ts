@@ -150,6 +150,8 @@ globalThis.__dangerous_ON_edge_converter_returns_request = true;
  * Instrumentation is a Next.js feature for monitoring and logging (see: https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation),
  * the removal of this method's logic most likely breaks this feature (see: https://nextjs.org/docs/app/api-reference/file-conventions/instrumentation),
  * so this function is likely temporary and something that we'll have to fix in the future.
+ *
+ * TODO: investigate and re-enable instrumentation (https://github.com/opennextjs/opennextjs-cloudflare/issues/160)
  */
 export function patchLoadInstrumentationModule(file: ts.SourceFile): ts.SourceFile {
   const loadInstrumentationModuleDeclarations = file
