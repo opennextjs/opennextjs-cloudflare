@@ -1,7 +1,7 @@
 {
   "name": "@opennextjs/cloudflare",
   "description": "Cloudflare builder for next apps",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "scripts": {
     "build": "tsup",
     "build:watch": "tsup --watch src",
@@ -11,7 +11,9 @@
     "test": "vitest --run",
     "test:watch": "vitest"
   },
-  "bin": "dist/cli/index.mjs",
+  "bin": {
+    "opennextjs-cloudflare": "dist/cli/index.mjs"
+  },
   "main": "./dist/api/index.mjs",
   "types": "./dist/api/index.d.mts",
   "exports": {
@@ -31,6 +33,7 @@
     "directory": "packages/cloudflare"
   },
   "keywords": [
+    "opennextjs-cloudflare",
     "cloudflare",
     "workers",
     "next.js"
