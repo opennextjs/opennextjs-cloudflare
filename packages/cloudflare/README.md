@@ -84,13 +84,13 @@ Run the following commands to preview the production build of your application l
 - build the app and adapt it for Cloudflare
 
   ```bash
-  npx cloudflare
+  npx opennextjs-cloudflare
   # or
-  pnpm cloudflare
+  pnpm opennextjs-cloudflare
   # or
-  yarn cloudflare
+  yarn opennextjs-cloudflare
   # or
-  bun cloudflare
+  bun opennextjs-cloudflare
   ```
 
 - Preview the app in Wrangler
@@ -112,11 +112,11 @@ Deploy your application to production with the following:
 - build the app and adapt it for Cloudflare
 
   ```bash
-  npx cloudflare && npx wrangler deploy
+  npx opennextjs-cloudflare && npx wrangler deploy
   # or
-  pnpm cloudflare && pnpm wrangler deploy
+  pnpm opennextjs-cloudflare && pnpm wrangler deploy
   # or
-  yarn cloudflare && yarn wrangler deploy
+  yarn opennextjs-cloudflare && yarn wrangler deploy
   # or
-  bun cloudflare && bun wrangler deploy
+  bun opennextjs-cloudflare && bun wrangler deploy
   ```
