@@ -16,6 +16,7 @@ import { inlineMiddlewareManifestRequire } from "./patches/to-investigate/inline
 import { inlineNextRequire } from "./patches/to-investigate/inline-next-require";
 import { patchExceptionBubbling } from "./patches/to-investigate/patch-exception-bubbling";
 import { patchFindDir } from "./patches/to-investigate/patch-find-dir";
+import { patchLoadInstrumentationModule } from "./patches/to-investigate/patch-load-instrumentation-module";
 import { patchReadFile } from "./patches/to-investigate/patch-read-file";
 import { patchWranglerDeps } from "./patches/to-investigate/wrangler-deps";
 import { copyPrerenderedRoutes } from "./utils";
@@ -164,6 +165,7 @@ async function updateWorkerBundledCode(
   patchedCode = await patchCache(patchedCode, openNextOptions);
   patchedCode = inlineMiddlewareManifestRequire(patchedCode, config);
   patchedCode = patchExceptionBubbling(patchedCode);
+  patchedCode = patchLoadInstrumentationModule(patchedCode);
 
   patchedCode = patchedCode
     // workers do not support dynamic require nor require.resolve
