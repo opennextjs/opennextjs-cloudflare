@@ -109,11 +109,13 @@ fetch = globalThis.fetch;
 const CustomRequest = class extends globalThis.Request {
   constructor(input, init) {
     if (init) {
-      delete init.cache;
-      if (init.body?.__node_stream__ === true) {
+      init = {
+        ...init,
+        cache: undefined,
         // https://github.com/cloudflare/workerd/issues/2746
-        init.body = __cf_stream.Readable.toWeb(init.body);
-      }
+        // https://github.com/cloudflare/workerd/issues/3245
+        body: init.body instanceof __cf_stream.Readable ? ReadableStream.from(init.body) : init.body,
+      };
     }
     super(input, init);
   }
