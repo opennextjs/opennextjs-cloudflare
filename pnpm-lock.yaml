@@ -73,8 +73,8 @@ catalogs:
       specifier: ^2.1.1
       version: 2.1.1
     wrangler:
-      specifier: ^3.93.0
-      version: 3.93.0
+      specifier: ^3.95.0
+      version: 3.95.0
 
 importers:
 
@@ -131,7 +131,7 @@ importers:
         version: 22.2.0
       wrangler:
         specifier: 'catalog:'
-        version: 3.93.0(@cloudflare/workers-types@4.20240925.0)
+        version: 3.95.0(@cloudflare/workers-types@4.20240925.0)
 
   examples/create-next-app:
     dependencies:
@@ -177,7 +177,7 @@ importers:
         version: 5.5.4
       wrangler:
         specifier: 'catalog:'
-        version: 3.93.0(@cloudflare/workers-types@4.20240925.0)
+        version: 3.95.0(@cloudflare/workers-types@4.20240925.0)
 
   examples/middleware:
     dependencies:
@@ -214,7 +214,7 @@ importers:
         version: 5.5.4
       wrangler:
         specifier: 'catalog:'
-        version: 3.93.0(@cloudflare/workers-types@4.20240925.0)
+        version: 3.95.0(@cloudflare/workers-types@4.20240925.0)
 
   examples/vercel-blog-starter:
     dependencies:
@@ -299,7 +299,7 @@ importers:
         version: 1.5.0(react-dom@19.0.0-rc-3208e73e-20240730(react@19.0.0-rc-3208e73e-20240730))(react@19.0.0-rc-3208e73e-20240730)
       wrangler:
         specifier: 'catalog:'
-        version: 3.93.0(@cloudflare/workers-types@4.20240925.0)
+        version: 3.95.0(@cloudflare/workers-types@4.20240925.0)
     devDependencies:
       '@opennextjs/cloudflare':
         specifier: workspace:*
@@ -348,7 +348,7 @@ importers:
         version: 23.0.0
       wrangler:
         specifier: 'catalog:'
-        version: 3.93.0(@cloudflare/workers-types@4.20240925.0)
+        version: 3.95.0(@cloudflare/workers-types@4.20240925.0)
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
@@ -730,8 +730,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@cloudflare/workers-shared@0.10.0':
-    resolution: {integrity: sha512-j3EwZBc9ctavmFVOQT1gqztRO/Plx4ZR0LMEEOif+5YoCcuD1P7/NEjlODPMc5a1w+8+7A/H+Ci8Ihd55+x0Zw==}
+  '@cloudflare/workers-shared@0.11.0':
+    resolution: {integrity: sha512-A+lQ8xp7992qSeMmuQ0ssL6CPmm+ZmAv6Ddikan0n1jjpMAic+97l7xtVIsswSn9iLMFPYQ9uNN/8Fl0AgARIQ==}
     engines: {node: '>=16.7.0'}
 
   '@cloudflare/workers-shared@0.6.0':
@@ -5030,8 +5030,8 @@ packages:
       '@cloudflare/workers-types':
         optional: true
 
-  wrangler@3.93.0:
-    resolution: {integrity: sha512-+wfxjOrtm6YgDS+NdJkB6aiBIS3ED97mNRQmfrEShRJW4pVo4sWY6oQ1FsGT+j4tGHplrTbWCE6U5yTgjNW/lw==}
+  wrangler@3.95.0:
+    resolution: {integrity: sha512-3w5852i3FNyDz421K2Qk4v5L8jjwegO5O8E1+VAQmjnm82HFNxpIRUBq0bmM7CTLvOPI/Jjcmj/eAWjQBL7QYg==}
     engines: {node: '>=16.17.0'}
     hasBin: true
     peerDependencies:
@@ -5968,7 +5968,7 @@ snapshots:
   '@cloudflare/workerd-windows-64@1.20241205.0':
     optional: true
 
-  '@cloudflare/workers-shared@0.10.0':
+  '@cloudflare/workers-shared@0.11.0':
     dependencies:
       mime: 3.0.0
       zod: 3.23.8
@@ -10701,10 +10701,10 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  wrangler@3.93.0(@cloudflare/workers-types@4.20240925.0):
+  wrangler@3.95.0(@cloudflare/workers-types@4.20240925.0):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.3.4
-      '@cloudflare/workers-shared': 0.10.0
+      '@cloudflare/workers-shared': 0.11.0
       '@esbuild-plugins/node-globals-polyfill': 0.2.3(esbuild@0.17.19)
       '@esbuild-plugins/node-modules-polyfill': 0.2.2(esbuild@0.17.19)
       blake3-wasm: 2.1.5
