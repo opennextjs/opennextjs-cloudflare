@@ -1,6 +1,6 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "create-next-app"
-main = ".open-next/index.mjs"
+main = ".open-next/worker.ts"
 
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
