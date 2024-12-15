@@ -10,7 +10,7 @@ function readEnvFiles(fileNames: string[], { monorepoRoot, appPath }: BuildOptio
       ...(monorepoRoot !== appPath ? [path.join(monorepoRoot, fileName)] : []),
       path.join(appPath, fileName),
     ])
-    .filter((filePath) => fs.statSync(filePath, { throwIfNoEntry: false })?.isFile())
+    .filter((filePath) => fs.existsSync(filePath) && fs.statSync(filePath).isFile())
     .map((filePath) => parse(fs.readFileSync(filePath).toString()))
     .reduce<Record<string, string>>((acc, overrides) => ({ ...acc, ...overrides }), {});
 }
