@@ -21,9 +21,13 @@ const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
   }
 );
 
+declare const __OPENNEXT_BUILD_TIME_ENV: Record<string, string>;
+
 export default {
   async fetch(request, env, ctx) {
-    return cloudflareContextALS.run({ env, ctx, cf: request.cf }, async () => {
+    const combinedEnv = { ...__OPENNEXT_BUILD_TIME_ENV, ...env };
+
+    return cloudflareContextALS.run({ env: combinedEnv, ctx, cf: request.cf }, async () => {
       // Set the default Origin for the origin resolver.
       const url = new URL(request.url);
       process.env.OPEN_NEXT_ORIGIN = JSON.stringify({
@@ -37,13 +41,13 @@ export default {
       // The Middleware handler can return either a `Response` or a `Request`:
       // - `Response`s should be returned early
       // - `Request`s are handled by the Next server
-      const reqOrResp = await middlewareHandler(request, env, ctx);
+      const reqOrResp = await middlewareHandler(request, combinedEnv, ctx);
 
       if (reqOrResp instanceof Response) {
         return reqOrResp;
       }
 
-      return serverHandler(reqOrResp, env, ctx);
+      return serverHandler(reqOrResp, combinedEnv, ctx);
     });
   },
 } as ExportedHandler<{ ASSETS: Fetcher }>;
