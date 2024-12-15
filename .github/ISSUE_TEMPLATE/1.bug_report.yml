@@ -46,14 +46,6 @@ body:
       required: true
 
   - type: input
-    id: node-version
-    attributes:
-      label: "Node.js version"
-      placeholder: "18.x"
-    validations:
-      required: true
-
-  - type: input
     id: wrangler-version
     attributes:
       label: "Wrangler version"
