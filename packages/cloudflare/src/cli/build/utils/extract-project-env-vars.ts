@@ -29,10 +29,6 @@ function readEnvFiles(fileNames: string[], { monorepoRoot, appPath }: BuildOptio
  * In a monorepo, the env files in an app's directory will take precedence over
  * the env files at the root of the monorepo.
  */
-export function extractProjectEnvVars(options: BuildOptions) {
-  const wranglerDevVars = readEnvFiles([".dev.vars"], options);
-
-  const mode = wranglerDevVars["NEXTJS_ENV"] ?? "production";
-
+export function extractProjectEnvVars(mode: "development" | "production", options: BuildOptions) {
   return readEnvFiles([".env", `.env.${mode}`, ".env.local", `.env.${mode}.local`], options);
 }

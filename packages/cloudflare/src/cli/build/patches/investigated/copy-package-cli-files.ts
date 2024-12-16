@@ -22,7 +22,9 @@ export async function copyPackageCliFiles(
 
   fs.cpSync(sourceDir, destinationDir, { recursive: true });
 
-  const envVars = extractProjectEnvVars(openNextConfig);
+  const devEnvVars = extractProjectEnvVars("development", openNextConfig);
+  const prodEnvVars = extractProjectEnvVars("production", openNextConfig);
+
   await build({
     entryPoints: [path.join(packageDistDir, "cli", "templates", "worker.ts")],
     outfile: path.join(openNextConfig.outputDir, "worker.js"),
@@ -31,7 +33,8 @@ export async function copyPackageCliFiles(
     bundle: false,
     minify: false,
     define: {
-      __OPENNEXT_BUILD_TIME_ENV: JSON.stringify(envVars),
+      __OPENNEXT_BUILD_TIME_DEV_ENV: JSON.stringify(devEnvVars),
+      __OPENNEXT_BUILD_TIME_PROD_ENV: JSON.stringify(prodEnvVars),
     },
   });
 }

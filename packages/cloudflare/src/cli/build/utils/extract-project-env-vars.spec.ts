@@ -23,7 +23,7 @@ describe("extractProjectEnvVars", () => {
   afterEach(() => mockFs.restore());
 
   it("should extract production env vars", () => {
-    const result = extractProjectEnvVars(options);
+    const result = extractProjectEnvVars("production", options);
     expect(result).toEqual({
       ENV_LOCAL_VAR: "value",
       ENV_PROD_LOCAL_VAR: "value",
@@ -35,7 +35,7 @@ describe("extractProjectEnvVars", () => {
   it("should extract development env vars", () => {
     writeFileSync(".dev.vars", 'NEXTJS_ENV = "development"');
 
-    const result = extractProjectEnvVars(options);
+    const result = extractProjectEnvVars("development", options);
     expect(result).toEqual({
       ENV_LOCAL_VAR: "value",
       ENV_DEV_LOCAL_VAR: "value",
@@ -47,7 +47,7 @@ describe("extractProjectEnvVars", () => {
   it("should override env vars with those in a local file", () => {
     writeFileSync(".env.production.local", "ENV_PROD_VAR=overridden");
 
-    const result = extractProjectEnvVars(options);
+    const result = extractProjectEnvVars("production", options);
     expect(result).toEqual({
       ENV_LOCAL_VAR: "value",
       ENV_PROD_VAR: "overridden",

@@ -21,13 +21,20 @@ const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
   }
 );
 
-declare const __OPENNEXT_BUILD_TIME_ENV: Record<string, string>;
+declare const __OPENNEXT_BUILD_TIME_DEV_ENV: Record<string, string>;
+declare const __OPENNEXT_BUILD_TIME_PROD_ENV: Record<string, string>;
+
+function applyBuildTimeEnv(mode?: string) {
+  const secrets = mode === "development" ? __OPENNEXT_BUILD_TIME_DEV_ENV : __OPENNEXT_BUILD_TIME_PROD_ENV;
+
+  for (const key in secrets) {
+    process.env[key] = secrets[key];
+  }
+}
 
 export default {
   async fetch(request, env, ctx) {
-    const combinedEnv = { ...__OPENNEXT_BUILD_TIME_ENV, ...env };
-
-    return cloudflareContextALS.run({ env: combinedEnv, ctx, cf: request.cf }, async () => {
+    return cloudflareContextALS.run({ env, ctx, cf: request.cf }, async () => {
       // Set the default Origin for the origin resolver.
       const url = new URL(request.url);
       process.env.OPEN_NEXT_ORIGIN = JSON.stringify({
@@ -38,16 +45,18 @@ export default {
         },
       });
 
+      applyBuildTimeEnv(env["NEXTJS_ENV"]);
+
       // The Middleware handler can return either a `Response` or a `Request`:
       // - `Response`s should be returned early
       // - `Request`s are handled by the Next server
-      const reqOrResp = await middlewareHandler(request, combinedEnv, ctx);
+      const reqOrResp = await middlewareHandler(request, env, ctx);
 
       if (reqOrResp instanceof Response) {
         return reqOrResp;
       }
 
-      return serverHandler(reqOrResp, combinedEnv, ctx);
+      return serverHandler(reqOrResp, env, ctx);
     });
   },
-} as ExportedHandler<{ ASSETS: Fetcher }>;
+} as ExportedHandler<{ ASSETS: Fetcher; NEXTJS_ENV?: string }>;
