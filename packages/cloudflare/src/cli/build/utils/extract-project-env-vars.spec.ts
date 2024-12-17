@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { appendFileSync, writeFileSync } from "node:fs";
 
 import { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import mockFs from "mock-fs";
@@ -51,6 +51,19 @@ describe("extractProjectEnvVars", () => {
     expect(result).toEqual({
       ENV_LOCAL_VAR: "value",
       ENV_PROD_VAR: "overridden",
+      ENV_VAR: "value",
+    });
+  });
+
+  it("should support referencing variables", () => {
+    appendFileSync(".env.production.local", "\nENV_PROD_LOCAL_VAR_REF=$ENV_PROD_LOCAL_VAR");
+
+    const result = extractProjectEnvVars("production", options);
+    expect(result).toEqual({
+      ENV_LOCAL_VAR: "value",
+      ENV_PROD_LOCAL_VAR: "value",
+      ENV_PROD_LOCAL_VAR_REF: "value",
+      ENV_PROD_VAR: "value",
       ENV_VAR: "value",
     });
   });
