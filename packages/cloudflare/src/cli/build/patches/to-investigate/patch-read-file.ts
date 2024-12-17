@@ -12,12 +12,16 @@ export function patchReadFile(code: string, config: Config): string {
   // so we add an early return to the `getBuildId` function so that the `readyFileSync` is never encountered
   // (source: https://github.com/vercel/next.js/blob/15aeb92efb34c09a36/packages/next/src/server/next-server.ts#L438-L451)
   // Note: we could/should probably just patch readFileSync here or something!
-  code = code.replace(
+  const patchedCode = code.replace(
     "getBuildId() {",
     `getBuildId() {
       return ${JSON.stringify(readFileSync(join(config.paths.output.standaloneAppDotNext, "BUILD_ID"), "utf-8"))};
     `
   );
+
+  if (patchedCode === code) {
+    throw new Error("Patch `patchReadFile` (`getBuildId`) not applied");
+  }
 
   // Same as above, the next-server code loads the manifests with `readFileSync` and we want to avoid that
   // (source: https://github.com/vercel/next.js/blob/15aeb92e/packages/next/src/server/load-manifest.ts#L34-L56)
@@ -27,7 +31,7 @@ export function patchReadFile(code: string, config: Config): string {
   ).map((file) =>
     normalizePath(file).replace(normalizePath(config.paths.output.standaloneApp) + posix.sep, "")
   );
-  code = code.replace(
+  const patchedPatchedCode = patchedCode.replace(
     /function loadManifest\((.+?), .+?\) {/,
     `$&
     ${manifestJsons
@@ -43,5 +47,9 @@ export function patchReadFile(code: string, config: Config): string {
     `
   );
 
-  return code;
+  if (patchedPatchedCode === patchedCode) {
+    throw new Error("Patch `patchReadFile` (`loadManifest`) not applied");
+  }
+
+  return patchedPatchedCode;
 }

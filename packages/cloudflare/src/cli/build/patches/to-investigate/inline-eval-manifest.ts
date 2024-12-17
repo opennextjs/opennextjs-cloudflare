@@ -19,7 +19,7 @@ export function inlineEvalManifest(code: string, config: Config): string {
   ).map((file) =>
     normalizePath(file).replace(normalizePath(config.paths.output.standaloneApp) + posix.sep, "")
   );
-  return code.replace(
+  const patchedCode = code.replace(
     /function evalManifest\((.+?), .+?\) {/,
     `$&
 		${manifestJss
@@ -43,4 +43,10 @@ export function inlineEvalManifest(code: string, config: Config): string {
 		throw new Error("Unknown evalManifest: " + $1);
 		`
   );
+
+  if (patchedCode === code) {
+    throw new Error("Patch `inlineEvalManifest` not applied");
+  }
+
+  return patchedCode;
 }

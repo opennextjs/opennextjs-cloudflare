@@ -6,5 +6,11 @@
  */
 export function patchRequire(code: string): string {
   console.log("# patchRequire");
-  return code.replace(/__require\d?\(/g, "require(").replace(/__require\d?\./g, "require.");
+  const patchedCode = code.replace(/__require\d?\(/g, "require(").replace(/__require\d?\./g, "require.");
+
+  if (patchedCode === code) {
+    throw new Error("Patch `patchRequire` not applied");
+  }
+
+  return patchedCode;
 }

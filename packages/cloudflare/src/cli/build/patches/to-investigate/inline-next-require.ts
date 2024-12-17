@@ -27,7 +27,7 @@ export function inlineNextRequire(code: string, config: Config) {
   const htmlPages = allManifestFiles.filter((file) => file.endsWith(".html"));
   const pageModules = allManifestFiles.filter((file) => file.endsWith(".js"));
 
-  return code.replace(
+  const patchedCode = code.replace(
     /const pagePath = getPagePath\(.+?\);/,
     `$&
     ${htmlPages
@@ -51,4 +51,10 @@ export function inlineNextRequire(code: string, config: Config) {
     throw new Error("Unknown pagePath: " + pagePath);
     `
   );
+
+  if (patchedCode === code) {
+    throw new Error("Patch `inlineNextRequire` not applied");
+  }
+
+  return patchedCode;
 }
