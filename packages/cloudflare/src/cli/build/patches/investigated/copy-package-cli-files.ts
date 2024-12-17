@@ -6,7 +6,7 @@ import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { Config } from "../../../config";
 
 /**
- * Copies the template files present in the cloudflare adapter package into the standalone node_modules folder.
+ * Copies the template files present in the cloudflare adapter package into the standalone node_modules folder
  */
 export function copyPackageCliFiles(packageDistDir: string, config: Config, openNextConfig: BuildOptions) {
   console.log("# copyPackageTemplateFiles");
