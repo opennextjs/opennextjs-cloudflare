@@ -7,6 +7,8 @@ declare global {
       NEXT_PRIVATE_DEBUG_CACHE?: string;
       __OPENNEXT_KV_BINDING_NAME: string;
       OPEN_NEXT_ORIGIN: string;
+      NODE_ENV?: string;
+      __OPENNEXT_PROCESSED_ENV?: string;
     }
   }
 }

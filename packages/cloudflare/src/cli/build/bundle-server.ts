@@ -21,6 +21,7 @@ export async function bundleServer(config: Config, openNextOptions: BuildOptions
   copyPrerenderedRoutes(config);
 
   patches.copyPackageCliFiles(packageDistDir, config, openNextOptions);
+  patches.copyEnvFiles(openNextOptions);
 
   const nextConfigStr =
     fs

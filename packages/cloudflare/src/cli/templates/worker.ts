@@ -21,15 +21,19 @@ const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
   }
 );
 
-declare const __OPENNEXT_BUILD_TIME_DEV_ENV: Record<string, string>;
-declare const __OPENNEXT_BUILD_TIME_PROD_ENV: Record<string, string>;
+async function applyProjectEnvVars(mode = "production") {
+  if (process.env.__OPENNEXT_PROCESSED_ENV === "1") return;
 
-function applyBuildTimeEnv(mode?: string) {
-  const secrets = mode === "development" ? __OPENNEXT_BUILD_TIME_DEV_ENV : __OPENNEXT_BUILD_TIME_PROD_ENV;
+  // @ts-expect-error: resolved by wrangler build
+  const secrets = await import("./.env.mjs");
 
-  for (const key in secrets) {
-    process.env[key] = secrets[key];
+  if (secrets[mode]) {
+    for (const key in secrets[mode]) {
+      process.env[key] = secrets[key];
+    }
   }
+
+  process.env.__OPENNEXT_PROCESSED_ENV = "1";
 }
 
 export default {
@@ -45,7 +49,7 @@ export default {
         },
       });
 
-      applyBuildTimeEnv(env["NEXTJS_ENV"]);
+      await applyProjectEnvVars(env.NEXTJS_ENV ?? globalThis.process.env.NODE_ENV);
 
       // The Middleware handler can return either a `Response` or a `Request`:
       // - `Response`s should be returned early

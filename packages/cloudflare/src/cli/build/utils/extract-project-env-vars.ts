@@ -29,6 +29,6 @@ function readEnvFiles(fileNames: string[], { monorepoRoot, appPath }: BuildOptio
  * In a monorepo, the env files in an app's directory will take precedence over
  * the env files at the root of the monorepo.
  */
-export function extractProjectEnvVars(mode: "development" | "production", options: BuildOptions) {
+export function extractProjectEnvVars(mode: string, options: BuildOptions) {
   return readEnvFiles([".env", `.env.${mode}`, ".env.local", `.env.${mode}.local`], options);
 }
