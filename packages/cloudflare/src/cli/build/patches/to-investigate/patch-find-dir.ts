@@ -12,17 +12,17 @@ import { Config } from "../../../config";
 export function patchFindDir(code: string, config: Config): string {
   console.log("# patchFindDir");
   const patchedCode = code.replace(
-    /function findDir\((dir\d*), (name\d*)\) {/,
-    `function findDir($1, $2) {
-			if ($1.endsWith(".next/server")) {
-			if ($2 === "app") {
+    /function findDir\((?<dir>dir\d*), (?<name>name\d*)\) {/,
+    `function findDir($dir, $name) {
+			if ($dir.endsWith(".next/server")) {
+			if ($name === "app") {
 			  return ${existsSync(`${join(config.paths.output.standaloneAppServer, "app")}`)};
 	    }
-			if ($2 === "pages") {
+			if ($name === "pages") {
 			  return ${existsSync(`${join(config.paths.output.standaloneAppServer, "pages")}`)};
 	    }
 		}
-		throw new Error("Unknown findDir call: " + $1 + " " + $2);
+		throw new Error("Unknown findDir call: " + $dir + " " + $name);
 		`
   );
 
