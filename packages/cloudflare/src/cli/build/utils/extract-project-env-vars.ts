@@ -11,8 +11,7 @@ function readEnvFiles(fileNames: string[], { monorepoRoot, appPath }: BuildOptio
       path.join(appPath, fileName),
     ])
     .filter((filePath) => fs.existsSync(filePath) && fs.statSync(filePath).isFile())
-    .map((filePath) => parse(fs.readFileSync(filePath).toString()))
-    .reduce<Record<string, string>>((acc, overrides) => ({ ...acc, ...overrides }), {});
+    .map((filePath) => parse(fs.readFileSync(filePath).toString()));
 }
 
 /**
@@ -30,5 +29,7 @@ function readEnvFiles(fileNames: string[], { monorepoRoot, appPath }: BuildOptio
  * the env files at the root of the monorepo.
  */
 export function extractProjectEnvVars(mode: string, options: BuildOptions) {
-  return readEnvFiles([".env", `.env.${mode}`, ".env.local", `.env.${mode}.local`], options);
+  const envVars = readEnvFiles([".env", `.env.${mode}`, ".env.local", `.env.${mode}.local`], options);
+
+  return envVars.reduce<Record<string, string>>((acc, overrides) => ({ ...acc, ...overrides }), {});
 }
