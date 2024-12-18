@@ -8,7 +8,6 @@ import { Config } from "../../../config";
  * and inline their content during build time
  */
 export function inlineNextRequire(code: string, config: Config) {
-  console.log("# inlineNextRequire");
   const pagesManifestFile = join(config.paths.output.standaloneAppServer, "pages-manifest.json");
   const appPathsManifestFile = join(config.paths.output.standaloneAppServer, "app-paths-manifest.json");
 
