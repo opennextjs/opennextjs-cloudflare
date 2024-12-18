@@ -27,3 +27,6 @@ catalog:
   "typescript-eslint": ^8.7.0
   "vitest": ^2.1.1
   "wrangler": ^3.95.0
+  "@dotenvx/dotenvx": 1.31.0
+  "mock-fs": ^5.4.1
+  "@types/mock-fs": ^4.13.4
