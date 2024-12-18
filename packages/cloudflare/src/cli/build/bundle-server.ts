@@ -207,19 +207,18 @@ async function patchCodeWithValidations(
   patches: [string, (code: string) => string | Promise<string>][]
 ): Promise<string> {
   console.log(`Applying code patches:`);
-  let prePatchCode = code;
-  let postPatchCode = code;
+  let patchedCode = code;
 
   for (const [target, patchFunction] of patches) {
     console.log(` - patching ${target}`);
 
-    prePatchCode = postPatchCode;
-    postPatchCode = await patchFunction(prePatchCode);
+    const prePatchCode = patchedCode;
+    patchedCode = await patchFunction(patchedCode);
 
-    if (prePatchCode === postPatchCode) {
+    if (prePatchCode === patchedCode) {
       throw new Error(`Failed to patch ${target}`);
     }
   }
 
-  return postPatchCode;
+  return patchedCode;
 }
