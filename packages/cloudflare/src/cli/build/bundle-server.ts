@@ -167,6 +167,7 @@ async function updateWorkerBundledCode(
           // TODO: implement for cf (possibly in @opennextjs/aws)
           .replace("patchAsyncStorage();", "//patchAsyncStorage();"),
     ],
+    ['`eval("require")` calls', (code) => code.replaceAll('eval("require")', "require")],
     [
       "`require.resolve` call",
       // workers do not support dynamic require nor require.resolve
