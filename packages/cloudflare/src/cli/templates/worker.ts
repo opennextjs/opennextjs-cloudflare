@@ -21,6 +21,21 @@ const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
   }
 );
 
+async function applyProjectEnvVars(mode: string) {
+  if (process.env.__OPENNEXT_PROCESSED_ENV === "1") return;
+
+  // @ts-expect-error: resolved by wrangler build
+  const nextEnvVars = await import("./.env.mjs");
+
+  if (nextEnvVars[mode]) {
+    for (const key in nextEnvVars[mode]) {
+      process.env[key] = nextEnvVars[mode][key];
+    }
+  }
+
+  process.env.__OPENNEXT_PROCESSED_ENV = "1";
+}
+
 export default {
   async fetch(request, env, ctx) {
     return cloudflareContextALS.run({ env, ctx, cf: request.cf }, async () => {
@@ -34,6 +49,8 @@ export default {
         },
       });
 
+      await applyProjectEnvVars(env.NEXTJS_ENV ?? "production");
+
       // The Middleware handler can return either a `Response` or a `Request`:
       // - `Response`s should be returned early
       // - `Request`s are handled by the Next server
@@ -46,4 +63,4 @@ export default {
       return serverHandler(reqOrResp, env, ctx);
     });
   },
-} as ExportedHandler<{ ASSETS: Fetcher }>;
+} as ExportedHandler<{ ASSETS: Fetcher; NEXTJS_ENV?: string }>;

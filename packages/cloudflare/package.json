@@ -60,11 +60,14 @@
     "tsup": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "mock-fs": "catalog:",
+    "@types/mock-fs": "catalog:"
   },
   "dependencies": {
     "@opennextjs/aws": "https://pkg.pr.new/@opennextjs/aws@678",
-    "ts-morph": "catalog:"
+    "ts-morph": "catalog:",
+    "@dotenvx/dotenvx": "catalog:"
   },
   "peerDependencies": {
     "wrangler": "catalog:"
