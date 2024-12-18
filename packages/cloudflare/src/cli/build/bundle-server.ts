@@ -128,7 +128,6 @@ globalThis.__dangerous_ON_edge_converter_returns_request = true;
     );
   }
 
-  console.log();
   console.log(`\x1b[35mWorker saved in \`${openNextServerBundle}\` 🚀\n\x1b[0m`);
 }
 
@@ -220,5 +219,6 @@ async function patchCodeWithValidations(
     }
   }
 
+  console.log(`All ${patches.length} patches applied\n`);
   return patchedCode;
 }
