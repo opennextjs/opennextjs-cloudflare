@@ -25,6 +25,8 @@ function readEnvFiles(fileNames: string[], { monorepoRoot, appPath }: BuildOptio
  * 3. `.env.{mode}`
  * 4. `.env`
  *
+ * https://nextjs.org/docs/pages/building-your-application/configuring/environment-variables#environment-variable-load-order
+ *
  * In a monorepo, the env files in an app's directory will take precedence over
  * the env files at the root of the monorepo.
  */
