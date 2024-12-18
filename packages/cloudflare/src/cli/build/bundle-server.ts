@@ -147,36 +147,32 @@ async function updateWorkerBundledCode(
 ): Promise<void> {
   const code = await readFile(workerOutputFile, "utf8");
 
-  const patchBuildId = (code: string) => patches.patchBuildId(code, config);
-  const patchLoadManifest = (code: string) => patches.patchLoadManifest(code, config);
-  const inlineNextRequire = (code: string) => patches.inlineNextRequire(code, config);
-  const patchFindDir = (code: string) => patches.patchFindDir(code, config);
-  const inlineEvalManifest = (code: string) => patches.inlineEvalManifest(code, config);
-  const patchCache = (code: string) => patches.patchCache(code, openNextOptions);
-  const inlineMiddlewareManifestRequire = (code: string) =>
-    patches.inlineMiddlewareManifestRequire(code, config);
-
-  const patchPatchAsyncStorage = (code: string) =>
-    code
-      // TODO: implement for cf (possibly in @opennextjs/aws)
-      .replace("patchAsyncStorage();", "//patchAsyncStorage();");
-
-  // workers do not support dynamic require nor require.resolve
-  const patchRequireResolve = (code: string) => code.replace('require.resolve("./cache.cjs")', '"unused"');
-
   const patchedCode = await patchCodeWithValidations(code, [
     ["require", patches.patchRequire],
-    ["`buildId` function", patchBuildId],
-    ["`loadManifest` function", patchLoadManifest],
-    ["next's require", inlineNextRequire],
-    ["`findDir` function", patchFindDir],
-    ["`evalManifest` function", inlineEvalManifest],
-    ["cacheHandler", patchCache],
-    ["'require(this.middlewareManifestPath)'", inlineMiddlewareManifestRequire],
+    ["`buildId` function", (code) => patches.patchBuildId(code, config)],
+    ["`loadManifest` function", (code) => patches.patchLoadManifest(code, config)],
+    ["next's require", (code) => patches.inlineNextRequire(code, config)],
+    ["`findDir` function", (code) => patches.patchFindDir(code, config)],
+    ["`evalManifest` function", (code) => patches.inlineEvalManifest(code, config)],
+    ["cacheHandler", (code) => patches.patchCache(code, openNextOptions)],
+    [
+      "'require(this.middlewareManifestPath)'",
+      (code) => patches.inlineMiddlewareManifestRequire(code, config),
+    ],
     ["exception bubbling", patches.patchExceptionBubbling],
     ["`loadInstrumentationModule` function", patches.patchLoadInstrumentationModule],
-    ["`patchAsyncStorage` call", patchPatchAsyncStorage],
-    ["`require.resolve` call", patchRequireResolve],
+    [
+      "`patchAsyncStorage` call",
+      (code) =>
+        code
+          // TODO: implement for cf (possibly in @opennextjs/aws)
+          .replace("patchAsyncStorage();", "//patchAsyncStorage();"),
+    ],
+    [
+      "`require.resolve` call",
+      // workers do not support dynamic require nor require.resolve
+      (code) => code.replace('require.resolve("./cache.cjs")', '"unused"'),
+    ],
   ]);
 
   await writeFile(workerOutputFile, patchedCode);
