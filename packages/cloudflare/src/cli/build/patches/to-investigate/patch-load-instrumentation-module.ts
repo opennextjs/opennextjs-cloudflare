@@ -34,6 +34,5 @@ export function patchLoadInstrumentationModule(code: string) {
   loadInstrumentationModuleDeclarations.forEach((loadInstrumentationModuleDeclaration) => {
     loadInstrumentationModuleDeclaration.setBodyText("");
   });
-
   return file.print();
 }

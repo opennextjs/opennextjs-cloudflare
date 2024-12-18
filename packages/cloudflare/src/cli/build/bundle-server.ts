@@ -7,18 +7,7 @@ import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { build, Plugin } from "esbuild";
 
 import { Config } from "../config";
-import { copyPackageCliFiles } from "./patches/investigated/copy-package-cli-files";
-import { patchCache } from "./patches/investigated/patch-cache";
-import { patchRequire } from "./patches/investigated/patch-require";
-import { updateWebpackChunksFile } from "./patches/investigated/update-webpack-chunks-file";
-import { inlineEvalManifest } from "./patches/to-investigate/inline-eval-manifest";
-import { inlineMiddlewareManifestRequire } from "./patches/to-investigate/inline-middleware-manifest-require";
-import { inlineNextRequire } from "./patches/to-investigate/inline-next-require";
-import { patchExceptionBubbling } from "./patches/to-investigate/patch-exception-bubbling";
-import { patchFindDir } from "./patches/to-investigate/patch-find-dir";
-import { patchLoadInstrumentationModule } from "./patches/to-investigate/patch-load-instrumentation-module";
-import { patchReadFile } from "./patches/to-investigate/patch-read-file";
-import { patchWranglerDeps } from "./patches/to-investigate/wrangler-deps";
+import * as patches from "./patches";
 import { copyPrerenderedRoutes } from "./utils";
 
 /** The dist directory of the Cloudflare adapter package */
@@ -31,7 +20,7 @@ export async function bundleServer(config: Config, openNextOptions: BuildOptions
   // Copy over prerendered assets (e.g. SSG routes)
   copyPrerenderedRoutes(config);
 
-  copyPackageCliFiles(packageDistDir, config, openNextOptions);
+  patches.copyPackageCliFiles(packageDistDir, config, openNextOptions);
 
   const nextConfigStr =
     fs
@@ -40,8 +29,8 @@ export async function bundleServer(config: Config, openNextOptions: BuildOptions
 
   console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
 
-  patchWranglerDeps(config);
-  updateWebpackChunksFile(config);
+  patches.patchWranglerDeps(config);
+  patches.updateWebpackChunksFile(config);
 
   const { appBuildOutputPath, appPath, outputDir, monorepoRoot } = openNextOptions;
   const outputPath = path.join(outputDir, "server-functions", "default");
@@ -155,25 +144,35 @@ async function updateWorkerBundledCode(
   config: Config,
   openNextOptions: BuildOptions
 ): Promise<void> {
-  const originalCode = await readFile(workerOutputFile, "utf8");
+  const code = await readFile(workerOutputFile, "utf8");
 
-  let patchedCode = originalCode;
-
-  patchedCode = patchRequire(patchedCode);
-  patchedCode = patchReadFile(patchedCode, config);
-  patchedCode = inlineNextRequire(patchedCode, config);
-  patchedCode = patchFindDir(patchedCode, config);
-  patchedCode = inlineEvalManifest(patchedCode, config);
-  patchedCode = await patchCache(patchedCode, openNextOptions);
-  patchedCode = inlineMiddlewareManifestRequire(patchedCode, config);
-  patchedCode = patchExceptionBubbling(patchedCode);
-  patchedCode = patchLoadInstrumentationModule(patchedCode);
-
-  patchedCode = patchedCode
-    // workers do not support dynamic require nor require.resolve
-    // TODO: implement for cf (possibly in @opennextjs/aws)
-    .replace("patchAsyncStorage();", "//patchAsyncStorage();")
-    .replace('require.resolve("./cache.cjs")', '"unused"');
+  const patchedCode = await patchCodeWithValidations(code, [
+    ["require", patches.patchRequire],
+    ["`buildId` function", (code) => patches.patchBuildId(code, config)],
+    ["`loadManifest` function", (code) => patches.patchLoadManifest(code, config)],
+    ["next's require", (code) => patches.inlineNextRequire(code, config)],
+    ["`findDir` function", (code) => patches.patchFindDir(code, config)],
+    ["`evalManifest` function", (code) => patches.inlineEvalManifest(code, config)],
+    ["cacheHandler", (code) => patches.patchCache(code, openNextOptions)],
+    [
+      "'require(this.middlewareManifestPath)'",
+      (code) => patches.inlineMiddlewareManifestRequire(code, config),
+    ],
+    ["exception bubbling", patches.patchExceptionBubbling],
+    ["`loadInstrumentationModule` function", patches.patchLoadInstrumentationModule],
+    [
+      "`patchAsyncStorage` call",
+      (code) =>
+        code
+          // TODO: implement for cf (possibly in @opennextjs/aws)
+          .replace("patchAsyncStorage();", "//patchAsyncStorage();"),
+    ],
+    [
+      "`require.resolve` call",
+      // workers do not support dynamic require nor require.resolve
+      (code) => code.replace('require.resolve("./cache.cjs")', '"unused"'),
+    ],
+  ]);
 
   await writeFile(workerOutputFile, patchedCode);
 }
@@ -191,4 +190,35 @@ function createFixRequiresESBuildPlugin(config: Config): Plugin {
       }));
     },
   };
+}
+
+/**
+ * Applies multiple code patches in order to a given piece of code, at each step it validates that the code
+ * has actually been patched/changed, if not an error is thrown
+ *
+ * @param code the code to apply the patches to
+ * @param patches array of tuples, containing a string indicating the target of the patching (for logging) and
+ *                a patching function that takes a string (pre-patch code) and returns a string (post-patch code)
+ * @returns the patched code
+ */
+async function patchCodeWithValidations(
+  code: string,
+  patches: [string, (code: string) => string | Promise<string>][]
+): Promise<string> {
+  console.log(`Applying code patches:`);
+  let patchedCode = code;
+
+  for (const [target, patchFunction] of patches) {
+    console.log(` - patching ${target}`);
+
+    const prePatchCode = patchedCode;
+    patchedCode = await patchFunction(patchedCode);
+
+    if (prePatchCode === patchedCode) {
+      throw new Error(`Failed to patch ${target}`);
+    }
+  }
+
+  console.log(`All ${patches.length} patches applied\n`);
+  return patchedCode;
 }
