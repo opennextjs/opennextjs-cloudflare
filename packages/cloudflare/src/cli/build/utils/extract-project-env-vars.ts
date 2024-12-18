@@ -29,9 +29,8 @@ function readEnvFile(filePath: string) {
 export function extractProjectEnvVars(mode: string, { monorepoRoot, appPath }: BuildOptions) {
   return [".env", `.env.${mode}`, ".env.local", `.env.${mode}.local`]
     .flatMap((fileName) => [
-      ...(monorepoRoot !== appPath ? [path.join(monorepoRoot, fileName)] : []),
-      path.join(appPath, fileName),
+      ...(monorepoRoot !== appPath ? [readEnvFile(path.join(monorepoRoot, fileName))] : []),
+      readEnvFile(path.join(appPath, fileName)),
     ])
-    .map((fileName) => readEnvFile(fileName))
     .reduce<Record<string, string>>((acc, overrides) => ({ ...acc, ...overrides }), {});
 }
