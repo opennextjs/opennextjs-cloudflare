@@ -21,7 +21,7 @@ const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
   }
 );
 
-async function applyProjectEnvVars(mode = "production") {
+async function applyProjectEnvVars(mode: string) {
   if (process.env.__OPENNEXT_PROCESSED_ENV === "1") return;
 
   // @ts-expect-error: resolved by wrangler build
@@ -49,7 +49,7 @@ export default {
         },
       });
 
-      await applyProjectEnvVars(env.NEXTJS_ENV ?? globalThis.process.env.NODE_ENV);
+      await applyProjectEnvVars(env.NEXTJS_ENV ?? "production");
 
       // The Middleware handler can return either a `Response` or a `Request`:
       // - `Response`s should be returned early
