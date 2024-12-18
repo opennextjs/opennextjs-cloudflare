@@ -14,8 +14,6 @@ import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
  * instantiated with a dynamic require that uses a string literal for the path.
  */
 export async function patchCache(code: string, openNextOptions: BuildOptions): Promise<string> {
-  console.log("# patchCache");
-
   const { appBuildOutputPath, outputDir, monorepoRoot } = openNextOptions;
 
   // TODO: switch to cache.mjs
@@ -23,16 +21,10 @@ export async function patchCache(code: string, openNextOptions: BuildOptions): P
   const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
   const cacheFile = path.join(outputPath, packagePath, "cache.cjs");
 
-  const patchedCode = code.replace(
+  return code.replace(
     "const { cacheHandler } = this.nextConfig;",
     `const cacheHandler = null;
 CacheHandler = require('${cacheFile}').default;
 `
   );
-
-  if (patchedCode === code) {
-    throw new Error("Patch `patchCache` not applied");
-  }
-
-  return patchedCode;
 }

@@ -5,13 +5,5 @@
  * promises.
  */
 export function patchExceptionBubbling(code: string) {
-  console.log("# patchExceptionBubbling");
-
-  const patchedCode = code.replace('_nextBubbleNoFallback = "1"', "_nextBubbleNoFallback = undefined");
-
-  if (patchedCode === code) {
-    throw new Error("Patch `patchExceptionBubbling` not applied");
-  }
-
-  return patchedCode;
+  return code.replace('_nextBubbleNoFallback = "1"', "_nextBubbleNoFallback = undefined");
 }

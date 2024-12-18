@@ -13,13 +13,12 @@ import { normalizePath } from "../../utils";
  * there is a vm `runInNewContext` call which we also don't support (source: https://github.com/vercel/next.js/blob/b1e32c5d1f/packages/next/src/server/load-manifest.ts#L88)
  */
 export function inlineEvalManifest(code: string, config: Config): string {
-  console.log("# inlineEvalManifest");
   const manifestJss = globSync(
     normalizePath(join(config.paths.output.standaloneAppDotNext, "**", "*_client-reference-manifest.js"))
   ).map((file) =>
     normalizePath(file).replace(normalizePath(config.paths.output.standaloneApp) + posix.sep, "")
   );
-  const patchedCode = code.replace(
+  return code.replace(
     /function evalManifest\((.+?), .+?\) {/,
     `$&
 		${manifestJss
@@ -43,10 +42,4 @@ export function inlineEvalManifest(code: string, config: Config): string {
 		throw new Error("Unknown evalManifest: " + $1);
 		`
   );
-
-  if (patchedCode === code) {
-    throw new Error("Patch `inlineEvalManifest` not applied");
-  }
-
-  return patchedCode;
 }

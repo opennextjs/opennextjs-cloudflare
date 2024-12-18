@@ -8,7 +8,6 @@ import { Config } from "../../../config";
  * and inline their content during build time
  */
 export function inlineNextRequire(code: string, config: Config) {
-  console.log("# inlineNextRequire");
   const pagesManifestFile = join(config.paths.output.standaloneAppServer, "pages-manifest.json");
   const appPathsManifestFile = join(config.paths.output.standaloneAppServer, "app-paths-manifest.json");
 
@@ -27,7 +26,7 @@ export function inlineNextRequire(code: string, config: Config) {
   const htmlPages = allManifestFiles.filter((file) => file.endsWith(".html"));
   const pageModules = allManifestFiles.filter((file) => file.endsWith(".js"));
 
-  const patchedCode = code.replace(
+  return code.replace(
     /const pagePath = getPagePath\(.+?\);/,
     `$&
     ${htmlPages
@@ -51,10 +50,4 @@ export function inlineNextRequire(code: string, config: Config) {
     throw new Error("Unknown pagePath: " + pagePath);
     `
   );
-
-  if (patchedCode === code) {
-    throw new Error("Patch `inlineNextRequire` not applied");
-  }
-
-  return patchedCode;
 }

@@ -7,18 +7,7 @@ import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { build, Plugin } from "esbuild";
 
 import { Config } from "../config";
-import { copyPackageCliFiles } from "./patches/investigated/copy-package-cli-files";
-import { patchCache } from "./patches/investigated/patch-cache";
-import { patchRequire } from "./patches/investigated/patch-require";
-import { updateWebpackChunksFile } from "./patches/investigated/update-webpack-chunks-file";
-import { inlineEvalManifest } from "./patches/to-investigate/inline-eval-manifest";
-import { inlineMiddlewareManifestRequire } from "./patches/to-investigate/inline-middleware-manifest-require";
-import { inlineNextRequire } from "./patches/to-investigate/inline-next-require";
-import { patchExceptionBubbling } from "./patches/to-investigate/patch-exception-bubbling";
-import { patchFindDir } from "./patches/to-investigate/patch-find-dir";
-import { patchLoadInstrumentationModule } from "./patches/to-investigate/patch-load-instrumentation-module";
-import { patchReadFile } from "./patches/to-investigate/patch-read-file";
-import { patchWranglerDeps } from "./patches/to-investigate/wrangler-deps";
+import * as patches from "./patches";
 import { copyPrerenderedRoutes } from "./utils";
 
 /** The dist directory of the Cloudflare adapter package */
@@ -31,7 +20,7 @@ export async function bundleServer(config: Config, openNextOptions: BuildOptions
   // Copy over prerendered assets (e.g. SSG routes)
   copyPrerenderedRoutes(config);
 
-  copyPackageCliFiles(packageDistDir, config, openNextOptions);
+  patches.copyPackageCliFiles(packageDistDir, config, openNextOptions);
 
   const nextConfigStr =
     fs
@@ -40,8 +29,8 @@ export async function bundleServer(config: Config, openNextOptions: BuildOptions
 
   console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
 
-  patchWranglerDeps(config);
-  updateWebpackChunksFile(config);
+  patches.patchWranglerDeps(config);
+  patches.updateWebpackChunksFile(config);
 
   const { appBuildOutputPath, appPath, outputDir, monorepoRoot } = openNextOptions;
   const outputPath = path.join(outputDir, "server-functions", "default");
@@ -139,6 +128,7 @@ globalThis.__dangerous_ON_edge_converter_returns_request = true;
     );
   }
 
+  console.log();
   console.log(`\x1b[35mWorker saved in \`${openNextServerBundle}\` 🚀\n\x1b[0m`);
 }
 
@@ -155,25 +145,39 @@ async function updateWorkerBundledCode(
   config: Config,
   openNextOptions: BuildOptions
 ): Promise<void> {
-  const originalCode = await readFile(workerOutputFile, "utf8");
+  const code = await readFile(workerOutputFile, "utf8");
 
-  let patchedCode = originalCode;
+  const patchBuildId = (code: string) => patches.patchBuildId(code, config);
+  const patchLoadManifest = (code: string) => patches.patchLoadManifest(code, config);
+  const inlineNextRequire = (code: string) => patches.inlineNextRequire(code, config);
+  const patchFindDir = (code: string) => patches.patchFindDir(code, config);
+  const inlineEvalManifest = (code: string) => patches.inlineEvalManifest(code, config);
+  const patchCache = (code: string) => patches.patchCache(code, openNextOptions);
+  const inlineMiddlewareManifestRequire = (code: string) =>
+    patches.inlineMiddlewareManifestRequire(code, config);
 
-  patchedCode = patchRequire(patchedCode);
-  patchedCode = patchReadFile(patchedCode, config);
-  patchedCode = inlineNextRequire(patchedCode, config);
-  patchedCode = patchFindDir(patchedCode, config);
-  patchedCode = inlineEvalManifest(patchedCode, config);
-  patchedCode = await patchCache(patchedCode, openNextOptions);
-  patchedCode = inlineMiddlewareManifestRequire(patchedCode, config);
-  patchedCode = patchExceptionBubbling(patchedCode);
-  patchedCode = patchLoadInstrumentationModule(patchedCode);
+  const patchPatchAsyncStorage = (code: string) =>
+    code
+      // TODO: implement for cf (possibly in @opennextjs/aws)
+      .replace("patchAsyncStorage();", "//patchAsyncStorage();");
 
-  patchedCode = patchedCode
-    // workers do not support dynamic require nor require.resolve
-    // TODO: implement for cf (possibly in @opennextjs/aws)
-    .replace("patchAsyncStorage();", "//patchAsyncStorage();")
-    .replace('require.resolve("./cache.cjs")', '"unused"');
+  // workers do not support dynamic require nor require.resolve
+  const patchRequireResolve = (code: string) => code.replace('require.resolve("./cache.cjs")', '"unused"');
+
+  const patchedCode = await patchCodeWithValidations(code, [
+    ["require", patches.patchRequire],
+    ["`buildId` function", patchBuildId],
+    ["`loadManifest` function", patchLoadManifest],
+    ["next's require", inlineNextRequire],
+    ["`findDir` function", patchFindDir],
+    ["`evalManifest` function", inlineEvalManifest],
+    ["cacheHandler", patchCache],
+    ["'require(this.middlewareManifestPath)'", inlineMiddlewareManifestRequire],
+    ["exception bubbling", patches.patchExceptionBubbling],
+    ["`loadInstrumentationModule` function", patches.patchLoadInstrumentationModule],
+    ["`patchAsyncStorage` call", patchPatchAsyncStorage],
+    ["`require.resolve` call", patchRequireResolve],
+  ]);
 
   await writeFile(workerOutputFile, patchedCode);
 }
@@ -191,4 +195,34 @@ function createFixRequiresESBuildPlugin(config: Config): Plugin {
       }));
     },
   };
+}
+
+/**
+ * Applies multiple code patches in order to a given piece of code, at each step it validates that the code
+ * has actually been patched/changed, if not an error is thrown
+ *
+ * @param code the code to apply the patches to
+ * @param patches array of functions that take a string (pre-patch code) and return a string (post-patch code)
+ * @returns the patched code
+ */
+export async function patchCodeWithValidations(
+  code: string,
+  patches: [string, (code: string) => string | Promise<string>][]
+): Promise<string> {
+  console.log(`Applying Cloudflare patches:`);
+  let prePatchCode = code;
+  let postPatchCode = code;
+
+  for (const [target, patchFunction] of patches) {
+    console.log(` - patching ${target}`);
+
+    prePatchCode = postPatchCode;
+    postPatchCode = await patchFunction(prePatchCode);
+
+    if (prePatchCode === postPatchCode) {
+      throw new Error(`Failed to patch ${target}`);
+    }
+  }
+
+  return postPatchCode;
 }

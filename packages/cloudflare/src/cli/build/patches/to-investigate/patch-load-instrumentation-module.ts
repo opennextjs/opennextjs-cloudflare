@@ -17,7 +17,6 @@ import { tsParseFile } from "../../utils";
  */
 export function patchLoadInstrumentationModule(code: string) {
   const file = tsParseFile(code);
-  const originalPrintedCode = file.print();
   const loadInstrumentationModuleDeclarations = file
     .getDescendantsOfKind(ts.SyntaxKind.MethodDeclaration)
     .filter((methodDeclaration) => {
@@ -35,11 +34,5 @@ export function patchLoadInstrumentationModule(code: string) {
   loadInstrumentationModuleDeclarations.forEach((loadInstrumentationModuleDeclaration) => {
     loadInstrumentationModuleDeclaration.setBodyText("");
   });
-  const patchedPrintedCode = file.print();
-
-  if (patchedPrintedCode === originalPrintedCode) {
-    throw new Error("Patch `loadInstrumentationModule` not applied");
-  }
-
   return file.print();
 }
