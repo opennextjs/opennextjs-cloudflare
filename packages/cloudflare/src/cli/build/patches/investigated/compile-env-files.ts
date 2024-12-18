@@ -6,9 +6,9 @@ import { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { extractProjectEnvVars } from "../../utils";
 
 /**
- * Copies the values extracted from the project's env files to the output directory for use in the worker.
+ * Compiles the values extracted from the project's env files to the output directory for use in the worker.
  */
-export function copyEnvFiles(options: BuildOptions) {
+export function compileEnvFiles(options: BuildOptions) {
   ["production", "development", "test"].forEach((mode) =>
     fs.appendFileSync(
       path.join(options.outputDir, `.env.mjs`),

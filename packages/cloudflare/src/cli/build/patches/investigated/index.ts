@@ -1,4 +1,4 @@
-export * from "./copy-env-files";
+export * from "./compile-env-files";
 export * from "./copy-package-cli-files";
 export * from "./patch-cache";
 export * from "./patch-require";
