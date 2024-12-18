@@ -167,7 +167,11 @@ async function updateWorkerBundledCode(
           // TODO: implement for cf (possibly in @opennextjs/aws)
           .replace("patchAsyncStorage();", "//patchAsyncStorage();"),
     ],
-    ['`eval("require")` calls', (code) => code.replaceAll('eval("require")', "require")],
+    [
+      '`eval("require")` calls',
+      (code) => code.replaceAll('eval("require")', "require"),
+      { isOptional: true },
+    ],
     [
       "`require.resolve` call",
       // workers do not support dynamic require nor require.resolve
@@ -204,18 +208,18 @@ function createFixRequiresESBuildPlugin(config: Config): Plugin {
  */
 async function patchCodeWithValidations(
   code: string,
-  patches: [string, (code: string) => string | Promise<string>][]
+  patches: [string, (code: string) => string | Promise<string>, opts?: { isOptional?: boolean }][]
 ): Promise<string> {
   console.log(`Applying code patches:`);
   let patchedCode = code;
 
-  for (const [target, patchFunction] of patches) {
+  for (const [target, patchFunction, opts] of patches) {
     console.log(` - patching ${target}`);
 
     const prePatchCode = patchedCode;
     patchedCode = await patchFunction(patchedCode);
 
-    if (prePatchCode === patchedCode) {
+    if (!opts?.isOptional && prePatchCode === patchedCode) {
       throw new Error(`Failed to patch ${target}`);
     }
   }
