@@ -201,7 +201,7 @@ function createFixRequiresESBuildPlugin(config: Config): Plugin {
  * @param patches array of functions that take a string (pre-patch code) and return a string (post-patch code)
  * @returns the patched code
  */
-export async function patchCodeWithValidations(
+async function patchCodeWithValidations(
   code: string,
   patches: [string, (code: string) => string | Promise<string>][]
 ): Promise<string> {
