@@ -17,7 +17,8 @@
   "exports": {
     ".": {
       "import": "./dist/api/index.mjs",
-      "types": "./dist/api/index.d.mts"
+      "types": "./dist/api/index.d.mts",
+      "default": "./dist/api/index.mjs"
     }
   },
   "files": [
