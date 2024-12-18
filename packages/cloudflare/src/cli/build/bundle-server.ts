@@ -209,7 +209,7 @@ export async function patchCodeWithValidations(
   code: string,
   patches: [string, (code: string) => string | Promise<string>][]
 ): Promise<string> {
-  console.log(`Applying Cloudflare patches:`);
+  console.log(`Applying code patches:`);
   let prePatchCode = code;
   let postPatchCode = code;
 
