@@ -15,6 +15,7 @@ import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 import type { ProjectOptions } from "../config";
 import { containsDotNextDir, getConfig } from "../config";
 import { bundleServer } from "./bundle-server";
+import { compileEnvFiles } from "./open-next/compile-env-files";
 import { createServerBundle } from "./open-next/createServerBundle";
 
 /**
@@ -70,6 +71,9 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
 
   // Compile cache.ts
   compileCache(options);
+
+  // Compile .env files
+  compileEnvFiles(options);
 
   // Compile middleware
   await createMiddleware(options, { forceOnlyBuildOnce: true });
