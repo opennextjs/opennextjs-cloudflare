@@ -30,3 +30,8 @@ test("the hello-world api POST route works as intended", async ({ page }) => {
   expect(res.headers()["content-type"]).toContain("text/plain");
   await expect(res.text()).resolves.toEqual("Hello post-World! body=some body");
 });
+
+test("sets environment variables from the Next.js env file", async ({ page }) => {
+  const res = await page.request.get("/api/env");
+  await expect(res.json()).resolves.toEqual(expect.objectContaining({ TEST_ENV_VAR: "TEST_VALUE" }));
+});
