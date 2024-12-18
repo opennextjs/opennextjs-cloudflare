@@ -198,7 +198,8 @@ function createFixRequiresESBuildPlugin(config: Config): Plugin {
  * has actually been patched/changed, if not an error is thrown
  *
  * @param code the code to apply the patches to
- * @param patches array of functions that take a string (pre-patch code) and return a string (post-patch code)
+ * @param patches array of tuples, containing a string indicating the target of the patching (for logging) and
+ *                a patching function that takes a string (pre-patch code) and returns a string (post-patch code)
  * @returns the patched code
  */
 async function patchCodeWithValidations(
