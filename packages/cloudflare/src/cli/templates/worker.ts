@@ -29,7 +29,7 @@ async function applyProjectEnvVars(mode = "production") {
 
   if (nextEnvVars[mode]) {
     for (const key in nextEnvVars[mode]) {
-      process.env[key] = nextEnvVars[key];
+      process.env[key] = nextEnvVars[mode][key];
     }
   }
 
