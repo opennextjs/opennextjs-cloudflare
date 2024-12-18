@@ -25,11 +25,11 @@ async function applyProjectEnvVars(mode = "production") {
   if (process.env.__OPENNEXT_PROCESSED_ENV === "1") return;
 
   // @ts-expect-error: resolved by wrangler build
-  const secrets = await import("./.env.mjs");
+  const nextEnvVars = await import("./.env.mjs");
 
-  if (secrets[mode]) {
-    for (const key in secrets[mode]) {
-      process.env[key] = secrets[key];
+  if (nextEnvVars[mode]) {
+    for (const key in nextEnvVars[mode]) {
+      process.env[key] = nextEnvVars[key];
     }
   }
 
