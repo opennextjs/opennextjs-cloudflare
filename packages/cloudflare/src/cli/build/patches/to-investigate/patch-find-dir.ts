@@ -10,8 +10,7 @@ import { Config } from "../../../config";
  * Note: `findDir` uses `fs.existsSync` under the hood, so patching that should be enough to make this work
  */
 export function patchFindDir(code: string, config: Config): string {
-  console.log("# patchFindDir");
-  const patchedCode = code.replace(
+  return code.replace(
     /function findDir\((?<dir>dir\d*), (?<name>name\d*)\) {/,
     `function findDir($dir, $name) {
 			if ($dir.endsWith(".next/server")) {
@@ -25,10 +24,4 @@ export function patchFindDir(code: string, config: Config): string {
 		throw new Error("Unknown findDir call: " + $dir + " " + $name);
 		`
   );
-
-  if (patchedCode === code) {
-    throw new Error("Patch `patchFindDir` not applied");
-  }
-
-  return patchedCode;
 }
