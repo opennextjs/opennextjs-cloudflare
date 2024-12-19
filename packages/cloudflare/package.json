@@ -51,8 +51,8 @@
     "@types/node": "catalog:",
     "esbuild": "catalog:",
     "eslint": "catalog:",
-    "eslint-plugin-import": "^2.31.0",
-    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "eslint-plugin-import": "catalog:",
+    "eslint-plugin-simple-import-sort": "catalog:",
     "eslint-plugin-unicorn": "catalog:",
     "glob": "catalog:",
     "globals": "catalog:",
@@ -70,7 +70,7 @@
     "@dotenvx/dotenvx": "catalog:"
   },
   "peerDependencies": {
-    "rimraf": "^6.0.1",
+    "rimraf": "catalog:",
     "wrangler": "catalog:"
   }
 }
