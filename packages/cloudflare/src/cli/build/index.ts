@@ -1,4 +1,4 @@
-import { cpSync } from "node:fs";
+import { cpSync, existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 
@@ -11,6 +11,7 @@ import * as buildHelper from "@opennextjs/aws/build/helper.js";
 import { printHeader, showWarningOnWindows } from "@opennextjs/aws/build/utils.js";
 import logger from "@opennextjs/aws/logger.js";
 import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
+import Enquirer from "enquirer";
 
 import type { ProjectOptions } from "../config";
 import { containsDotNextDir, getConfig } from "../config";
@@ -33,6 +34,8 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
   const baseDir = projectOpts.sourceDir;
   const require = createRequire(import.meta.url);
   const openNextDistDir = dirname(require.resolve("@opennextjs/aws/index.js"));
+
+  await createOpenNextConfigIfNotExistent(baseDir);
 
   const { config, buildDir } = await compileOpenNextConfig(baseDir);
 
@@ -92,6 +95,34 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
   await bundleServer(projConfig, options);
 
   logger.info("OpenNext build complete.");
+}
+
+/**
+ * Creates a `open-next.config.ts` file for the user if it doesn't exist, but only after getting the user's confirmation.
+ *
+ * If the users refuses an error is thrown (since the file is mandatory).
+ *
+ * @param baseDir the Next.js app root folder
+ */
+async function createOpenNextConfigIfNotExistent(baseDir: string): Promise<void> {
+  const openNextConfigPath = join(baseDir, "open-next.config.ts");
+
+  if (!existsSync(openNextConfigPath)) {
+    const questionName = "create-open-next-config";
+    const answer = (
+      (await Enquirer.prompt({
+        name: "create-open-next-config",
+        message: "Missing required `open-next.config.ts` file, do you want to create one?",
+        type: "confirm",
+        initial: "y",
+      })) as { [questionName]: boolean }
+    )[questionName];
+    if (!answer) {
+      throw new Error("A `open-next.config.ts` file is mandatory, aborting!");
+    }
+
+    cpSync(`${import.meta.dirname}/templates/defaults/open-next.config.ts`, openNextConfigPath);
+  }
 }
 
 /**
