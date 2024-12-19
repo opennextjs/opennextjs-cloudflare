@@ -1,6 +1,6 @@
 import * as ts from "ts-morph";
 
-import { tsParseFile } from "../../utils";
+import { tsParseFile } from "../../utils/index.js";
 
 /**
  * The `loadInstrumentationModule` method (source: https://github.com/vercel/next.js/blob/5b7833e3/packages/next/src/server/next-server.ts#L301)
