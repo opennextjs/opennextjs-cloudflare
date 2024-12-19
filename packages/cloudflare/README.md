@@ -27,7 +27,7 @@ You can use [`create-next-app`](https://nextjs.org/docs/pages/api-reference/cli/
   ```toml
   #:schema node_modules/wrangler/config-schema.json
   name = "<your-app-name>"
-  main = ".open-next/worker.ts"
+  main = ".open-next/worker.js"
 
   compatibility_date = "2024-09-23"
   compatibility_flags = ["nodejs_compat"]

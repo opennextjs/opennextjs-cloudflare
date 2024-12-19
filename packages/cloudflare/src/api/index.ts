@@ -1,1 +1,1 @@
-export * from "./get-cloudflare-context";
+export * from "./get-cloudflare-context.js";

@@ -2,9 +2,11 @@
   "name": "@opennextjs/cloudflare",
   "description": "Cloudflare builder for next apps",
   "version": "0.3.0",
+  "type": "module",
   "scripts": {
-    "build": "tsup",
-    "build:watch": "tsup --watch src",
+    "clean": "rimraf dist",
+    "build": "pnpm clean && tsc",
+    "build:watch": "tsc -w",
     "lint:check": "eslint",
     "lint:fix": "eslint --fix",
     "ts:check": "tsc --noEmit",
@@ -12,15 +14,15 @@
     "test:watch": "vitest"
   },
   "bin": {
-    "opennextjs-cloudflare": "dist/cli/index.mjs"
+    "opennextjs-cloudflare": "dist/cli/index.js"
   },
-  "main": "./dist/api/index.mjs",
-  "types": "./dist/api/index.d.mts",
+  "main": "./dist/api/index.js",
+  "types": "./dist/api/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/api/index.mjs",
-      "types": "./dist/api/index.d.mts",
-      "default": "./dist/api/index.mjs"
+      "import": "./dist/api/index.js",
+      "types": "./dist/api/index.d.ts",
+      "default": "./dist/api/index.js"
     }
   },
   "files": [
@@ -50,14 +52,13 @@
     "@types/node": "catalog:",
     "esbuild": "catalog:",
     "eslint": "catalog:",
-    "eslint-plugin-import": "^2.31.0",
-    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "eslint-plugin-import": "catalog:",
+    "eslint-plugin-simple-import-sort": "catalog:",
     "eslint-plugin-unicorn": "catalog:",
     "glob": "catalog:",
     "globals": "catalog:",
     "next": "catalog:",
     "package-manager-detector": "catalog:",
-    "tsup": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",
     "vitest": "catalog:",
@@ -70,6 +71,7 @@
     "@dotenvx/dotenvx": "catalog:"
   },
   "peerDependencies": {
+    "rimraf": "catalog:",
     "wrangler": "catalog:"
   }
 }

@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 
 import { describe, expect, test } from "vitest";
 
-import { tsParseFile } from "../../../utils";
+import { tsParseFile } from "../../../utils/index.js";
 import { getFileContentWithUpdatedWebpackFRequireCode } from "./get-file-content-with-updated-webpack-f-require-code";
 
 describe("getFileContentWithUpdatedWebpackFRequireCode", () => {
