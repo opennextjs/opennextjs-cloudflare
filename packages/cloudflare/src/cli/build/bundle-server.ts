@@ -8,7 +8,6 @@ import { build, Plugin } from "esbuild";
 
 import { Config } from "../config.js";
 import * as patches from "./patches/index.js";
-import { copyPrerenderedRoutes } from "./utils/index.js";
 
 /** The dist directory of the Cloudflare adapter package */
 const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -17,9 +16,6 @@ const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "
  * Bundle the Open Next server.
  */
 export async function bundleServer(config: Config, openNextOptions: BuildOptions): Promise<void> {
-  // Copy over prerendered assets (e.g. SSG routes)
-  copyPrerenderedRoutes(config);
-
   patches.copyPackageCliFiles(packageDistDir, config, openNextOptions);
 
   const nextConfigStr =

@@ -46,10 +46,6 @@ export type Config = {
     };
   };
 
-  cache: {
-    kvBindingName: string;
-  };
-
   // Internal name for the copy of the package
   internalPackageName: string;
 };
@@ -73,8 +69,6 @@ export function getConfig(projectOpts: ProjectOptions): Config {
   const nodeModules = join(standaloneApp, "node_modules");
   const internalPackage = join(nodeModules, ...PACKAGE_NAME.split("/"));
   const internalTemplates = join(internalPackage, "cli", "templates");
-
-  process.env.__OPENNEXT_KV_BINDING_NAME ??= "NEXT_CACHE_WORKERS_KV";
 
   return {
     build: {
@@ -102,10 +96,6 @@ export function getConfig(projectOpts: ProjectOptions): Config {
         package: internalPackage,
         templates: internalTemplates,
       },
-    },
-
-    cache: {
-      kvBindingName: process.env.__OPENNEXT_KV_BINDING_NAME,
     },
 
     internalPackageName: PACKAGE_NAME,

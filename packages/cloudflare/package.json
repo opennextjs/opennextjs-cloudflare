@@ -22,6 +22,10 @@
     ".": {
       "import": "./dist/api/index.js",
       "types": "./dist/api/index.d.ts"
+    },
+    "./*": {
+      "import": "./dist/api/*.js",
+      "types": "./dist/api/*.d.ts"
     }
   },
   "files": [
