@@ -1,8 +1,8 @@
-import "server-only";
-
 declare global {
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-  interface CloudflareEnv {}
+  interface CloudflareEnv {
+    NEXT_CACHE_WORKERS_KV?: KVNamespace;
+    ASSETS?: Fetcher;
+  }
 }
 
 export type CloudflareContext<
