@@ -3,8 +3,8 @@ import { join, posix } from "node:path";
 
 import { globSync } from "glob";
 
-import { Config } from "../../../config";
-import { normalizePath } from "../../utils";
+import { Config } from "../../../config.js";
+import { normalizePath } from "../../utils/index.js";
 
 export function patchBuildId(code: string, config: Config): string {
   // The next-server code gets the buildId from the filesystem, resulting in a `[unenv] fs.readFileSync is not implemented yet!` error

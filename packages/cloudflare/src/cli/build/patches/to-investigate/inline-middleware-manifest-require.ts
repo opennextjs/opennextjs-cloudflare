@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { Config } from "../../../config";
+import { Config } from "../../../config.js";
 
 /**
  * Inlines the middleware manifest from the build output to prevent a dynamic require statement

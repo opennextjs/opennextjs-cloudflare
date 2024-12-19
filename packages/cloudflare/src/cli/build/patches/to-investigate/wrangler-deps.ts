@@ -1,7 +1,7 @@
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { Config } from "../../../config";
+import { Config } from "../../../config.js";
 
 export function patchWranglerDeps(config: Config) {
   console.log("# patchWranglerDeps");
