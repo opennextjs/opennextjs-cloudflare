@@ -3,9 +3,9 @@ import { dirname, join } from "node:path";
 
 import type { PrerenderManifest } from "next/dist/build";
 
-import { Config } from "../../config";
-import { NEXT_META_SUFFIX, SEED_DATA_DIR } from "../../constants/incremental-cache";
-import { readPathsRecursively } from "./read-paths-recursively";
+import { Config } from "../../config.js";
+import { NEXT_META_SUFFIX, SEED_DATA_DIR } from "../../constants/incremental-cache.js";
+import { readPathsRecursively } from "./read-paths-recursively.js";
 
 /**
  * Copies all prerendered routes from the standalone output directory to the OpenNext static assets

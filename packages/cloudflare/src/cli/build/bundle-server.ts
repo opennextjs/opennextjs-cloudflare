@@ -6,12 +6,12 @@ import { fileURLToPath } from "node:url";
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { build, Plugin } from "esbuild";
 
-import { Config } from "../config";
-import * as patches from "./patches";
-import { copyPrerenderedRoutes } from "./utils";
+import { Config } from "../config.js";
+import * as patches from "./patches/index.js";
+import { copyPrerenderedRoutes } from "./utils/index.js";
 
 /** The dist directory of the Cloudflare adapter package */
-const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 /**
  * Bundle the Open Next server.
@@ -51,15 +51,15 @@ export async function bundleServer(config: Config, openNextOptions: BuildOptions
       // Note: we apply an empty shim to next/dist/compiled/ws because it generates two `eval`s:
       //   eval("require")("bufferutil");
       //   eval("require")("utf-8-validate");
-      "next/dist/compiled/ws": path.join(config.paths.internal.templates, "shims", "empty.ts"),
+      "next/dist/compiled/ws": path.join(config.paths.internal.templates, "shims", "empty.js"),
       // Note: we apply an empty shim to next/dist/compiled/edge-runtime since (amongst others) it generated the following `eval`:
       //   eval(getModuleCode)(module, module.exports, throwingRequire, params.context, ...Object.values(params.scopedContext));
       //   which comes from https://github.com/vercel/edge-runtime/blob/6e96b55f/packages/primitives/src/primitives/load.js#L57-L63
       // QUESTION: Why did I encountered this but mhart didn't?
-      "next/dist/compiled/edge-runtime": path.join(config.paths.internal.templates, "shims", "empty.ts"),
+      "next/dist/compiled/edge-runtime": path.join(config.paths.internal.templates, "shims", "empty.js"),
       // `@next/env` is a library Next.js uses for loading dotenv files, for obvious reasons we need to stub it here
       // source: https://github.com/vercel/next.js/tree/0ac10d79720/packages/next-env
-      "@next/env": path.join(config.paths.internal.templates, "shims", "env.ts"),
+      "@next/env": path.join(config.paths.internal.templates, "shims", "env.js"),
     },
     define: {
       // config file used by Next.js, see: https://github.com/vercel/next.js/blob/68a7128/packages/next/src/build/utils.ts#L2137-L2139
@@ -188,10 +188,7 @@ function createFixRequiresESBuildPlugin(config: Config): Plugin {
     setup(build) {
       // Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
       build.onResolve({ filter: /^\.\/require-hook$/ }, () => ({
-        path: path.join(config.paths.internal.templates, "shims", "empty.ts"),
-      }));
-      build.onResolve({ filter: /\.\/lib\/node-fs-methods$/ }, () => ({
-        path: path.join(config.paths.internal.templates, "shims", "empty.ts"),
+        path: path.join(config.paths.internal.templates, "shims", "empty.js"),
       }));
     },
   };

@@ -2,8 +2,8 @@ import { join, posix } from "node:path";
 
 import { globSync } from "glob";
 
-import { Config } from "../../../config";
-import { normalizePath } from "../../utils";
+import { Config } from "../../../config.js";
+import { normalizePath } from "../../utils/index.js";
 
 /**
  * `evalManifest` relies on readFileSync so we need to patch the function so that it instead returns the content of the manifest files

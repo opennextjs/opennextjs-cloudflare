@@ -12,11 +12,11 @@ import { printHeader, showWarningOnWindows } from "@opennextjs/aws/build/utils.j
 import logger from "@opennextjs/aws/logger.js";
 import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 
-import type { ProjectOptions } from "../config";
-import { containsDotNextDir, getConfig } from "../config";
-import { bundleServer } from "./bundle-server";
-import { compileEnvFiles } from "./open-next/compile-env-files";
-import { createServerBundle } from "./open-next/createServerBundle";
+import type { ProjectOptions } from "../config.js";
+import { containsDotNextDir, getConfig } from "../config.js";
+import { bundleServer } from "./bundle-server.js";
+import { compileEnvFiles } from "./open-next/compile-env-files.js";
+import { createServerBundle } from "./open-next/createServerBundle.js";
 
 /**
  * Builds the application in a format that can be passed to workerd
