@@ -355,6 +355,9 @@ importers:
       '@opennextjs/aws':
         specifier: https://pkg.pr.new/@opennextjs/aws@678
         version: https://pkg.pr.new/@opennextjs/aws@678
+      enquirer:
+        specifier: ^2.4.1
+        version: 2.4.1
       ts-morph:
         specifier: 'catalog:'
         version: 23.0.0
