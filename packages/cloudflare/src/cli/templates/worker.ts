@@ -21,35 +21,22 @@ const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
   }
 );
 
-async function applyProjectEnvVars(mode: string) {
-  if (process.env.__OPENNEXT_PROCESSED_ENV === "1") return;
-
-  // @ts-expect-error: resolved by wrangler build
-  const nextEnvVars = await import("./.env.mjs");
-
-  if (nextEnvVars[mode]) {
-    for (const key in nextEnvVars[mode]) {
-      process.env[key] = nextEnvVars[mode][key];
-    }
-  }
-
-  process.env.__OPENNEXT_PROCESSED_ENV = "1";
-}
-
 export default {
   async fetch(request, env, ctx) {
     return cloudflareContextALS.run({ env, ctx, cf: request.cf }, async () => {
-      // Set the default Origin for the origin resolver.
       const url = new URL(request.url);
-      process.env.OPEN_NEXT_ORIGIN = JSON.stringify({
-        default: {
-          host: url.hostname,
-          protocol: url.protocol.slice(0, -1),
-          port: url.port,
-        },
-      });
 
-      await applyProjectEnvVars(env.NEXTJS_ENV ?? "production");
+      if (process.env.__PROCESS_ENV_POPULATED !== "1") {
+        await populateProcessEnv(url, env.NEXTJS_ENV);
+        process.env.__PROCESS_ENV_POPULATED = "1";
+      }
+
+      if (url.pathname === "/_next/image") {
+        const imageUrl = url.searchParams.get("url") ?? "";
+        return imageUrl.startsWith("/")
+          ? env.ASSETS.fetch(new URL(imageUrl, request.url))
+          : fetch(imageUrl, { cf: { cacheEverything: true } });
+      }
 
       // The Middleware handler can return either a `Response` or a `Request`:
       // - `Response`s should be returned early
@@ -64,3 +51,36 @@ export default {
     });
   },
 } as ExportedHandler<{ ASSETS: Fetcher; NEXTJS_ENV?: string }>;
+
+/**
+ * Populate process.env with:
+ * - the variables from Next .env* files
+ * - the origin resolver information
+ *
+ * Note that cloudflare env string values are copied by the middleware handler.
+ */
+async function populateProcessEnv(url: URL, nextJsEnv?: string) {
+  if (process.env.__PROCESS_ENV_POPULATED === "1") {
+    return;
+  }
+
+  // @ts-expect-error: resolved by wrangler build
+  const nextEnvVars = await import("./.env.mjs");
+
+  const mode = nextJsEnv ?? "production";
+
+  if (nextEnvVars[mode]) {
+    for (const key in nextEnvVars[mode]) {
+      process.env[key] = nextEnvVars[mode][key];
+    }
+  }
+
+  // Set the default Origin for the origin resolver.
+  process.env.OPEN_NEXT_ORIGIN = JSON.stringify({
+    default: {
+      host: url.hostname,
+      protocol: url.protocol.slice(0, -1),
+      port: url.port,
+    },
+  });
+}

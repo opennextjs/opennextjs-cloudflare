@@ -5,8 +5,6 @@ const PACKAGE_NAME = "@opennextjs/cloudflare";
 
 export type Config = {
   build: {
-    // Timestamp for when the build was started
-    timestamp: number;
     // Whether to skip building the Next.js app or not
     skipNextBuild: boolean;
     // Whether minification should be enabled or not
@@ -46,10 +44,6 @@ export type Config = {
     };
   };
 
-  cache: {
-    kvBindingName: string;
-  };
-
   // Internal name for the copy of the package
   internalPackageName: string;
 };
@@ -74,11 +68,8 @@ export function getConfig(projectOpts: ProjectOptions): Config {
   const internalPackage = join(nodeModules, ...PACKAGE_NAME.split("/"));
   const internalTemplates = join(internalPackage, "cli", "templates");
 
-  process.env.__OPENNEXT_KV_BINDING_NAME ??= "NEXT_CACHE_WORKERS_KV";
-
   return {
     build: {
-      timestamp: Date.now(),
       skipNextBuild: projectOpts.skipNextBuild,
       shouldMinify: projectOpts.minify,
     },
@@ -102,10 +93,6 @@ export function getConfig(projectOpts: ProjectOptions): Config {
         package: internalPackage,
         templates: internalTemplates,
       },
-    },
-
-    cache: {
-      kvBindingName: process.env.__OPENNEXT_KV_BINDING_NAME,
     },
 
     internalPackageName: PACKAGE_NAME,
