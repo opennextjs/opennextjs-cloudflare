@@ -69,6 +69,7 @@ export async function bundleServer(config: Config, openNextOptions: BuildOptions
       "process.env.NEXT_RUNTIME": '"nodejs"',
       "process.env.NODE_ENV": '"production"',
       "process.env.NEXT_MINIMAL": "true",
+      "process.env.__BUILD_TIMESTAMP_MS__": String(Date.now()),
     },
     // We need to set platform to node so that esbuild doesn't complain about the node imports
     platform: "node",
@@ -109,6 +110,7 @@ globalThis.Request = CustomRequest;
 Request = globalThis.Request;
 // Makes the edge converter returns either a Response or a Request.
 globalThis.__dangerous_ON_edge_converter_returns_request = true;
+globalThis.__BUILD_TIMESTAMP_MS__ = ${Date.now()};
 `,
     },
   });

@@ -5,8 +5,6 @@ const PACKAGE_NAME = "@opennextjs/cloudflare";
 
 export type Config = {
   build: {
-    // Timestamp for when the build was started
-    timestamp: number;
     // Whether to skip building the Next.js app or not
     skipNextBuild: boolean;
     // Whether minification should be enabled or not
@@ -72,7 +70,6 @@ export function getConfig(projectOpts: ProjectOptions): Config {
 
   return {
     build: {
-      timestamp: Date.now(),
       skipNextBuild: projectOpts.skipNextBuild,
       shouldMinify: projectOpts.minify,
     },

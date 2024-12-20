@@ -8,6 +8,8 @@ import { getCloudflareContext } from "./get-cloudflare-context.js";
 
 export const CACHE_ASSET_DIR = "cnd-cgi/_next_cache";
 
+export const STATUS_DELETED = 1;
+
 /**
  * Open Next cache based on cloudflare KV and Assets.
  *
@@ -38,26 +40,32 @@ class Cache implements IncrementalCache {
     try {
       this.debug(`- From KV`);
       const kvKey = this.getKVKey(key, isFetch ? "fetch" : "cache");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let value: any = await this.kv?.get(kvKey, "json");
-      if (!value && this.assets) {
+
+      let entry = (await this.kv?.get(kvKey, "json")) as {
+        value?: CacheValue<IsFetch>;
+        lastModified?: number;
+        status?: number;
+      } | null;
+      if (entry?.status === STATUS_DELETED) {
+        return {};
+      }
+      if (!entry && this.assets) {
         const url = this.getAssetUrl(key);
         const response = await this.assets.fetch(url);
         this.debug(`- From Assets`);
         if (response.ok) {
-          value = await response.json();
+          entry = {
+            value: await response.json(),
+            // __BUILD_TIMESTAMP_MS__ is injected by ESBuild.
+            lastModified: (globalThis as { __BUILD_TIMESTAMP_MS__?: number }).__BUILD_TIMESTAMP_MS__,
+          };
         }
       }
-      if (value) {
-        this.debug(`-> hit`);
-        return { value };
-      }
+      this.debug(entry ? `-> hit` : `-> miss`);
+      return { value: entry?.value, lastModified: entry?.lastModified };
     } catch {
       throw new RecoverableError(`Failed to get cache [${key}]`);
     }
-
-    this.debug(`-> miss`);
-    throw new RecoverableError(`Not found [${key}]`);
   }
 
   async set<IsFetch extends boolean = false>(
@@ -74,8 +82,16 @@ class Cache implements IncrementalCache {
     this.debug(`Set ${key}`);
     try {
       const kvKey = this.getKVKey(key, isFetch ? "fetch" : "cache");
-      // TODO: add TTL to avoid cache growing too big ?
-      await this.kv.put(kvKey, JSON.stringify(value));
+      // Note: We can not set a TTL as we might fallback to assets,
+      //       still removing old data (old BUILD_ID) could help avoiding
+      //       the cache growing too big.
+      await this.kv.put(
+        kvKey,
+        JSON.stringify({
+          value,
+          lastModified: Date.now(),
+        })
+      );
     } catch {
       throw new RecoverableError(`Failed to set cache [${key}]`);
     }
@@ -91,7 +107,8 @@ class Cache implements IncrementalCache {
     this.debug(`Delete ${key}`);
     try {
       const kvKey = this.getKVKey(key, "cache");
-      await this.kv.delete(kvKey);
+      // Do not delete the key as we will then fallback to the assets.
+      await this.kv.put(kvKey, JSON.stringify({ status: STATUS_DELETED }));
     } catch (e) {
       throw new RecoverableError(`Failed to delete cache [${key}]`);
     }
