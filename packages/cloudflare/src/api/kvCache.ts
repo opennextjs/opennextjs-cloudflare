@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import type { KVNamespace } from "@cloudflare/workers-types";
-import type { Extension } from "@opennextjs/aws/types/cache";
 import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/types/overrides";
 import { IgnorableError, RecoverableError } from "@opennextjs/aws/utils/error.js";
 
@@ -38,21 +36,25 @@ class Cache implements IncrementalCache {
     this.debug(`Get ${key}`);
 
     try {
-      this.debug(`- From KV`);
-      const kvKey = this.getKVKey(key, isFetch ? "fetch" : "cache");
-
-      let entry = (await this.kv?.get(kvKey, "json")) as {
+      let entry: {
         value?: CacheValue<IsFetch>;
         lastModified?: number;
         status?: number;
-      } | null;
-      if (entry?.status === STATUS_DELETED) {
-        return {};
+      } | null = null;
+
+      if (this.kv) {
+        this.debug(`- From KV`);
+        const kvKey = this.getKVKey(key, isFetch);
+        entry = await this.kv.get(kvKey, "json");
+        if (entry?.status === STATUS_DELETED) {
+          return {};
+        }
       }
+
       if (!entry && this.assets) {
-        const url = this.getAssetUrl(key);
-        const response = await this.assets.fetch(url);
         this.debug(`- From Assets`);
+        const url = this.getAssetUrl(key, isFetch);
+        const response = await this.assets.fetch(url);
         if (response.ok) {
           // TODO: consider populating KV with the asset value if faster.
           // This could be optional as KV writes are $$.
@@ -84,7 +86,7 @@ class Cache implements IncrementalCache {
     }
     this.debug(`Set ${key}`);
     try {
-      const kvKey = this.getKVKey(key, isFetch ? "fetch" : "cache");
+      const kvKey = this.getKVKey(key, isFetch);
       // Note: We can not set a TTL as we might fallback to assets,
       //       still removing old data (old BUILD_ID) could help avoiding
       //       the cache growing too big.
@@ -109,20 +111,22 @@ class Cache implements IncrementalCache {
     }
     this.debug(`Delete ${key}`);
     try {
-      const kvKey = this.getKVKey(key, "cache");
-      // Do not delete the key as we will then fallback to the assets.
+      const kvKey = this.getKVKey(key, /* isFetch= */ false);
+      // Do not delete the key as we would then fallback to the assets.
       await this.kv.put(kvKey, JSON.stringify({ status: STATUS_DELETED }));
-    } catch (e) {
+    } catch {
       throw new RecoverableError(`Failed to delete cache [${key}]`);
     }
   }
 
-  protected getKVKey(key: string, extension: Extension): string {
-    return `${this.getBuildId()}/${key}.${extension}`;
+  protected getKVKey(key: string, isFetch?: boolean): string {
+    return `${this.getBuildId()}/${key}.${isFetch ? "fetch" : "cache"}`;
   }
 
-  protected getAssetUrl(key: string): string {
-    return `http://assets.local/${CACHE_ASSET_DIR}/${this.getBuildId()}/${key}.cache`.replace(/\/\//g, "/");
+  protected getAssetUrl(key: string, isFetch?: boolean): string {
+    return isFetch
+      ? `http://assets.local/${CACHE_ASSET_DIR}/__fetch/${this.getBuildId()}/${key}`
+      : `http://assets.local/${CACHE_ASSET_DIR}/${this.getBuildId()}/${key}.cache`;
   }
 
   protected debug(...args: unknown[]) {
