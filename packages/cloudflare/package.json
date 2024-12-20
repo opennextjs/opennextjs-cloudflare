@@ -22,6 +22,10 @@
     ".": {
       "import": "./dist/api/index.js",
       "types": "./dist/api/index.d.ts"
+    },
+    "./*": {
+      "import": "./dist/api/*.js",
+      "types": "./dist/api/*.d.ts"
     }
   },
   "files": [
@@ -65,7 +69,7 @@
     "@types/mock-fs": "catalog:"
   },
   "dependencies": {
-    "@opennextjs/aws": "https://pkg.pr.new/@opennextjs/aws@683",
+    "@opennextjs/aws": "https://pkg.pr.new/@opennextjs/aws@684",
     "ts-morph": "catalog:",
     "@dotenvx/dotenvx": "catalog:"
   },
