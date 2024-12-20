@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { buildNextjsApp, setStandaloneBuildMode } from "@opennextjs/aws/build/buildNextApp.js";
 import { compileCache } from "@opennextjs/aws/build/compileCache.js";
 import { compileOpenNextConfig } from "@opennextjs/aws/build/compileConfig.js";
-import { createStaticAssets } from "@opennextjs/aws/build/createAssets.js";
+import { createCacheAssets, createStaticAssets } from "@opennextjs/aws/build/createAssets.js";
 import { createMiddleware } from "@opennextjs/aws/build/createMiddleware.js";
 import * as buildHelper from "@opennextjs/aws/build/helper.js";
 import { printHeader, showWarningOnWindows } from "@opennextjs/aws/build/utils.js";
@@ -16,6 +16,7 @@ import type { ProjectOptions } from "../config.js";
 import { containsDotNextDir, getConfig } from "../config.js";
 import { bundleServer } from "./bundle-server.js";
 import { compileEnvFiles } from "./open-next/compile-env-files.js";
+import { copyCacheAssets } from "./open-next/copyCacheAssets.js";
 import { createServerBundle } from "./open-next/createServerBundle.js";
 
 /**
@@ -80,6 +81,11 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
 
   createStaticAssets(options);
 
+  if (config.dangerous?.disableIncrementalCache !== true) {
+    createCacheAssets(options);
+    copyCacheAssets(options);
+  }
+
   await createServerBundle(options);
 
   // TODO: drop this copy.
@@ -103,10 +109,11 @@ function ensureCloudflareConfig(config: OpenNextConfig) {
   const requirements = {
     dftUseCloudflareWrapper: config.default?.override?.wrapper === "cloudflare-node",
     dftUseEdgeConverter: config.default?.override?.converter === "edge",
-    dftUseDummyCache:
-      config.default?.override?.incrementalCache === "dummy" &&
-      config.default?.override?.tagCache === "dummy" &&
-      config.default?.override?.queue === "dummy",
+    dftMaybeUseCache:
+      config.default?.override?.incrementalCache === "dummy" ||
+      typeof config.default?.override?.incrementalCache === "function",
+    dftUseDummyTagCacheAndQueue:
+      config.default?.override?.tagCache === "dummy" && config.default?.override?.queue === "dummy",
     disableCacheInterception: config.dangerous?.enableCacheInterception !== true,
     mwIsMiddlewareExternal: config.middleware?.external == true,
     mwUseCloudflareWrapper: config.middleware?.override?.wrapper === "cloudflare-edge",
@@ -121,7 +128,7 @@ function ensureCloudflareConfig(config: OpenNextConfig) {
     override: {
       wrapper: "cloudflare-node",
       converter: "edge",
-      incrementalCache: "dummy",
+      incrementalCache: "dummy" | function,
       tagCache: "dummy",
       queue: "dummy",
     },

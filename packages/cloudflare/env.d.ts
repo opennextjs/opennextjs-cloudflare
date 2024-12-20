@@ -1,14 +1,13 @@
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
-      ASSETS: Fetcher;
       __NEXT_PRIVATE_STANDALONE_CONFIG?: string;
       SKIP_NEXT_APP_BUILD?: string;
       NEXT_PRIVATE_DEBUG_CACHE?: string;
-      __OPENNEXT_KV_BINDING_NAME: string;
       OPEN_NEXT_ORIGIN: string;
       NODE_ENV?: string;
-      __OPENNEXT_PROCESSED_ENV?: string;
+      // Whether process.env has been populated (on first request).
+      __PROCESS_ENV_POPULATED?: string;
     }
   }
 }
