@@ -1,6 +1,6 @@
 # @opennextjs/cloudflare
 
-## 0.4.0
+## 0.3.0
 
 ### Minor Changes
 
@@ -11,6 +11,8 @@
   Going forward use the new binary name (e.g. `pnpm opennextjs-cloudflare`).
 
   See [#161](https://github.com/opennextjs/opennextjs-cloudflare/issues/161)
+
+- Add support for middleware, loading `.env*` files, ...
 
 ## 0.2.1
 
