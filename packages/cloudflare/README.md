@@ -70,7 +70,6 @@ export default config;
 
 - Next cache is not supported in the experimental branch yet
 - `▲ [WARNING] Suspicious assignment to defined constant "process.env.NODE_ENV" [assign-to-define]` can safely be ignored
-- You should test with cache disabled in the developer tools
 - Maybe more, still experimental...
 
 ## Local development
