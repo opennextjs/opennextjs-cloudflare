@@ -94,6 +94,8 @@ class Cache implements IncrementalCache {
         kvKey,
         JSON.stringify({
           value,
+          // Note: `Date.now()` returns the time of the last IO rather than the actual time.
+          //       See https://developers.cloudflare.com/workers/reference/security-model/
           lastModified: Date.now(),
         })
       );
