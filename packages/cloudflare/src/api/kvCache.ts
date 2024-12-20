@@ -54,6 +54,9 @@ class Cache implements IncrementalCache {
         const response = await this.assets.fetch(url);
         this.debug(`- From Assets`);
         if (response.ok) {
+          // TODO: consider populating KV with the asset value if faster.
+          // This could be optional as KV writes are $$.
+          // See https://github.com/opennextjs/opennextjs-cloudflare/pull/194#discussion_r1893166026
           entry = {
             value: await response.json(),
             // __BUILD_TIMESTAMP_MS__ is injected by ESBuild.
