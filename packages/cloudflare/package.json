@@ -54,29 +54,28 @@
     "@cloudflare/workers-types": "catalog:",
     "@eslint/js": "catalog:",
     "@tsconfig/strictest": "catalog:",
+    "@types/mock-fs": "catalog:",
     "@types/node": "catalog:",
     "esbuild": "catalog:",
-    "eslint": "catalog:",
     "eslint-plugin-import": "catalog:",
     "eslint-plugin-simple-import-sort": "catalog:",
     "eslint-plugin-unicorn": "catalog:",
-    "glob": "catalog:",
+    "eslint": "catalog:",
     "globals": "catalog:",
-    "next": "catalog:",
-    "package-manager-detector": "catalog:",
-    "typescript": "catalog:",
-    "typescript-eslint": "catalog:",
-    "vitest": "catalog:",
     "mock-fs": "catalog:",
-    "@types/mock-fs": "catalog:"
+    "next": "catalog:",
+    "typescript-eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "dependencies": {
+    "@dotenvx/dotenvx": "catalog:",
     "@opennextjs/aws": "https://pkg.pr.new/@opennextjs/aws@684",
-    "ts-morph": "catalog:",
-    "@dotenvx/dotenvx": "catalog:"
+    "glob": "catalog:",
+    "rimraf": "catalog:",
+    "ts-morph": "catalog:"
   },
   "peerDependencies": {
-    "rimraf": "catalog:",
     "wrangler": "catalog:"
   }
 }
