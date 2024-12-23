@@ -1,5 +1,15 @@
 # @opennextjs/cloudflare
 
+## 0.3.2
+
+### Patch Changes
+
+- c0c1d04: fix: CustomRequest instantiation
+
+  In some cases some request properties would not be initialized (i.e. method, headers, ...)
+  The bug was caused by the processing the init in the CustomRequest class.
+  The bug was tigerred when using clerk.
+
 ## 0.3.1
 
 ### Patch Changes
