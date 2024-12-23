@@ -27,3 +27,10 @@ test("matching noop middleware", async ({ page }) => {
   expect(page.waitForURL("**/middleware"));
   expect(await page.textContent("h1")).toContain("Via middleware");
 });
+
+test("clerk middleware", async ({ page }) => {
+  const res = await page.request.post("/clerk", { data: "some body" });
+  expect(res.ok()).toEqual(true);
+  expect(res.status()).toEqual(200);
+  await expect(res.text()).resolves.toEqual("Hello clerk");
+});
