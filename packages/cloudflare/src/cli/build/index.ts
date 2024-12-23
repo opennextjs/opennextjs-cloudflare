@@ -149,30 +149,32 @@ function ensureCloudflareConfig(config: OpenNextConfig) {
   };
 
   if (Object.values(requirements).some((satisfied) => !satisfied)) {
-    throw new Error(`open-next.config.ts should contain:
-{
-  default: {
-    override: {
-      wrapper: "cloudflare-node",
-      converter: "edge",
-      incrementalCache: "dummy" | function,
-      tagCache: "dummy",
-      queue: "dummy",
-    },
-  },
+    throw new Error(
+      "The `open-next.config.ts` should have a default export like this:\n\n" +
+        `{
+          default: {
+            override: {
+              wrapper: "cloudflare-node",
+              converter: "edge",
+              incrementalCache: "dummy" | function,
+              tagCache: "dummy",
+              queue: "dummy",
+            },
+          },
 
-  middleware: {
-    external: true,
-    override: {
-      wrapper: "cloudflare-edge",
-      converter: "edge",
-      proxyExternalRequest: "fetch",
-    },
-  },
+          middleware: {
+            external: true,
+            override: {
+              wrapper: "cloudflare-edge",
+              converter: "edge",
+              proxyExternalRequest: "fetch",
+            },
+          },
 
-  "dangerous": {
-    "enableCacheInterception": false
-  }
-}`);
+          "dangerous": {
+            "enableCacheInterception": false
+          },
+        }\n\n`.replace(/^ {8}/gm, "")
+    );
   }
 }
