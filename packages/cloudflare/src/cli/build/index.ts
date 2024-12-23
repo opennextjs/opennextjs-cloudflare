@@ -37,7 +37,7 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
   const require = createRequire(import.meta.url);
   const openNextDistDir = dirname(require.resolve("@opennextjs/aws/index.js"));
 
-  await createOpenNextConfigIfNotExistent(baseDir);
+  await createOpenNextConfigIfNotExistent(projectOpts);
 
   const { config, buildDir } = await compileOpenNextConfig(baseDir);
 
@@ -109,10 +109,10 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
  *
  * If the user refuses an error is thrown (since the file is mandatory).
  *
- * @param baseDir the Next.js app root folder
+ * @param projectOpts The options for the project
  */
-async function createOpenNextConfigIfNotExistent(baseDir: string): Promise<void> {
-  const openNextConfigPath = join(baseDir, "open-next.config.ts");
+async function createOpenNextConfigIfNotExistent(projectOpts: ProjectOptions): Promise<void> {
+  const openNextConfigPath = join(projectOpts.sourceDir, "open-next.config.ts");
 
   if (!existsSync(openNextConfigPath)) {
     const answer = await askConfirmation(
