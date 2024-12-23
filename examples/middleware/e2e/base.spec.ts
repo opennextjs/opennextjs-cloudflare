@@ -28,6 +28,7 @@ test("matching noop middleware", async ({ page }) => {
   expect(await page.textContent("h1")).toContain("Via middleware");
 });
 
+// Test for https://github.com/opennextjs/opennextjs-cloudflare/issues/201
 test("clerk middleware", async ({ page }) => {
   const res = await page.request.post("/clerk", { data: "some body" });
   expect(res.ok()).toEqual(true);
