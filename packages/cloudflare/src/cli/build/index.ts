@@ -1,4 +1,4 @@
-import { cpSync } from "node:fs";
+import { cpSync, existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 
@@ -12,8 +12,10 @@ import { printHeader, showWarningOnWindows } from "@opennextjs/aws/build/utils.j
 import logger from "@opennextjs/aws/logger.js";
 import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 
+import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
 import type { ProjectOptions } from "../config.js";
 import { containsDotNextDir, getConfig } from "../config.js";
+import { askConfirmation } from "../utils/ask-confirmation.js";
 import { bundleServer } from "./bundle-server.js";
 import { compileEnvFiles } from "./open-next/compile-env-files.js";
 import { copyCacheAssets } from "./open-next/copyCacheAssets.js";
@@ -34,6 +36,8 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
   const baseDir = projectOpts.sourceDir;
   const require = createRequire(import.meta.url);
   const openNextDistDir = dirname(require.resolve("@opennextjs/aws/index.js"));
+
+  await createOpenNextConfigIfNotExistent(projectOpts);
 
   const { config, buildDir } = await compileOpenNextConfig(baseDir);
 
@@ -101,6 +105,29 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
 }
 
 /**
+ * Creates a `open-next.config.ts` file for the user if it doesn't exist, but only after asking for the user's confirmation.
+ *
+ * If the user refuses an error is thrown (since the file is mandatory).
+ *
+ * @param projectOpts The options for the project
+ */
+async function createOpenNextConfigIfNotExistent(projectOpts: ProjectOptions): Promise<void> {
+  const openNextConfigPath = join(projectOpts.sourceDir, "open-next.config.ts");
+
+  if (!existsSync(openNextConfigPath)) {
+    const answer = await askConfirmation(
+      "Missing required `open-next.config.ts` file, do you want to create one?"
+    );
+
+    if (!answer) {
+      throw new Error("The `open-next.config.ts` file is required, aborting!");
+    }
+
+    cpSync(join(getPackageTemplatesDirPath(), "defaults", "open-next.config.ts"), openNextConfigPath);
+  }
+}
+
+/**
  * Ensures open next is configured for cloudflare.
  *
  * @param config OpenNext configuration.
@@ -122,30 +149,32 @@ function ensureCloudflareConfig(config: OpenNextConfig) {
   };
 
   if (Object.values(requirements).some((satisfied) => !satisfied)) {
-    throw new Error(`open-next.config.ts should contain:
-{
-  default: {
-    override: {
-      wrapper: "cloudflare-node",
-      converter: "edge",
-      incrementalCache: "dummy" | function,
-      tagCache: "dummy",
-      queue: "dummy",
-    },
-  },
+    throw new Error(
+      "The `open-next.config.ts` should have a default export like this:\n\n" +
+        `{
+          default: {
+            override: {
+              wrapper: "cloudflare-node",
+              converter: "edge",
+              incrementalCache: "dummy" | function,
+              tagCache: "dummy",
+              queue: "dummy",
+            },
+          },
 
-  middleware: {
-    external: true,
-    override: {
-      wrapper: "cloudflare-edge",
-      converter: "edge",
-      proxyExternalRequest: "fetch",
-    },
-  },
+          middleware: {
+            external: true,
+            override: {
+              wrapper: "cloudflare-edge",
+              converter: "edge",
+              proxyExternalRequest: "fetch",
+            },
+          },
 
-  "dangerous": {
-    "enableCacheInterception": false
-  }
-}`);
+          "dangerous": {
+            "enableCacheInterception": false
+          },
+        }\n\n`.replace(/^ {8}/gm, "")
+    );
   }
 }

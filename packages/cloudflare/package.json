@@ -32,7 +32,8 @@
   },
   "files": [
     "README.md",
-    "dist"
+    "dist",
+    "templates"
   ],
   "repository": {
     "type": "git",
@@ -73,7 +74,8 @@
     "@opennextjs/aws": "https://pkg.pr.new/@opennextjs/aws@684",
     "glob": "catalog:",
     "rimraf": "catalog:",
-    "ts-morph": "catalog:"
+    "ts-morph": "catalog:",
+    "enquirer": "^2.4.1"
   },
   "peerDependencies": {
     "wrangler": "catalog:"
