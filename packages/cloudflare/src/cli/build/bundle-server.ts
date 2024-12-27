@@ -31,8 +31,9 @@ export async function bundleServer(config: Config, openNextOptions: BuildOptions
   const { appBuildOutputPath, appPath, outputDir, monorepoRoot } = openNextOptions;
   const outputPath = path.join(outputDir, "server-functions", "default");
   const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
-  const openNextServer = path.join(outputPath, packagePath, `index.mjs`);
-  const openNextServerBundle = path.join(outputPath, packagePath, `handler.mjs`);
+  const openNextServer = path.join(outputPath, packagePath, "index.mjs");
+  patchOpenNextServer(openNextServer);
+  const openNextServerBundle = path.join(outputPath, packagePath, "handler.mjs");
 
   await build({
     entryPoints: [openNextServer],
@@ -229,4 +230,26 @@ async function patchCodeWithValidations(
  */
 export function getOutputWorkerPath(openNextOptions: BuildOptions): string {
   return path.join(openNextOptions.outputDir, "worker.js");
+}
+
+/**
+ * Patches the open-next server file to adapt it to our usage
+ *
+ * (Note: ideally in the future we should update the open-next server not to
+ * be more flexible and not require any such patching)
+ *
+ * @param openNextServerPath the path to the open-next server file
+ */
+function patchOpenNextServer(openNextServerPath: string): void {
+  // this patch is not necessary, it simply here to remove a warning that `wrangler` would
+  // otherwise generate (since `process.env.NODE_ENV` is defined by esbuild but the open-next
+  // server tries to assign to it at runtime
+  const patchedOpenNextServer = fs
+    .readFileSync(openNextServerPath, "utf-8")
+    .replace(
+      /^(\s*)process\.env\.NODE_ENV\s*=\s*process\.env\.NODE_ENV\s*\?\?/gm,
+      "$1const processEnv = process.env; processEnv.NODE_ENV = process.env.NODE_ENV ??"
+    );
+
+  fs.writeFileSync(openNextServerPath, patchedOpenNextServer);
 }
