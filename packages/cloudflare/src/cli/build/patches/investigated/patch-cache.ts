@@ -2,6 +2,8 @@ import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 
+import { normalizePathForInlineCode } from "../../utils/normalize-path-for-inline-code.js";
+
 /**
  * Sets up the OpenNext cache handler in a Next.js build.
  *
@@ -19,12 +21,12 @@ export async function patchCache(code: string, openNextOptions: BuildOptions): P
   // TODO: switch to cache.mjs
   const outputPath = path.join(outputDir, "server-functions", "default");
   const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
-  const cacheFile = path.join(outputPath, packagePath, "cache.cjs");
+  const cacheFilePath = path.join(outputPath, packagePath, "cache.cjs");
 
   return code.replace(
     "const { cacheHandler } = this.nextConfig;",
     `const cacheHandler = null;
-CacheHandler = require('${cacheFile}').default;
+CacheHandler = require('${normalizePathForInlineCode(cacheFilePath)}').default;
 `
   );
 }
