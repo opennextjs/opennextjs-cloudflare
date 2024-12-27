@@ -9,7 +9,12 @@ on:
 jobs:
   test:
     timeout-minutes: 30
-    runs-on: ubuntu-latest
+    name: e2e tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-13, windows-2022, ubuntu-22.04]
     steps:
       - name: Check out code
         uses: actions/checkout@v4
