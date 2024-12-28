@@ -94,7 +94,7 @@ fetch = globalThis.fetch;
 const CustomRequest = class extends globalThis.Request {
   constructor(input, init) {
     if (init) {
-      init.cache = undefined;
+      delete init.cache;
       // https://github.com/cloudflare/workerd/issues/2746
       // https://github.com/cloudflare/workerd/issues/3245
       Object.defineProperty(init, "body", {
