@@ -1,5 +1,15 @@
 # @opennextjs/cloudflare
 
+## 0.3.3
+
+### Patch Changes
+
+- b3949ce: fix: delete init.cache rather than assign undefined
+
+  Assigning undefined to init.cache throws when using NextAuth
+
+- 12a1f75: update location of output path in success message
+
 ## 0.3.2
 
 ### Patch Changes
