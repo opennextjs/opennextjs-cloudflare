@@ -359,8 +359,8 @@ importers:
         specifier: 'catalog:'
         version: 1.31.0
       '@opennextjs/aws':
-        specifier: https://pkg.pr.new/@opennextjs/aws@684
-        version: https://pkg.pr.new/@opennextjs/aws@684
+        specifier: https://pkg.pr.new/@opennextjs/aws@686
+        version: https://pkg.pr.new/@opennextjs/aws@686
       enquirer:
         specifier: ^2.4.1
         version: 2.4.1
@@ -1830,8 +1830,8 @@ packages:
   '@octokit/types@13.6.1':
     resolution: {integrity: sha512-PHZE9Z+kWXb23Ndik8MKPirBPziOc0D2/3KH1P+6jK5nGWe96kadZuE4jev2/Jq7FvIfTlT2Ltg8Fv2x1v0a5g==}
 
-  '@opennextjs/aws@https://pkg.pr.new/@opennextjs/aws@684':
-    resolution: {tarball: https://pkg.pr.new/@opennextjs/aws@684}
+  '@opennextjs/aws@https://pkg.pr.new/@opennextjs/aws@686':
+    resolution: {tarball: https://pkg.pr.new/@opennextjs/aws@686}
     version: 3.3.0
     hasBin: true
 
@@ -6859,7 +6859,7 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 22.2.0
 
-  '@opennextjs/aws@https://pkg.pr.new/@opennextjs/aws@684':
+  '@opennextjs/aws@https://pkg.pr.new/@opennextjs/aws@686':
     dependencies:
       '@aws-sdk/client-dynamodb': 3.699.0
       '@aws-sdk/client-lambda': 3.699.0
