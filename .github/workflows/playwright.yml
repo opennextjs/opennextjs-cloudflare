@@ -14,39 +14,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-13, ubuntu-22.04]
+        os: [macos-13, windows-2022, ubuntu-22.04]
     steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Install Dependencies
-        uses: ./.github/actions/install-dependencies
-
-      - name: Install Playwright
-        run: pnpm run install-playwright
-
-      - name: Build the tool
-        run: pnpm build
-
-      - name: Build all workers
-        run: pnpm -r build:worker
-
-      - name: Run playwright tests
-        run: pnpm e2e
-
-      - name: Run playwright dev tests
-        run: pnpm e2e:dev
-  test-windows:
-    defaults:
-      run:
-        shell: wsl-bash {0}
-    timeout-minutes: 30
-    name: e2e tests (windows-2022)
-    runs-on: windows-2022
-    steps:
-      - name: Setup WSL
-        uses: Vampire/setup-wsl@v4
-
       - name: Check out code
         uses: actions/checkout@v4
 
