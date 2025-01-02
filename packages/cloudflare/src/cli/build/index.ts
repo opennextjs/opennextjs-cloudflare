@@ -1,4 +1,4 @@
-import { cpSync, existsSync } from "node:fs";
+import { cpSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 
@@ -36,6 +36,8 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
   const baseDir = projectOpts.sourceDir;
   const require = createRequire(import.meta.url);
   const openNextDistDir = dirname(require.resolve("@opennextjs/aws/index.js"));
+
+  await createWranglerTomlIfNotExistent(projectOpts);
 
   await createOpenNextConfigIfNotExistent(projectOpts);
 
@@ -176,5 +178,81 @@ function ensureCloudflareConfig(config: OpenNextConfig) {
           },
         }\n\n`.replace(/^ {8}/gm, "")
     );
+  }
+}
+
+/**
+ * Creates a `wrangler.toml` file for the user if it doesn't exist, but only after asking for the user's confirmation.
+ *
+ * If the user refuses an error is thrown (since the file is mandatory).
+ *
+ * @param projectOpts The options for the project
+ */
+async function createWranglerTomlIfNotExistent(projectOpts: ProjectOptions): Promise<void> {
+  const wranglerTomlPath = join(projectOpts.sourceDir, "wrangler.toml");
+
+  if (!existsSync(wranglerTomlPath)) {
+    const answer = await askConfirmation("Missing required `wrangler.toml` file, do you want to create one?");
+
+    if (!answer) {
+      throw new Error("The `wrangler.toml` file is required, aborting!");
+    }
+
+    const wranglerTomlTemplate = readFileSync(
+      join(getPackageTemplatesDirPath(), "defaults", "wrangler.toml"),
+      "utf8"
+    );
+    let wranglerTomlContent = wranglerTomlTemplate;
+
+    const appName = getAppNameFromPackageJson(projectOpts.sourceDir) ?? "app-name";
+    if (appName) {
+      wranglerTomlContent = wranglerTomlContent.replace(
+        '"app-name"',
+        JSON.stringify(appName.replaceAll("_", "-"))
+      );
+    }
+
+    const compatDate = await getLatestCompatDate();
+    if (compatDate) {
+      wranglerTomlContent = wranglerTomlContent.replace(
+        /compatibility_date = "\d{4}-\d{2}-\d{2}"/,
+        `compatibility_date = ${JSON.stringify(compatDate)}`
+      );
+    }
+
+    writeFileSync(wranglerTomlPath, wranglerTomlContent);
+  }
+}
+
+function getAppNameFromPackageJson(sourceDir: string): string | undefined {
+  try {
+    const packageJsonStr = readFileSync(join(sourceDir, "package.json"), "utf8");
+    const packageJson: Record<string, string> = JSON.parse(packageJsonStr);
+    if (typeof packageJson.name === "string") return packageJson.name;
+  } catch {
+    /* empty */
+  }
+}
+
+export async function getLatestCompatDate(): Promise<string | undefined> {
+  try {
+    const resp = await fetch(`https://registry.npmjs.org/workerd`);
+    const latestWorkerdVersion = (
+      (await resp.json()) as {
+        "dist-tags": { latest: string };
+      }
+    )["dist-tags"].latest;
+
+    // The format of the workerd version is `major.yyyymmdd.patch`.
+    const match = latestWorkerdVersion.match(/\d+\.(\d{4})(\d{2})(\d{2})\.\d+/);
+
+    if (match) {
+      const [, year, month, date] = match ?? [];
+      const compatDate = `${year}-${month}-${date}`;
+
+      return compatDate;
+    }
+  } catch {
+    /* empty */
   }
 }
