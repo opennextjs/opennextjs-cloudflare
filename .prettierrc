@@ -4,5 +4,14 @@
   "semi": true,
   "useTabs": false,
   "tabWidth": 2,
-  "trailingComma": "es5"
+  "trailingComma": "es5",
+  "overrides": [
+    {
+      "// comment": "wrangler doesn't seem to accept wrangler.jsonc with trailing commas",
+      "files": ["**/wrangler.jsonc"],
+      "options": {
+        "trailingComma": "none"
+      }
+    }
+  ]
 }
