@@ -37,7 +37,7 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
   const require = createRequire(import.meta.url);
   const openNextDistDir = dirname(require.resolve("@opennextjs/aws/index.js"));
 
-  await createWranglerTomlIfNotExistent(projectOpts);
+  await createWranglerConfigIfNotExistent(projectOpts);
 
   await createOpenNextConfigIfNotExistent(projectOpts);
 
@@ -182,46 +182,53 @@ function ensureCloudflareConfig(config: OpenNextConfig) {
 }
 
 /**
- * Creates a `wrangler.toml` file for the user if it doesn't exist, but only after asking for the user's confirmation.
+ * Creates a `wrangler.jsonc` file for the user if it doesn't exist, but only after asking for the user's confirmation.
  *
  * If the user refuses an error is thrown (since the file is mandatory).
  *
  * @param projectOpts The options for the project
  */
-async function createWranglerTomlIfNotExistent(projectOpts: ProjectOptions): Promise<void> {
-  const wranglerTomlPath = join(projectOpts.sourceDir, "wrangler.toml");
+async function createWranglerConfigIfNotExistent(projectOpts: ProjectOptions): Promise<void> {
+  const possibleExts = ["toml", "json", "jsonc"];
 
-  if (!existsSync(wranglerTomlPath)) {
-    const answer = await askConfirmation("Missing required `wrangler.toml` file, do you want to create one?");
-
-    if (!answer) {
-      throw new Error("The `wrangler.toml` file is required, aborting!");
-    }
-
-    const wranglerTomlTemplate = readFileSync(
-      join(getPackageTemplatesDirPath(), "defaults", "wrangler.toml"),
-      "utf8"
-    );
-    let wranglerTomlContent = wranglerTomlTemplate;
-
-    const appName = getAppNameFromPackageJson(projectOpts.sourceDir) ?? "app-name";
-    if (appName) {
-      wranglerTomlContent = wranglerTomlContent.replace(
-        '"app-name"',
-        JSON.stringify(appName.replaceAll("_", "-"))
-      );
-    }
-
-    const compatDate = await getLatestCompatDate();
-    if (compatDate) {
-      wranglerTomlContent = wranglerTomlContent.replace(
-        /compatibility_date = "\d{4}-\d{2}-\d{2}"/,
-        `compatibility_date = ${JSON.stringify(compatDate)}`
-      );
-    }
-
-    writeFileSync(wranglerTomlPath, wranglerTomlContent);
+  const wranglerConfigFileExists = possibleExts.some((ext) =>
+    existsSync(join(projectOpts.sourceDir, `wrangler.${ext}`))
+  );
+  if (wranglerConfigFileExists) {
+    return;
   }
+
+  const wranglerConfigPath = join(projectOpts.sourceDir, "wrangler.jsonc");
+
+  const answer = await askConfirmation("Missing required Wrangler config file, do you want to create one?");
+
+  if (!answer) {
+    console.warn("No Wrangler config file created");
+  }
+
+  const wranglerConfigTemplate = readFileSync(
+    join(getPackageTemplatesDirPath(), "defaults", "wrangler.jsonc"),
+    "utf8"
+  );
+  let wranglerConfigContent = wranglerConfigTemplate;
+
+  const appName = getAppNameFromPackageJson(projectOpts.sourceDir) ?? "app-name";
+  if (appName) {
+    wranglerConfigContent = wranglerConfigContent.replace(
+      '"app-name"',
+      JSON.stringify(appName.replaceAll("_", "-"))
+    );
+  }
+
+  const compatDate = await getLatestCompatDate();
+  if (compatDate) {
+    wranglerConfigContent = wranglerConfigContent.replace(
+      /"compatibility_date": "\d{4}-\d{2}-\d{2}"/,
+      `"compatibility_date": ${JSON.stringify(compatDate)}`
+    );
+  }
+
+  writeFileSync(wranglerConfigPath, wranglerConfigContent);
 }
 
 function getAppNameFromPackageJson(sourceDir: string): string | undefined {
