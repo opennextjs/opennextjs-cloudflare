@@ -247,7 +247,7 @@ export async function getLatestCompatDate(): Promise<string | undefined> {
     const match = latestWorkerdVersion.match(/\d+\.(\d{4})(\d{2})(\d{2})\.\d+/);
 
     if (match) {
-      const [, year, month, date] = match ?? [];
+      const [, year, month, date] = match;
       const compatDate = `${year}-${month}-${date}`;
 
       return compatDate;
