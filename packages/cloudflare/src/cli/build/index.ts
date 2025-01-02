@@ -37,8 +37,6 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
   const require = createRequire(import.meta.url);
   const openNextDistDir = dirname(require.resolve("@opennextjs/aws/index.js"));
 
-  await createWranglerConfigIfNotExistent(projectOpts);
-
   await createOpenNextConfigIfNotExistent(projectOpts);
 
   const { config, buildDir } = await compileOpenNextConfig(baseDir);
@@ -102,6 +100,10 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
 
   // TODO: rely on options only.
   await bundleServer(projConfig, options);
+
+  if (!projectOpts.skipWranglerConfigCheck) {
+    await createWranglerConfigIfNotExistent(projectOpts);
+  }
 
   logger.info("OpenNext build complete.");
 }
@@ -200,10 +202,17 @@ async function createWranglerConfigIfNotExistent(projectOpts: ProjectOptions): P
 
   const wranglerConfigPath = join(projectOpts.sourceDir, "wrangler.jsonc");
 
-  const answer = await askConfirmation("Missing required Wrangler config file, do you want to create one?");
+  const answer = await askConfirmation(
+    "No `wrangler.(toml|json|jsonc)` config file found, do you want to create one?"
+  );
 
   if (!answer) {
-    console.warn("No Wrangler config file created");
+    console.warn(
+      "No Wrangler config file created" +
+        "\n" +
+        "(to avoid this check use the `--skipWranglerConfigCheck` flag or set a `SKIP_WRANGLER_CONFIG_CHECK` environment variable to `yes`)"
+    );
+    return;
   }
 
   const wranglerConfigTemplate = readFileSync(
