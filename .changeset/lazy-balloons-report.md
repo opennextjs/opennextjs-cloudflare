@@ -2,4 +2,8 @@
 "@opennextjs/cloudflare": patch
 ---
 
-create a wrangler.toml file for the user in case one is not already presentwq
+checks and creates a wrangler.jsonc file for the user in case one wrangler.(toml|json|jsonc) file is not already present
+
+also introduce a new `--skipWranglerConfigCheck` cli flag and a `SKIP_WRANGLER_CONFIG_CHECK`
+environment variable that allows users to opt out of the above check (since developers might
+want to use custom names for their config files)
