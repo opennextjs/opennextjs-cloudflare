@@ -23,24 +23,7 @@ export function patchWranglerDeps(config: Config) {
 
   writeFileSync(pagesRuntimeFile, patchedPagesRuntime);
 
-  // Patch .next/standalone/node_modules/next/dist/server/lib/trace/tracer.js
-  //
-  // Remove the need for an alias in wrangler.toml:
-  //
-  // [alias]
-  // # @opentelemetry/api is `require`d when running wrangler dev, so we need to stub it out
-  // # IMPORTANT: we shim @opentelemetry/api to the throwing shim so that it will throw right away, this is so that we throw inside the
-  // #            try block here: https://github.com/vercel/next.js/blob/9e8266a7/packages/next/src/server/lib/trace/tracer.ts#L27-L31
-  // #            causing the code to require the 'next/dist/compiled/@opentelemetry/api' module instead (which properly works)
-  // #"@opentelemetry/api" = "./.next/standalone/node_modules/cf/templates/shims/throw.ts"
-  const tracerFile = join(distPath, "server", "lib", "trace", "tracer.js");
-
-  const patchedTracer = readFileSync(tracerFile, "utf-8").replaceAll(
-    /\w+\s*=\s*require\([^/]*opentelemetry.*\)/g,
-    `throw new Error("@opentelemetry/api")`
-  );
-
-  writeFileSync(tracerFile, patchedTracer);
+  patchTracerFile(join(distPath, "server", "lib", "trace", "tracer.js"));
 }
 
 /**
@@ -66,4 +49,28 @@ function getDistPath(config: Config): string {
   }
 
   throw new Error("Unexpected error: unable to detect the node_modules/next/dist directory");
+}
+
+/**
+ * Patch trace/tracer.js files that require from `@opentelemetry/api` by replacing such `require`
+ * calls with error throwing expressions.
+ *
+ * The replacement works because code that requires from `@opentelementry/api` is `try-catch`ed
+ * and a supported alternative is imported in the catch blocks
+ * (see: https://github.com/vercel/next.js/blob/9e8266a7/packages/next/src/server/lib/trace/tracer.ts#L27-L31)
+ *
+ * @param tracerFilePath path to the tracer file to patch
+ */
+export function patchTracerFile(tracerFilePath: string) {
+  const tracerFileContent = readFileSync(tracerFilePath, "utf-8");
+  const patchedTracerFileContent = tracerFileContent.replaceAll(
+    /\w+\s*=\s*require\([^/]*opentelemetry.*\)/g,
+    `throw new Error("@opentelemetry/api")`
+  );
+
+  if (patchedTracerFileContent === tracerFileContent) {
+    throw new Error(`Failed to patch tracer file at ${tracerFilePath}`);
+  }
+
+  writeFileSync(tracerFilePath, patchedTracerFileContent);
 }

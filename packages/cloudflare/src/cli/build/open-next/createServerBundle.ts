@@ -17,6 +17,8 @@ import { openNextReplacementPlugin } from "@opennextjs/aws/plugins/replacement.j
 import { openNextResolvePlugin } from "@opennextjs/aws/plugins/resolve.js";
 import type { FunctionOptions, SplittedFunctionOptions } from "@opennextjs/aws/types/open-next.js";
 
+import { patchTracerFile } from "../patches/to-investigate/wrangler-deps.js";
+
 export async function createServerBundle(options: buildHelper.BuildOptions) {
   const { config } = options;
   const foundRoutes = new Set<string>();
@@ -151,6 +153,21 @@ async function generateBundle(
     fnOptions.routes ?? ["app/page.tsx"],
     isBundled
   );
+
+  const tracerFilePath = path.join(
+    outputPath,
+    "node_modules",
+    "next",
+    "dist",
+    "server",
+    "lib",
+    "trace",
+    "tracer.js"
+  );
+
+  if (fs.existsSync(tracerFilePath)) {
+    patchTracerFile(tracerFilePath);
+  }
 
   // Build Lambda code
   // note: bundle in OpenNext package b/c the adapter relies on the
