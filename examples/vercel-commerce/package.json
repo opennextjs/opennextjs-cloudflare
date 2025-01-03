@@ -11,7 +11,6 @@
     "start": "next start",
     "prettier": "prettier --write --ignore-unknown .",
     "prettier:check": "prettier --check --ignore-unknown .",
-    "test": "pnpm prettier:check",
     "tofix-build:worker": "opennextjs-cloudflare",
     "tofix-dev:worker": "wrangler dev --port 8772",
     "tofix-preview:worker": "pnpm build:worker && pnpm dev:worker"
