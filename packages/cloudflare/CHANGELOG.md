@@ -1,5 +1,25 @@
 # @opennextjs/cloudflare
 
+## 0.3.4
+
+### Patch Changes
+
+- d488d86: fix: exclude `.env.local` files for `test` mode
+
+  Aligns with the Next.js behavior of not extracting variables from the `.env.local` file in test environments.
+
+- 0ee77b2: fix the city header encoding
+
+  By pulling <https://github.com/opennextjs/opennextjs-aws/pull/688>
+
+- 4b6a50b: check and create a `wrangler.json` file for the user in case a `wrangler.(toml|json|jsonc)` file is not already present
+
+  also introduce a new `--skipWranglerConfigCheck` cli flag and a `SKIP_WRANGLER_CONFIG_CHECK`
+  environment variable that allows users to opt out of the above check (since developers might
+  want to use custom locations for their config files)
+
+- 7654867: bump `"@opennextjs/aws` dependency to `https://pkg.pr.new/@opennextjs/aws@686`
+
 ## 0.3.3
 
 ### Patch Changes
