@@ -184,10 +184,15 @@ function ensureCloudflareConfig(config: OpenNextConfig) {
 }
 
 /**
- * Creates a `wrangler.jsonc` file for the user if a wrangler config file doesn't already exist,
+ * Creates a `wrangler.json` file for the user if a wrangler config file doesn't already exist,
  * but only after asking for the user's confirmation.
  *
  * If the user refuses a warning is shown (which offers ways to opt out of this check to the user).
+ *
+ * Note: we generate a wrangler.json file with comments instead of using the jsonc extension,
+ *       we decided to do that since json is more common than jsonc, wrangler also parses
+ *       them in the same way and we also expect developers to associate `wrangler.json`
+ *       files to the jsonc language
  *
  * @param projectOpts The options for the project
  */
@@ -200,8 +205,6 @@ async function createWranglerConfigIfNotExistent(projectOpts: ProjectOptions): P
   if (wranglerConfigFileExists) {
     return;
   }
-
-  const wranglerConfigPath = join(projectOpts.sourceDir, "wrangler.jsonc");
 
   const answer = await askConfirmation(
     "No `wrangler.(toml|json|jsonc)` config file found, do you want to create one?"
@@ -238,7 +241,7 @@ async function createWranglerConfigIfNotExistent(projectOpts: ProjectOptions): P
     );
   }
 
-  writeFileSync(wranglerConfigPath, wranglerConfigContent);
+  writeFileSync(join(projectOpts.sourceDir, "wrangler.json"), wranglerConfigContent);
 }
 
 function getAppNameFromPackageJson(sourceDir: string): string | undefined {
