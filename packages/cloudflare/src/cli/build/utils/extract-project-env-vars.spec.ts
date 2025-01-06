@@ -13,6 +13,8 @@ describe("extractProjectEnvVars", () => {
     mockFs({
       ".env": "ENV_VAR=value",
       ".env.local": "ENV_LOCAL_VAR=value",
+      ".env.test": "ENV_TEST_VAR=value",
+      ".env.test.local": "ENV_TEST_LOCAL_VAR=value",
       ".env.development": "ENV_DEV_VAR=value",
       ".env.development.local": "ENV_DEV_LOCAL_VAR=value",
       ".env.production": "ENV_PROD_VAR=value",
@@ -64,6 +66,15 @@ describe("extractProjectEnvVars", () => {
       ENV_PROD_LOCAL_VAR: "value",
       ENV_PROD_LOCAL_VAR_REF: "value",
       ENV_PROD_VAR: "value",
+      ENV_VAR: "value",
+    });
+  });
+
+  it("should exclude .env.local files when extracting test env vars", () => {
+    const result = extractProjectEnvVars("test", options);
+    expect(result).toEqual({
+      ENV_TEST_LOCAL_VAR: "value",
+      ENV_TEST_VAR: "value",
       ENV_VAR: "value",
     });
   });

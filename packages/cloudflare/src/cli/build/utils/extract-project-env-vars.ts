@@ -17,7 +17,7 @@ function readEnvFile(filePath: string) {
  *
  * Merged variables respect the following priority order.
  * 1. `.env.{mode}.local`
- * 2. `.env.local`
+ * 2. `.env.local` (when mode is not equal to `test`)
  * 3. `.env.{mode}`
  * 4. `.env`
  *
@@ -27,7 +27,7 @@ function readEnvFile(filePath: string) {
  * the env files at the root of the monorepo.
  */
 export function extractProjectEnvVars(mode: string, { monorepoRoot, appPath }: BuildOptions) {
-  return [".env", `.env.${mode}`, ".env.local", `.env.${mode}.local`]
+  return [".env", `.env.${mode}`, ...(mode !== "test" ? [".env.local"] : []), `.env.${mode}.local`]
     .flatMap((fileName) => [
       ...(monorepoRoot !== appPath ? [readEnvFile(path.join(monorepoRoot, fileName))] : []),
       readEnvFile(path.join(appPath, fileName)),
