@@ -107,9 +107,11 @@ function patchRequireReactDomServerEdge(config: Config) {
     const parameterName = p[0]!.getName();
     const bodyChildren = arrowFunction.getBody().getChildren();
     if (
-      bodyChildren.length !== 3 ||
-      bodyChildren[0]!.getFullText() !== "{" ||
-      bodyChildren[2]!.getFullText() !== "}"
+      !(
+        bodyChildren.length === 3 &&
+        bodyChildren[0]!.getFullText() === "{" &&
+        bodyChildren[2]!.getFullText() === "}"
+      )
     ) {
       return;
     }
@@ -117,8 +119,10 @@ function patchRequireReactDomServerEdge(config: Config) {
 
     // the function has only two statements: "use strict" and e.exports=require("react-dom/server.edge")
     if (
-      bodyStatements?.length !== 2 ||
-      bodyStatements.some((statement) => !statement.isKind(ts.SyntaxKind.ExpressionStatement))
+      !(
+        bodyStatements?.length === 2 &&
+        bodyStatements.every((statement) => statement.isKind(ts.SyntaxKind.ExpressionStatement))
+      )
     ) {
       return;
     }
