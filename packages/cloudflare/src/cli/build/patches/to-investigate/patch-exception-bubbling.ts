@@ -5,5 +5,14 @@
  * promises.
  */
 export function patchExceptionBubbling(code: string) {
-  return code.replace('_nextBubbleNoFallback = "1"', "_nextBubbleNoFallback = undefined");
+  // The code before had: `query._nextBubbleNoFallback = '1'`, that has ben refactored to
+  // `addRequestMeta(req, 'bubbleNoFallback', true)` in https://github.com/vercel/next.js/pull/74100
+  // we need to support both for backward compatibility, that's why we have the following if statement
+  if (code.includes("_nextBubbleNoFallback")) {
+    return code.replace('_nextBubbleNoFallback = "1"', "_nextBubbleNoFallback = undefined");
+  }
+
+  // The Next.js transpiled code contains something like `(0, _requestmeta.addRequestMeta)(req, "bubbleNoFallback", true);`
+  // and we want to update it to `(0, _requestmeta.addRequestMeta)(req, "bubbleNoFallback", false);`
+  return code.replace(/\((.*?.addRequestMeta\)\(.*?,\s+"bubbleNoFallback"),\s+true\)/, "($1, false)");
 }
