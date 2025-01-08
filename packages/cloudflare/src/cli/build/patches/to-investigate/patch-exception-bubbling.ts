@@ -14,5 +14,5 @@ export function patchExceptionBubbling(code: string) {
 
   // The Next.js transpiled code contains something like `(0, _requestmeta.addRequestMeta)(req, "bubbleNoFallback", true);`
   // and we want to update it to `(0, _requestmeta.addRequestMeta)(req, "bubbleNoFallback", false);`
-  return code.replace(/\((.*?.addRequestMeta\)\(.*?,\s+"bubbleNoFallback"),\s+true\)/, "($1, false)");
+  return code.replace(/\((.*?.addRequestMeta\)\([^,(]*?,\s+"bubbleNoFallback"),\s+true\)/, "($1, false)");
 }
