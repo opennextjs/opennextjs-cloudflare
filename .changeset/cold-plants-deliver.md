@@ -2,4 +2,4 @@
 "@opennextjs/cloudflare": patch
 ---
 
-update the bubble no fallback patch
+update the `patchExceptionBubbling` patch
