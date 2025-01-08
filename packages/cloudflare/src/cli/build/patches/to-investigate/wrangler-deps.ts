@@ -133,13 +133,13 @@ function patchRequireReactDomServerEdge(config: Config) {
     );
 
     // the first statement needs to be "use strict"
-    if (!stringLiteralExpression || stringLiteralExpression.getText() !== '"use strict"') {
+    if (stringLiteralExpression?.getText() !== '"use strict"') {
       return;
     }
 
     // the second statement (e.exports=require("react-dom/server.edge")) needs to be a binary expression
     const binaryExpression = bodyExpressionStatements[1].getExpressionIfKind(ts.SyntaxKind.BinaryExpression);
-    if (!binaryExpression || !binaryExpression.getOperatorToken().isKind(ts.SyntaxKind.EqualsToken)) {
+    if (!binaryExpression?.getOperatorToken().isKind(ts.SyntaxKind.EqualsToken)) {
       return;
     }
 
