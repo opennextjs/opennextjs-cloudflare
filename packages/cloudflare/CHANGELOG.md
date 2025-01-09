@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 0.3.5
+
+### Patch Changes
+
+- 77e31d5: update the `patchExceptionBubbling` patch
+- dbcc4be: patch `require("react-dom/server.edge")` calls in `pages.runtime.prod.js` so that they are `try-catch`ed
+- 632a7d7: show error on Next.js versions older than v14
+
 ## 0.3.4
 
 ### Patch Changes
