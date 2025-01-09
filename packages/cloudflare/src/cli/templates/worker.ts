@@ -60,10 +60,6 @@ export default {
  * Note that cloudflare env string values are copied by the middleware handler.
  */
 async function populateProcessEnv(url: URL, nextJsEnv?: string) {
-  if (process.env.__PROCESS_ENV_POPULATED === "1") {
-    return;
-  }
-
   // @ts-expect-error: resolved by wrangler build
   const nextEnvVars = await import("./.env.mjs");
 
