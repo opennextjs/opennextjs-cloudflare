@@ -55,6 +55,7 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
   buildHelper.checkRunningInsideNextjsApp(options);
   logger.info(`App directory: ${options.appPath}`);
   buildHelper.printNextjsVersion(options);
+  ensureNextjsVersionSupported(options);
   buildHelper.printOpenNextVersion(options);
 
   if (projectOpts.skipNextBuild) {
@@ -274,5 +275,12 @@ export async function getLatestCompatDate(): Promise<string | undefined> {
     }
   } catch {
     /* empty */
+  }
+}
+
+function ensureNextjsVersionSupported(options: buildHelper.BuildOptions) {
+  if (buildHelper.compareSemver(options.nextVersion, "14.0.0") < 0) {
+    logger.error("Next.js version unsupported, please upgrade to version 14 or greater.");
+    process.exit(1);
   }
 }
