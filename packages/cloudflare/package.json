@@ -65,6 +65,7 @@
     "globals": "catalog:",
     "mock-fs": "catalog:",
     "next": "catalog:",
+    "rimraf": "catalog:",
     "typescript-eslint": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
@@ -73,7 +74,6 @@
     "@dotenvx/dotenvx": "catalog:",
     "@opennextjs/aws": "https://pkg.pr.new/@opennextjs/aws@688",
     "glob": "catalog:",
-    "rimraf": "catalog:",
     "ts-morph": "catalog:",
     "enquirer": "^2.4.1"
   },
