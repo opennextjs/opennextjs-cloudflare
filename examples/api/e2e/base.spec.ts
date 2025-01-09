@@ -35,3 +35,10 @@ test("sets environment variables from the Next.js env file", async ({ page }) =>
   const res = await page.request.get("/api/env");
   await expect(res.json()).resolves.toEqual(expect.objectContaining({ TEST_ENV_VAR: "TEST_VALUE" }));
 });
+
+test("returns correct information about the request from a route handler", async ({ page }) => {
+  const res = await page.request.get("/api/request");
+  // Next.js can fall back to `localhost:3000` or `n` if it doesn't get the host - neither of these are expected.
+  const expectedURL = expect.stringMatching(/https?:\/\/localhost:(?!3000)\d+\/api\/request/);
+  await expect(res.json()).resolves.toEqual({ nextUrl: expectedURL, url: expectedURL });
+});
