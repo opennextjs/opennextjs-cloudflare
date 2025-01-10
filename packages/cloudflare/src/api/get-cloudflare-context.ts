@@ -71,7 +71,10 @@ async function getCloudflareContextInNextDev<
     const { getPlatformProxy } = await import(
       /* webpackIgnore: true */ `${"__wrangler".replaceAll("_", "")}`
     );
-    const { env, cf, ctx } = await getPlatformProxy();
+    const { env, cf, ctx } = await getPlatformProxy({
+      // This allows the selection of a wrangler environment while running in next dev mode
+      environment: process.env.NEXT_DEV_WRANGLER_ENV,
+    });
     global[cloudflareContextInNextDevSymbol] = {
       env,
       cf: cf as unknown as CfProperties,
