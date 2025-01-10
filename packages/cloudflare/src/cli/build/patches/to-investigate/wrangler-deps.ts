@@ -182,7 +182,7 @@ function patchRequireReactDomServerEdge(config: Config) {
           ReactDOMServer = require('react-dom/server.browser');
       }
       ${parameterName}.exports = ReactDOMServer;
-      }`.replace(/\ns*/g, " ")
+      `.replace(/\ns*/g, " ")
     );
   });
 
