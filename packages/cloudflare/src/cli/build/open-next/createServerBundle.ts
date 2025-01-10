@@ -17,6 +17,8 @@ import { openNextReplacementPlugin } from "@opennextjs/aws/plugins/replacement.j
 import { openNextResolvePlugin } from "@opennextjs/aws/plugins/resolve.js";
 import type { FunctionOptions, SplittedFunctionOptions } from "@opennextjs/aws/types/open-next.js";
 
+import { normalizePath } from "../utils/index.js";
+
 export async function createServerBundle(options: buildHelper.BuildOptions) {
   const { config } = options;
   const foundRoutes = new Set<string>();
@@ -206,7 +208,7 @@ async function generateBundle(
       outfile: path.join(outputPath, packagePath, `index.${outfileExt}`),
       banner: {
         js: [
-          `globalThis.monorepoPackagePath = "${packagePath}";`,
+          `globalThis.monorepoPackagePath = "${normalizePath(packagePath)}";`,
           name === "default" ? "" : `globalThis.fnName = "${name}";`,
         ].join(""),
       },
@@ -273,10 +275,10 @@ function addMonorepoEntrypoint(outputPath: string, packagePath: string) {
   //       the root of the bundle. We will create a dummy `index.mjs`
   //       that re-exports the real handler.
 
-  // TOOD: use helper
-  // Always use posix path for import path
-  const packagePosixPath = packagePath.split(path.sep).join(path.posix.sep);
-  fs.writeFileSync(path.join(outputPath, "index.mjs"), `export * from "./${packagePosixPath}/index.mjs";`);
+  fs.writeFileSync(
+    path.join(outputPath, "index.mjs"),
+    `export * from "./${normalizePath(packagePath)}/index.mjs";`
+  );
 }
 
 async function minifyServerBundle(outputDir: string) {

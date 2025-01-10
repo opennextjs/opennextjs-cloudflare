@@ -2,6 +2,8 @@ import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 
+import { normalizePath } from "../../utils/index.js";
+
 /**
  * Sets up the OpenNext cache handler in a Next.js build.
  *
@@ -24,7 +26,7 @@ export async function patchCache(code: string, openNextOptions: BuildOptions): P
   return code.replace(
     "const { cacheHandler } = this.nextConfig;",
     `const cacheHandler = null;
-CacheHandler = require('${cacheFile}').default;
+CacheHandler = require('${normalizePath(cacheFile)}').default;
 `
   );
 }

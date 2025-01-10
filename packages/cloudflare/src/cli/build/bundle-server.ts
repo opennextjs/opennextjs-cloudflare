@@ -8,6 +8,7 @@ import { build, Plugin } from "esbuild";
 
 import { Config } from "../config.js";
 import * as patches from "./patches/index.js";
+import { normalizePath } from "./utils/index.js";
 
 /** The dist directory of the Cloudflare adapter package */
 const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -117,10 +118,9 @@ globalThis.__BUILD_TIMESTAMP_MS__ = ${Date.now()};
 
   const isMonorepo = monorepoRoot !== appPath;
   if (isMonorepo) {
-    const packagePosixPath = packagePath.split(path.sep).join(path.posix.sep);
     fs.writeFileSync(
       path.join(outputPath, "handler.mjs"),
-      `export * from "./${packagePosixPath}/handler.mjs";`
+      `export * from "./${normalizePath(packagePath)}/handler.mjs";`
     );
   }
 
@@ -183,7 +183,7 @@ function createFixRequiresESBuildPlugin(config: Config): Plugin {
     name: "replaceRelative",
     setup(build) {
       // Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
-      build.onResolve({ filter: /^\.\/require-hook$/ }, () => ({
+      build.onResolve({ filter: /^\.(\/|\\)require-hook$/ }, () => ({
         path: path.join(config.paths.internal.templates, "shims", "empty.js"),
       }));
     },
