@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 0.3.8
+
+### Patch Changes
+
+- 05ee8d4: fix: invalid paths in windows bundles.
+
 ## 0.3.7
 
 ### Patch Changes
