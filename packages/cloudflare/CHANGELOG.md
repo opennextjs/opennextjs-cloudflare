@@ -1,5 +1,12 @@
 # @opennextjs/cloudflare
 
+## 0.3.7
+
+### Patch Changes
+
+- 41c55a8: Add support for specifying wrangler environment when using next dev so that bindings and vars are properly loaded. This can be specified with the env variable NEXT_DEV_WRANGLER_ENV.
+- 2e13de2: fix broken `patchRequireReactDomServerEdge` patch
+
 ## 0.3.6
 
 ### Patch Changes
