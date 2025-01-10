@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 0.3.6
+
+### Patch Changes
+
+- 9ab86d4: fix: host not included in route handler urls
+
+  Next.js was unable to re-construct the correct URLs for the request in a route handler due to being unable to retrieve the hostname. This was due to the internal Next.js option `trustHostHeader` being disabled in OpenNext when there is external middleware - this option is needed for the Next.js server in our environment.
+
 ## 0.3.5
 
 ### Patch Changes
