@@ -17,6 +17,7 @@ import { openNextReplacementPlugin } from "@opennextjs/aws/plugins/replacement.j
 import { openNextResolvePlugin } from "@opennextjs/aws/plugins/resolve.js";
 import type { FunctionOptions, SplittedFunctionOptions } from "@opennextjs/aws/types/open-next.js";
 
+import { deleteOpenTelemetryDep } from "../patches/index.js";
 import { normalizePath } from "../utils/index.js";
 
 export async function createServerBundle(options: buildHelper.BuildOptions) {
@@ -86,12 +87,14 @@ export async function createServerBundle(options: buildHelper.BuildOptions) {
   }
 
   // Generate default function
-  await generateBundle("default", options, {
+  const outputPath = await generateBundle("default", options, {
     ...defaultFn,
     // @ts-expect-error - Those string are RouteTemplate
     routes: Array.from(remainingRoutes),
     patterns: ["*"],
   });
+
+  deleteOpenTelemetryDep(outputPath);
 }
 
 async function generateBundle(
@@ -250,6 +253,8 @@ CMD ["node", "index.mjs"]
     `
     );
   }
+
+  return outputPath;
 }
 
 function shouldGenerateDockerfile(options: FunctionOptions) {
