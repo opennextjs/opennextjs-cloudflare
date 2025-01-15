@@ -1,0 +1,13 @@
+{
+  "main": ".open-next/worker.js",
+  "name": "api",
+  "compatibility_date": "2024-12-30",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "hello": "Hello World from the cloudflare context!"
+  }
+}
