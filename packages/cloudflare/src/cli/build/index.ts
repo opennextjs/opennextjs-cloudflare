@@ -220,29 +220,22 @@ async function createWranglerConfigIfNotExistent(projectOpts: ProjectOptions): P
     return;
   }
 
-  const wranglerConfigTemplate = readFileSync(
-    join(getPackageTemplatesDirPath(), "defaults", "wrangler.jsonc"),
-    "utf8"
-  );
-  let wranglerConfigContent = wranglerConfigTemplate;
+  let wranglerConfig = readFileSync(join(getPackageTemplatesDirPath(), "defaults", "wrangler.json"), "utf8");
 
   const appName = getAppNameFromPackageJson(projectOpts.sourceDir) ?? "app-name";
   if (appName) {
-    wranglerConfigContent = wranglerConfigContent.replace(
-      '"app-name"',
-      JSON.stringify(appName.replaceAll("_", "-"))
-    );
+    wranglerConfig = wranglerConfig.replace('"app-name"', JSON.stringify(appName.replaceAll("_", "-")));
   }
 
   const compatDate = await getLatestCompatDate();
   if (compatDate) {
-    wranglerConfigContent = wranglerConfigContent.replace(
+    wranglerConfig = wranglerConfig.replace(
       /"compatibility_date": "\d{4}-\d{2}-\d{2}"/,
       `"compatibility_date": ${JSON.stringify(compatDate)}`
     );
   }
 
-  writeFileSync(join(projectOpts.sourceDir, "wrangler.json"), wranglerConfigContent);
+  writeFileSync(join(projectOpts.sourceDir, "wrangler.json"), wranglerConfig);
 }
 
 function getAppNameFromPackageJson(sourceDir: string): string | undefined {
