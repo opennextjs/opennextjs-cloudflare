@@ -4,7 +4,7 @@ import { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import mockFs from "mock-fs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { extractProjectEnvVars } from "./extract-project-env-vars";
+import { extractProjectEnvVars } from "./extract-project-env-vars.js";
 
 const options = { monorepoRoot: "", appPath: "" } as BuildOptions;
 
