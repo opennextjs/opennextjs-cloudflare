@@ -2,7 +2,7 @@ import type { KVNamespace } from "@cloudflare/workers-types";
 import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/types/overrides";
 import { IgnorableError, RecoverableError } from "@opennextjs/aws/utils/error.js";
 
-import { getCloudflareContext } from "./get-cloudflare-context.js";
+import { getCloudflareContext } from "./cloudflare-context.js";
 
 export const CACHE_ASSET_DIR = "cnd-cgi/_next_cache";
 

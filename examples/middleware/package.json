@@ -9,7 +9,8 @@
     "build:worker": "pnpm opennextjs-cloudflare",
     "dev:worker": "wrangler dev --port 8774 --inspector-port 9334",
     "preview:worker": "pnpm build:worker && pnpm dev:worker",
-    "e2e": "playwright test -c e2e/playwright.config.ts"
+    "e2e": "playwright test -c e2e/playwright.config.ts",
+    "e2e:dev": "playwright test -c e2e/playwright.dev.config.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "6.9.6",

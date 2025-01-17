@@ -20,7 +20,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: "http://localhost:8770",
+    baseURL: "http://localhost:3334",
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: "on-first-retry",
@@ -46,11 +46,8 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: "pnpm preview:worker",
-    url: "http://localhost:8770",
+    command: "pnpm dev --port 3334",
+    url: "http://localhost:3334",
     reuseExistingServer: !process.env.CI,
-    // the app uses the `initOpenNextCloudflareForDev` which in CI apparently makes the boot up take slightly longer,
-    // that's why we need a longer timeout here (we just add 10 seconds to the default 60)
-    timeout: !process.env.CI ? undefined : 60 * 1000 + 10 * 1000,
   },
 });

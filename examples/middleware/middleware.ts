@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse, NextFetchEvent } from "next/server";
 import { clerkMiddleware } from "@clerk/nextjs/server";
 
-export function middleware(request: NextRequest, event: NextFetchEvent) {
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+
+export async function middleware(request: NextRequest, event: NextFetchEvent) {
   console.log("middleware");
   if (request.nextUrl.pathname === "/about") {
     return NextResponse.redirect(new URL("/redirected", request.url));
@@ -16,7 +18,19 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
     })(request, event);
   }
 
-  return NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  const cloudflareContext = getCloudflareContext();
+
+  requestHeaders.set(
+    "x-cloudflare-context",
+    `keys of \`cloudflareContext.env\`: ${Object.keys(cloudflareContext.env).join(", ")}`
+  );
+
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 }
 
 export const config = {
