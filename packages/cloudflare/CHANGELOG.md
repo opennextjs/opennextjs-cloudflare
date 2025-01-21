@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 0.3.9
+
+### Patch Changes
+
+- 67fafeb: fix top level awaits not working in middlewares by bumping the `@opennextjs/aws` package
+
 ## 0.3.8
 
 ### Patch Changes
