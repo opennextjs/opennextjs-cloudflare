@@ -1,0 +1,32 @@
+{
+  "name": "app-router",
+  "version": "0.1.4",
+  "private": true,
+  "scripts": {
+    "openbuild": "node ../../packages/open-next/dist/index.js build --streaming --build-command \"npx turbo build\"",
+    "dev": "next dev --turbopack --port 3001",
+    "build": "next build",
+    "start": "next start --port 3001",
+    "lint": "next lint",
+    "clean": "rm -rf .turbo node_modules .next .open-next",
+    "build:worker-tofix": "pnpm opennextjs-cloudflare",
+    "dev:worker": "wrangler dev --port 8770 --inspector-port 9330",
+    "preview": "pnpm build:worker && pnpm dev:worker"
+  },
+  "dependencies": {
+    "@opennextjs/cloudflare": "workspace:*",
+    "@example/shared": "workspace:*",
+    "next": "catalog:e2e",
+    "react": "catalog:e2e",
+    "react-dom": "catalog:e2e"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:e2e",
+    "@types/react": "catalog:e2e",
+    "@types/react-dom": "catalog:e2e",
+    "autoprefixer": "catalog:e2e",
+    "postcss": "catalog:e2e",
+    "tailwindcss": "catalog:e2e",
+    "typescript": "catalog:default"
+  }
+}
