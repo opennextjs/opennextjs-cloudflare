@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
+import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import { build, Plugin } from "esbuild";
 
 import { Config } from "../config.js";
@@ -183,9 +184,12 @@ function createFixRequiresESBuildPlugin(config: Config): Plugin {
     name: "replaceRelative",
     setup(build) {
       // Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
-      build.onResolve({ filter: /^\.(\/|\\)require-hook$/ }, () => ({
-        path: path.join(config.paths.internal.templates, "shims", "empty.js"),
-      }));
+      build.onResolve(
+        { filter: getCrossPlatformPathRegex(String.raw`^\./require-hook$`, { escape: false }) },
+        () => ({
+          path: path.join(config.paths.internal.templates, "shims", "empty.js"),
+        })
+      );
     },
   };
 }
