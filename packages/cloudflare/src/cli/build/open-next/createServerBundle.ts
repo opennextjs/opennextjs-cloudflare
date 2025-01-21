@@ -16,6 +16,7 @@ import { openNextEdgePlugins } from "@opennextjs/aws/plugins/edge.js";
 import { openNextReplacementPlugin } from "@opennextjs/aws/plugins/replacement.js";
 import { openNextResolvePlugin } from "@opennextjs/aws/plugins/resolve.js";
 import type { FunctionOptions, SplittedFunctionOptions } from "@opennextjs/aws/types/open-next.js";
+import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
 import { normalizePath } from "../utils/index.js";
 
@@ -173,7 +174,7 @@ async function generateBundle(
   const plugins = [
     openNextReplacementPlugin({
       name: `requestHandlerOverride ${name}`,
-      target: /core(\/|\\)requestHandler\.js/g,
+      target: getCrossPlatformPathRegex("core/requestHandler.js"),
       deletes: [
         ...(disableNextPrebundledReact ? ["applyNextjsPrebundledReact"] : []),
         ...(disableRouting ? ["withRouting"] : []),
@@ -181,7 +182,7 @@ async function generateBundle(
     }),
     openNextReplacementPlugin({
       name: `utilOverride ${name}`,
-      target: /core(\/|\\)util\.js/g,
+      target: getCrossPlatformPathRegex("core/util.js"),
       deletes: [
         ...(disableNextPrebundledReact ? ["requireHooks"] : []),
         ...(isBefore13413 ? ["trustHostHeader"] : ["requestHandlerHost"]),
