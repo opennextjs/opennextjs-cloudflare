@@ -7,9 +7,5 @@
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
-  },
-  "vars": {
-    // Note: Do not define keys in wrangler config.
-    "CLERK_ENCRYPTION_KEY": "key"
   }
 }
