@@ -37,7 +37,7 @@ export function applyRule(yamlRule: string, root: SgNode, { once = false } = {})
             match
               .getMultipleMatches(name)
               .map((n) => n.text())
-              .join()
+              .join("")
           )
           .replace(/\$([A-Z0-9_]+)/g, (m, name) => match.getMatch(name)?.text() ?? m)
       )
