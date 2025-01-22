@@ -58,24 +58,26 @@
     "@types/mock-fs": "catalog:",
     "@types/node": "catalog:",
     "esbuild": "catalog:",
+    "eslint": "catalog:",
     "eslint-plugin-import": "catalog:",
     "eslint-plugin-simple-import-sort": "catalog:",
     "eslint-plugin-unicorn": "catalog:",
-    "eslint": "catalog:",
     "globals": "catalog:",
     "mock-fs": "catalog:",
     "next": "catalog:",
     "rimraf": "catalog:",
-    "typescript-eslint": "catalog:",
     "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
     "vitest": "catalog:"
   },
   "dependencies": {
+    "@ast-grep/napi": "^0.33.1",
     "@dotenvx/dotenvx": "catalog:",
     "@opennextjs/aws": "https://pkg.pr.new/@opennextjs/aws@704",
+    "enquirer": "^2.4.1",
     "glob": "catalog:",
     "ts-morph": "catalog:",
-    "enquirer": "^2.4.1"
+    "yaml": "^2.7.0"
   },
   "peerDependencies": {
     "wrangler": "catalog:"

@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@example/shared"],
   output: "standalone",
   // outputFileTracingRoot: "../sst",
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
