@@ -3,11 +3,13 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { Lang, parse } from "@ast-grep/napi";
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import { build, Plugin } from "esbuild";
 
 import { Config } from "../config.js";
+import { patchOptionalDependencies } from "./patches/ast/optional-deps.js";
 import * as patches from "./patches/index.js";
 import { normalizePath, patchCodeWithValidations } from "./utils/index.js";
 
@@ -44,7 +46,7 @@ export async function bundleServer(config: Config, openNextOptions: BuildOptions
     target: "esnext",
     minify: false,
     plugins: [createFixRequiresESBuildPlugin(config)],
-    external: ["./middleware/handler.mjs"],
+    external: ["./middleware/handler.mjs", "caniuse-lite"],
     alias: {
       // Note: we apply an empty shim to next/dist/compiled/ws because it generates two `eval`s:
       //   eval("require")("bufferutil");
@@ -176,7 +178,11 @@ async function updateWorkerBundledCode(
     ],
   ]);
 
-  await writeFile(workerOutputFile, patchedCode);
+  const bundle = parse(Lang.TypeScript, patchedCode).root();
+
+  const edits = patchOptionalDependencies(bundle);
+
+  await writeFile(workerOutputFile, bundle.commitEdits(edits));
 }
 
 function createFixRequiresESBuildPlugin(config: Config): Plugin {

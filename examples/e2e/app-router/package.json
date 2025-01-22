@@ -9,7 +9,7 @@
     "start": "next start --port 3001",
     "lint": "next lint",
     "clean": "rm -rf .turbo node_modules .next .open-next",
-    "build:worker-tofix": "pnpm opennextjs-cloudflare",
+    "build:worker": "pnpm opennextjs-cloudflare",
     "dev:worker": "wrangler dev --port 8770 --inspector-port 9330",
     "preview": "pnpm build:worker && pnpm dev:worker"
   },
