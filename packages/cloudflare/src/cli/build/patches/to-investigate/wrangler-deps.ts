@@ -17,7 +17,7 @@ export function patchWranglerDeps(config: Config) {
   // [alias]
   // # critters is `require`d from `pages.runtime.prod.js` when running wrangler dev, so we need to stub it out
   // "critters" = "./.next/standalone/node_modules/cf/templates/shims/empty.ts"
-  const pagesRuntimeFile = join(distPath, "compiled", "next-server", "pages.runtime.prod.js");
+  const pagesRuntimeFile = join(distPath, "compiled/next-server/pages.runtime.prod.js");
 
   const patchedPagesRuntime = readFileSync(pagesRuntimeFile, "utf-8").replace(
     `e.exports=require("critters")`,
@@ -38,7 +38,7 @@ export function patchWranglerDeps(config: Config) {
   // #            try block here: https://github.com/vercel/next.js/blob/9e8266a7/packages/next/src/server/lib/trace/tracer.ts#L27-L31
   // #            causing the code to require the 'next/dist/compiled/@opentelemetry/api' module instead (which properly works)
   // #"@opentelemetry/api" = "./.next/standalone/node_modules/cf/templates/shims/throw.ts"
-  const tracerFile = join(distPath, "server", "lib", "trace", "tracer.js");
+  const tracerFile = join(distPath, "server/lib/trace/tracer.js");
 
   const patchedTracer = readFileSync(tracerFile, "utf-8").replaceAll(
     /\w+\s*=\s*require\([^/]*opentelemetry.*\)/g,
@@ -63,7 +63,7 @@ export function patchWranglerDeps(config: Config) {
 function getDistPath(config: Config): string {
   for (const root of [config.paths.output.standaloneApp, config.paths.output.standaloneRoot]) {
     try {
-      const distPath = join(root, "node_modules", "next", "dist");
+      const distPath = join(root, "node_modules/next/dist");
       if (statSync(distPath).isDirectory()) return distPath;
     } catch {
       /* empty */
@@ -92,7 +92,7 @@ function patchRequireReactDomServerEdge(config: Config) {
   const distPath = getDistPath(config);
 
   // Patch .next/standalone/node_modules/next/dist/compiled/next-server/pages.runtime.prod.js
-  const pagesRuntimeFile = join(distPath, "compiled", "next-server", "pages.runtime.prod.js");
+  const pagesRuntimeFile = join(distPath, "compiled/next-server/pages.runtime.prod.js");
 
   const code = readFileSync(pagesRuntimeFile, "utf-8");
   const file = tsParseFile(code);

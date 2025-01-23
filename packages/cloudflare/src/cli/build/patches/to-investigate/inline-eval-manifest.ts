@@ -14,7 +14,7 @@ import { normalizePath } from "../../utils/index.js";
  */
 export function inlineEvalManifest(code: string, config: Config): string {
   const manifestJss = globSync(
-    normalizePath(join(config.paths.output.standaloneAppDotNext, "**", "*_client-reference-manifest.js"))
+    normalizePath(join(config.paths.output.standaloneAppDotNext, "**/*_client-reference-manifest.js"))
   ).map((file) =>
     normalizePath(file).replace(normalizePath(config.paths.output.standaloneApp) + posix.sep, "")
   );
