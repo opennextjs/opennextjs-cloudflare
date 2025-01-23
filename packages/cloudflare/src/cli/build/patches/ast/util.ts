@@ -1,5 +1,11 @@
-import { type Edit, type NapiConfig, type SgNode } from "@ast-grep/napi";
+import { type Edit, Lang, type NapiConfig, parse, type SgNode } from "@ast-grep/napi";
 import yaml from "yaml";
+
+/**
+ * fix has the same meaning as in yaml rules
+ * see https://ast-grep.github.io/guide/rewrite-code.html#using-fix-in-yaml-rule
+ */
+export type RuleConfig = NapiConfig & { fix?: string };
 
 /**
  * Returns the `Edit`s for an ast-grep rule in yaml format
@@ -8,23 +14,23 @@ import yaml from "yaml";
  *
  * Tip: use https://ast-grep.github.io/playground.html to create rules.
  *
- * @param yamlRule The rule in yaml format
+ * @param rule The rule. Either a yaml string or an instance of `RuleConfig`
  * @param root The root node
  * @param once only apply once
  * @returns A list of edits.
  */
-export function applyRule(yamlRule: string, root: SgNode, { once = false } = {}) {
-  const rule: NapiConfig & { fix?: string } = yaml.parse(yamlRule);
-  if (rule.transform) {
+export function getRuleEdits(rule: string | RuleConfig, root: SgNode, { once = false } = {}) {
+  const ruleConfig: RuleConfig = typeof rule === "string" ? yaml.parse(rule) : rule;
+  if (ruleConfig.transform) {
     throw new Error("transform is not supported");
   }
-  if (!rule.fix) {
+  if (!ruleConfig.fix) {
     throw new Error("no fix to apply");
   }
 
-  const fix = rule.fix;
+  const fix = ruleConfig.fix;
 
-  const matches = once ? [root.find(rule)].filter((m) => m !== null) : root.findAll(rule);
+  const matches = once ? [root.find(ruleConfig)].filter((m) => m !== null) : root.findAll(ruleConfig);
 
   const edits: Edit[] = [];
 
@@ -45,4 +51,26 @@ export function applyRule(yamlRule: string, root: SgNode, { once = false } = {})
   });
 
   return edits;
+}
+
+/**
+ * Patches the code from by applying the rule.
+ *
+ * This function is mainly for on off edits and tests,
+ * use `getRuleEdits` to apply multiple rules.
+ *
+ * @param code The source code
+ * @param rule The astgrep rule (yaml or NapiConfig)
+ * @param lang The language used by the source code
+ * @param lang Whether to apply the rule only once
+ * @returns The patched code
+ */
+export function patchCode(
+  code: string,
+  rule: string | RuleConfig,
+  { lang = Lang.TypeScript, once = false } = {}
+): string {
+  const node = parse(lang, code).root();
+  const edits = getRuleEdits(rule, node, { once });
+  return node.commitEdits(edits);
 }
