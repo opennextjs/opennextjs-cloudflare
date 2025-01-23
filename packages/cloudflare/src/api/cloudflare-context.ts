@@ -89,7 +89,7 @@ export function getCloudflareContext<
  * (Currently all the setup that this function performs is making sure that `getCloudflareContext` works as intended,
  * in the future mode improvements might be added)
  *
- * Note: this function should only be called inside the Next.js config file
+ * Note: this function should only be called inside the Next.js config file, and although async it doesn't need to be `await`ed
  */
 export async function initOpenNextCloudflareForDev() {
   const context = await getCloudflareContextFromWrangler();
