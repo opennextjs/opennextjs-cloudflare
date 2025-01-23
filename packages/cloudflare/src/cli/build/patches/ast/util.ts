@@ -20,17 +20,17 @@ export type RuleConfig = NapiConfig & { fix?: string };
  * @returns A list of edits.
  */
 export function getRuleEdits(rule: string | RuleConfig, root: SgNode, { once = false } = {}) {
-  const napiConfig: NapiConfig & { fix?: string } = typeof rule === "string" ? yaml.parse(rule) : rule;
-  if (napiConfig.transform) {
+  const ruleConfig: RuleConfig = typeof rule === "string" ? yaml.parse(rule) : rule;
+  if (ruleConfig.transform) {
     throw new Error("transform is not supported");
   }
-  if (!napiConfig.fix) {
+  if (!ruleConfig.fix) {
     throw new Error("no fix to apply");
   }
 
-  const fix = napiConfig.fix;
+  const fix = ruleConfig.fix;
 
-  const matches = once ? [root.find(napiConfig)].filter((m) => m !== null) : root.findAll(napiConfig);
+  const matches = once ? [root.find(ruleConfig)].filter((m) => m !== null) : root.findAll(ruleConfig);
 
   const edits: Edit[] = [];
 
