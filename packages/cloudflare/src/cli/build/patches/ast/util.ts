@@ -57,7 +57,7 @@ export function getRuleEdits(rule: string | RuleConfig, root: SgNode, { once = f
  * Patches the code from by applying the rule.
  *
  * This function is mainly for on off edits and tests,
- * use `getRuleEdits` to apply multiples rules.
+ * use `getRuleEdits` to apply multiple rules.
  *
  * @param code The source code
  * @param rule The astgrep rule (yaml or NapiConfig)
