@@ -1,21 +1,15 @@
 import { type SgNode } from "@ast-grep/napi";
 
-import { applyRule } from "./util.js";
+import { getRuleEdits } from "./util.js";
 
 /**
  * Handle optional dependencies.
  *
- * A top level `require(dep)` would throw when the dep is not installed.
+ * A top level `require(optionalDep)` would throw when the dep is not installed.
  *
- * So we wrap any of
- * - `t = require("dep")`
- * - `t = require("dep/sub/path")`
- * - `t = require("dep/sub/path/" + var)`
- * - `e.exports = require("dep")`
- *
- * in a try/catch (only if not already).
+ * So we wrap `require(optionalDep)` in a try/catch (if not already present).
  */
-const rule = `
+export const optionalDepRule = `
 rule:
   pattern: $$$LHS = require($$$REQ)
   has:
@@ -37,5 +31,5 @@ fix: |-
 `;
 
 export function patchOptionalDependencies(root: SgNode) {
-  return applyRule(rule, root);
+  return getRuleEdits(optionalDepRule, root);
 }
