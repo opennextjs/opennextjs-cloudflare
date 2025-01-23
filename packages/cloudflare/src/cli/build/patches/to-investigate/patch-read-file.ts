@@ -24,7 +24,7 @@ export function patchLoadManifest(code: string, config: Config): string {
   // (source: https://github.com/vercel/next.js/blob/15aeb92e/packages/next/src/server/load-manifest.ts#L34-L56)
   // Note: we could/should probably just patch readFileSync here or something!
   const manifestJsons = globSync(
-    normalizePath(join(config.paths.output.standaloneAppDotNext, "**", "*-manifest.json"))
+    normalizePath(join(config.paths.output.standaloneAppDotNext, "**/*-manifest.json"))
   ).map((file) =>
     normalizePath(file).replace(normalizePath(config.paths.output.standaloneApp) + posix.sep, "")
   );

@@ -66,7 +66,7 @@ export function getConfig(projectOpts: ProjectOptions): Config {
 
   const nodeModules = join(standaloneApp, "node_modules");
   const internalPackage = join(nodeModules, ...PACKAGE_NAME.split("/"));
-  const internalTemplates = join(internalPackage, "cli", "templates");
+  const internalTemplates = join(internalPackage, "cli/templates");
 
   return {
     build: {
@@ -141,7 +141,7 @@ function getNextjsApplicationPath(dotNextDir: string): string {
 
 function findServerParentPath(parentPath: string): string | undefined {
   try {
-    if (statSync(join(parentPath, ".next", "server")).isDirectory()) {
+    if (statSync(join(parentPath, ".next/server")).isDirectory()) {
       return parentPath;
     }
   } catch {
