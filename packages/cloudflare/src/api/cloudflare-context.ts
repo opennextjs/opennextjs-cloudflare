@@ -35,6 +35,17 @@ export type CloudflareContext<
 const cloudflareContextSymbol = Symbol.for("__cloudflare-context__");
 
 /**
+ * `globalThis` override for internal usage (simply the standard `globalThis`) enhanced with
+ * a property indexed by the `cloudflareContextSymbol`
+ */
+type InternalGlobalThis<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+> = typeof globalThis & {
+  [cloudflareContextSymbol]: CloudflareContext<CfProperties, Context> | undefined;
+};
+
+/**
  * Utility to get the current Cloudflare context
  *
  * @returns the cloudflare context
@@ -43,7 +54,7 @@ export function getCloudflareContext<
   CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
   Context = ExecutionContext,
 >(): CloudflareContext<CfProperties, Context> {
-  const global = getInternalGlobalThis<CfProperties, Context>();
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
 
   const cloudflareContext = global[cloudflareContextSymbol];
 
@@ -95,7 +106,7 @@ export async function initOpenNextCloudflareForDev() {
  * @param cloudflareContext the cloudflare context to add to the node.sj global scope
  */
 function addCloudflareContextToNodejsGlobal(cloudflareContext: CloudflareContext<CfProperties, Context>) {
-  const global = getInternalGlobalThis<CfProperties, Context>();
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
   global[cloudflareContextSymbol] = cloudflareContext;
 }
 
@@ -153,23 +164,4 @@ async function getCloudflareContextFromWrangler<
     cf: cf as unknown as CfProperties,
     ctx: ctx as Context,
   };
-}
-
-type InternalGlobalThis<
-  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
-  Context = ExecutionContext,
-> = typeof globalThis & {
-  [cloudflareContextSymbol]: CloudflareContext<CfProperties, Context> | undefined;
-};
-
-/**
- * Gets the globalThis for internal usage
- *
- * @returns the globalThis reference casted to the InternalGlobalThis type
- */
-function getInternalGlobalThis<
-  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
-  Context = ExecutionContext,
->(): InternalGlobalThis<CfProperties, Context> {
-  return globalThis as InternalGlobalThis<CfProperties, Context>;
 }
