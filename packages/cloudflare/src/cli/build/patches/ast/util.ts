@@ -63,7 +63,7 @@ export function getRuleEdits(rule: string | RuleConfig, root: SgNode, { once = f
  * @param rule The astgrep rule (yaml or NapiConfig)
  * @param lang The language used by the source code
  * @param lang Whether to apply the rule only once
- * @returns
+ * @returns The patched code
  */
 export function patchCode(
   code: string,
