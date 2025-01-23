@@ -2,7 +2,7 @@ import { type Edit, Lang, type NapiConfig, parse, type SgNode } from "@ast-grep/
 import yaml from "yaml";
 
 /**
- * fix has the same meanning as in yaml rules
+ * fix has the same meaning as in yaml rules
  * see https://ast-grep.github.io/guide/rewrite-code.html#using-fix-in-yaml-rule
  */
 export type RuleConfig = NapiConfig & { fix?: string };
