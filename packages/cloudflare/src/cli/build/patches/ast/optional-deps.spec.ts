@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { optionalDepRule } from "./optional-deps.js";
-import { patchCode } from "./util.ts";
+import { patchCode } from "./util.js";
 
 describe("optional dependecy", () => {
   it('should wrap a top-level require("caniuse-lite") in a try-catch', () => {
