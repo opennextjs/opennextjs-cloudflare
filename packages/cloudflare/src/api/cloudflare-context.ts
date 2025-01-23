@@ -54,7 +54,7 @@ export function getCloudflareContext<
     const getContextFunctionName = getCloudflareContext.name;
     const initFunctionName = initOpenNextCloudflareForDev.name;
     throw new Error(
-      `\n\n\`${getContextFunctionName}\` has been called during development without having used` +
+      `\n\n\`${getContextFunctionName}\` has been called during development without having called` +
         ` the \`${initFunctionName}\` function inside the Next.js config file.\n\n` +
         `In order to use \`${getContextFunctionName}\` import and call ${initFunctionName} in the Next.js config file.\n\n` +
         "Example: \n   ```\n   // next.config.mjs\n\n" +
