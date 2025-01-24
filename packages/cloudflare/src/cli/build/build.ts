@@ -1,6 +1,5 @@
-import { cpSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
 
 import { buildNextjsApp, setStandaloneBuildMode } from "@opennextjs/aws/build/buildNextApp.js";
 import { compileCache } from "@opennextjs/aws/build/compileCache.js";
@@ -12,7 +11,7 @@ import { printHeader, showWarningOnWindows } from "@opennextjs/aws/build/utils.j
 import logger from "@opennextjs/aws/logger.js";
 
 import type { ProjectOptions } from "../config.js";
-import { containsDotNextDir, getConfig } from "../config.js";
+import { containsDotNextDir } from "../config.js";
 import { bundleServer } from "./bundle-server.js";
 import { compileEnvFiles } from "./open-next/compile-env-files.js";
 import { copyCacheAssets } from "./open-next/copyCacheAssets.js";
@@ -95,14 +94,7 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
 
   await createServerBundle(options);
 
-  // TODO: drop this copy.
-  // Copy the .next directory to the output directory so it can be mutated.
-  cpSync(join(projectOpts.sourceDir, ".next"), join(projectOpts.outputDir, ".next"), { recursive: true });
-
-  const projConfig = getConfig(projectOpts);
-
-  // TODO: rely on options only.
-  await bundleServer(projConfig, options);
+  await bundleServer(options);
 
   if (!projectOpts.skipWranglerConfigCheck) {
     await createWranglerConfigIfNotExistent(projectOpts);

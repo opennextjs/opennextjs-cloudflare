@@ -8,11 +8,11 @@ import { extractProjectEnvVars } from "../utils/index.js";
 /**
  * Compiles the values extracted from the project's env files to the output directory for use in the worker.
  */
-export function compileEnvFiles(options: BuildOptions) {
+export function compileEnvFiles(buildOpts: BuildOptions) {
   ["production", "development", "test"].forEach((mode) =>
     fs.appendFileSync(
-      path.join(options.outputDir, `.env.mjs`),
-      `export const ${mode} = ${JSON.stringify(extractProjectEnvVars(mode, options))};\n`
+      path.join(buildOpts.outputDir, `.env.mjs`),
+      `export const ${mode} = ${JSON.stringify(extractProjectEnvVars(mode, buildOpts))};\n`
     )
   );
 }

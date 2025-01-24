@@ -1,8 +1,8 @@
-import { join, posix } from "node:path";
+import { join, relative } from "node:path";
 
+import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { globSync } from "glob";
 
-import { Config } from "../../../config.js";
 import { normalizePath } from "../../utils/index.js";
 
 /**
@@ -12,32 +12,35 @@ import { normalizePath } from "../../utils/index.js";
  * Note: we could/should probably just patch readFileSync here or something, but here the issue is that after the readFileSync call
  * there is a vm `runInNewContext` call which we also don't support (source: https://github.com/vercel/next.js/blob/b1e32c5d1f/packages/next/src/server/load-manifest.ts#L88)
  */
-export function inlineEvalManifest(code: string, config: Config): string {
-  const manifestJss = globSync(
-    normalizePath(join(config.paths.output.standaloneAppDotNext, "**/*_client-reference-manifest.js"))
-  ).map((file) =>
-    normalizePath(file).replace(normalizePath(config.paths.output.standaloneApp) + posix.sep, "")
-  );
+export function inlineEvalManifest(code: string, buildOpts: BuildOptions): string {
+  const { outputDir } = buildOpts;
+
+  const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts), ".next");
+  const appDir = join(baseDir, "server/app");
+
+  const manifests = globSync(join(baseDir, "**/*_client-reference-manifest.js"));
+
   return code.replace(
     /function evalManifest\((.+?), .+?\) {/,
     `$&
-		${manifestJss
-      .map(
-        (manifestJs) => `
-			  if ($1.endsWith("${manifestJs}")) {
-				require(${JSON.stringify(join(config.paths.output.standaloneApp, manifestJs))});
-				return {
-				  __RSC_MANIFEST: {
-					"${manifestJs
-            .replace(".next/server/app", "")
-            .replace("_client-reference-manifest.js", "")}": globalThis.__RSC_MANIFEST["${manifestJs
-            .replace(".next/server/app", "")
-            .replace("_client-reference-manifest.js", "")}"],
-				  },
-				};
+		${manifests
+      .map((manifest) => {
+        const endsWith = normalizePath(relative(baseDir, manifest));
+        const key = normalizePath("/" + relative(appDir, manifest)).replace(
+          "_client-reference-manifest.js",
+          ""
+        );
+        return `
+			  if ($1.endsWith("${endsWith}")) {
+          require(${JSON.stringify(manifest)});
+          return {
+            __RSC_MANIFEST: {
+            "${key}": globalThis.__RSC_MANIFEST["${key}"],
+            },
+          };
 			  }
-			`
-      )
+			`;
+      })
       .join("\n")}
 		throw new Error("Unknown evalManifest: " + $1);
 		`

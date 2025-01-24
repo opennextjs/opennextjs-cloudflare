@@ -1,30 +1,30 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { Config } from "../../../config.js";
+import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 
 /**
  * The following avoid various Next.js specific files `require`d at runtime since we can just read
  * and inline their content during build time
  */
-export function inlineNextRequire(code: string, config: Config) {
-  const pagesManifestFile = join(config.paths.output.standaloneAppServer, "pages-manifest.json");
-  const appPathsManifestFile = join(config.paths.output.standaloneAppServer, "app-paths-manifest.json");
+// TODO(vicb): __NEXT_PRIVATE_RUNTIME_TYPE is not handled by this patch
+export function inlineNextRequire(code: string, buildOpts: BuildOptions) {
+  const { outputDir } = buildOpts;
+  const serverDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts), ".next/server");
 
-  const pagesManifestFiles = existsSync(pagesManifestFile)
-    ? Object.values(JSON.parse(readFileSync(pagesManifestFile, "utf-8"))).map(
-        (file) => ".next/server/" + file
-      )
-    : [];
-  const appPathsManifestFiles = existsSync(appPathsManifestFile)
-    ? Object.values(JSON.parse(readFileSync(appPathsManifestFile, "utf-8"))).map(
-        (file) => ".next/server/" + file
-      )
-    : [];
-  const allManifestFiles = pagesManifestFiles.concat(appPathsManifestFiles);
+  const pagesManifestFile = join(serverDir, "pages-manifest.json");
+  const appPathsManifestFile = join(serverDir, "app-paths-manifest.json");
 
-  const htmlPages = allManifestFiles.filter((file) => file.endsWith(".html"));
-  const pageModules = allManifestFiles.filter((file) => file.endsWith(".js"));
+  const pagesManifests: string[] = existsSync(pagesManifestFile)
+    ? Object.values(JSON.parse(readFileSync(pagesManifestFile, "utf-8")))
+    : [];
+  const appPathsManifests: string[] = existsSync(appPathsManifestFile)
+    ? Object.values(JSON.parse(readFileSync(appPathsManifestFile, "utf-8")))
+    : [];
+  const manifests = pagesManifests.concat(appPathsManifests);
+
+  const htmlPages = manifests.filter((file) => file.endsWith(".html"));
+  const pageModules = manifests.filter((file) => file.endsWith(".js"));
 
   return code.replace(
     /const pagePath = getPagePath\(.+?\);/,
@@ -33,7 +33,7 @@ export function inlineNextRequire(code: string, config: Config) {
       .map(
         (htmlPage) => `
           if (pagePath.endsWith("${htmlPage}")) {
-            return ${JSON.stringify(readFileSync(join(config.paths.output.standaloneApp, htmlPage), "utf-8"))};
+            return ${JSON.stringify(readFileSync(join(serverDir, htmlPage), "utf-8"))};
           }
         `
       )
@@ -42,7 +42,7 @@ export function inlineNextRequire(code: string, config: Config) {
       .map(
         (module) => `
           if (pagePath.endsWith("${module}")) {
-            return require(${JSON.stringify(join(config.paths.output.standaloneApp, module))});
+            return require(${JSON.stringify(join(serverDir, module))});
           }
         `
       )
