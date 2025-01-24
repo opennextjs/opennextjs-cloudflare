@@ -26,7 +26,7 @@ class Cache implements IncrementalCache {
     isFetch?: IsFetch
   ): Promise<WithLastModified<CacheValue<IsFetch>>> {
     if (!this.initialized) {
-      await this.init();
+      this.init();
     }
 
     if (!(this.kv || this.assets)) {
@@ -79,7 +79,7 @@ class Cache implements IncrementalCache {
     isFetch?: IsFetch
   ): Promise<void> {
     if (!this.initialized) {
-      await this.init();
+      this.init();
     }
     if (!this.kv) {
       throw new IgnorableError(`No KVNamespace`);
@@ -106,7 +106,7 @@ class Cache implements IncrementalCache {
 
   async delete(key: string): Promise<void> {
     if (!this.initialized) {
-      await this.init();
+      this.init();
     }
     if (!this.kv) {
       throw new IgnorableError(`No KVNamespace`);
@@ -141,8 +141,8 @@ class Cache implements IncrementalCache {
     return process.env.NEXT_BUILD_ID ?? "no-build-id";
   }
 
-  protected async init() {
-    const env = (await getCloudflareContext()).env;
+  protected init() {
+    const { env } = getCloudflareContext();
     this.kv = env.NEXT_CACHE_WORKERS_KV;
     this.assets = env.ASSETS;
     this.initialized = true;
