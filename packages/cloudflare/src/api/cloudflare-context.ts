@@ -86,9 +86,6 @@ export function getCloudflareContext<
  * Performs some initial setup to integrate as best as possible the local Next.js dev server (run via `next dev`)
  * with the open-next Cloudflare adapter
  *
- * (Currently all the setup that this function performs is making sure that `getCloudflareContext` works as intended,
- * in the future mode improvements might be added)
- *
  * Note: this function should only be called inside the Next.js config file, and although async it doesn't need to be `await`ed
  */
 export async function initOpenNextCloudflareForDev() {
