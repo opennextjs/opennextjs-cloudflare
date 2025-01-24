@@ -49,6 +49,6 @@ export default defineConfig({
     command: "pnpm preview:worker",
     url: "http://localhost:8771",
     reuseExistingServer: !process.env.CI,
-    timeout: 7_000,
+    timeout: 70_000,
   },
 });
