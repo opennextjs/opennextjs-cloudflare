@@ -4,11 +4,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Lang, parse } from "@ast-grep/napi";
-import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
+import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import { build, Plugin } from "esbuild";
 
-import { Config } from "../config.js";
 import { patchOptionalDependencies } from "./patches/ast/optional-deps.js";
 import * as patches from "./patches/index.js";
 import { normalizePath, patchCodeWithValidations } from "./utils/index.js";
@@ -19,22 +18,25 @@ const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "
 /**
  * Bundle the Open Next server.
  */
-export async function bundleServer(config: Config, openNextOptions: BuildOptions): Promise<void> {
-  patches.copyPackageCliFiles(packageDistDir, config, openNextOptions);
+export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
+  patches.copyPackageCliFiles(packageDistDir, buildOpts);
 
-  const nextConfigStr =
-    fs
-      .readFileSync(path.join(config.paths.output.standaloneApp, "server.js"), "utf8")
-      ?.match(/const nextConfig = ({.+?})\n/)?.[1] ?? {};
+  const { appPath, outputDir, monorepoRoot } = buildOpts;
+  const serverFiles = path.join(
+    outputDir,
+    "server-functions/default",
+    getPackagePath(buildOpts),
+    ".next/required-server-files.json"
+  );
+  const nextConfig = JSON.parse(fs.readFileSync(serverFiles, "utf-8")).config;
 
   console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
 
-  patches.patchWranglerDeps(config);
-  patches.updateWebpackChunksFile(config);
+  patches.patchWranglerDeps(buildOpts);
+  patches.updateWebpackChunksFile(buildOpts);
 
-  const { appBuildOutputPath, appPath, outputDir, monorepoRoot } = openNextOptions;
   const outputPath = path.join(outputDir, "server-functions", "default");
-  const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
+  const packagePath = getPackagePath(buildOpts);
   const openNextServer = path.join(outputPath, packagePath, `index.mjs`);
   const openNextServerBundle = path.join(outputPath, packagePath, `handler.mjs`);
 
@@ -45,25 +47,28 @@ export async function bundleServer(config: Config, openNextOptions: BuildOptions
     format: "esm",
     target: "esnext",
     minify: false,
-    plugins: [createFixRequiresESBuildPlugin(config)],
+    plugins: [createFixRequiresESBuildPlugin(buildOpts)],
     external: ["./middleware/handler.mjs", "caniuse-lite"],
     alias: {
       // Note: we apply an empty shim to next/dist/compiled/ws because it generates two `eval`s:
       //   eval("require")("bufferutil");
       //   eval("require")("utf-8-validate");
-      "next/dist/compiled/ws": path.join(config.paths.internal.templates, "shims", "empty.js"),
+      "next/dist/compiled/ws": path.join(buildOpts.outputDir, "cloudflare-templates/shims/empty.js"),
       // Note: we apply an empty shim to next/dist/compiled/edge-runtime since (amongst others) it generated the following `eval`:
       //   eval(getModuleCode)(module, module.exports, throwingRequire, params.context, ...Object.values(params.scopedContext));
       //   which comes from https://github.com/vercel/edge-runtime/blob/6e96b55f/packages/primitives/src/primitives/load.js#L57-L63
       // QUESTION: Why did I encountered this but mhart didn't?
-      "next/dist/compiled/edge-runtime": path.join(config.paths.internal.templates, "shims", "empty.js"),
+      "next/dist/compiled/edge-runtime": path.join(
+        buildOpts.outputDir,
+        "cloudflare-templates/shims/empty.js"
+      ),
       // `@next/env` is a library Next.js uses for loading dotenv files, for obvious reasons we need to stub it here
       // source: https://github.com/vercel/next.js/tree/0ac10d79720/packages/next-env
-      "@next/env": path.join(config.paths.internal.templates, "shims", "env.js"),
+      "@next/env": path.join(buildOpts.outputDir, "cloudflare-templates/shims/env.js"),
     },
     define: {
       // config file used by Next.js, see: https://github.com/vercel/next.js/blob/68a7128/packages/next/src/build/utils.ts#L2137-L2139
-      "process.env.__NEXT_PRIVATE_STANDALONE_CONFIG": JSON.stringify(nextConfigStr),
+      "process.env.__NEXT_PRIVATE_STANDALONE_CONFIG": `${JSON.stringify(nextConfig)}`,
       // Next.js tried to access __dirname so we need to define it
       __dirname: '""',
       // Note: we need the __non_webpack_require__ variable declared as it is used by next-server:
@@ -117,7 +122,7 @@ globalThis.__BUILD_TIMESTAMP_MS__ = ${Date.now()};
     },
   });
 
-  await updateWorkerBundledCode(openNextServerBundle, config, openNextOptions);
+  await updateWorkerBundledCode(openNextServerBundle, buildOpts);
 
   const isMonorepo = monorepoRoot !== appPath;
   if (isMonorepo) {
@@ -127,35 +132,26 @@ globalThis.__BUILD_TIMESTAMP_MS__ = ${Date.now()};
     );
   }
 
-  console.log(`\x1b[35mWorker saved in \`${getOutputWorkerPath(openNextOptions)}\` 🚀\n\x1b[0m`);
+  console.log(`\x1b[35mWorker saved in \`${getOutputWorkerPath(buildOpts)}\` 🚀\n\x1b[0m`);
 }
 
 /**
- * This function applies string replacements on the bundled worker code necessary to get it to run in workerd
- *
- * Needless to say all the logic in this function is something we should avoid as much as possible!
- *
- * @param workerOutputFile
- * @param config
+ * This function applies patches required for the code to run on workers.
  */
-async function updateWorkerBundledCode(
-  workerOutputFile: string,
-  config: Config,
-  openNextOptions: BuildOptions
-): Promise<void> {
+async function updateWorkerBundledCode(workerOutputFile: string, buildOpts: BuildOptions): Promise<void> {
   const code = await readFile(workerOutputFile, "utf8");
 
   const patchedCode = await patchCodeWithValidations(code, [
     ["require", patches.patchRequire],
-    ["`buildId` function", (code) => patches.patchBuildId(code, config)],
-    ["`loadManifest` function", (code) => patches.patchLoadManifest(code, config)],
-    ["next's require", (code) => patches.inlineNextRequire(code, config)],
-    ["`findDir` function", (code) => patches.patchFindDir(code, config)],
-    ["`evalManifest` function", (code) => patches.inlineEvalManifest(code, config)],
-    ["cacheHandler", (code) => patches.patchCache(code, openNextOptions)],
+    ["`buildId` function", (code) => patches.patchBuildId(code, buildOpts)],
+    ["`loadManifest` function", (code) => patches.patchLoadManifest(code, buildOpts)],
+    ["next's require", (code) => patches.inlineNextRequire(code, buildOpts)],
+    ["`findDir` function", (code) => patches.patchFindDir(code, buildOpts)],
+    ["`evalManifest` function", (code) => patches.inlineEvalManifest(code, buildOpts)],
+    ["cacheHandler", (code) => patches.patchCache(code, buildOpts)],
     [
       "'require(this.middlewareManifestPath)'",
-      (code) => patches.inlineMiddlewareManifestRequire(code, config),
+      (code) => patches.inlineMiddlewareManifestRequire(code, buildOpts),
     ],
     ["exception bubbling", patches.patchExceptionBubbling],
     ["`loadInstrumentationModule` function", patches.patchLoadInstrumentationModule],
@@ -185,7 +181,7 @@ async function updateWorkerBundledCode(
   await writeFile(workerOutputFile, bundle.commitEdits(edits));
 }
 
-function createFixRequiresESBuildPlugin(config: Config): Plugin {
+function createFixRequiresESBuildPlugin(options: BuildOptions): Plugin {
   return {
     name: "replaceRelative",
     setup(build) {
@@ -193,7 +189,7 @@ function createFixRequiresESBuildPlugin(config: Config): Plugin {
       build.onResolve(
         { filter: getCrossPlatformPathRegex(String.raw`^\./require-hook$`, { escape: false }) },
         () => ({
-          path: path.join(config.paths.internal.templates, "shims", "empty.js"),
+          path: path.join(options.outputDir, "cloudflare-templates/shims/empty.js"),
         })
       );
     },
@@ -203,9 +199,9 @@ function createFixRequiresESBuildPlugin(config: Config): Plugin {
 /**
  * Gets the path of the worker.js file generated by the build process
  *
- * @param openNextOptions the open-next build options
+ * @param buildOpts the open-next build options
  * @returns the path of the worker.js file that the build process generates
  */
-export function getOutputWorkerPath(openNextOptions: BuildOptions): string {
-  return path.join(openNextOptions.outputDir, "worker.js");
+export function getOutputWorkerPath(buildOpts: BuildOptions): string {
+  return path.join(buildOpts.outputDir, "worker.js");
 }
