@@ -22,19 +22,21 @@ You can use [`create-next-app`](https://nextjs.org/docs/pages/api-reference/cli/
   bun add -D wrangler@latest @opennextjs/cloudflare
   ```
 
-- add a `wrangler.toml` at the root of your project
+- add a `wrangler.json` at the root of your project
 
-  ```toml
-  #:schema node_modules/wrangler/config-schema.json
-  name = "<your-app-name>"
-  main = ".open-next/worker.js"
-
-  compatibility_date = "2024-09-23"
-  compatibility_flags = ["nodejs_compat"]
-
-  # Use the new Workers + Assets to host the static frontend files
-  assets = { directory = ".open-next/assets", binding = "ASSETS" }
-  ```
+```json
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "main": ".open-next/worker.js",
+  "name": "<your-app-name>",
+  "compatibility_date": "2024-12-30",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  }
+}
+```
 
 - add a `open-next.config.ts` at the root of your project:
 
