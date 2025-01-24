@@ -2,7 +2,7 @@ import { cpSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { getPackageTemplatesDirPath } from "../../../utils/get-package-templates-dir-path.js";
-import type { ProjectOptions } from "../../config.js";
+import type { ProjectOptions } from "../../project-options.js";
 import { askConfirmation } from "../../utils/ask-confirmation.js";
 
 /**

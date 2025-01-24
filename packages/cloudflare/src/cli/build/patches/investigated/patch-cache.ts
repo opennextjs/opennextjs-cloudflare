@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
+import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 
 import { normalizePath } from "../../utils/index.js";
 
@@ -15,17 +15,17 @@ import { normalizePath } from "../../utils/index.js";
  * build-time. Therefore, we have to manually override the default way that the cache handler is
  * instantiated with a dynamic require that uses a string literal for the path.
  */
-export async function patchCache(code: string, openNextOptions: BuildOptions): Promise<string> {
-  const { appBuildOutputPath, outputDir, monorepoRoot } = openNextOptions;
+export async function patchCache(code: string, buildOpts: BuildOptions): Promise<string> {
+  const { outputDir } = buildOpts;
 
   // TODO: switch to cache.mjs
-  const outputPath = path.join(outputDir, "server-functions", "default");
-  const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
-  const cacheFile = path.join(outputPath, packagePath, "cache.cjs");
+  const outputPath = path.join(outputDir, "server-functions/default");
+  const cacheFile = path.join(outputPath, getPackagePath(buildOpts), "cache.cjs");
 
   return code.replace(
     "const { cacheHandler } = this.nextConfig;",
-    `const cacheHandler = null;
+    `
+const cacheHandler = null;
 CacheHandler = require('${normalizePath(cacheFile)}').default;
 `
   );
