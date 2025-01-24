@@ -23,10 +23,7 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
 
   requestHeaders.set(
     "x-cloudflare-context",
-    `variables from \`cloudflareContext.env\`: ${Object.keys(cloudflareContext.env)
-      .filter((key) => key.startsWith("MY_"))
-      .sort()
-      .join(", ")}`
+    `typeof \`cloudflareContext.env\` = ${typeof cloudflareContext.env}`
   );
 
   return NextResponse.next({
