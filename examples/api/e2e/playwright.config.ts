@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import nodeProcess from "node:process";
+import type nodeProcess from "node:process";
 
 declare const process: typeof nodeProcess;
 
