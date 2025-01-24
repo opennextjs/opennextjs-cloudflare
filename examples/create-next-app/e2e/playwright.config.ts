@@ -49,8 +49,6 @@ export default defineConfig({
     command: "pnpm preview:worker",
     url: "http://localhost:8771",
     reuseExistingServer: !process.env.CI,
-    // the app uses the `initOpenNextCloudflareForDev` which in CI apparently makes the boot up take slightly longer,
-    // that's why we need a longer timeout here (we just add 10 seconds to the default 60)
-    timeout: !process.env.CI ? undefined : 60 * 1000 + 10 * 1000,
+    timeout: 7_000,
   },
 });
