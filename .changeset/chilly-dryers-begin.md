@@ -25,23 +25,3 @@ export default nextConfig;
 ```
 
 thanks to this new utility we are also able to make `getCloudflareContext` synchronous, so `await`ing such function is no longer necessary
-
-Example:
-
-- Before:
-
-  ```js
-  import { getCloudflareContext } from "@opennextjs/cloudflare";
-
-  const cloudflareContext = await getCloudflareContext();
-  // cloudflareContext use
-  ```
-
-- After:
-
-  ```js
-  import { getCloudflareContext } from "@opennextjs/cloudflare";
-
-  const cloudflareContext = getCloudflareContext();
-  // cloudflareContext use
-  ```
