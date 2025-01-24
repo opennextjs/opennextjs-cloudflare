@@ -1,5 +1,5 @@
 ---
-"@opennextjs/cloudflare": patch
+"@opennextjs/cloudflare": minor
 ---
 
 introduce new `initOpenNextCloudflareForDev` utility and make `getCloudflareContext` synchronous
