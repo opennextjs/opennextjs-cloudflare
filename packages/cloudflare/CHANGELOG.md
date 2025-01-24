@@ -1,5 +1,15 @@
 # @opennextjs/cloudflare
 
+## 0.3.10
+
+### Patch Changes
+
+- 48f863f: fix: do not require `caniuse-lite`
+
+  `caniuse-lite` is an optional dependency.
+
+- 27ab1ab: refactor: use the new regex utility for constructing cross-platform paths
+
 ## 0.3.9
 
 ### Patch Changes
