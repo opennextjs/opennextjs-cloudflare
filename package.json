@@ -13,6 +13,7 @@
     "prettier:fix": "prettier --write .",
     "lint:check": "pnpm -r lint:check",
     "lint:fix": "pnpm -r lint:fix",
+    "fix": "pnpm prettier:fix && pnpm lint:fix",
     "ts:check": "pnpm -r ts:check",
     "test": "pnpm -r test",
     "code:checks": "pnpm prettier:check && pnpm lint:check && pnpm ts:check",
