@@ -8,7 +8,7 @@ import yaml from "yaml";
 export type RuleConfig = NapiConfig & { fix?: string };
 
 /**
- * Returns the `Edit`s for an ast-grep rule in yaml format
+ * Returns the `Edit`s and `Match`es for an ast-grep rule in yaml format
  *
  * The rule must have a `fix` to rewrite the matched node.
  *
@@ -17,9 +17,9 @@ export type RuleConfig = NapiConfig & { fix?: string };
  * @param rule The rule. Either a yaml string or an instance of `RuleConfig`
  * @param root The root node
  * @param once only apply once
- * @returns A list of edits.
+ * @returns A list of edits and a list of matches.
  */
-export function getRuleEdits(rule: string | RuleConfig, root: SgNode, { once = false } = {}) {
+export function applyRule(rule: string | RuleConfig, root: SgNode, { once = false } = {}) {
   const ruleConfig: RuleConfig = typeof rule === "string" ? yaml.parse(rule) : rule;
   if (ruleConfig.transform) {
     throw new Error("transform is not supported");
@@ -50,7 +50,7 @@ export function getRuleEdits(rule: string | RuleConfig, root: SgNode, { once = f
     );
   });
 
-  return edits;
+  return { edits, matches };
 }
 
 /**
@@ -71,6 +71,6 @@ export function patchCode(
   { lang = Lang.TypeScript, once = false } = {}
 ): string {
   const node = parse(lang, code).root();
-  const edits = getRuleEdits(rule, node, { once });
+  const { edits } = applyRule(rule, node, { once });
   return node.commitEdits(edits);
 }

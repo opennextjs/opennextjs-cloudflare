@@ -176,7 +176,7 @@ async function updateWorkerBundledCode(workerOutputFile: string, buildOpts: Buil
 
   const bundle = parse(Lang.TypeScript, patchedCode).root();
 
-  const edits = patchOptionalDependencies(bundle);
+  const { edits } = patchOptionalDependencies(bundle);
 
   await writeFile(workerOutputFile, bundle.commitEdits(edits));
 }
