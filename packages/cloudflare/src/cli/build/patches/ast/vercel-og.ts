@@ -20,6 +20,12 @@ fix: |-
   "next/dist/compiled/@vercel/og/index.edge.js"
 `;
 
+/**
+ * Patches Node.js imports for the library to be Edge imports.
+ *
+ * @param root Root node.
+ * @returns Results of applying the rule.
+ */
 export function patchVercelOgImport(root: SgNode) {
   return applyRule(vercelOgImportRule, root);
 }
@@ -46,6 +52,12 @@ fix: |-
   var fallbackFont = getFallbackFont()
 `;
 
+/**
+ * Patches the default font fetching to use a .bin import.
+ *
+ * @param root Root node.
+ * @returns Results of applying the rule.
+ */
 export function patchVercelOgFallbackFont(root: SgNode) {
   return applyRule(vercelOgFallbackFontRule, root);
 }

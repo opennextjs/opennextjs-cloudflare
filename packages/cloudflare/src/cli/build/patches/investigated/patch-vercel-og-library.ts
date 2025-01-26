@@ -10,6 +10,16 @@ import { patchVercelOgFallbackFont, patchVercelOgImport } from "../ast/vercel-og
 
 type TraceInfo = { version: number; files: string[] };
 
+/**
+ * Patches the usage of @vercel/og to be compatible with Cloudflare Workers.
+ *
+ * This involves;
+ * - Ensuring the edge version is available in the OpenNext node_modules.
+ * - Changing node imports for the library to edge imports.
+ * - Changing font fetches in the library to use .bin imports.
+ *
+ * @param buildOpts Build options.
+ */
 export function patchVercelOgLibrary(buildOpts: BuildOptions) {
   const { appBuildOutputPath, outputDir } = buildOpts;
 
