@@ -42,3 +42,9 @@ test("returns correct information about the request from a route handler", async
   const expectedURL = expect.stringMatching(/https?:\/\/localhost:(?!3000)\d+\/api\/request/);
   await expect(res.json()).resolves.toEqual({ nextUrl: expectedURL, url: expectedURL });
 });
+
+test("generates an og image successfully", async ({ page }) => {
+  const res = await page.request.get("/og");
+  expect(res.status()).toEqual(200);
+  expect(res.headers()["content-type"]).toEqual("image/png");
+});

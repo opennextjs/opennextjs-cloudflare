@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { type Edit, Lang, type NapiConfig, parse, type SgNode } from "@ast-grep/napi";
 import yaml from "yaml";
 
@@ -51,6 +53,17 @@ export function applyRule(rule: string | RuleConfig, root: SgNode, { once = fals
   });
 
   return { edits, matches };
+}
+
+/**
+ * Parse a file and obtain its root.
+ *
+ * @param path The file path
+ * @param lang The language to parse. Defaults to TypeScript.
+ * @returns The root for the file.
+ */
+export function parseFile(path: string, lang = Lang.TypeScript) {
+  return parse(lang, readFileSync(path, { encoding: "utf-8" })).root();
 }
 
 /**
