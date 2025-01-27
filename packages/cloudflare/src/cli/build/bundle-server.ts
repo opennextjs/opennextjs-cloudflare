@@ -33,7 +33,8 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
   console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
 
   patches.patchWranglerDeps(buildOpts);
-  patches.updateWebpackChunksFile(buildOpts);
+  await patches.updateWebpackChunksFile(buildOpts);
+  patches.patchVercelOgLibrary(buildOpts);
 
   const outputPath = path.join(outputDir, "server-functions", "default");
   const packagePath = getPackagePath(buildOpts);
@@ -176,7 +177,7 @@ async function updateWorkerBundledCode(workerOutputFile: string, buildOpts: Buil
 
   const bundle = parse(Lang.TypeScript, patchedCode).root();
 
-  const edits = patchOptionalDependencies(bundle);
+  const { edits } = patchOptionalDependencies(bundle);
 
   await writeFile(workerOutputFile, bundle.commitEdits(edits));
 }
