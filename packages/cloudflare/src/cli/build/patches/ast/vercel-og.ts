@@ -46,10 +46,11 @@ rule:
 
 fix: |-
   async function getFallbackFont() {
-    return (await import("$PATH.bin")).default
+    // .bin is used so that a loader does not need to be configured for .ttf files
+    return (await import("$PATH.bin")).default;
   }
 
-  var fallbackFont = getFallbackFont()
+  var fallbackFont = getFallbackFont();
 `;
 
 /**
