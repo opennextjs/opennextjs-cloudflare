@@ -10,6 +10,7 @@ import { build, Plugin } from "esbuild";
 
 import { patchOptionalDependencies } from "./patches/ast/optional-deps.js";
 import * as patches from "./patches/index.js";
+import InlineRequirePagePlugin from "./patches/plugins/require-page.js";
 import { normalizePath, patchCodeWithValidations } from "./utils/index.js";
 
 /** The dist directory of the Cloudflare adapter package */
@@ -48,8 +49,17 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
     format: "esm",
     target: "esnext",
     minify: false,
-    plugins: [createFixRequiresESBuildPlugin(buildOpts)],
-    external: ["./middleware/handler.mjs", "caniuse-lite"],
+    plugins: [createFixRequiresESBuildPlugin(buildOpts), InlineRequirePagePlugin(buildOpts)],
+    external: [
+      "./middleware/handler.mjs",
+      // Next optional dependencies.
+      "caniuse-lite",
+      "jimp",
+      "probe-image-size",
+      // Dependencies handled by wrangler.
+      "*.bin",
+      "*.wasm?module",
+    ],
     alias: {
       // Note: we apply an empty shim to next/dist/compiled/ws because it generates two `eval`s:
       //   eval("require")("bufferutil");
@@ -146,7 +156,6 @@ async function updateWorkerBundledCode(workerOutputFile: string, buildOpts: Buil
     ["require", patches.patchRequire],
     ["`buildId` function", (code) => patches.patchBuildId(code, buildOpts)],
     ["`loadManifest` function", (code) => patches.patchLoadManifest(code, buildOpts)],
-    ["next's require", (code) => patches.inlineNextRequire(code, buildOpts)],
     ["`findDir` function", (code) => patches.patchFindDir(code, buildOpts)],
     ["`evalManifest` function", (code) => patches.inlineEvalManifest(code, buildOpts)],
     ["cacheHandler", (code) => patches.patchCache(code, buildOpts)],
