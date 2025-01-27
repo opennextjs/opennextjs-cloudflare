@@ -6,7 +6,7 @@ export const vercelOgImportRule = `
 rule:
   pattern: $NODE
   kind: string
-  regex: "next/dist/compiled/@vercel/og/index.node.js"
+  regex: "next/dist/compiled/@vercel/og/index\\\\.node\\\\.js"
 inside:
   kind: arguments
   inside:
