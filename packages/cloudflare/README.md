@@ -8,11 +8,6 @@ Deploy Next.js apps to Cloudflare!
 
 To get started with the adapter visit the [official get started documentation](https://opennext.js.org/cloudflare/get-started).
 
-## Known issues
-
-- `▲ [WARNING] Suspicious assignment to defined constant "process.env.NODE_ENV" [assign-to-define]` can safely be ignored
-- Maybe more, still experimental...
-
 ## Local development
 
 - you can use the regular `next` CLI to start the Next.js dev server:
