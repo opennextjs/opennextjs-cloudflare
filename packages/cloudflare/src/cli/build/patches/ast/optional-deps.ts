@@ -1,6 +1,6 @@
 import { type SgNode } from "@ast-grep/napi";
 
-import { getRuleEdits } from "./util.js";
+import { applyRule } from "./util.js";
 
 /**
  * Handle optional dependencies.
@@ -31,5 +31,5 @@ fix: |-
 `;
 
 export function patchOptionalDependencies(root: SgNode) {
-  return getRuleEdits(optionalDepRule, root);
+  return applyRule(optionalDepRule, root);
 }
