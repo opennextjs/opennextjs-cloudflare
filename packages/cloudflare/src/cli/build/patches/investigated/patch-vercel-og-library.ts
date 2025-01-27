@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
@@ -12,11 +12,6 @@ type TraceInfo = { version: number; files: string[] };
 
 /**
  * Patches the usage of @vercel/og to be compatible with Cloudflare Workers.
- *
- * This involves;
- * - Ensuring the edge version is available in the OpenNext node_modules.
- * - Changing node imports for the library to edge imports.
- * - Changing font fetches in the library to use .bin imports.
  *
  * @param buildOpts Build options.
  */
@@ -34,6 +29,7 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions) {
     const outputDir = path.join(packagePath, "node_modules/next/dist/compiled/@vercel/og");
     const outputEdgePath = path.join(outputDir, "index.edge.js");
 
+    // Ensure the edge version is available in the OpenNext node_modules.
     if (!existsSync(outputEdgePath)) {
       const tracedEdgePath = path.join(
         path.dirname(traceInfoPath),
@@ -41,8 +37,8 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions) {
       );
 
       copyFileSync(tracedEdgePath, outputEdgePath);
-      rmSync(outputEdgePath.replace("index.edge.js", "index.node.js"));
 
+      // Change font fetches in the library to use imports.
       const node = parseFile(outputEdgePath);
       const { edits, matches } = patchVercelOgFallbackFont(node);
       writeFileSync(outputEdgePath, node.commitEdits(edits));
@@ -51,6 +47,7 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions) {
       renameSync(path.join(outputDir, fontFileName), path.join(outputDir, `${fontFileName}.bin`));
     }
 
+    // Change node imports for the library to edge imports.
     const routeFilePath = traceInfoPath.replace(appBuildOutputPath, packagePath).replace(".nft.json", "");
 
     const node = parseFile(routeFilePath);
