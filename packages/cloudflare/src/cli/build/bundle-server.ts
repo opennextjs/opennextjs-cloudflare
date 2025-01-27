@@ -34,7 +34,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
 
   patches.patchWranglerDeps(buildOpts);
   await patches.updateWebpackChunksFile(buildOpts);
-  await patches.patchVercelOgLibrary(buildOpts);
+  patches.patchVercelOgLibrary(buildOpts);
 
   const outputPath = path.join(outputDir, "server-functions", "default");
   const packagePath = getPackagePath(buildOpts);
