@@ -3,7 +3,7 @@ import { clerkMiddleware } from "@clerk/nextjs/server";
 
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
-export async function middleware(request: NextRequest, event: NextFetchEvent) {
+export function middleware(request: NextRequest, event: NextFetchEvent) {
   console.log("middleware");
   if (request.nextUrl.pathname === "/about") {
     return NextResponse.redirect(new URL("/redirected", request.url));
