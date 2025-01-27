@@ -443,8 +443,8 @@ importers:
   packages/cloudflare:
     dependencies:
       '@ast-grep/napi':
-        specifier: ^0.33.1
-        version: 0.33.1
+        specifier: ^0.34.1
+        version: 0.34.1
       '@dotenvx/dotenvx':
         specifier: 'catalog:'
         version: 1.31.0
@@ -525,62 +525,62 @@ packages:
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
 
-  '@ast-grep/napi-darwin-arm64@0.33.1':
-    resolution: {integrity: sha512-HJcjxDhF1THn6VlUMpYFQoZBWWMk3flBJpLEDWLjH3Umk7/4tQvaJeKwhl32Snegj35p9SHGz1cS8D2k1nDsEg==}
+  '@ast-grep/napi-darwin-arm64@0.34.1':
+    resolution: {integrity: sha512-SzXXx2ya6xDKBaHZv20P9Qza5FaWE6lMBu00yegJVYRs7+0feBJ+10dvbv9fm+7RJ91Tw0V0G92Sgdg9lysBwA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
 
-  '@ast-grep/napi-darwin-x64@0.33.1':
-    resolution: {integrity: sha512-Gu3dd+7RZcLyte/xwBX4ErT12GYgGeQGQh6743NffChyVnpwZpj2aWmdkD8gHRKswXz2dp5R01QMCV0G5o8rDQ==}
+  '@ast-grep/napi-darwin-x64@0.34.1':
+    resolution: {integrity: sha512-LIeTaB0IgNGyyU5sMW2cUHjWWW/sNjEqseMmpHLft7+LEXK7ojr4NDUN33cKtrRgEfwpvVXjXh5sgLqm343ecg==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
 
-  '@ast-grep/napi-linux-arm64-gnu@0.33.1':
-    resolution: {integrity: sha512-4rvHBtq/0Ziwr93Mp86GQPMMySNHCMXnSIdJqJjTikt/LhJNdxmXtEVadashwxbBGWvcIy8dL6OCBHblzY/3ZQ==}
+  '@ast-grep/napi-linux-arm64-gnu@0.34.1':
+    resolution: {integrity: sha512-zi/JKIYDsucSfMHhb2W33AVw8Q6bF9MBV6FrYF98UWpJJoWXUPzPqVM09NANyWM0lypGiWuHk//JCwHndeCiSA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
 
-  '@ast-grep/napi-linux-arm64-musl@0.33.1':
-    resolution: {integrity: sha512-+vTHYYP8iRG9lZHhcpQRxAuD8CBYXJHFXgsevmnurS/R53r0YjNtrtj6W33e7RYXY5hehmey2Cz/5h6OhdLcJw==}
+  '@ast-grep/napi-linux-arm64-musl@0.34.1':
+    resolution: {integrity: sha512-IXdqwTbkdqHrcuQb448Qzd82QdTqVFe/f0sSkFYQTic8P2qNzmiHsVnxgEFsQPPbe09BVAoZ885j3OnaNfcDYA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
 
-  '@ast-grep/napi-linux-x64-gnu@0.33.1':
-    resolution: {integrity: sha512-Qm42//ZHIi2XvyvHboRPaNt32v143feG2aCqxZ2qhKJCI33abtH8pW8MF90Ix85d927xYtTwZX/ovOmJ4bghFQ==}
+  '@ast-grep/napi-linux-x64-gnu@0.34.1':
+    resolution: {integrity: sha512-on4LyIeN/zN7SIh8zr5v+NTzVu3kXm2mG28ib1Qe9GVcf35dz52ckf7bilulayKSa2MHZWAXMjuc6NYMiNEw+w==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
 
-  '@ast-grep/napi-linux-x64-musl@0.33.1':
-    resolution: {integrity: sha512-+ye9d8nwgi+f9yhA0NEv5lDcpfIF7xhCcF9FerIKpksX57oI68QWNz1bOWHOuebaf9Wc0hgEtfai7lzcDWcsnA==}
+  '@ast-grep/napi-linux-x64-musl@0.34.1':
+    resolution: {integrity: sha512-l1R5L9LOp0jTPjs8C+LUndZOA8cRw7PFlvoVxVbi2jCfcns00dqatSYc4yA/ke6ng2K0LSxjoV/jS8tefve0sA==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
 
-  '@ast-grep/napi-win32-arm64-msvc@0.33.1':
-    resolution: {integrity: sha512-0IrPtvqMUJmvmbBN3JcAmUoKUxsWMmrp0VAoJ+zUBHcz3GeWDISgxrUcx1z6edMeF+Ktm0SUG2LfqrzFhUqMyw==}
+  '@ast-grep/napi-win32-arm64-msvc@0.34.1':
+    resolution: {integrity: sha512-eVsdMtnY7jmN2xQjYY9gaqIxRHA44+QYivlP1uLbg8w3P4YlZWTFgOJ7aa357Hg/257mjeQCpodCkr0lGRsSYQ==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [win32]
 
-  '@ast-grep/napi-win32-ia32-msvc@0.33.1':
-    resolution: {integrity: sha512-rM6kK19Z9mknXQLZYvIGW1vR472n0dzhexWRM4O8BAL33B4NXA0qa7lX7I3ioHBTOUx0dGW10oNRm3yindUohg==}
+  '@ast-grep/napi-win32-ia32-msvc@0.34.1':
+    resolution: {integrity: sha512-jDW6jfoxEeYMM8hrPSiOz4iUIN+O7VTTlqU5TWDdlFX8HJYLF4SrNFEZl+Gz5B0Ph5LTjKPZFk6sd+DC1zt9+A==}
     engines: {node: '>= 10'}
     cpu: [ia32]
     os: [win32]
 
-  '@ast-grep/napi-win32-x64-msvc@0.33.1':
-    resolution: {integrity: sha512-8ATNhuU28PoUBxSgsPQnPpY+rl8DPEQCuUS55X0BLAvNQwR+Tc4MHHHX1FwjQxLLSAPfd5weiG4XQA+l7sIr0w==}
+  '@ast-grep/napi-win32-x64-msvc@0.34.1':
+    resolution: {integrity: sha512-ttBFcTugjzEbYRPBo400NfPU+3ukBxeOxpeYLBZ1yIYqbgekPnD4WItiowsX5/hd0wHcX3T50FdthlJRmOXubQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
 
-  '@ast-grep/napi@0.33.1':
-    resolution: {integrity: sha512-AfUsqmEa8NoYq1QhY2LWKCgKRBrCW89WB2D7t4hhTwXcfBB+CWRtY11vUughpfGLrdyziPst7kpdFzI9TC9Efw==}
+  '@ast-grep/napi@0.34.1':
+    resolution: {integrity: sha512-SZAXFjgSqr7TfdW+ZJZ5LMkC226vJCAHAU5VvaluG2maT/LdkaUN3RwV+emdcEXIrUOqKB98+WSobhqOsKYuNw==}
     engines: {node: '>= 10'}
 
   '@aws-crypto/crc32@5.2.0':
@@ -6147,44 +6147,44 @@ snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
-  '@ast-grep/napi-darwin-arm64@0.33.1':
+  '@ast-grep/napi-darwin-arm64@0.34.1':
     optional: true
 
-  '@ast-grep/napi-darwin-x64@0.33.1':
+  '@ast-grep/napi-darwin-x64@0.34.1':
     optional: true
 
-  '@ast-grep/napi-linux-arm64-gnu@0.33.1':
+  '@ast-grep/napi-linux-arm64-gnu@0.34.1':
     optional: true
 
-  '@ast-grep/napi-linux-arm64-musl@0.33.1':
+  '@ast-grep/napi-linux-arm64-musl@0.34.1':
     optional: true
 
-  '@ast-grep/napi-linux-x64-gnu@0.33.1':
+  '@ast-grep/napi-linux-x64-gnu@0.34.1':
     optional: true
 
-  '@ast-grep/napi-linux-x64-musl@0.33.1':
+  '@ast-grep/napi-linux-x64-musl@0.34.1':
     optional: true
 
-  '@ast-grep/napi-win32-arm64-msvc@0.33.1':
+  '@ast-grep/napi-win32-arm64-msvc@0.34.1':
     optional: true
 
-  '@ast-grep/napi-win32-ia32-msvc@0.33.1':
+  '@ast-grep/napi-win32-ia32-msvc@0.34.1':
     optional: true
 
-  '@ast-grep/napi-win32-x64-msvc@0.33.1':
+  '@ast-grep/napi-win32-x64-msvc@0.34.1':
     optional: true
 
-  '@ast-grep/napi@0.33.1':
+  '@ast-grep/napi@0.34.1':
     optionalDependencies:
-      '@ast-grep/napi-darwin-arm64': 0.33.1
-      '@ast-grep/napi-darwin-x64': 0.33.1
-      '@ast-grep/napi-linux-arm64-gnu': 0.33.1
-      '@ast-grep/napi-linux-arm64-musl': 0.33.1
-      '@ast-grep/napi-linux-x64-gnu': 0.33.1
-      '@ast-grep/napi-linux-x64-musl': 0.33.1
-      '@ast-grep/napi-win32-arm64-msvc': 0.33.1
-      '@ast-grep/napi-win32-ia32-msvc': 0.33.1
-      '@ast-grep/napi-win32-x64-msvc': 0.33.1
+      '@ast-grep/napi-darwin-arm64': 0.34.1
+      '@ast-grep/napi-darwin-x64': 0.34.1
+      '@ast-grep/napi-linux-arm64-gnu': 0.34.1
+      '@ast-grep/napi-linux-arm64-musl': 0.34.1
+      '@ast-grep/napi-linux-x64-gnu': 0.34.1
+      '@ast-grep/napi-linux-x64-musl': 0.34.1
+      '@ast-grep/napi-win32-arm64-msvc': 0.34.1
+      '@ast-grep/napi-win32-ia32-msvc': 0.34.1
+      '@ast-grep/napi-win32-x64-msvc': 0.34.1
 
   '@aws-crypto/crc32@5.2.0':
     dependencies:
@@ -6418,7 +6418,7 @@ snapshots:
       '@aws-sdk/client-sso-oidc': 3.726.0(@aws-sdk/client-sts@3.726.1)
       '@aws-sdk/client-sts': 3.726.1
       '@aws-sdk/core': 3.723.0
-      '@aws-sdk/credential-provider-node': 3.726.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.726.1))(@aws-sdk/client-sts@3.726.1)
+      '@aws-sdk/credential-provider-node': 3.726.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.699.0))(@aws-sdk/client-sts@3.726.1)
       '@aws-sdk/middleware-bucket-endpoint': 3.726.0
       '@aws-sdk/middleware-expect-continue': 3.723.0
       '@aws-sdk/middleware-flexible-checksums': 3.723.0
@@ -6572,7 +6572,7 @@ snapshots:
       '@aws-crypto/sha256-js': 5.2.0
       '@aws-sdk/client-sts': 3.726.1
       '@aws-sdk/core': 3.723.0
-      '@aws-sdk/credential-provider-node': 3.726.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.726.1))(@aws-sdk/client-sts@3.726.1)
+      '@aws-sdk/credential-provider-node': 3.726.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.699.0))(@aws-sdk/client-sts@3.726.1)
       '@aws-sdk/middleware-host-header': 3.723.0
       '@aws-sdk/middleware-logger': 3.723.0
       '@aws-sdk/middleware-recursion-detection': 3.723.0
@@ -6828,7 +6828,7 @@ snapshots:
       '@aws-crypto/sha256-js': 5.2.0
       '@aws-sdk/client-sso-oidc': 3.726.0(@aws-sdk/client-sts@3.726.1)
       '@aws-sdk/core': 3.723.0
-      '@aws-sdk/credential-provider-node': 3.726.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.726.1))(@aws-sdk/client-sts@3.726.1)
+      '@aws-sdk/credential-provider-node': 3.726.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.699.0))(@aws-sdk/client-sts@3.726.1)
       '@aws-sdk/middleware-host-header': 3.723.0
       '@aws-sdk/middleware-logger': 3.723.0
       '@aws-sdk/middleware-recursion-detection': 3.723.0
@@ -6978,14 +6978,14 @@ snapshots:
       - '@aws-sdk/client-sso-oidc'
       - aws-crt
 
-  '@aws-sdk/credential-provider-ini@3.726.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.726.1))(@aws-sdk/client-sts@3.726.1)':
+  '@aws-sdk/credential-provider-ini@3.726.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.699.0))(@aws-sdk/client-sts@3.726.1)':
     dependencies:
       '@aws-sdk/client-sts': 3.726.1
       '@aws-sdk/core': 3.723.0
       '@aws-sdk/credential-provider-env': 3.723.0
       '@aws-sdk/credential-provider-http': 3.723.0
       '@aws-sdk/credential-provider-process': 3.723.0
-      '@aws-sdk/credential-provider-sso': 3.726.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.726.1))
+      '@aws-sdk/credential-provider-sso': 3.726.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.699.0))
       '@aws-sdk/credential-provider-web-identity': 3.723.0(@aws-sdk/client-sts@3.726.1)
       '@aws-sdk/types': 3.723.0
       '@smithy/credential-provider-imds': 4.0.1
@@ -7032,13 +7032,13 @@ snapshots:
       - '@aws-sdk/client-sts'
       - aws-crt
 
-  '@aws-sdk/credential-provider-node@3.726.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.726.1))(@aws-sdk/client-sts@3.726.1)':
+  '@aws-sdk/credential-provider-node@3.726.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.699.0))(@aws-sdk/client-sts@3.726.1)':
     dependencies:
       '@aws-sdk/credential-provider-env': 3.723.0
       '@aws-sdk/credential-provider-http': 3.723.0
-      '@aws-sdk/credential-provider-ini': 3.726.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.726.1))(@aws-sdk/client-sts@3.726.1)
+      '@aws-sdk/credential-provider-ini': 3.726.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.699.0))(@aws-sdk/client-sts@3.726.1)
       '@aws-sdk/credential-provider-process': 3.723.0
-      '@aws-sdk/credential-provider-sso': 3.726.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.726.1))
+      '@aws-sdk/credential-provider-sso': 3.726.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.699.0))
       '@aws-sdk/credential-provider-web-identity': 3.723.0(@aws-sdk/client-sts@3.726.1)
       '@aws-sdk/types': 3.723.0
       '@smithy/credential-provider-imds': 4.0.1
@@ -7103,11 +7103,11 @@ snapshots:
       - '@aws-sdk/client-sso-oidc'
       - aws-crt
 
-  '@aws-sdk/credential-provider-sso@3.726.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.726.1))':
+  '@aws-sdk/credential-provider-sso@3.726.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.699.0))':
     dependencies:
       '@aws-sdk/client-sso': 3.726.0
       '@aws-sdk/core': 3.723.0
-      '@aws-sdk/token-providers': 3.723.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.726.1))
+      '@aws-sdk/token-providers': 3.723.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.699.0))
       '@aws-sdk/types': 3.723.0
       '@smithy/property-provider': 4.0.1
       '@smithy/shared-ini-file-loader': 4.0.1
@@ -7408,7 +7408,7 @@ snapshots:
       '@smithy/types': 3.7.1
       tslib: 2.6.3
 
-  '@aws-sdk/token-providers@3.723.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.726.1))':
+  '@aws-sdk/token-providers@3.723.0(@aws-sdk/client-sso-oidc@3.726.0(@aws-sdk/client-sts@3.699.0))':
     dependencies:
       '@aws-sdk/client-sso-oidc': 3.726.0(@aws-sdk/client-sts@3.726.1)
       '@aws-sdk/types': 3.723.0

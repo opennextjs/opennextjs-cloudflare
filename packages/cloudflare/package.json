@@ -71,7 +71,7 @@
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@ast-grep/napi": "^0.33.1",
+    "@ast-grep/napi": "^0.34.1",
     "@dotenvx/dotenvx": "catalog:",
     "@opennextjs/aws": "https://pkg.pr.new/@opennextjs/aws@704",
     "enquirer": "^2.4.1",
