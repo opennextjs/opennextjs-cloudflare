@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse, NextFetchEvent } from "next/server";
 import { clerkMiddleware } from "@clerk/nextjs/server";
 
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+
 export function middleware(request: NextRequest, event: NextFetchEvent) {
   console.log("middleware");
   if (request.nextUrl.pathname === "/about") {
@@ -16,7 +18,19 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
     })(request, event);
   }
 
-  return NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  const cloudflareContext = getCloudflareContext();
+
+  requestHeaders.set(
+    "x-cloudflare-context",
+    `typeof \`cloudflareContext.env\` = ${typeof cloudflareContext.env}`
+  );
+
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 }
 
 export const config = {

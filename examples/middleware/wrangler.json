@@ -7,5 +7,9 @@
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
-  }
+  },
+  "vars": {
+    "MY_VAR": "my-var"
+  },
+  "kv_namespaces": [{ "binding": "MY_KV", "id": "<id>" }]
 }

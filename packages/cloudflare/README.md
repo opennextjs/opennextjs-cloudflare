@@ -6,72 +6,7 @@ Deploy Next.js apps to Cloudflare!
 
 ## Get started
 
-You can use [`create-next-app`](https://nextjs.org/docs/pages/api-reference/cli/create-next-app) to start a new application or take an existing Next.js application and deploy it to Cloudflare using the following few steps:
-
-## Configure your app
-
-- add the following `devDependencies` to the `package.json`:
-
-  ```bash
-  npm add -D wrangler@latest @opennextjs/cloudflare
-  # or
-  pnpm add -D wrangler@latest @opennextjs/cloudflare
-  # or
-  yarn add -D wrangler@latest @opennextjs/cloudflare
-  # or
-  bun add -D wrangler@latest @opennextjs/cloudflare
-  ```
-
-- add a `wrangler.json` at the root of your project
-
-```json
-{
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "main": ".open-next/worker.js",
-  "name": "<your-app-name>",
-  "compatibility_date": "2024-12-30",
-  "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  }
-}
-```
-
-- add a `open-next.config.ts` at the root of your project:
-
-```ts
-import type { OpenNextConfig } from "open-next/types/open-next";
-
-const config: OpenNextConfig = {
-  default: {
-    override: {
-      wrapper: "cloudflare-node",
-      converter: "edge",
-      // Unused implementation
-      incrementalCache: "dummy",
-      tagCache: "dummy",
-      queue: "dummy",
-    },
-  },
-
-  middleware: {
-    external: true,
-    override: {
-      wrapper: "cloudflare-edge",
-      converter: "edge",
-      proxyExternalRequest: "fetch",
-    },
-  },
-};
-
-export default config;
-```
-
-## Known issues
-
-- `▲ [WARNING] Suspicious assignment to defined constant "process.env.NODE_ENV" [assign-to-define]` can safely be ignored
-- Maybe more, still experimental...
+To get started with the adapter visit the [official get started documentation](https://opennext.js.org/cloudflare/get-started).
 
 ## Local development
 

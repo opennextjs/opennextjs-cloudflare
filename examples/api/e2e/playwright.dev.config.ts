@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
+import type nodeProcess from "node:process";
 
-declare var process: { env: Record<string, string> };
+declare const process: typeof nodeProcess;
 
 /**
  * See https://playwright.dev/docs/test-configuration.

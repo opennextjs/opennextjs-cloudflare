@@ -1,8 +1,7 @@
-import type { KVNamespace } from "@cloudflare/workers-types";
 import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/types/overrides";
 import { IgnorableError, RecoverableError } from "@opennextjs/aws/utils/error.js";
 
-import { getCloudflareContext } from "./get-cloudflare-context.js";
+import { getCloudflareContext } from "./cloudflare-context.js";
 
 export const CACHE_ASSET_DIR = "cnd-cgi/_next_cache";
 
@@ -17,19 +16,16 @@ export const STATUS_DELETED = 1;
  */
 class Cache implements IncrementalCache {
   readonly name = "cloudflare-kv";
-  protected initialized = false;
-  protected kv: KVNamespace | undefined;
-  protected assets: Fetcher | undefined;
 
   async get<IsFetch extends boolean = false>(
     key: string,
     isFetch?: IsFetch
   ): Promise<WithLastModified<CacheValue<IsFetch>>> {
-    if (!this.initialized) {
-      await this.init();
-    }
+    const cfEnv = getCloudflareContext().env;
+    const kv = cfEnv.NEXT_CACHE_WORKERS_KV;
+    const assets = cfEnv.ASSETS;
 
-    if (!(this.kv || this.assets)) {
+    if (!(kv || assets)) {
       throw new IgnorableError(`No KVNamespace nor Fetcher`);
     }
 
@@ -42,19 +38,19 @@ class Cache implements IncrementalCache {
         status?: number;
       } | null = null;
 
-      if (this.kv) {
+      if (kv) {
         this.debug(`- From KV`);
         const kvKey = this.getKVKey(key, isFetch);
-        entry = await this.kv.get(kvKey, "json");
+        entry = await kv.get(kvKey, "json");
         if (entry?.status === STATUS_DELETED) {
           return {};
         }
       }
 
-      if (!entry && this.assets) {
+      if (!entry && assets) {
         this.debug(`- From Assets`);
         const url = this.getAssetUrl(key, isFetch);
-        const response = await this.assets.fetch(url);
+        const response = await assets.fetch(url);
         if (response.ok) {
           // TODO: consider populating KV with the asset value if faster.
           // This could be optional as KV writes are $$.
@@ -78,19 +74,20 @@ class Cache implements IncrementalCache {
     value: CacheValue<IsFetch>,
     isFetch?: IsFetch
   ): Promise<void> {
-    if (!this.initialized) {
-      await this.init();
-    }
-    if (!this.kv) {
+    const kv = getCloudflareContext().env.NEXT_CACHE_WORKERS_KV;
+
+    if (!kv) {
       throw new IgnorableError(`No KVNamespace`);
     }
+
     this.debug(`Set ${key}`);
+
     try {
       const kvKey = this.getKVKey(key, isFetch);
       // Note: We can not set a TTL as we might fallback to assets,
       //       still removing old data (old BUILD_ID) could help avoiding
       //       the cache growing too big.
-      await this.kv.put(
+      await kv.put(
         kvKey,
         JSON.stringify({
           value,
@@ -105,17 +102,18 @@ class Cache implements IncrementalCache {
   }
 
   async delete(key: string): Promise<void> {
-    if (!this.initialized) {
-      await this.init();
-    }
-    if (!this.kv) {
+    const kv = getCloudflareContext().env.NEXT_CACHE_WORKERS_KV;
+
+    if (!kv) {
       throw new IgnorableError(`No KVNamespace`);
     }
+
     this.debug(`Delete ${key}`);
+
     try {
       const kvKey = this.getKVKey(key, /* isFetch= */ false);
       // Do not delete the key as we would then fallback to the assets.
-      await this.kv.put(kvKey, JSON.stringify({ status: STATUS_DELETED }));
+      await kv.put(kvKey, JSON.stringify({ status: STATUS_DELETED }));
     } catch {
       throw new RecoverableError(`Failed to delete cache [${key}]`);
     }
@@ -139,13 +137,6 @@ class Cache implements IncrementalCache {
 
   protected getBuildId() {
     return process.env.NEXT_BUILD_ID ?? "no-build-id";
-  }
-
-  protected async init() {
-    const env = (await getCloudflareContext()).env;
-    this.kv = env.NEXT_CACHE_WORKERS_KV;
-    this.assets = env.ASSETS;
-    this.initialized = true;
   }
 }
 

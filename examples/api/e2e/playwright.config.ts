@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
+import type nodeProcess from "node:process";
 
-declare var process: { env: Record<string, string> };
+declare const process: typeof nodeProcess;
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -49,5 +50,6 @@ export default defineConfig({
     command: "pnpm preview:worker",
     url: "http://localhost:8770",
     reuseExistingServer: !process.env.CI,
+    timeout: 70_000,
   },
 });

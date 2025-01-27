@@ -11,9 +11,8 @@ export async function GET() {
     return new Response("Hello World!");
   }
 
-  // Retrieve the bindings defined in wrangler.toml
-  const { env } = await getCloudflareContext();
-  return new Response(env.hello);
+  // Retrieve the bindings defined in wrangler.json
+  return new Response(getCloudflareContext().env.hello);
 }
 
 export async function POST(request: Request) {
