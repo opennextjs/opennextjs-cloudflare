@@ -57,10 +57,11 @@ describe("patchVercelOgLibrary", () => {
     expect(readFileSync(path.join(openNextVercelOgDir, "index.edge.js"), { encoding: "utf-8" }))
       .toMatchInlineSnapshot(`
       "async function getFallbackFont() {
-        return (await import("./noto-sans-v27-latin-regular.ttf.bin")).default
+        // .bin is used so that a loader does not need to be configured for .ttf files
+        return (await import("./noto-sans-v27-latin-regular.ttf.bin")).default;
       }
 
-      var fallbackFont = getFallbackFont()"
+      var fallbackFont = getFallbackFont();"
     `);
 
     expect(readFileSync(openNextOgRoutePath, { encoding: "utf-8" })).toMatchInlineSnapshot(

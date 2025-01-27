@@ -17,10 +17,11 @@ describe("vercelOgFallbackFontRule", () => {
     const code = `var fallbackFont = fetch(new URL("./noto-sans-v27-latin-regular.ttf", import.meta.url)).then((res) => res.arrayBuffer());`;
     expect(patchCode(code, vercelOgFallbackFontRule)).toMatchInlineSnapshot(`
       "async function getFallbackFont() {
-        return (await import("./noto-sans-v27-latin-regular.ttf.bin")).default
+        // .bin is used so that a loader does not need to be configured for .ttf files
+        return (await import("./noto-sans-v27-latin-regular.ttf.bin")).default;
       }
 
-      var fallbackFont = getFallbackFont()"
+      var fallbackFont = getFallbackFont();"
     `);
   });
 });
