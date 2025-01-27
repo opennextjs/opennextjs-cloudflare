@@ -1,4 +1,16 @@
 import { test, expect } from "@playwright/test";
+import type { BinaryLike } from "node:crypto";
+import { createHash } from "node:crypto";
+
+const OG_MD5 = "2f7b724d62d8c7739076da211aa62e7b";
+
+export function validateMd5(data: Buffer, expectedHash: string) {
+  return (
+    createHash("md5")
+      .update(data as BinaryLike)
+      .digest("hex") === expectedHash
+  );
+}
 
 test("the application's noop index page is visible and it allows navigating to the hello-world api route", async ({
   page,
@@ -47,4 +59,5 @@ test("generates an og image successfully", async ({ page }) => {
   const res = await page.request.get("/og");
   expect(res.status()).toEqual(200);
   expect(res.headers()["content-type"]).toEqual("image/png");
+  expect(validateMd5(await res.body(), OG_MD5)).toEqual(true);
 });
