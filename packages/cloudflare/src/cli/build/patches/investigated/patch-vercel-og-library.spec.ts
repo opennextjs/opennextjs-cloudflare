@@ -49,6 +49,7 @@ describe("patchVercelOgLibrary", () => {
     expect(readdirSync(openNextVercelOgDir)).toMatchInlineSnapshot(`
       [
         "index.edge.js",
+        "index.node.js",
         "noto-sans-v27-latin-regular.ttf.bin",
       ]
     `);
