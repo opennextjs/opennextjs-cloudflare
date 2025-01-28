@@ -24,6 +24,6 @@
       "@example/shared": ["../shared"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "../utils.ts"],
   "exclude": ["node_modules", "open-next.config.ts"]
 }
