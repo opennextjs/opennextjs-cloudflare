@@ -29,7 +29,6 @@ export default function inlineRequirePagePlugin(buildOpts: BuildOptions) {
 }
 
 function getRule(buildOpts: BuildOptions) {
-  // Load manifests
   const { outputDir } = buildOpts;
   const serverDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts), ".next/server");
 
@@ -47,6 +46,7 @@ function getRule(buildOpts: BuildOptions) {
   const htmlFiles = manifests.filter((file) => file.endsWith(".html"));
   const jsFiles = manifests.filter((file) => file.endsWith(".js"));
 
+  // Inline fs access and dynamic require that are not supported ny workerd.
   const fnBody = `
 // html
 ${htmlFiles

@@ -16,7 +16,7 @@ rule:
     pattern: $MOD
     kind: string_fragment
     stopBy: end
-    regex: ^caniuse-lite(/|$)|jimp(/|$)|probe-image-size(/|$)
+    regex: ^(caniuse-lite|jimp|probe-image-size)(/|$)
   not:
     inside:
       kind: try_statement
