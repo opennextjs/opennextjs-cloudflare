@@ -1,7 +1,7 @@
 /**
  * Makes files handled by wrangler external.
  *
- * Paths need to be absolute so that their are valid in the output bundle.
+ * Paths need to be absolute so that they are valid in the output bundle.
  */
 
 import { dirname, resolve } from "node:path";
