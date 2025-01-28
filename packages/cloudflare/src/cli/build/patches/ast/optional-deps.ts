@@ -3,7 +3,7 @@ import { type SgNode } from "@ast-grep/napi";
 import { applyRule } from "./util.js";
 
 /**
- * Handle optional dependencies.
+ * Handles optional dependencies.
  *
  * A top level `require(optionalDep)` would throw when the dep is not installed.
  *
@@ -16,7 +16,7 @@ rule:
     pattern: $MOD
     kind: string_fragment
     stopBy: end
-    regex: ^caniuse-lite(/|$)
+    regex: ^(caniuse-lite|jimp|probe-image-size)(/|$)
   not:
     inside:
       kind: try_statement
