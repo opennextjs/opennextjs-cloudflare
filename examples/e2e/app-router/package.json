@@ -10,8 +10,9 @@
     "lint": "next lint",
     "clean": "rm -rf .turbo node_modules .next .open-next",
     "build:worker": "pnpm opennextjs-cloudflare",
-    "dev:worker": "wrangler dev --port 8770 --inspector-port 9330",
-    "preview": "pnpm build:worker && pnpm dev:worker"
+    "dev:worker": "wrangler dev --port 8790 --inspector-port 9350",
+    "preview": "pnpm build:worker && pnpm dev:worker",
+    "e2e-fix": "playwright test -c e2e/playwright.config.ts"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "workspace:*",
@@ -21,6 +22,7 @@
     "react-dom": "catalog:e2e"
   },
   "devDependencies": {
+    "@playwright/test": "catalog:",
     "@types/node": "catalog:e2e",
     "@types/react": "catalog:e2e",
     "@types/react-dom": "catalog:e2e",
