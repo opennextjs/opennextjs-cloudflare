@@ -1,0 +1,34 @@
+{
+  "name": "pages-router",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "openbuild": "node ../../packages/open-next/dist/index.js build --build-command \"npx turbo build\"",
+    "dev": "next dev --turbopack --port 3002",
+    "build": "next build",
+    "start": "next start --port 3002",
+    "lint": "next lint",
+    "clean": "rm -rf .turbo node_modules .next .open-next",
+    "build:worker": "pnpm opennextjs-cloudflare",
+    "dev:worker": "wrangler dev --port 8791 --inspector-port 9351",
+    "preview": "pnpm build:worker && pnpm dev:worker",
+    "e2e-fix": "playwright test -c e2e/playwright.config.ts"
+  },
+  "dependencies": {
+    "@opennextjs/cloudflare": "workspace:*",
+    "@example/shared": "workspace:*",
+    "next": "catalog:e2e",
+    "react": "catalog:e2e",
+    "react-dom": "catalog:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:e2e",
+    "@types/react": "catalog:e2e",
+    "@types/react-dom": "catalog:e2e",
+    "autoprefixer": "catalog:e2e",
+    "postcss": "catalog:e2e",
+    "tailwindcss": "catalog:e2e",
+    "typescript": "catalog:default"
+  }
+}
