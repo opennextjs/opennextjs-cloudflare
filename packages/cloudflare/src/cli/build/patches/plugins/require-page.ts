@@ -3,21 +3,27 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
+import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import type { PluginBuild } from "esbuild";
 
 import { patchCode, type RuleConfig } from "../ast/util.js";
 
-export default function InlineRequirePagePlugin(buildOpts: BuildOptions) {
+export default function inlineRequirePagePlugin(buildOpts: BuildOptions) {
   return {
     name: "inline-require-page",
 
     setup: async (build: PluginBuild) => {
-      build.onLoad({ filter: /\/next\/dist\/server\/require\.js$/ }, async ({ path }) => {
-        const jsCode = await readFile(path, "utf8");
-        if (/function requirePage\(/.test(jsCode)) {
-          return { contents: patchCode(jsCode, getRule(buildOpts)) };
+      build.onLoad(
+        {
+          filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/require\.js$`, { escape: false }),
+        },
+        async ({ path }) => {
+          const jsCode = await readFile(path, "utf8");
+          if (/function requirePage\(/.test(jsCode)) {
+            return { contents: patchCode(jsCode, getRule(buildOpts)) };
+          }
         }
-      });
+      );
     },
   };
 }
@@ -42,24 +48,24 @@ function getRule(buildOpts: BuildOptions) {
   const jsFiles = manifests.filter((file) => file.endsWith(".js"));
 
   const fnBody = `
-  // html
-  ${htmlFiles
+// html
+${htmlFiles
+  .map(
+    (file) => `if (pagePath.endsWith("${file}")) {
+        return ${JSON.stringify(readFileSync(join(serverDir, file), "utf-8"))};
+      }`
+  )
+  .join("\n")}
+// js
+process.env.__NEXT_PRIVATE_RUNTIME_TYPE = isAppPath ? 'app' : 'pages';
+try {
+  ${jsFiles
     .map(
       (file) => `if (pagePath.endsWith("${file}")) {
-          return ${JSON.stringify(readFileSync(join(serverDir, file), "utf-8"))};
-        }`
+        return require(${JSON.stringify(join(serverDir, file))});
+      }`
     )
     .join("\n")}
-  // js
-  process.env.__NEXT_PRIVATE_RUNTIME_TYPE = isAppPath ? 'app' : 'pages';
-  try {
-    ${jsFiles
-      .map(
-        (file) => `if (pagePath.endsWith("${file}")) {
-          return require(${JSON.stringify(join(serverDir, file))});
-        }`
-      )
-      .join("\n")}
 } finally {
   process.env.__NEXT_PRIVATE_RUNTIME_TYPE = '';
 }
@@ -70,7 +76,7 @@ function getRule(buildOpts: BuildOptions) {
       pattern: `
 function requirePage($PAGE, $DIST_DIR, $IS_APPP_ATH) {
   const $_ = getPagePath($$$ARGS);
-  $$$
+  $$$_BODY
 }`,
     },
     fix: `

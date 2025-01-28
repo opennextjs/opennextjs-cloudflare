@@ -10,7 +10,8 @@ import { build, Plugin } from "esbuild";
 
 import { patchOptionalDependencies } from "./patches/ast/optional-deps.js";
 import * as patches from "./patches/index.js";
-import InlineRequirePagePlugin from "./patches/plugins/require-page.js";
+import inlineRequirePagePlugin from "./patches/plugins/require-page.js";
+import setWranglerExternal from "./patches/plugins/wrangler-external.js";
 import { normalizePath, patchCodeWithValidations } from "./utils/index.js";
 
 /** The dist directory of the Cloudflare adapter package */
@@ -49,16 +50,17 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
     format: "esm",
     target: "esnext",
     minify: false,
-    plugins: [createFixRequiresESBuildPlugin(buildOpts), InlineRequirePagePlugin(buildOpts)],
+    plugins: [
+      createFixRequiresESBuildPlugin(buildOpts),
+      inlineRequirePagePlugin(buildOpts),
+      setWranglerExternal(),
+    ],
     external: [
       "./middleware/handler.mjs",
       // Next optional dependencies.
       "caniuse-lite",
       "jimp",
       "probe-image-size",
-      // Dependencies handled by wrangler.
-      "*.bin",
-      "*.wasm?module",
     ],
     alias: {
       // Note: we apply an empty shim to next/dist/compiled/ws because it generates two `eval`s:
