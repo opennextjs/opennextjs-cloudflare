@@ -89,11 +89,30 @@ export function getCloudflareContext<
  * Note: this function should only be called inside the Next.js config file, and although async it doesn't need to be `await`ed
  */
 export async function initOpenNextCloudflareForDev() {
+  const shouldInitializationRun = shouldContextInitializationRun();
+  if (!shouldInitializationRun) return;
+
   const context = await getCloudflareContextFromWrangler();
 
   addCloudflareContextToNodejsGlobal(context);
 
   await monkeyPatchVmModuleEdgeContext(context);
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
 }
 
 /**
