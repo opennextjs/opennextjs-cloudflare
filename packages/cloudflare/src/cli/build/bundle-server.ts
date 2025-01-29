@@ -9,6 +9,7 @@ import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import { build, Plugin } from "esbuild";
 
 import { patchOptionalDependencies } from "./patches/ast/optional-deps.js";
+import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import * as patches from "./patches/index.js";
 import inlineRequirePagePlugin from "./patches/plugins/require-page.js";
 import setWranglerExternal from "./patches/plugins/wrangler-external.js";
@@ -50,7 +51,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
 
   patches.patchWranglerDeps(buildOpts);
   await patches.updateWebpackChunksFile(buildOpts);
-  patches.patchVercelOgLibrary(buildOpts);
+  patchVercelOgLibrary(buildOpts);
 
   const outputPath = path.join(outputDir, "server-functions", "default");
   const packagePath = getPackagePath(buildOpts);
