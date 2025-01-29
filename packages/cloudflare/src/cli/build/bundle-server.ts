@@ -22,7 +22,14 @@ const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "
  * They are not required for Next.js to run but only needed to enabled specific features.
  * When one of those dependency is required, it should be installed by the application.
  */
-const optionalDependencies = ["caniuse-lite", "jimp", "probe-image-size"];
+const optionalDependencies = [
+  "caniuse-lite",
+  "critters",
+  "jimp",
+  "probe-image-size",
+  // `server.edge` is not available in react-dom@18
+  "react-dom/server.edge",
+];
 
 /**
  * Bundle the Open Next server.
