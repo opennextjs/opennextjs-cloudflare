@@ -5,8 +5,8 @@ import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { globSync } from "glob";
 
-import { parseFile } from "../ast/util.js";
-import { patchVercelOgFallbackFont, patchVercelOgImport } from "../ast/vercel-og.js";
+import { parseFile } from "./util.js";
+import { patchVercelOgFallbackFont, patchVercelOgImport } from "./vercel-og.js";
 
 type TraceInfo = { version: number; files: string[] };
 
