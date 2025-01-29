@@ -1,4 +1,4 @@
-import type { OpenNextConfig } from "@opennextjs/aws/types/open-next";
+import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 import cache from "@opennextjs/cloudflare/kvCache";
 
 const config: OpenNextConfig = {
