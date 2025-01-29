@@ -18,6 +18,20 @@ import { normalizePath, patchCodeWithValidations } from "./utils/index.js";
 const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 /**
+ * List of optional Next.js dependencies.
+ * They are not required for Next.js to run but only needed to enabled specific features.
+ * When one of those dependency is required, it should be installed by the application.
+ */
+const optionalDependencies = [
+  "caniuse-lite",
+  "critters",
+  "jimp",
+  "probe-image-size",
+  // `server.edge` is not available in react-dom@18
+  "react-dom/server.edge",
+];
+
+/**
  * Bundle the Open Next server.
  */
 export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
@@ -56,13 +70,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       inlineRequirePagePlugin(buildOpts),
       setWranglerExternal(),
     ],
-    external: [
-      "./middleware/handler.mjs",
-      // Next optional dependencies.
-      "caniuse-lite",
-      "jimp",
-      "probe-image-size",
-    ],
+    external: ["./middleware/handler.mjs", ...optionalDependencies],
     alias: {
       // Note: we apply an empty shim to next/dist/compiled/ws because it generates two `eval`s:
       //   eval("require")("bufferutil");
@@ -196,7 +204,7 @@ async function updateWorkerBundledCode(workerOutputFile: string, buildOpts: Buil
 
   const bundle = parse(Lang.TypeScript, patchedCode).root();
 
-  const { edits } = patchOptionalDependencies(bundle);
+  const { edits } = patchOptionalDependencies(bundle, optionalDependencies);
 
   await writeFile(workerOutputFile, bundle.commitEdits(edits));
 }

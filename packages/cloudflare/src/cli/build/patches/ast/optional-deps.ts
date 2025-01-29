@@ -9,27 +9,40 @@ import { applyRule } from "./util.js";
  *
  * So we wrap `require(optionalDep)` in a try/catch (if not already present).
  */
-export const optionalDepRule = `
-rule:
-  pattern: $$$LHS = require($$$REQ)
-  has:
-    pattern: $MOD
-    kind: string_fragment
-    stopBy: end
-    regex: ^(caniuse-lite|jimp|probe-image-size)(/|$)
-  not:
-    inside:
-      kind: try_statement
+export function buildOptionalDepRule(dependencies: string[]) {
+  // Build a regexp matching either
+  // - the full packages names, i.e. `package`
+  // - subpaths in the package, i.e. `package/...`
+  const regex = `^(${dependencies.join("|")})(/|$)`;
+  return `
+  rule:
+    pattern: $$$LHS = require($$$REQ)
+    has:
+      pattern: $MOD
+      kind: string_fragment
       stopBy: end
+      regex: ${regex}
+    not:
+      inside:
+        kind: try_statement
+        stopBy: end
 
-fix: |-
-  try {
-    $$$LHS = require($$$REQ);
-  } catch {
-    throw new Error('The optional dependency "$MOD" is not installed');
-  }
-`;
+  fix: |-
+    try {
+      $$$LHS = require($$$REQ);
+    } catch {
+      throw new Error('The optional dependency "$MOD" is not installed');
+    }
+  `;
+}
 
-export function patchOptionalDependencies(root: SgNode) {
-  return applyRule(optionalDepRule, root);
+/**
+ * Wraps requires for passed dependencies in a `try ... catch`.
+ *
+ * @param root AST root node
+ * @param dependencies List of dependencies to wrap
+ * @returns matches and edits, see `applyRule`
+ */
+export function patchOptionalDependencies(root: SgNode, dependencies: string[]) {
+  return applyRule(buildOptionalDepRule(dependencies), root);
 }
