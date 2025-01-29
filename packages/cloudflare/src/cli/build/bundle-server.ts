@@ -43,13 +43,14 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
   const openNextServer = path.join(outputPath, packagePath, `index.mjs`);
   const openNextServerBundle = path.join(outputPath, packagePath, `handler.mjs`);
 
-  await build({
+  const result = await build({
     entryPoints: [openNextServer],
     bundle: true,
     outfile: openNextServerBundle,
     format: "esm",
     target: "esnext",
     minify: false,
+    metafile: true,
     plugins: [
       createFixRequiresESBuildPlugin(buildOpts),
       inlineRequirePagePlugin(buildOpts),
@@ -134,6 +135,13 @@ globalThis.__BUILD_TIMESTAMP_MS__ = ${Date.now()};
 `,
     },
   });
+
+  if (result.errors.length > 0) {
+    result.errors.forEach((error) => console.error(error));
+    throw new Error(`There was a problem bundling the server.`);
+  }
+
+  fs.writeFileSync(openNextServerBundle + ".meta.json", JSON.stringify(result.metafile, null, 2));
 
   await updateWorkerBundledCode(openNextServerBundle, buildOpts);
 
