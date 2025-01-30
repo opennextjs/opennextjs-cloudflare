@@ -85,8 +85,8 @@ catalogs:
       specifier: ^2.1.1
       version: 2.1.1
     wrangler:
-      specifier: ^3.106.0
-      version: 3.106.0
+      specifier: ^3.107.0
+      version: 3.107.0
   e2e:
     '@types/node':
       specifier: 20.17.6
@@ -171,7 +171,7 @@ importers:
         version: 22.2.0
       wrangler:
         specifier: 'catalog:'
-        version: 3.106.0(@cloudflare/workers-types@4.20250109.0)
+        version: 3.107.0(@cloudflare/workers-types@4.20250109.0)
 
   examples/bugs/gh-119:
     dependencies:
@@ -217,7 +217,7 @@ importers:
         version: 5.7.3
       wrangler:
         specifier: 'catalog:'
-        version: 3.106.0(@cloudflare/workers-types@4.20250109.0)
+        version: 3.107.0(@cloudflare/workers-types@4.20250109.0)
 
   examples/bugs/gh-219:
     dependencies:
@@ -344,7 +344,7 @@ importers:
         version: 39.4.2(rollup@4.21.0)
       wrangler:
         specifier: 'catalog:'
-        version: 3.106.0(@cloudflare/workers-types@4.20250109.0)
+        version: 3.107.0(@cloudflare/workers-types@4.20250109.0)
 
   examples/create-next-app:
     dependencies:
@@ -390,7 +390,7 @@ importers:
         version: 5.7.3
       wrangler:
         specifier: 'catalog:'
-        version: 3.106.0(@cloudflare/workers-types@4.20250109.0)
+        version: 3.107.0(@cloudflare/workers-types@4.20250109.0)
 
   examples/e2e/app-pages-router:
     dependencies:
@@ -436,7 +436,7 @@ importers:
         version: 5.7.3
       wrangler:
         specifier: 'catalog:'
-        version: 3.106.0(@cloudflare/workers-types@4.20250109.0)
+        version: 3.107.0(@cloudflare/workers-types@4.20250109.0)
 
   examples/e2e/app-router:
     dependencies:
@@ -482,7 +482,7 @@ importers:
         version: 5.7.3
       wrangler:
         specifier: 'catalog:'
-        version: 3.106.0(@cloudflare/workers-types@4.20250109.0)
+        version: 3.107.0(@cloudflare/workers-types@4.20250109.0)
 
   examples/e2e/pages-router:
     dependencies:
@@ -528,7 +528,7 @@ importers:
         version: 5.7.3
       wrangler:
         specifier: 'catalog:'
-        version: 3.106.0(@cloudflare/workers-types@4.20250109.0)
+        version: 3.107.0(@cloudflare/workers-types@4.20250109.0)
 
   examples/e2e/shared:
     dependencies:
@@ -587,7 +587,7 @@ importers:
         version: 5.7.3
       wrangler:
         specifier: 'catalog:'
-        version: 3.106.0(@cloudflare/workers-types@4.20250109.0)
+        version: 3.107.0(@cloudflare/workers-types@4.20250109.0)
 
   examples/vercel-blog-starter:
     dependencies:
@@ -642,7 +642,7 @@ importers:
         version: 5.7.3
       wrangler:
         specifier: 'catalog:'
-        version: 3.106.0(@cloudflare/workers-types@4.20250109.0)
+        version: 3.107.0(@cloudflare/workers-types@4.20250109.0)
 
   examples/vercel-commerce:
     dependencies:
@@ -709,7 +709,7 @@ importers:
         version: 5.7.3
       wrangler:
         specifier: 'catalog:'
-        version: 3.106.0(@cloudflare/workers-types@4.20250109.0)
+        version: 3.107.0(@cloudflare/workers-types@4.20250109.0)
 
   packages/cloudflare:
     dependencies:
@@ -733,7 +733,7 @@ importers:
         version: 23.0.0
       wrangler:
         specifier: 'catalog:'
-        version: 3.106.0(@cloudflare/workers-types@4.20250109.0)
+        version: 3.107.0(@cloudflare/workers-types@4.20250109.0)
       yaml:
         specifier: ^2.7.0
         version: 2.7.0
@@ -4697,9 +4697,6 @@ packages:
   caniuse-lite@1.0.30001664:
     resolution: {integrity: sha512-AmE7k4dXiNKQipgn7a2xg558IRqPN3jMQY/rOsbxDhrd0tyChwbITBfiwtnqz8bi2M5mIWbxAYBvk7W7QBUS2g==}
 
-  capnp-ts@0.7.0:
-    resolution: {integrity: sha512-XKxXAC3HVPv7r674zP0VC3RTXz+/JKhfyw94ljvF80yynK6VkTnqE3jMuN8b3dUVmmc43TjyxjW4KTsmB3c86g==}
-
   ccount@2.0.1:
     resolution: {integrity: sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==}
 
@@ -6592,7 +6589,6 @@ packages:
 
   libsql@0.4.7:
     resolution: {integrity: sha512-T9eIRCs6b0J1SHKYIvD8+KCJMcWZ900iZyxdnSCdqxN12Z1ijzT+jY5nrk72Jw4B0HGzms2NgpryArlJqvc3Lw==}
-    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   lilconfig@2.1.0:
@@ -6859,8 +6855,8 @@ packages:
     resolution: {integrity: sha512-I9jwMn07Sy/IwOj3zVkVik2JTvgpaykDZEigL6Rx6N9LbMywwUSMtxET+7lVoDLLd3O3IXwJwvuuns8UB/HeAg==}
     engines: {node: '>=4'}
 
-  miniflare@3.20250124.0:
-    resolution: {integrity: sha512-ewsetUwhj4FqeLoE3UMqYHHyCYIOPzdhlpF9CHuHpMZbfLvI9SPd+VrKrLfOgyAF97EHqVWb6WamIrLdgtj6Kg==}
+  miniflare@3.20250124.1:
+    resolution: {integrity: sha512-BL8jq7btzaHFs/8PwYjBIiBecyqkEwkJIsFvoO/4bJn8O9NAbFaLSB023nGpfwWCebP6uSepzqZm4hrOOxA8Eg==}
     engines: {node: '>=16.13'}
     hasBin: true
 
@@ -8783,8 +8779,8 @@ packages:
     engines: {node: '>=16'}
     hasBin: true
 
-  wrangler@3.106.0:
-    resolution: {integrity: sha512-jKPBtASIdiihU9AJBJRvWktqdc2prTy41LUjMk6Sq6BCZePrDnS9VWhQWovoYojreSd+dKhU+ggL53fNKvifRg==}
+  wrangler@3.107.0:
+    resolution: {integrity: sha512-Rb/fFZDHSiGNQte13Mem0O7oGKs77MfodImB3WbBD+xS0S/fxMYMwuVzkNlOGLBYYnwKx2V2/k8GpK5dJsRLhQ==}
     engines: {node: '>=16.17.0'}
     hasBin: true
     peerDependencies:
@@ -13951,13 +13947,6 @@ snapshots:
 
   caniuse-lite@1.0.30001664: {}
 
-  capnp-ts@0.7.0:
-    dependencies:
-      debug: 4.3.6
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - supports-color
-
   ccount@2.0.1: {}
 
   chai@5.1.1:
@@ -14063,13 +14052,11 @@ snapshots:
     dependencies:
       color-name: 1.1.4
       simple-swizzle: 0.2.2
-    optional: true
 
   color@4.2.3:
     dependencies:
       color-convert: 2.0.1
       color-string: 1.9.1
-    optional: true
 
   combined-stream@1.0.8:
     dependencies:
@@ -16112,8 +16099,7 @@ snapshots:
 
   is-arrayish@0.2.1: {}
 
-  is-arrayish@0.3.2:
-    optional: true
+  is-arrayish@0.3.2: {}
 
   is-async-function@2.0.0:
     dependencies:
@@ -16803,12 +16789,11 @@ snapshots:
 
   min-indent@1.0.1: {}
 
-  miniflare@3.20250124.0:
+  miniflare@3.20250124.1:
     dependencies:
       '@cspotcode/source-map-support': 0.8.1
       acorn: 8.14.0
       acorn-walk: 8.3.3
-      capnp-ts: 0.7.0
       exit-hook: 2.2.1
       glob-to-regexp: 0.4.1
       stoppable: 1.1.0
@@ -16819,7 +16804,6 @@ snapshots:
       zod: 3.24.1
     transitivePeerDependencies:
       - bufferutil
-      - supports-color
       - utf-8-validate
 
   minimatch@10.0.1:
@@ -17998,7 +17982,6 @@ snapshots:
       '@img/sharp-wasm32': 0.33.5
       '@img/sharp-win32-ia32': 0.33.5
       '@img/sharp-win32-x64': 0.33.5
-    optional: true
 
   shebang-command@1.2.0:
     dependencies:
@@ -18066,7 +18049,6 @@ snapshots:
   simple-swizzle@0.2.2:
     dependencies:
       is-arrayish: 0.3.2
-    optional: true
 
   slash@3.0.0: {}
 
@@ -19086,15 +19068,16 @@ snapshots:
       '@cloudflare/workerd-linux-arm64': 1.20250124.0
       '@cloudflare/workerd-windows-64': 1.20250124.0
 
-  wrangler@3.106.0(@cloudflare/workers-types@4.20250109.0):
+  wrangler@3.107.0(@cloudflare/workers-types@4.20250109.0):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.3.4
       '@esbuild-plugins/node-globals-polyfill': 0.2.3(esbuild@0.17.19)
       '@esbuild-plugins/node-modules-polyfill': 0.2.2(esbuild@0.17.19)
       blake3-wasm: 2.1.5
       esbuild: 0.17.19
-      miniflare: 3.20250124.0
+      miniflare: 3.20250124.1
       path-to-regexp: 6.3.0
+      sharp: 0.33.5
       unenv: 2.0.0-rc.1
       workerd: 1.20250124.0
     optionalDependencies:
@@ -19102,7 +19085,6 @@ snapshots:
       fsevents: 2.3.3
     transitivePeerDependencies:
       - bufferutil
-      - supports-color
       - utf-8-validate
 
   wrap-ansi@7.0.0:
