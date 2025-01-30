@@ -29,6 +29,7 @@
     "autoprefixer": "catalog:e2e",
     "postcss": "catalog:e2e",
     "tailwindcss": "catalog:e2e",
-    "typescript": "catalog:default"
+    "typescript": "catalog:default",
+    "wrangler": "catalog:"
   }
 }
