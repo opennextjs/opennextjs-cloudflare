@@ -130,7 +130,7 @@ const CustomRequest = class extends globalThis.Request {
       // https://github.com/cloudflare/workerd/issues/2746
       // https://github.com/cloudflare/workerd/issues/3245
       Object.defineProperty(init, "body", {
-        value: init.body instanceof __cf_stream.Readable ? ReadableStream.from(init.body) : init.body;
+        value: init.body instanceof __cf_stream.Readable ? ReadableStream.from(init.body) : init.body
       });
     }
     super(input, init);
