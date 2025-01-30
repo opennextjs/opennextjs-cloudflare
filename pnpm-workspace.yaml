@@ -14,7 +14,7 @@ catalog:
   "@types/node": ^22.2.0
   "@types/react-dom": ^18
   "@types/react": ^18
-  esbuild: ^0.23.0
+  esbuild: ^0.24.2
   eslint-plugin-import: ^2.31.0
   eslint-plugin-simple-import-sort: ^12.1.1
   eslint-plugin-unicorn: ^55.0.0

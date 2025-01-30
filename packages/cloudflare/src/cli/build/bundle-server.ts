@@ -11,6 +11,7 @@ import { build, Plugin } from "esbuild";
 import { patchOptionalDependencies } from "./patches/ast/optional-deps.js";
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import * as patches from "./patches/index.js";
+import fixRequire from "./patches/plugins/require.js";
 import inlineRequirePagePlugin from "./patches/plugins/require-page.js";
 import setWranglerExternal from "./patches/plugins/wrangler-external.js";
 import { normalizePath, patchCodeWithValidations } from "./utils/index.js";
@@ -49,7 +50,6 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
 
   console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
 
-  patches.patchWranglerDeps(buildOpts);
   await patches.updateWebpackChunksFile(buildOpts);
   patchVercelOgLibrary(buildOpts);
 
@@ -70,6 +70,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       createFixRequiresESBuildPlugin(buildOpts),
       inlineRequirePagePlugin(buildOpts),
       setWranglerExternal(),
+      fixRequire(),
     ],
     external: ["./middleware/handler.mjs", ...optionalDependencies],
     alias: {
@@ -102,7 +103,6 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       "process.env.NODE_ENV": '"production"',
       "process.env.NEXT_MINIMAL": "true",
     },
-    // We need to set platform to node so that esbuild doesn't complain about the node imports
     platform: "node",
     banner: {
       js: `
@@ -168,7 +168,10 @@ globalThis.__BUILD_TIMESTAMP_MS__ = ${Date.now()};
 /**
  * This function applies patches required for the code to run on workers.
  */
-async function updateWorkerBundledCode(workerOutputFile: string, buildOpts: BuildOptions): Promise<void> {
+export async function updateWorkerBundledCode(
+  workerOutputFile: string,
+  buildOpts: BuildOptions
+): Promise<void> {
   const code = await readFile(workerOutputFile, "utf8");
 
   const patchedCode = await patchCodeWithValidations(code, [
@@ -190,11 +193,6 @@ async function updateWorkerBundledCode(workerOutputFile: string, buildOpts: Buil
         code
           // TODO: implement for cf (possibly in @opennextjs/aws)
           .replace("patchAsyncStorage();", "//patchAsyncStorage();"),
-    ],
-    [
-      '`eval("require")` calls',
-      (code) => code.replaceAll('eval("require")', "require"),
-      { isOptional: true },
     ],
     [
       "`require.resolve` call",
