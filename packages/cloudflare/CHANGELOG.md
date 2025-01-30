@@ -1,5 +1,21 @@
 # @opennextjs/cloudflare
 
+## 0.4.2
+
+### Patch Changes
+
+- 1b3a972: Dump ESBuild metadata to `handler.mjs.meta.json`
+
+  The ESBuild metadata are written to a file alongside `handler.mjs`
+  in `.open-next/server-functions/default/...`
+
+- 5c90521: refactor: Make the list of optional dependencies configurable
+- 67acb2f: fix build issues with `@opentelemetry`
+
+  By using the pre-compiled library provided by Next.
+
+- 3ed6cd1: fix: syntax error
+
 ## 0.4.1
 
 ### Patch Changes
