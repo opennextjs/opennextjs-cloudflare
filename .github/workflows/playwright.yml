@@ -28,6 +28,9 @@ jobs:
       - name: Run playwright tests
         run: pnpm e2e
 
+      - name: Run playwright dev tests
+        run: pnpm e2e:dev
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
