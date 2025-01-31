@@ -1,5 +1,15 @@
 # @opennextjs/cloudflare
 
+## 0.4.3
+
+### Patch Changes
+
+- 9d45ee8: fix the error message of getCloudflareContext
+
+  Hardcode function names that would get mangled otherwise.
+
+- ac52954: bump the `wrangler` peer dependency (so to avoid multiple `Using vars defined in .dev.vars` logs during local development)
+
 ## 0.4.2
 
 ### Patch Changes
