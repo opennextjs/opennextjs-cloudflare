@@ -62,20 +62,17 @@ export function getCloudflareContext<
     // the cloudflare context is initialized by the worker and is always present in production/preview
     // during local development (`next dev`) it might be missing only if the developers hasn't called
     // the `initOpenNextCloudflareForDev` function in their Next.js config file
-    const getContextFunctionName = getCloudflareContext.name;
-    const initFunctionName = initOpenNextCloudflareForDev.name;
     throw new Error(
-      `\n\n\`${getContextFunctionName}\` has been called during development without having called` +
-        ` the \`${initFunctionName}\` function inside the Next.js config file.\n\n` +
-        `In order to use \`${getContextFunctionName}\` import and call ${initFunctionName} in the Next.js config file.\n\n` +
-        "Example: \n   ```\n   // next.config.mjs\n\n" +
-        `   import { ${initFunctionName} } from "@opennextjs/cloudflare";\n\n` +
-        `   ${initFunctionName}();\n\n` +
-        "   /** @type {import('next').NextConfig} */\n" +
-        "   const nextConfig = {};\n" +
+      `\n\nERROR: \`getCloudflareContext\` has been called without having called` +
+        ` \`initOpenNextCloudflareForDev\` from the Next.js config file.\n` +
+        `You should update your Next.js config file as shown below:\n\n` +
+        "   ```\n   // next.config.mjs\n\n" +
+        `   import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";\n\n` +
+        `   initOpenNextCloudflareForDev();\n\n` +
+        "   const nextConfig = { ... };\n" +
         "   export default nextConfig;\n" +
         "   ```\n" +
-        "\n(note: currently middlewares in Next.js are always run using the edge runtime)\n\n"
+        "\n"
     );
   }
 
