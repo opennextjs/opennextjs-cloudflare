@@ -12,7 +12,7 @@
     "build:worker": "pnpm opennextjs-cloudflare",
     "dev:worker": "wrangler dev --port 8792 --inspector-port 9352",
     "preview": "pnpm build:worker && pnpm dev:worker",
-    "e2e-fix": "playwright test -c e2e/playwright.config.ts"
+    "e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "workspace:*",
