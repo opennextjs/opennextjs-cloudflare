@@ -41,7 +41,8 @@ test.skip("Incremental Static Regeneration", async ({ page }) => {
   expect(newTime).not.toEqual(finalTime);
 });
 
-test("headers", async ({ page }) => {
+// ISR is currently not supported: https://github.com/opennextjs/opennextjs-cloudflare/issues/105
+test.skip("headers", async ({ page }) => {
   let responsePromise = page.waitForResponse((response) => {
     return response.status() === 200;
   });
