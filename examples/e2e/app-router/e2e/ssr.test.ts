@@ -28,8 +28,7 @@ test.skip("Server Side Render and loading.tsx", async ({ page }) => {
   }
 });
 
-// Fetch caching doesn't currently work: https://github.com/opennextjs/opennextjs-cloudflare/issues/311
-test.skip("Fetch cache properly cached", async ({ page }) => {
+test("Fetch cache properly cached", async ({ page }) => {
   await page.goto("/ssr");
   const originalDate = await page.getByText("Cached fetch:").textContent();
   await page.waitForTimeout(2000);
