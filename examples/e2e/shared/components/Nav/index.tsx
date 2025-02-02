@@ -6,11 +6,16 @@ type Props = PropsWithChildren & {
   href: string;
   title: string;
   icon?: string;
+  prefetch?: boolean;
 };
 export default function Nav(p: Props) {
-  const { children, href, title, icon = "/static/frank.webp" } = p;
+  const { children, href, title, icon = "/static/frank.webp", prefetch } = p;
   return (
-    <Link href={href} className="flex flex-col group border p-2 rounded-sm border-orange-500">
+    <Link
+      href={href}
+      className="flex flex-col group border p-2 rounded-sm border-orange-500"
+      prefetch={prefetch}
+    >
       <div className="flex items-center relative">
         <div>{title}</div>
         <div>
