@@ -20,6 +20,7 @@ import {
   createWranglerConfigIfNotExistent,
   ensureCloudflareConfig,
 } from "./utils/index.js";
+import { getVersion } from "./utils/version.js";
 
 /**
  * Builds the application in a format that can be passed to workerd
@@ -56,7 +57,9 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
   logger.info(`App directory: ${options.appPath}`);
   buildHelper.printNextjsVersion(options);
   ensureNextjsVersionSupported(options);
-  buildHelper.printOpenNextVersion(options);
+  const { aws, cloudflare } = getVersion();
+  logger.info(`@opennextjs/cloudflare version: ${cloudflare}`);
+  logger.info(`@opennextjs/aws version: ${aws}`);
 
   if (projectOpts.skipNextBuild) {
     logger.warn("Skipping Next.js build");
