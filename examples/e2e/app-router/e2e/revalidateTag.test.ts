@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-// Cache (and revalidateTag) is currently not supported: https://github.com/opennextjs/opennextjs-cloudflare/issues/105
-test.skip("Revalidate tag", async ({ page, request }) => {
+test("Revalidate tag", async ({ page, request }) => {
   test.setTimeout(45000);
   // We need to hit the page twice to make sure it's properly cached
   // Turbo might cache next build result, resulting in the tag being newer than the page
@@ -69,8 +68,7 @@ test.skip("Revalidate tag", async ({ page, request }) => {
   expect(nextCacheHeaderNested).toEqual("HIT");
 });
 
-// Cache (and revalidatePath) is currently not supported: https://github.com/opennextjs/opennextjs-cloudflare/issues/105
-test.skip("Revalidate path", async ({ page, request }) => {
+test("Revalidate path", async ({ page, request }) => {
   await page.goto("/revalidate-path");
 
   let elLayout = page.getByText("RequestID:");

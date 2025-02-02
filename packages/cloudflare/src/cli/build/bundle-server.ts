@@ -20,6 +20,7 @@ import { fixRequire } from "./patches/plugins/require.js";
 import { shimRequireHook } from "./patches/plugins/require-hook.js";
 import { inlineRequirePage } from "./patches/plugins/require-page.js";
 import { setWranglerExternal } from "./patches/plugins/wrangler-external.js";
+import { extractCacheAssetsManifest } from "./utils/extract-cache-assets-manifest.js";
 import { normalizePath, patchCodeWithValidations } from "./utils/index.js";
 
 /** The dist directory of the Cloudflare adapter package */
@@ -128,6 +129,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       "process.env.NEXT_RUNTIME": '"nodejs"',
       "process.env.NODE_ENV": '"production"',
       "process.env.NEXT_MINIMAL": "true",
+      "process.env.__OPENNEXT_CACHE_TAGS_MANIFEST": `${JSON.stringify(extractCacheAssetsManifest(buildOpts))}`,
     },
     platform: "node",
     banner: {

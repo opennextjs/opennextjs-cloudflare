@@ -13,7 +13,9 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
     dftMaybeUseCache:
       config.default?.override?.incrementalCache === "dummy" ||
       typeof config.default?.override?.incrementalCache === "function",
-    dftUseDummyTagCache: config.default?.override?.tagCache === "dummy",
+    dftMaybeUseTagCache:
+      config.default?.override?.tagCache === "dummy" ||
+      typeof config.default?.override?.incrementalCache === "function",
     dftMaybeUseQueue:
       config.default?.override?.queue === "dummy" ||
       config.default?.override?.queue === "direct" ||

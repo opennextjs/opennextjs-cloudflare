@@ -1,8 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-// Cache is currently not supported: https://github.com/opennextjs/opennextjs-cloudflare/issues/105
-// (Note: specifically this test relied on `unstable_cache`: https://github.com/opennextjs/opennextjs-cloudflare/issues/105#issuecomment-2627074820)
-test.skip("Next after", async ({ request }) => {
+test("Next after", async ({ request }) => {
   const initialSSG = await request.get("/api/after/ssg");
   expect(initialSSG.status()).toEqual(200);
   const initialSSGJson = await initialSSG.json();

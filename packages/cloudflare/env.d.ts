@@ -1,3 +1,5 @@
+import { CacheAssetsManifest } from "./src/cli/build/open-next/create-cache-assets-manifest.js";
+
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
@@ -7,6 +9,7 @@ declare global {
       NEXT_PRIVATE_DEBUG_CACHE?: string;
       OPEN_NEXT_ORIGIN: string;
       NODE_ENV?: string;
+      __OPENNEXT_CACHE_TAGS_MANIFEST: CacheAssetsManifest;
     }
   }
 }
