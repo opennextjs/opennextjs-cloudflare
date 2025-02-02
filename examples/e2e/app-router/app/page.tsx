@@ -22,7 +22,7 @@ export default function Home() {
         <Nav href={"/isr"} title="ISR">
           Incremental Static Regeneration revalidates every 10 seconds with a new timestamp
         </Nav>
-        <Nav href={"/ssr"} title="SSR" prefetch={false}>
+        <Nav href={"/ssr"} title="SSR">
           Server Side Render should generate a new timestamp on each load. Streaming support for loading...
         </Nav>
         <Nav href={"/api"} title="API">
