@@ -8,6 +8,7 @@ declare const process: typeof nodeProcess;
  */
 export default defineConfig({
   testDir: "./",
+  testIgnore: "cloudflare.spec.ts",
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */

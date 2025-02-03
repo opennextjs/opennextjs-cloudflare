@@ -1,5 +1,6 @@
 {
   "private": true,
+  "name": "next-partial-prerendering",
   "scripts": {
     "build": "next build",
     "dev": "next dev --turbo",

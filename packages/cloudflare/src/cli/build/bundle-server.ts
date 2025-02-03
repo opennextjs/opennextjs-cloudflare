@@ -92,7 +92,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
     },
     define: {
       // config file used by Next.js, see: https://github.com/vercel/next.js/blob/68a7128/packages/next/src/build/utils.ts#L2137-L2139
-      "process.env.__NEXT_PRIVATE_STANDALONE_CONFIG": `${JSON.stringify(nextConfig)}`,
+      "process.env.__NEXT_PRIVATE_STANDALONE_CONFIG": JSON.stringify(JSON.stringify(nextConfig)),
       // Next.js tried to access __dirname so we need to define it
       __dirname: '""',
       // Note: we need the __non_webpack_require__ variable declared as it is used by next-server:
