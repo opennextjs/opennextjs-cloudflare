@@ -7,7 +7,7 @@ export function fixRequire() {
     name: "fix-require",
 
     setup: async (build: PluginBuild) => {
-      build.onLoad({ filter: /\.(js|mjs|cjs|jsx|tsx)$/ }, async ({ path }) => {
+      build.onLoad({ filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/ }, async ({ path }) => {
         let contents = await fs.readFile(path, "utf-8");
 
         // `eval(...)` is not supported by workerd.
