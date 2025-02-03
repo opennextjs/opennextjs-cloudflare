@@ -59,6 +59,22 @@ export function getCloudflareContext<
   const cloudflareContext = global[cloudflareContextSymbol];
 
   if (!cloudflareContext) {
+    const nextData = (globalThis as unknown as { __NEXT_DATA__: Record<string, unknown> }).__NEXT_DATA__;
+
+    // For SSG Next.js creates (jest) workers that run in parallel, those don't get the current global
+    // state so they can't get access to the cloudflare context, unfortunately there isn't anything we
+    // can do about this, so the only solution is to error asking the developer to opt-out of SSG
+    // Next.js sets globalThis.__NEXT_DATA__.nextExport to true for the worker, so we can use that to detect
+    // that the route is being SSG'd (source: https://github.com/vercel/next.js/blob/4e394608423/packages/next/src/export/worker.ts#L55-L57)
+    if (nextData?.nextExport === true) {
+      throw new Error(
+        `\n\nERROR: \`getCloudflareContext\` has been called in a static route` +
+          ` that is not allowed, please either avoid calling \`getCloudflareContext\`` +
+          ` in the route or make the route non static (for example by exporting the` +
+          ` \`dynamic\` route segment config set to \`'force-dynamic'\`.\n`
+      );
+    }
+
     // the cloudflare context is initialized by the worker and is always present in production/preview
     // during local development (`next dev`) it might be missing only if the developers hasn't called
     // the `initOpenNextCloudflareForDev` function in their Next.js config file
