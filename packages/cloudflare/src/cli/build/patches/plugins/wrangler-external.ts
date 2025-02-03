@@ -18,7 +18,7 @@ import { dirname, resolve } from "node:path";
 
 import type { PluginBuild } from "esbuild";
 
-export default function setWranglerExternal() {
+export function setWranglerExternal() {
   return {
     name: "wrangler-externals",
 
