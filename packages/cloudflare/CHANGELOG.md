@@ -1,5 +1,21 @@
 # @opennextjs/cloudflare
 
+## 0.4.4
+
+### Patch Changes
+
+- 6103547: fix: provide a proper error message when using `getCloudflareContext` in static routes
+
+  `getCloudflareContext` can't be used in static routes, currently a misleading error
+  message incorrectly tells the developer that they haven't called `initOpenNextCloudflareForDev`
+  in their config file, this change updates such error message to properly clarify what
+  the issue is (and how to solve it)
+
+- 0a6191d: fix the encoding of \_\_NEXT_PRIVATE_STANDALONE_CONFIG
+- da7f8d8: fix: enable PPR with `wrangler dev`
+- 714172d: fix: trailing slash redirect
+- 0892679: fix: inline optional dependencies when bundling the server
+
 ## 0.4.3
 
 ### Patch Changes
