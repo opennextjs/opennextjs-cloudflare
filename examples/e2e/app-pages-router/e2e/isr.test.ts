@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-test("Incremental Static Regeneration", async ({ page }) => {
+// ISR is currently not supported: https://github.com/opennextjs/opennextjs-cloudflare/issues/105
+test.skip("Incremental Static Regeneration", async ({ page }) => {
   test.setTimeout(60000);
   await page.goto("/");
   await page.locator('[href="/isr"]').click();
