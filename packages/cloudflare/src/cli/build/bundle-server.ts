@@ -3,17 +3,16 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { Lang, parse } from "@ast-grep/napi";
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import { build, Plugin } from "esbuild";
 
-import { patchOptionalDependencies } from "./patches/ast/optional-deps.js";
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import * as patches from "./patches/index.js";
-import fixRequire from "./patches/plugins/require.js";
-import inlineRequirePagePlugin from "./patches/plugins/require-page.js";
-import setWranglerExternal from "./patches/plugins/wrangler-external.js";
+import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
+import { fixRequire } from "./patches/plugins/require.js";
+import { inlineRequirePagePlugin } from "./patches/plugins/require-page.js";
+import { setWranglerExternal } from "./patches/plugins/wrangler-external.js";
 import { normalizePath, patchCodeWithValidations } from "./utils/index.js";
 
 /** The dist directory of the Cloudflare adapter package */
@@ -71,8 +70,9 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       inlineRequirePagePlugin(buildOpts),
       setWranglerExternal(),
       fixRequire(),
+      handleOptionalDependencies(optionalDependencies),
     ],
-    external: ["./middleware/handler.mjs", ...optionalDependencies],
+    external: ["./middleware/handler.mjs"],
     alias: {
       // Note: we apply an empty shim to next/dist/compiled/ws because it generates two `eval`s:
       //   eval("require")("bufferutil");
@@ -201,11 +201,7 @@ export async function updateWorkerBundledCode(
     ],
   ]);
 
-  const bundle = parse(Lang.TypeScript, patchedCode).root();
-
-  const { edits } = patchOptionalDependencies(bundle, optionalDependencies);
-
-  await writeFile(workerOutputFile, bundle.commitEdits(edits));
+  await writeFile(workerOutputFile, patchedCode);
 }
 
 function createFixRequiresESBuildPlugin(options: BuildOptions): Plugin {

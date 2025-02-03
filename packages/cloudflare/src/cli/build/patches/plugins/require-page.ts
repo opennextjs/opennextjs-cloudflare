@@ -8,7 +8,7 @@ import type { PluginBuild } from "esbuild";
 
 import { patchCode, type RuleConfig } from "../ast/util.js";
 
-export default function inlineRequirePagePlugin(buildOpts: BuildOptions) {
+export function inlineRequirePagePlugin(buildOpts: BuildOptions) {
   return {
     name: "inline-require-page",
 
