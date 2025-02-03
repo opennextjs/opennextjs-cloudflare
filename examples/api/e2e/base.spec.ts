@@ -61,3 +61,10 @@ test("generates an og image successfully", async ({ page }) => {
   expect(res.headers()["content-type"]).toEqual("image/png");
   expect(validateMd5(await res.body(), OG_MD5)).toEqual(true);
 });
+
+test("NextConfig", async ({ page }) => {
+  const res = await page.request.get("/api/buildid");
+  expect(res.status()).toEqual(200);
+  const { nextConfig } = await res.json();
+  expect(nextConfig.output).toEqual("standalone");
+});
