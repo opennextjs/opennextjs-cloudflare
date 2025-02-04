@@ -2,6 +2,8 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 import type { CloudflareContext } from "../../api";
 // @ts-expect-error: resolved by wrangler build
+import * as nextEnvVars from "./env/next-env.mjs";
+// @ts-expect-error: resolved by wrangler build
 import { handler as middlewareHandler } from "./middleware/handler.mjs";
 // @ts-expect-error: resolved by wrangler build
 import { handler as serverHandler } from "./server-functions/default/handler.mjs";
@@ -21,15 +23,15 @@ const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
   }
 );
 
+// Populate process.env on the first request
+let processEnvPopulated = false;
+
 export default {
   async fetch(request, env, ctx) {
     return cloudflareContextALS.run({ env, ctx, cf: request.cf }, async () => {
       const url = new URL(request.url);
 
-      if (process.env.__PROCESS_ENV_POPULATED !== "1") {
-        await populateProcessEnv(url, env.NEXTJS_ENV);
-        process.env.__PROCESS_ENV_POPULATED = "1";
-      }
+      populateProcessEnv(url, env.NEXTJS_ENV);
 
       if (url.pathname === "/_next/image") {
         const imageUrl = url.searchParams.get("url") ?? "";
@@ -59,10 +61,11 @@ export default {
  *
  * Note that cloudflare env string values are copied by the middleware handler.
  */
-async function populateProcessEnv(url: URL, nextJsEnv?: string) {
-  // @ts-expect-error: resolved by wrangler build
-  const nextEnvVars = await import("./.env.mjs");
-
+function populateProcessEnv(url: URL, nextJsEnv?: string) {
+  if (processEnvPopulated) {
+    return;
+  }
+  processEnvPopulated = true;
   const mode = nextJsEnv ?? "production";
 
   if (nextEnvVars[mode]) {
