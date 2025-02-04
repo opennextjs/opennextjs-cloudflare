@@ -17,10 +17,16 @@ export const STATUS_DELETED = 1;
 class Cache implements IncrementalCache {
   readonly name = "cloudflare-kv";
 
+  constructor() {
+    console.error(`========> cloudflare-kv Cache INIT`);
+  }
+
   async get<IsFetch extends boolean = false>(
     key: string,
     isFetch?: IsFetch
   ): Promise<WithLastModified<CacheValue<IsFetch>>> {
+    console.error(`========> KVCache.get (${key})`);
+
     const cfEnv = getCloudflareContext().env;
     const kv = cfEnv.NEXT_CACHE_WORKERS_KV;
     const assets = cfEnv.ASSETS;
@@ -39,15 +45,18 @@ class Cache implements IncrementalCache {
       } | null = null;
 
       if (kv) {
+        console.error(`           from KV`);
         this.debug(`- From KV`);
         const kvKey = this.getKVKey(key, isFetch);
         entry = await kv.get(kvKey, "json");
+        console.error(`           does entry from KV exist? ${!!entry}`);
         if (entry?.status === STATUS_DELETED) {
           return {};
         }
       }
 
       if (!entry && assets) {
+        console.error(`           from assets`);
         this.debug(`- From Assets`);
         const url = this.getAssetUrl(key, isFetch);
         const response = await assets.fetch(url);
@@ -61,10 +70,12 @@ class Cache implements IncrementalCache {
             lastModified: (globalThis as { __BUILD_TIMESTAMP_MS__?: number }).__BUILD_TIMESTAMP_MS__,
           };
         }
+        console.error(`           does entry from assets exist? ${!!entry}`);
       }
       this.debug(entry ? `-> hit` : `-> miss`);
       return { value: entry?.value, lastModified: entry?.lastModified };
     } catch {
+      console.error(`           ERROR! FAILED TO GET Cache`);
       throw new RecoverableError(`Failed to get cache [${key}]`);
     }
   }
@@ -74,13 +85,16 @@ class Cache implements IncrementalCache {
     value: CacheValue<IsFetch>,
     isFetch?: IsFetch
   ): Promise<void> {
+    console.error(`========> KVCache.set (${key})`);
+
     const kv = getCloudflareContext().env.NEXT_CACHE_WORKERS_KV;
 
     if (!kv) {
+      console.error(`           NO KV!`);
       throw new IgnorableError(`No KVNamespace`);
     }
 
-    this.debug(`Set ${key}`);
+    console.error(`           from KV`);
 
     try {
       const kvKey = this.getKVKey(key, isFetch);
@@ -97,6 +111,7 @@ class Cache implements IncrementalCache {
         })
       );
     } catch {
+      console.error(`           ERROR! FAILED TO SET Cache`);
       throw new RecoverableError(`Failed to set cache [${key}]`);
     }
   }
@@ -131,7 +146,7 @@ class Cache implements IncrementalCache {
 
   protected debug(...args: unknown[]) {
     if (process.env.NEXT_PRIVATE_DEBUG_CACHE) {
-      console.log(`[Cache ${this.name}] `, ...args);
+      console.error(`[Cache ${this.name}] `, ...args);
     }
   }
 
