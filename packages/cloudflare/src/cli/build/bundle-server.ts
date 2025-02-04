@@ -65,6 +65,16 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
     target: "esnext",
     minify: false,
     metafile: true,
+    // Next traces files using the default conditions from `nft` (`node`, `require`, `import` and `default`)
+    //
+    // Because we use the `node` platform for this build, the "module" condition is used when no conditions are defined.
+    // We explicitly set the conditions to an empty array to disable the "module" condition in order to match Next tracing.
+    //
+    // See:
+    // - default nft conditions: https://github.com/vercel/nft/blob/2b55b01/readme.md#exports--imports
+    // - Next no explicit override: https://github.com/vercel/next.js/blob/2efcf11/packages/next/src/build/collect-build-traces.ts#L287
+    // - ESBuild `node` platform: https://esbuild.github.io/api/#platform
+    conditions: [],
     plugins: [
       createFixRequiresESBuildPlugin(buildOpts),
       inlineRequirePagePlugin(buildOpts),
