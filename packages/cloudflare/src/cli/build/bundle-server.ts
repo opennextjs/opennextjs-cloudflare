@@ -145,11 +145,6 @@ globalThis.__BUILD_TIMESTAMP_MS__ = ${Date.now()};
     },
   });
 
-  if (result.errors.length > 0) {
-    result.errors.forEach((error) => console.error(error));
-    throw new Error(`There was a problem bundling the server.`);
-  }
-
   fs.writeFileSync(openNextServerBundle + ".meta.json", JSON.stringify(result.metafile, null, 2));
 
   await updateWorkerBundledCode(openNextServerBundle, buildOpts);
