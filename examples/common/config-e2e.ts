@@ -7,6 +7,7 @@ declare const process: typeof nodeProcess;
 export function configurePlaywright(
   app: AppName,
   {
+    testDir = "./",
     // Do we run on CI?
     isCI = false,
     // Do we run on workers (`wrangler dev`) or on Node (`next dev`)
@@ -56,7 +57,7 @@ export function configurePlaywright(
    * See https://playwright.dev/docs/test-configuration.
    */
   return defineConfig({
-    testDir: "./",
+    testDir,
     /* ignore runtime specific tests */
     testIgnore: isWorker ? "*next.spec.ts" : "*cloudflare.spec.ts",
     /* Run tests in files in parallel */
