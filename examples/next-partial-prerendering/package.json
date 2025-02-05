@@ -6,8 +6,7 @@
     "dev": "next dev --turbo",
     "start": "next start",
     "build:worker": "opennextjs-cloudflare",
-    "dev:worker": "wrangler dev --port 8771 --inspector-port 9331",
-    "preview": "pnpm build:worker && pnpm dev:worker"
+    "preview": "pnpm build:worker && pnpm wrangler dev"
   },
   "dependencies": {
     "@heroicons/react": "2.1.5",

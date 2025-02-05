@@ -6,8 +6,7 @@
     "build": "next build",
     "start": "next start",
     "build:worker": "opennextjs-cloudflare",
-    "dev:worker": "wrangler dev --port 8773",
-    "preview:worker": "pnpm build:worker && pnpm dev:worker"
+    "preview": "pnpm build:worker && pnpm wrangler dev"
   },
   "dependencies": {
     "classnames": "^2.5.1",

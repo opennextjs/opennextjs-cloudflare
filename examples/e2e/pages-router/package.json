@@ -10,8 +10,7 @@
     "lint": "next lint",
     "clean": "rm -rf .turbo node_modules .next .open-next",
     "build:worker": "pnpm opennextjs-cloudflare",
-    "dev:worker": "wrangler dev --port 8791 --inspector-port 9351",
-    "preview": "pnpm build:worker && pnpm dev:worker",
+    "preview": "pnpm build:worker && pnpm wrangler dev",
     "e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "dependencies": {

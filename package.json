@@ -9,20 +9,19 @@
     "prettier": "3.3.3"
   },
   "scripts": {
+    "fix": "pnpm prettier:fix && pnpm lint:fix",
+    "build": "pnpm --filter cloudflare build",
+    "test": "pnpm -r test",
+    "e2e": "pnpm build && pnpm -r e2e",
+    "e2e:dev": "pnpm build && pnpm -r e2e:dev",
     "prettier:check": "prettier --check .",
     "prettier:fix": "prettier --write .",
     "lint:check": "pnpm -r lint:check",
     "lint:fix": "pnpm -r lint:fix",
-    "fix": "pnpm prettier:fix && pnpm lint:fix",
     "ts:check": "pnpm -r ts:check",
-    "test": "pnpm -r test",
     "code:checks": "pnpm prettier:check && pnpm lint:check && pnpm ts:check",
-    "code:fixes": "pnpm prettier:fix && pnpm lint:fix",
     "install-playwright": "playwright install --with-deps",
     "postinstall": "pnpm --filter cloudflare build",
-    "build": "pnpm --filter cloudflare build",
-    "e2e": "pnpm build && pnpm -r e2e",
-    "e2e:dev": "pnpm build && pnpm -r e2e:dev",
     "benchmark": "pnpm run --filter benchmarking benchmark"
   }
 }

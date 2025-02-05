@@ -13,8 +13,7 @@
     "prettier:check": "prettier --check --ignore-unknown .",
     "test": "pnpm prettier:check",
     "tofix-build:worker": "opennextjs-cloudflare",
-    "tofix-dev:worker": "wrangler dev --port 8772",
-    "tofix-preview:worker": "pnpm build:worker && pnpm dev:worker"
+    "tofix-preview": "pnpm build:worker && pnpm wrangler dev"
   },
   "dependencies": {
     "@headlessui/react": "^2.1.2",
