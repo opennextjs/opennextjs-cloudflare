@@ -3,6 +3,7 @@ packages:
   - examples/*
   - examples/e2e/*
   - examples/bugs/*
+  - "!examples/common"
   - benchmarking
 
 catalog:

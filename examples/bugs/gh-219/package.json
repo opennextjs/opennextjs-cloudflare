@@ -8,9 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "build:worker": "opennextjs-cloudflare",
-    "preview": "npm run build:worker && npx wrangler dev",
+    "preview": "pnpm run build:worker && pnpm wrangler dev",
     "e2e": "playwright test -c e2e/playwright.config.ts",
-    "deploy:worker": "npm run build:worker && wrangler deploy"
+    "deploy:worker": "pnpm run build:worker && pnpm wrangler deploy"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
