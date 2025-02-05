@@ -1,18 +1,13 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
-import { getBuildId } from "@opennextjs/aws/build/helper.js";
-import { globSync } from "glob";
 
-type CacheInfo = {
-  type: string;
-  meta?: {
-    headers?: {
-      "x-next-cache-tags"?: string;
-    };
-  };
-};
+type RawManifest = {
+  tag: { S: string };
+  path: { S: string };
+  revalidatedAt: { N: string };
+}[];
 
 export type CacheAssetsManifest = {
   tags: { [tag: string]: string[] };
@@ -24,25 +19,28 @@ export type CacheAssetsManifest = {
  *
  * The mapping creates an index of each tags pointing to its paths, and each path pointing to its tags.
  */
-export function extractCacheAssetsManifest(buildOpts: BuildOptions) {
-  const cachePath = path.join(buildOpts.outputDir, "cache");
-  const buildId = getBuildId(buildOpts);
+export function extractCacheAssetsManifest(options: BuildOptions): CacheAssetsManifest {
+  // TODO: Expose the function for getting this data as an adapter-agnostic utility in AWS.
+  const rawManifestPath = path.join(options.outputDir, "dynamodb-provider", "dynamodb-cache.json");
 
-  const manifest = globSync(path.join(cachePath, buildId, "**/*.cache")).reduce<CacheAssetsManifest>(
-    (acc, p) => {
-      const { meta } = JSON.parse(readFileSync(p, "utf-8")) as CacheInfo;
-      const tags = meta?.headers?.["x-next-cache-tags"]?.split(",")?.map((tag) => `${buildId}/${tag}`) ?? [];
+  if (!existsSync(rawManifestPath)) {
+    return { tags: {}, paths: {} };
+  }
 
-      const routePath = path.relative(cachePath, p).replace(/\.cache$/, "");
+  const rawManifest: RawManifest = JSON.parse(readFileSync(rawManifestPath, "utf-8"));
 
-      acc.paths[routePath] = tags;
+  const manifest = rawManifest.reduce<CacheAssetsManifest>(
+    (acc, { tag: { S: tag }, path: { S: path } }) => {
+      if (!acc.paths[path]) {
+        acc.paths[path] = [tag];
+      } else {
+        acc.paths[path].push(tag);
+      }
 
-      for (const tag of tags) {
-        if (!acc.tags[tag]) {
-          acc.tags[tag] = [routePath];
-        } else {
-          acc.tags[tag].push(routePath);
-        }
+      if (!acc.tags[tag]) {
+        acc.tags[tag] = [path];
+      } else {
+        acc.tags[tag].push(path);
       }
 
       return acc;
