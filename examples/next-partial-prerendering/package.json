@@ -6,7 +6,7 @@
     "dev": "next dev --turbo",
     "start": "next start",
     "build:worker": "opennextjs-cloudflare",
-    "dev:worker": "wrangler dev --port 8771 --inspector-port 9331",
+    "dev:worker": "wrangler dev --port 8771",
     "preview": "pnpm build:worker && pnpm dev:worker"
   },
   "dependencies": {

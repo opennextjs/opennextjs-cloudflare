@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "build:worker": "pnpm opennextjs-cloudflare",
-    "dev:worker": "wrangler dev --port 8750 --inspector-port 9370",
+    "dev:worker": "wrangler dev --port 8750",
     "preview": "pnpm build:worker && pnpm dev:worker",
     "e2e": "playwright test -c e2e/playwright.config.ts",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv"
