@@ -44,6 +44,7 @@
     "@cloudflare/workers-types": "^4.20241224.0",
     "@eslint/eslintrc": "^3",
     "@opennextjs/cloudflare": "workspace:*",
+    "@playwright/test": "catalog:",
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^20",
     "@types/react-dom": "^19",
