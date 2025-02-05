@@ -86,6 +86,7 @@ export function configurePlaywright(
       url: baseURL,
       reuseExistingServer: !isCI,
       timeout,
+      stdout: "pipe",
     },
   });
 }
