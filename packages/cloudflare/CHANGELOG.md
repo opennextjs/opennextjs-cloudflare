@@ -1,5 +1,19 @@
 # @opennextjs/cloudflare
 
+## 0.4.5
+
+### Patch Changes
+
+- 1ccff65: bump `@opennextjs/aws` dependency to `https://pkg.pr.new/@opennextjs/aws@724`
+
+  this bump fixes rewrites to external urls not working when the external urls
+  point to resources hosted on the Cloudflare network
+
+- 30374b9: fix: Drop the module condition from ESBuild
+
+  Because Next (via nft) does not use the module condition, ESBuild should not use it.
+  Otherwise we might end up with missing files and a broken build.
+
 ## 0.4.4
 
 ### Patch Changes
