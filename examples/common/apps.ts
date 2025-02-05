@@ -6,11 +6,11 @@ const apps = [
   "middleware",
   "vercel-blog-starter",
   "vercel-commerce",
-  // // e2e
+  // e2e
   "app-pages-router",
   "app-router",
   "pages-router",
-  // // bugs
+  // bugs
   "gh-119",
   "gh-219",
   "gh-223",
