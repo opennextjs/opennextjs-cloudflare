@@ -9,7 +9,7 @@
     "lint": "next lint",
     "build:worker": "opennextjs-cloudflare",
     "dev:worker": "wrangler dev --port 8771 --inspector-port 9331",
-    "preview:worker": "pnpm build:worker && pnpm dev:worker",
+    "preview": "pnpm build:worker && pnpm dev:worker",
     "e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "dependencies": {

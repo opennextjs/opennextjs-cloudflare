@@ -25,8 +25,8 @@ Any contributions you make will be via [Pull Requests](https://docs.github.com/e
 
   ```sh
   > git remote -v
-  origin	https://github.com/<your-github-username>/opennextjs-cloudflare (fetch)
-  origin	https://github.com/<your-github-username>/opennextjs-cloudflare (push)
+  origin https://github.com/<your-github-username>/opennextjs-cloudflare (fetch)
+  origin https://github.com/<your-github-username>/opennextjs-cloudflare (push)
   ```
 
 - Add `opennextjs/opennextjs-cloudflare` as the `upstream` remote repository.
@@ -34,10 +34,10 @@ Any contributions you make will be via [Pull Requests](https://docs.github.com/e
   ```sh
   > git remote add upstream https://github.com/opennextjs/opennextjs-cloudflare
   > git remote -v
-  origin	https://github.com/<your-github-username>/opennextjs-cloudflare (fetch)
-  origin	https://github.com/<your-github-username>/opennextjs-cloudflare (push)
-  upstream	https://github.com/opennextjs/opennextjs-cloudflare (fetch)
-  upstream	https://github.com/opennextjs/opennextjs-cloudflare (push)
+  origin https://github.com/<your-github-username>/opennextjs-cloudflare (fetch)
+  origin https://github.com/<your-github-username>/opennextjs-cloudflare (push)
+  upstream https://github.com/opennextjs/opennextjs-cloudflare (fetch)
+  upstream https://github.com/opennextjs/opennextjs-cloudflare (push)
   ```
 
 - You should regularly pull from the `main` branch of the `upstream` repository to keep up to date with the latest changes to the project.
@@ -82,13 +82,13 @@ pnpm --filter cloudflare build:watch
 Build and preview a Next.js sample application. For example, the `api` application:
 
 ```sh
-pnpm --filter api preview:worker
+pnpm --filter api preview
 ```
 
 You can skip building the Next.js app when it has not been modified, and only run the Cloudflare adaptor tool:
 
 ```sh
-SKIP_NEXT_APP_BUILD=true pnpm --filter api preview:worker
+SKIP_NEXT_APP_BUILD=true pnpm --filter api preview
 ```
 
 ## Checking the code
@@ -102,7 +102,7 @@ pnpm run code:checks
 Attempt to auto-fix any issues with the format, lint and type checks:
 
 ```sh
-pnpm run code:fixes
+pnpm run fix
 ```
 
 ## Testing the code
@@ -117,6 +117,7 @@ Run all the e2e tests, via Playwright:
 
 ```sh
 pnpm run e2e
+pnpm run e2e:dev
 ```
 
 ## Changesets
@@ -127,7 +128,7 @@ We use the [`changesets`](https://github.com/changesets/changesets/blob/main/REA
 - Create a changeset for the current change.
 
   ```sh
-  > pnpm changeset
+  pnpm changeset
   ```
 
 - Select which workspaces are affected by the change and whether the version requires a major, minor or patch release.
@@ -135,7 +136,7 @@ We use the [`changesets`](https://github.com/changesets/changesets/blob/main/REA
 - Include the generate changeset in the current commit.
 
   ```sh
-  > git add ./changeset/*.md
+  git add ./changeset/*.md
   ```
 
 ### Changeset message format
