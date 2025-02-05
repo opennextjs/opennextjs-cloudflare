@@ -7,6 +7,23 @@ export const CACHE_ASSET_DIR = "cnd-cgi/_next_cache";
 
 export const STATUS_DELETED = 1;
 
+// https://github.com/vercel/next.js/blob/9a1cd356/packages/next/src/server/response-cache/types.ts#L26-L38
+export type CachedFetchValue = {
+  kind: "FETCH";
+  data: {
+    headers: { [k: string]: string };
+    body: string;
+    url: string;
+    status?: number;
+    // field used by older versions of Next.js (see: https://github.com/vercel/next.js/blob/fda1ecc/packages/next/src/server/response-cache/types.ts#L23)
+    tags?: string[];
+  };
+  // tags are only present with file-system-cache
+  // fetch cache stores tags outside of cache entry
+  tags?: string[];
+  revalidate: number;
+};
+
 /**
  * Open Next cache based on cloudflare KV and Assets.
  *
@@ -62,6 +79,17 @@ class Cache implements IncrementalCache {
           };
         }
       }
+
+      const entryValue = entry?.value as CachedFetchValue | undefined;
+      if (entryValue?.kind === "FETCH") {
+        const expires = entryValue.data.headers?.expires;
+        const expiresTime = new Date(expires as string).getTime();
+        if (!isNaN(expiresTime) && expiresTime <= Date.now()) {
+          this.debug(`found expired entry (expire time: ${expires})`);
+          return {};
+        }
+      }
+
       this.debug(entry ? `-> hit` : `-> miss`);
       return { value: entry?.value, lastModified: entry?.lastModified };
     } catch {
