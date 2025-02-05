@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 import type nodeProcess from "node:process";
-import { getAppPort, type AppName } from "./apps";
+import { getAppPort, getInspectorPort, type AppName } from "./apps";
 
 declare const process: typeof nodeProcess;
 
@@ -16,13 +16,14 @@ export function configurePlaywright(
   } = {}
 ) {
   const port = getAppPort(app, { isWorker });
+  const inspectorPort = getInspectorPort(app);
   const baseURL = `http://localhost:${port}`;
   let command: string;
   let timeout: number;
   if (isWorker) {
     if (isCI) {
       // Do not build on CI - there is a preceding build step
-      command = `pnpm wrangler dev --port ${port}`;
+      command = `pnpm wrangler dev --port ${port} --inspector-port ${inspectorPort}`;
       timeout = 100_000;
     } else {
       timeout = 500_000;

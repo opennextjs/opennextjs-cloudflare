@@ -31,3 +31,14 @@ export function getAppPort(app: AppName, { isWorker = true } = {}) {
   }
   return isWorker ? BASE_WRANGLER_PORT + index : BASE_NEXT_PORT + index;
 }
+
+/**
+ * Returns a distinct port for each application so they can run in parallel.
+ */
+export function getInspectorPort(app: AppName) {
+  const index = apps.indexOf(app);
+  if (index === -1) {
+    throw new Error(`Unknown app: ${app}`);
+  }
+  return 9300 + index;
+}
