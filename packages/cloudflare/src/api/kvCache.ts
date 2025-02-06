@@ -3,7 +3,7 @@ import { IgnorableError, RecoverableError } from "@opennextjs/aws/utils/error.js
 
 import { getCloudflareContext } from "./cloudflare-context.js";
 
-export const CACHE_ASSET_DIR = "cnd-cgi/_next_cache";
+export const CACHE_ASSET_DIR = "cdn-cgi/_next_cache";
 
 export const STATUS_DELETED = 1;
 
