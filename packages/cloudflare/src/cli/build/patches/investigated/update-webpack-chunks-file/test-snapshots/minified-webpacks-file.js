@@ -72,11 +72,13 @@
                     e[n[f]] = 1;
             };
             (t.f.require = (o, n) => {
-                if (e[o])
+                if (e[o]) {
                     return;
-                if (o === 658)
+                }
+                if (o === 658) {
                     return r(require("./chunks/658.js"));
-                e[o] || (658 != o ? r(require("./chunks/" + t.u(o))) : (e[o] = 1));
+                }
+                throw new Error(`Unknown chunk ${o}`);
             }),
                 (module.exports = t),
                 (t.C = r);

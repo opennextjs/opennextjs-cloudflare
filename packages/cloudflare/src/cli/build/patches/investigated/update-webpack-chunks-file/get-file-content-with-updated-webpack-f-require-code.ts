@@ -81,12 +81,20 @@ export async function getFileContentWithUpdatedWebpackFRequireCode(
 
   const functionBody = webpackFRequireFunction.getBody() as ts.Block;
 
-  functionBody.insertStatements(0, [
-    `if (${installedChunks}[${chunkId}]) return;`,
-    ...chunks.map(
-      (chunk) => `\nif(${chunkId} === ${chunk}) return ${installChunk}(require("./chunks/${chunk}.js"));`
-    ),
-  ]);
+  functionBody.replaceWithText(`
+{
+  if (${installedChunks}[${chunkId}]) {
+    return;
+  }${chunks
+    .map(
+      (chunk) => `
+  if(${chunkId} === ${chunk}) {
+    return ${installChunk}(require("./chunks/${chunk}.js"));
+  }`
+    )
+    .join("")}
+  throw new Error(\`Unknown chunk \${${chunkId}}\`);
+}`);
 
   return sourceFile.print();
 }
