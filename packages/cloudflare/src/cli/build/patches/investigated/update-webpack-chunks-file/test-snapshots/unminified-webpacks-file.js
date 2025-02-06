@@ -205,21 +205,13 @@
         /******/
         /******/ // require() chunk loading for javascript
         /******/ __webpack_require__.f.require = (chunkId, promises) => {
-            if (installedChunks[chunkId])
+            if (installedChunks[chunkId]) {
                 return;
-            if (chunkId === 658)
-                return installChunk(require("./chunks/658.js"));
-            /******/ // "1" is the signal for "already loaded"
-            /******/ if (!installedChunks[chunkId]) {
-                /******/ if (658 != chunkId) {
-                    /******/ installChunk(require("./chunks/" + __webpack_require__.u(chunkId)));
-                    /******/
-                }
-                else
-                    installedChunks[chunkId] = 1;
-                /******/
             }
-            /******/
+            if (chunkId === 658) {
+                return installChunk(require("./chunks/658.js"));
+            }
+            throw new Error(`Unknown chunk ${chunkId}`);
         };
         /******/
         /******/ module.exports = __webpack_require__;

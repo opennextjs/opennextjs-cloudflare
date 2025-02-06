@@ -17,10 +17,11 @@ describe("getFileContentWithUpdatedWebpackFRequireCode", () => {
       { installChunk: "installChunk", installedChunks: "installedChunks" },
       ["658"]
     );
-    expect(unstyleCode(updatedFCode)).toContain(`if (installedChunks[chunkId]) return;`);
+    expect(unstyleCode(updatedFCode)).toContain(`if (installedChunks[chunkId]) { return; }`);
     expect(unstyleCode(updatedFCode)).toContain(
-      `if (chunkId === 658) return installChunk(require("./chunks/658.js"));`
+      `if (chunkId === 658) { return installChunk(require("./chunks/658.js")); }`
     );
+    expect(unstyleCode(updatedFCode)).not.toContain(`require("./chunks/" +`);
   });
 
   test("returns the updated content of the f.require function from minified webpack runtime code", async () => {
@@ -34,8 +35,9 @@ describe("getFileContentWithUpdatedWebpackFRequireCode", () => {
       { installChunk: "r", installedChunks: "e" },
       ["658"]
     );
-    expect(unstyleCode(updatedFCode)).toContain("if (e[o]) return;");
-    expect(unstyleCode(updatedFCode)).toContain(`if (o === 658) return r(require("./chunks/658.js"));`);
+    expect(unstyleCode(updatedFCode)).toContain("if (e[o]) { return; }");
+    expect(unstyleCode(updatedFCode)).toContain(`if (o === 658) { return r(require("./chunks/658.js")); }`);
+    expect(unstyleCode(updatedFCode)).not.toContain(`require("./chunks/" +`);
   });
 });
 
