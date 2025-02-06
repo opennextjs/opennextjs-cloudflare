@@ -66,16 +66,18 @@ class Cache implements IncrementalCache {
             lastModified: (globalThis as { __BUILD_TIMESTAMP_MS__?: number }).__BUILD_TIMESTAMP_MS__,
           };
         }
-        // if we were unable to get the cached data from the KV we get it from the assets generated at build time
-        // however before serving them we need to make sure that they are not expired, otherwise if the KV cache
-        // is missing or not working properly we end up always serving the same stale build time generated cache entries
-        const entryValue = entry?.value as CachedFetchValue;
-        if (entryValue?.kind === "FETCH") {
-          const expires = entryValue.data.headers?.expires;
-          const expiresTime = new Date(expires as string).getTime();
-          if (!isNaN(expiresTime) && expiresTime <= Date.now()) {
-            this.debug(`found expired entry (expire time: ${expires})`);
-            return null;
+        if (!kv) {
+          // The cache can not be updated when there is no KV
+          // As we don't want to keep serving stale data for ever, 
+          // we pretend the entry is not in cache
+          const entryValue = entry?.value as CachedFetchValue;
+          if (entryValue?.kind === "FETCH") {
+            const expires = entryValue.data.headers?.expires;
+            const expiresTime = new Date(expires as string).getTime();
+            if (!isNaN(expiresTime) && expiresTime <= Date.now()) {
+              this.debug(`found expired entry (expire time: ${expires})`);
+              return null;
+            }
           }
         }
       }
