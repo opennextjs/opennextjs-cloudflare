@@ -68,7 +68,7 @@ class Cache implements IncrementalCache {
         }
         if (!kv) {
           // The cache can not be updated when there is no KV
-          // As we don't want to keep serving stale data for ever, 
+          // As we don't want to keep serving stale data for ever,
           // we pretend the entry is not in cache
           const entryValue = entry?.value as CachedFetchValue;
           if (entryValue?.kind === "FETCH") {
