@@ -37,7 +37,7 @@ class Cache implements IncrementalCache {
   async get<IsFetch extends boolean = false>(
     key: string,
     isFetch?: IsFetch
-  ): Promise<WithLastModified<CacheValue<IsFetch>>> {
+  ): Promise<WithLastModified<CacheValue<IsFetch>> | null> {
     const cfEnv = getCloudflareContext().env;
     const kv = cfEnv.NEXT_CACHE_WORKERS_KV;
     const assets = cfEnv.ASSETS;
@@ -60,7 +60,7 @@ class Cache implements IncrementalCache {
         const kvKey = this.getKVKey(key, isFetch);
         entry = await kv.get(kvKey, "json");
         if (entry?.status === STATUS_DELETED) {
-          return {};
+          return null;
         }
       }
 
@@ -86,7 +86,7 @@ class Cache implements IncrementalCache {
         const expiresTime = new Date(expires as string).getTime();
         if (!isNaN(expiresTime) && expiresTime <= Date.now()) {
           this.debug(`found expired entry (expire time: ${expires})`);
-          return {};
+          return null;
         }
       }
 
