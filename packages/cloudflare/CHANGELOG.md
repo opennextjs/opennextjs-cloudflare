@@ -1,5 +1,14 @@
 # @opennextjs/cloudflare
 
+## 0.4.6
+
+### Patch Changes
+
+- 9561277: fix: remove dynamic require for map file
+
+  ESBuild tries to load all files in the chunks folder with `require("./chunks/" + var)`.
+  This is an error when the folder contains map file.
+
 ## 0.4.5
 
 ### Patch Changes
