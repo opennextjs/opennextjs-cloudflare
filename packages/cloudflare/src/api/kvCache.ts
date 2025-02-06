@@ -1,4 +1,9 @@
-import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/types/overrides";
+import type {
+  CachedFetchValue,
+  CacheValue,
+  IncrementalCache,
+  WithLastModified,
+} from "@opennextjs/aws/types/overrides";
 import { IgnorableError, RecoverableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "./cloudflare-context.js";
@@ -6,23 +11,6 @@ import { getCloudflareContext } from "./cloudflare-context.js";
 export const CACHE_ASSET_DIR = "cnd-cgi/_next_cache";
 
 export const STATUS_DELETED = 1;
-
-// https://github.com/vercel/next.js/blob/9a1cd356/packages/next/src/server/response-cache/types.ts#L26-L38
-export type CachedFetchValue = {
-  kind: "FETCH";
-  data: {
-    headers: { [k: string]: string };
-    body: string;
-    url: string;
-    status?: number;
-    // field used by older versions of Next.js (see: https://github.com/vercel/next.js/blob/fda1ecc/packages/next/src/server/response-cache/types.ts#L23)
-    tags?: string[];
-  };
-  // tags are only present with file-system-cache
-  // fetch cache stores tags outside of cache entry
-  tags?: string[];
-  revalidate: number;
-};
 
 /**
  * Open Next cache based on cloudflare KV and Assets.
@@ -78,15 +66,17 @@ class Cache implements IncrementalCache {
             lastModified: (globalThis as { __BUILD_TIMESTAMP_MS__?: number }).__BUILD_TIMESTAMP_MS__,
           };
         }
-      }
-
-      const entryValue = entry?.value as CachedFetchValue | undefined;
-      if (entryValue?.kind === "FETCH") {
-        const expires = entryValue.data.headers?.expires;
-        const expiresTime = new Date(expires as string).getTime();
-        if (!isNaN(expiresTime) && expiresTime <= Date.now()) {
-          this.debug(`found expired entry (expire time: ${expires})`);
-          return null;
+        // if we were unable to get the cached data from the KV we get it from the assets generated at build time
+        // however before serving them we need to make sure that they are not expired, otherwise if the KV cache
+        // is missing or not working properly we end up always serving the same stale build time generated cache entries
+        const entryValue = entry?.value as CachedFetchValue;
+        if (entryValue?.kind === "FETCH") {
+          const expires = entryValue.data.headers?.expires;
+          const expiresTime = new Date(expires as string).getTime();
+          if (!isNaN(expiresTime) && expiresTime <= Date.now()) {
+            this.debug(`found expired entry (expire time: ${expires})`);
+            return null;
+          }
         }
       }
 
