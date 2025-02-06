@@ -1,5 +1,3 @@
-import fs from "node:fs/promises";
-import path from "node:path";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -7,9 +5,7 @@ export const dynamic = "force-dynamic";
 
 // This endpoint simulates an on demand revalidation request
 export async function GET(request: NextRequest) {
-  const cwd = process.cwd();
-
-  let manifest;
+  let manifest: { preview: { previewModeId: string } };
   // this fails at build time when next.js tries to evaluate the route
   try {
     // @ts-expect-error
