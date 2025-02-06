@@ -27,7 +27,7 @@ export function configurePlaywright(
       timeout = 100_000;
     } else {
       timeout = 500_000;
-      command = `pnpm preview --port ${port}`;
+      command = `pnpm preview --port ${port} --inspector-port ${inspectorPort}`;
     }
   } else {
     timeout = 100_000;
