@@ -1,4 +1,4 @@
-import logger from "@opennextjs/aws/logger";
+import logger from "@opennextjs/aws/logger.js";
 import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 
 /**
