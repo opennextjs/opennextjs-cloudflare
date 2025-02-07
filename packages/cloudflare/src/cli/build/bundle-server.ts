@@ -4,14 +4,16 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
-import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
-import { build, Plugin } from "esbuild";
+import { build } from "esbuild";
 
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
 import * as patches from "./patches/index.js";
+import { ContentUpdater } from "./patches/plugins/content-updater.js";
+import { patchLoadInstrumentation } from "./patches/plugins/load-instrumentation.js";
 import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
 import { fixRequire } from "./patches/plugins/require.js";
+import { shimRequireHook } from "./patches/plugins/require-hook.js";
 import { inlineRequirePagePlugin } from "./patches/plugins/require-page.js";
 import { setWranglerExternal } from "./patches/plugins/wrangler-external.js";
 import { normalizePath, patchCodeWithValidations } from "./utils/index.js";
@@ -58,6 +60,8 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
   const openNextServer = path.join(outputPath, packagePath, `index.mjs`);
   const openNextServerBundle = path.join(outputPath, packagePath, `handler.mjs`);
 
+  const updater = new ContentUpdater();
+
   const result = await build({
     entryPoints: [openNextServer],
     bundle: true,
@@ -77,11 +81,14 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
     // - ESBuild `node` platform: https://esbuild.github.io/api/#platform
     conditions: [],
     plugins: [
-      createFixRequiresESBuildPlugin(buildOpts),
-      inlineRequirePagePlugin(buildOpts),
+      shimRequireHook(buildOpts),
+      inlineRequirePagePlugin(updater, buildOpts),
       setWranglerExternal(),
-      fixRequire(),
+      fixRequire(updater),
       handleOptionalDependencies(optionalDependencies),
+      patchLoadInstrumentation(updater),
+      // Apply updater updaters, must be the last plugin
+      updater.plugin,
     ],
     external: ["./middleware/handler.mjs"],
     alias: {
@@ -192,7 +199,6 @@ export async function updateWorkerBundledCode(
       (code) => patches.inlineMiddlewareManifestRequire(code, buildOpts),
     ],
     ["exception bubbling", patches.patchExceptionBubbling],
-    ["`loadInstrumentationModule` function", patches.patchLoadInstrumentationModule],
     [
       "`patchAsyncStorage` call",
       (code) =>
@@ -208,21 +214,6 @@ export async function updateWorkerBundledCode(
   ]);
 
   await writeFile(workerOutputFile, patchedCode);
-}
-
-function createFixRequiresESBuildPlugin(options: BuildOptions): Plugin {
-  return {
-    name: "replaceRelative",
-    setup(build) {
-      // Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
-      build.onResolve(
-        { filter: getCrossPlatformPathRegex(String.raw`^\./require-hook$`, { escape: false }) },
-        () => ({
-          path: path.join(options.outputDir, "cloudflare-templates/shims/empty.js"),
-        })
-      );
-    },
-  };
 }
 
 /**
