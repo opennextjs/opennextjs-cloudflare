@@ -8,6 +8,7 @@ import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import { build, Plugin } from "esbuild";
 
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
+import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
 import * as patches from "./patches/index.js";
 import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
 import { fixRequire } from "./patches/plugins/require.js";
@@ -49,7 +50,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
 
   console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
 
-  await patches.updateWebpackChunksFile(buildOpts);
+  await patchWebpackRuntime(buildOpts);
   patchVercelOgLibrary(buildOpts);
 
   const outputPath = path.join(outputDir, "server-functions", "default");
