@@ -7,8 +7,18 @@ import { getCloudflareContext } from "./cloudflare-context.js";
 // inlined during build
 const manifest = process.env.__OPENNEXT_CACHE_TAGS_MANIFEST;
 
+/**
+ * An instance of the Tag Cache that uses a D1 binding (`NEXT_CACHE_D1`) as it's underlying data store.
+ *
+ * The table used defaults to `tags`, but can be configured with the `NEXT_CACHE_D1_TABLE`
+ * environment variable.
+ *
+ * There should be three columns created in the table; `tag`, `path`, and `revalidatedAt`.
+ *
+ * A combination of the D1 entries and the build-time tags manifest is used.
+ */
 class D1TagCache implements TagCache {
-  public name = "d1-tag-cache";
+  public readonly name = "d1-tag-cache";
 
   public async getByPath(rawPath: string): Promise<string[]> {
     const { isDisabled, db, table } = this.getConfig();
@@ -141,10 +151,10 @@ class D1TagCache implements TagCache {
     const set = new Set<string>();
 
     for (const arr of arrays) {
-      arr?.forEach((v) => set.add(this.removeBuildId(v)));
+      arr?.forEach((v) => set.add(v));
     }
 
-    return [...set.values()];
+    return [...set.values()].map((v) => this.removeBuildId(v));
   }
 }
 
