@@ -86,9 +86,8 @@ class D1TagCache implements TagCache {
 
       if (!success) throw new Error(`D1 select failed for ${path} - ${lastModified ?? 0}`);
 
-      const tags = results?.map((item) => this.removeBuildId(item.tag)) ?? [];
-      debug("revalidatedTags", tags);
-      return tags.length > 0 ? -1 : (lastModified ?? Date.now());
+      debug("revalidatedTags", results);
+      return results?.length > 0 ? -1 : (lastModified ?? Date.now());
     } catch (e) {
       error("Failed to get revalidated tags", e);
       return lastModified ?? Date.now();
