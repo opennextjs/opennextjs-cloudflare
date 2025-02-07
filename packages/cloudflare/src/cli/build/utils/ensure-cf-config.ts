@@ -1,3 +1,4 @@
+import logger from "@opennextjs/aws/logger";
 import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 
 /**
@@ -21,6 +22,10 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
     mwUseEdgeConverter: config.middleware?.override?.converter === "edge",
     mwUseFetchProxy: config.middleware?.override?.proxyExternalRequest === "fetch",
   };
+
+  if (config.default?.override?.queue === "direct") {
+    logger.warn("The direct mode queue is not recommended for use in production.");
+  }
 
   if (Object.values(requirements).some((satisfied) => !satisfied)) {
     throw new Error(
