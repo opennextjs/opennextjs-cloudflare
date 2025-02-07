@@ -50,7 +50,6 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
 
   console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
 
-  //await patches.updateWebpackChunksFile(buildOpts);
   await patchWebpackRuntime(buildOpts);
   patchVercelOgLibrary(buildOpts);
 
