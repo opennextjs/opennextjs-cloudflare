@@ -29,13 +29,11 @@ catalog:
   react-dom: ^18
   react: ^18
   rimraf: ^6.0.1
-  ts-morph: ^23.0.0
-  tsup: ^8.2.4
   tsx: ^4.19.2
   typescript-eslint: ^8.7.0
   typescript: ^5.7.3
   vitest: ^2.1.1
-  wrangler: ^3.107.0
+  wrangler: ^3.107.3
 
 # e2e tests
 catalogs:

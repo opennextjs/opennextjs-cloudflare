@@ -76,7 +76,6 @@
     "@opennextjs/aws": "https://pkg.pr.new/@opennextjs/aws@727",
     "enquirer": "^2.4.1",
     "glob": "catalog:",
-    "ts-morph": "catalog:",
     "yaml": "^2.7.0"
   },
   "peerDependencies": {

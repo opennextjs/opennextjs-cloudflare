@@ -3,28 +3,22 @@ import { join } from "node:path";
 
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
-import type { PluginBuild } from "esbuild";
 
 import { patchCode, type RuleConfig } from "../ast/util.js";
+import type { ContentUpdater } from "./content-updater.js";
 
-export function inlineRequirePagePlugin(buildOpts: BuildOptions) {
-  return {
-    name: "inline-require-page",
-
-    setup: async (build: PluginBuild) => {
-      build.onLoad(
-        {
-          filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/require\.js$`, { escape: false }),
-        },
-        async ({ path }) => {
-          const jsCode = await readFile(path, "utf8");
-          if (/function requirePage\(/.test(jsCode)) {
-            return { contents: patchCode(jsCode, await getRule(buildOpts)) };
-          }
-        }
-      );
+export function inlineRequirePagePlugin(updater: ContentUpdater, buildOpts: BuildOptions) {
+  return updater.updateContent(
+    "inline-require-page",
+    {
+      filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/require\.js$`, { escape: false }),
     },
-  };
+    async ({ contents }) => {
+      if (/function requirePage\(/.test(contents)) {
+        return patchCode(contents, await getRule(buildOpts));
+      }
+    }
+  );
 }
 
 async function getRule(buildOpts: BuildOptions) {
