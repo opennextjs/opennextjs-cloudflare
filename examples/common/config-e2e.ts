@@ -24,7 +24,7 @@ export function configurePlaywright(
     if (isCI) {
       // Do not build on CI - there is a preceding build step
       command = `pnpm wrangler dev --port ${port} --inspector-port ${inspectorPort}`;
-      timeout = 100_000;
+      timeout = 500_000;
     } else {
       timeout = 500_000;
       command = `pnpm preview --port ${port} --inspector-port ${inspectorPort}`;

@@ -9,6 +9,11 @@ jobs:
   test:
     timeout-minutes: 30
     runs-on: ubuntu-latest
+    container:
+      # https://mcr.microsoft.com/en-us/artifact/mar/playwright/tags
+      # https://playwright.dev/docs/ci#via-containers
+      image: mcr.microsoft.com/playwright:v1.50.1-noble
+
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -16,10 +21,7 @@ jobs:
       - name: Install Dependencies
         uses: ./.github/actions/install-dependencies
 
-      - name: Install Playwright
-        run: pnpm run install-playwright
-
-      - name: Build the tool
+      - name: Build the adapter
         run: pnpm build
 
       - name: Build all workers
