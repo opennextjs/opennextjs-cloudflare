@@ -1,5 +1,19 @@
 # @opennextjs/cloudflare
 
+## 0.4.7
+
+### Patch Changes
+
+- 420b598: Fix asset cache path
+- a19b34d: perf: reduce CPU and memory usage by limiting code to AST parsing
+- f30a5fe: bump `@opennextjs/aws` dependency to `https://pkg.pr.new/@opennextjs/aws@727`
+- 6791cea: Use kebab-case for the KV Cache.
+- a630aea: fix: enable using the `direct` queue for isr
+
+  The `direct` mode is not recommended for use in production as it does not de-dupe requests.
+
+- f30a5fe: Fix: make sure that the kvCache doesn't serve stale cache values from assets when there is no KV binding
+
 ## 0.4.6
 
 ### Patch Changes
