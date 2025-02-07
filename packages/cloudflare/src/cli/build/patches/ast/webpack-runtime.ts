@@ -1,7 +1,7 @@
 /**
  * Inline dynamic requires in the webpack runtime.
  *
- * The webpack runtime has dynamic requires that would not be bundled by ESBuild
+ * The webpack runtime has dynamic requires that would not be bundled by ESBuild:
  *
  *     installChunk(require("./chunks/" + __webpack_require__.u(chunkId)));
  *
