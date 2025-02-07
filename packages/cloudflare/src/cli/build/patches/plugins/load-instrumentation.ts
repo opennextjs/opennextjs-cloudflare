@@ -18,11 +18,7 @@ fix: async loadInstrumentationModule() { }
 export function patchLoadInstrumentation(updater: ContentUpdater) {
   return updater.updateContent(
     "patch-load-instrumentation",
-    { filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/ },
-    ({ contents }) => {
-      if (/async loadInstrumentationModule\(/.test(contents)) {
-        return patchCode(contents, instrumentationRule);
-      }
-    }
+    { filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/, contentFilter: /async loadInstrumentationModule\(/ },
+    ({ contents }) => patchCode(contents, instrumentationRule)
   );
 }
