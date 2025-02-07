@@ -27,6 +27,7 @@ export function buildInlineChunksRule(chunks: number[]) {
   return `
 rule:
   pattern: ($CHUNK_ID, $_PROMISES) => { $$$ }
+  inside: {pattern: $_.$_.require = $$$_, stopBy: end}
   all:
     - has: {pattern: $INSTALL(require("./chunks/" + $$$)), stopBy: end}
     - has: {pattern: $SELF_ID != $CHUNK_ID, stopBy: end}
