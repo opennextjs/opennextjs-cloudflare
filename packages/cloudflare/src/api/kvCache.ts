@@ -1,9 +1,4 @@
-import type {
-  CachedFetchValue,
-  CacheValue,
-  IncrementalCache,
-  WithLastModified,
-} from "@opennextjs/aws/types/overrides";
+import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/types/overrides";
 import { IgnorableError, RecoverableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "./cloudflare-context.js";
@@ -70,12 +65,15 @@ class Cache implements IncrementalCache {
           // The cache can not be updated when there is no KV
           // As we don't want to keep serving stale data for ever,
           // we pretend the entry is not in cache
-          const entryValue = entry?.value as CachedFetchValue;
-          if (entryValue?.kind === "FETCH") {
-            const expires = entryValue.data.headers?.expires;
-            const expiresTime = new Date(expires as string).getTime();
+          if (
+            entry?.value &&
+            "kind" in entry.value &&
+            entry.value.kind === "FETCH" &&
+            entry.value.data?.headers?.expires
+          ) {
+            const expiresTime = new Date(entry.value.data.headers.expires).getTime();
             if (!isNaN(expiresTime) && expiresTime <= Date.now()) {
-              this.debug(`found expired entry (expire time: ${expires})`);
+              this.debug(`found expired entry (expire time: ${entry.value.data.headers.expires})`);
               return null;
             }
           }
