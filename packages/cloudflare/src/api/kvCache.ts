@@ -20,7 +20,7 @@ class Cache implements IncrementalCache {
   async get<IsFetch extends boolean = false>(
     key: string,
     isFetch?: IsFetch
-  ): Promise<WithLastModified<CacheValue<IsFetch>>> {
+  ): Promise<WithLastModified<CacheValue<IsFetch>> | null> {
     const cfEnv = getCloudflareContext().env;
     const kv = cfEnv.NEXT_CACHE_WORKERS_KV;
     const assets = cfEnv.ASSETS;
@@ -43,7 +43,7 @@ class Cache implements IncrementalCache {
         const kvKey = this.getKVKey(key, isFetch);
         entry = await kv.get(kvKey, "json");
         if (entry?.status === STATUS_DELETED) {
-          return {};
+          return null;
         }
       }
 
@@ -61,7 +61,25 @@ class Cache implements IncrementalCache {
             lastModified: (globalThis as { __BUILD_TIMESTAMP_MS__?: number }).__BUILD_TIMESTAMP_MS__,
           };
         }
+        if (!kv) {
+          // The cache can not be updated when there is no KV
+          // As we don't want to keep serving stale data for ever,
+          // we pretend the entry is not in cache
+          if (
+            entry?.value &&
+            "kind" in entry.value &&
+            entry.value.kind === "FETCH" &&
+            entry.value.data?.headers?.expires
+          ) {
+            const expiresTime = new Date(entry.value.data.headers.expires).getTime();
+            if (!isNaN(expiresTime) && expiresTime <= Date.now()) {
+              this.debug(`found expired entry (expire time: ${entry.value.data.headers.expires})`);
+              return null;
+            }
+          }
+        }
       }
+
       this.debug(entry ? `-> hit` : `-> miss`);
       return { value: entry?.value, lastModified: entry?.lastModified };
     } catch {
