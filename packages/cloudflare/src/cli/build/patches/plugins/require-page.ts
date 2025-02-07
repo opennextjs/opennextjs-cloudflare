@@ -1,4 +1,3 @@
-import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -20,7 +19,7 @@ export function inlineRequirePagePlugin(buildOpts: BuildOptions) {
         async ({ path }) => {
           const jsCode = await readFile(path, "utf8");
           if (/function requirePage\(/.test(jsCode)) {
-            return { contents: patchCode(jsCode, getRule(buildOpts)) };
+            return { contents: patchCode(jsCode, await getRule(buildOpts)) };
           }
         }
       );
@@ -28,19 +27,29 @@ export function inlineRequirePagePlugin(buildOpts: BuildOptions) {
   };
 }
 
-function getRule(buildOpts: BuildOptions) {
+async function getRule(buildOpts: BuildOptions) {
   const { outputDir } = buildOpts;
   const serverDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts), ".next/server");
 
   const pagesManifestFile = join(serverDir, "pages-manifest.json");
   const appPathsManifestFile = join(serverDir, "app-paths-manifest.json");
 
-  const pagesManifests: string[] = existsSync(pagesManifestFile)
-    ? Object.values(JSON.parse(readFileSync(pagesManifestFile, "utf-8")))
-    : [];
-  const appPathsManifests: string[] = existsSync(appPathsManifestFile)
-    ? Object.values(JSON.parse(readFileSync(appPathsManifestFile, "utf-8")))
-    : [];
+  let pagesManifests: string[] = [];
+  try {
+    pagesManifests = Object.values(JSON.parse(await readFile(pagesManifestFile, "utf-8")));
+  } catch {
+    // The file does not exists
+    pagesManifests = [];
+  }
+
+  let appPathsManifests: string[];
+  try {
+    appPathsManifests = Object.values(JSON.parse(await readFile(appPathsManifestFile, "utf-8")));
+  } catch {
+    // The file does not exists
+    appPathsManifests = [];
+  }
+
   const manifests = pagesManifests.concat(appPathsManifests);
 
   const htmlFiles = manifests.filter((file) => file.endsWith(".html"));
@@ -49,13 +58,15 @@ function getRule(buildOpts: BuildOptions) {
   // Inline fs access and dynamic require that are not supported by workerd.
   const fnBody = `
 // html
-${htmlFiles
-  .map(
-    (file) => `if (pagePath.endsWith("${file}")) {
-        return ${JSON.stringify(readFileSync(join(serverDir, file), "utf-8"))};
+${(
+  await Promise.all(
+    htmlFiles.map(
+      async (file) => `if (pagePath.endsWith("${file}")) {
+        return ${JSON.stringify(await readFile(join(serverDir, file), "utf-8"))};
       }`
+    )
   )
-  .join("\n")}
+).join("\n")}
 // js
 process.env.__NEXT_PRIVATE_RUNTIME_TYPE = isAppPath ? 'app' : 'pages';
 try {
@@ -74,13 +85,13 @@ try {
   return {
     rule: {
       pattern: `
-function requirePage($PAGE, $DIST_DIR, $IS_APPP_ATH) {
+function requirePage($PAGE, $DIST_DIR, $IS_APP_PATH) {
   const $_ = getPagePath($$$ARGS);
   $$$_BODY
 }`,
     },
     fix: `
-function requirePage($PAGE, $DIST_DIR, $IS_APPP_ATH) {
+function requirePage($PAGE, $DIST_DIR, $IS_APP_PATH) {
   const pagePath = getPagePath($$$ARGS);
   ${fnBody}
 }`,
