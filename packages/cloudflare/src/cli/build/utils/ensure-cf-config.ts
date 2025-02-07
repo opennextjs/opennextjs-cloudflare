@@ -1,3 +1,4 @@
+import logger from "@opennextjs/aws/logger.js";
 import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 
 /**
@@ -12,14 +13,19 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
     dftMaybeUseCache:
       config.default?.override?.incrementalCache === "dummy" ||
       typeof config.default?.override?.incrementalCache === "function",
-    dftUseDummyTagCacheAndQueue:
-      config.default?.override?.tagCache === "dummy" && config.default?.override?.queue === "dummy",
+    dftUseDummyTagCache: config.default?.override?.tagCache === "dummy",
+    dftMaybeUseQueue:
+      config.default?.override?.queue === "dummy" || config.default?.override?.queue === "direct",
     disableCacheInterception: config.dangerous?.enableCacheInterception !== true,
     mwIsMiddlewareExternal: config.middleware?.external == true,
     mwUseCloudflareWrapper: config.middleware?.override?.wrapper === "cloudflare-edge",
     mwUseEdgeConverter: config.middleware?.override?.converter === "edge",
     mwUseFetchProxy: config.middleware?.override?.proxyExternalRequest === "fetch",
   };
+
+  if (config.default?.override?.queue === "direct") {
+    logger.warn("The direct mode queue is not recommended for use in production.");
+  }
 
   if (Object.values(requirements).some((satisfied) => !satisfied)) {
     throw new Error(
@@ -31,7 +37,7 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
               converter: "edge",
               incrementalCache: "dummy" | function,
               tagCache: "dummy",
-              queue: "dummy",
+              queue: "dummy" | "direct",
             },
           },
 

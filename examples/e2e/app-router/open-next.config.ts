@@ -7,8 +7,9 @@ const config: OpenNextConfig = {
       wrapper: "cloudflare-node",
       converter: "edge",
       incrementalCache: async () => cache,
+      queue: "direct",
+      // Unused implementation
       tagCache: "dummy",
-      queue: "dummy",
     },
   },
 

@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-// Cache (and revalidation) is currently not supported: https://github.com/opennextjs/opennextjs-cloudflare/issues/105
-test.skip("Test revalidate", async ({ request }) => {
+test("Test revalidate", async ({ request }) => {
   const result = await request.get("/api/isr");
 
   expect(result.status()).toEqual(200);
