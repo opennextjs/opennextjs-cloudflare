@@ -2,6 +2,7 @@ import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs
 import { IgnorableError, RecoverableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "./cloudflare-context.js";
+import memoryQueue from "./memory-queue.js";
 
 export const CACHE_ASSET_DIR = "cdn-cgi/_next_cache";
 
@@ -116,6 +117,8 @@ class Cache implements IncrementalCache {
       );
     } catch {
       throw new RecoverableError(`Failed to set cache [${key}]`);
+    } finally {
+      memoryQueue.remove(key);
     }
   }
 
