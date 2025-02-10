@@ -3,8 +3,8 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import cache from "./memory-queue";
 
-vi.mock("./.next/prerender-manifest.json", () => ({
-  preview: { previewModeId: "id" },
+vi.mock("./internal/manifest.js", () => ({
+  getPrerenderManifest: () => ({ preview: { previewModeId: "id" } }),
 }));
 
 const defaultOpts = {
