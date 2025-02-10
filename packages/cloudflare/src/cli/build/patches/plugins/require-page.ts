@@ -12,12 +12,9 @@ export function inlineRequirePagePlugin(updater: ContentUpdater, buildOpts: Buil
     "inline-require-page",
     {
       filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/require\.js$`, { escape: false }),
+      contentFilter: /function requirePage\(/,
     },
-    async ({ contents }) => {
-      if (/function requirePage\(/.test(contents)) {
-        return patchCode(contents, await getRule(buildOpts));
-      }
-    }
+    async ({ contents }) => patchCode(contents, await getRule(buildOpts))
   );
 }
 

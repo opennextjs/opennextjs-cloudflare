@@ -8,11 +8,21 @@ import { readFile } from "node:fs/promises";
 
 import { type OnLoadArgs, type OnLoadOptions, type Plugin, type PluginBuild } from "esbuild";
 
+/**
+ * The callbacks returns either an updated content or undefined if the content is unchanged.
+ */
 export type Callback = (args: {
   contents: string;
   path: string;
 }) => string | undefined | Promise<string | undefined>;
-export type Updater = OnLoadOptions & { callback: Callback };
+
+/**
+ * The callback is called only when `contentFilter` matches the content.
+ * It can be used as a fast heuristic to prevent an expensive update.
+ */
+export type OnUpdateOptions = OnLoadOptions & { contentFilter: RegExp };
+
+export type Updater = OnUpdateOptions & { callback: Callback };
 
 export class ContentUpdater {
   updaters = new Map<string, Updater>();
@@ -23,11 +33,11 @@ export class ContentUpdater {
    * The callbacks are called in order of registration.
    *
    * @param name The name of the plugin (must be unique).
-   * @param options Same options as the `onLoad` hook to restrict updates.
+   * @param options Options.
    * @param callback The callback updating the content.
    * @returns A noop ESBuild plugin.
    */
-  updateContent(name: string, options: OnLoadOptions, callback: Callback): Plugin {
+  updateContent(name: string, options: OnUpdateOptions, callback: Callback): Plugin {
     if (this.updaters.has(name)) {
       throw new Error(`Plugin "${name}" already registered`);
     }
@@ -48,11 +58,14 @@ export class ContentUpdater {
       setup: async (build: PluginBuild) => {
         build.onLoad({ filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/ }, async (args: OnLoadArgs) => {
           let contents = await readFile(args.path, "utf-8");
-          for (const { filter, namespace, callback } of this.updaters.values()) {
+          for (const { filter, namespace, contentFilter, callback } of this.updaters.values()) {
             if (namespace !== undefined && args.namespace !== namespace) {
               continue;
             }
             if (!filter.test(args.path)) {
+              continue;
+            }
+            if (!contentFilter.test(contents)) {
               continue;
             }
             contents = (await callback({ contents, path: args.path })) ?? contents;
