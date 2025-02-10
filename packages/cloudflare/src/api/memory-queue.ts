@@ -13,6 +13,8 @@ class MemoryQueue implements Queue {
   public revalidatedPaths = new Map<string, ReturnType<typeof setTimeout>>();
 
   public async send({ MessageBody: { host, url }, MessageGroupId }: QueueMessage): Promise<void> {
+    if (this.revalidatedPaths.has(MessageGroupId)) return;
+
     this.revalidatedPaths.set(
       MessageGroupId,
       // force remove to allow new revalidations incase something went wrong
