@@ -1,4 +1,3 @@
-import { generateMessageGroupId } from "@opennextjs/aws/core/routing/queue.js";
 import logger from "@opennextjs/aws/logger.js";
 import type { Queue, QueueMessage } from "@opennextjs/aws/types/overrides.js";
 
@@ -18,7 +17,7 @@ class MemoryQueue implements Queue {
     this.revalidatedPaths.set(
       MessageGroupId,
       // force remove to allow new revalidations incase something went wrong
-      setTimeout(() => this.removeId(MessageGroupId), 10_000)
+      setTimeout(() => this.revalidatedPaths.delete(MessageGroupId), 10_000)
     );
 
     try {
@@ -36,18 +35,9 @@ class MemoryQueue implements Queue {
       });
     } catch (e) {
       logger.error(e);
+    } finally {
+      clearTimeout(this.revalidatedPaths.get(MessageGroupId));
       this.revalidatedPaths.delete(MessageGroupId);
-    }
-  }
-
-  private removeId(id: string) {
-    clearTimeout(this.revalidatedPaths.get(id));
-    this.revalidatedPaths.delete(id);
-  }
-
-  public remove(path: string) {
-    if (this.revalidatedPaths.size > 0) {
-      this.removeId(generateMessageGroupId(path));
     }
   }
 }

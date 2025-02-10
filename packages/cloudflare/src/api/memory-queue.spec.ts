@@ -16,28 +16,26 @@ const defaultOpts = {
 describe("MemoryQueue", () => {
   beforeAll(() => {
     vi.useFakeTimers();
-    globalThis.internalFetch = vi.fn();
+    globalThis.internalFetch = vi.fn().mockReturnValue(new Promise((res) => setTimeout(() => res(true), 1)));
   });
 
   it("should de-dupe revalidations", async () => {
-    await cache.send(defaultOpts);
+    const firstBatch = [cache.send(defaultOpts), cache.send(defaultOpts)];
+    vi.advanceTimersByTime(1);
+    await Promise.all(firstBatch);
     expect(globalThis.internalFetch).toHaveBeenCalledTimes(1);
-    await cache.send(defaultOpts);
-    expect(globalThis.internalFetch).toHaveBeenCalledTimes(1);
 
-    cache.remove("/test");
-
-    await cache.send(defaultOpts);
-    expect(globalThis.internalFetch).toHaveBeenCalledTimes(2);
-    await cache.send(defaultOpts);
-    expect(globalThis.internalFetch).toHaveBeenCalledTimes(2);
-
+    const secondBatch = [cache.send(defaultOpts)];
     vi.advanceTimersByTime(10_000);
+    await Promise.all(secondBatch);
+    expect(globalThis.internalFetch).toHaveBeenCalledTimes(2);
 
-    await cache.send(defaultOpts);
-    expect(globalThis.internalFetch).toHaveBeenCalledTimes(3);
-
-    await cache.send({ ...defaultOpts, MessageGroupId: generateMessageGroupId("/other") });
+    const thirdBatch = [
+      cache.send(defaultOpts),
+      cache.send({ ...defaultOpts, MessageGroupId: generateMessageGroupId("/other") }),
+    ];
+    vi.advanceTimersByTime(1);
+    await Promise.all(thirdBatch);
     expect(globalThis.internalFetch).toHaveBeenCalledTimes(4);
   });
 });
