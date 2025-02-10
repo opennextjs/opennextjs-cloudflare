@@ -1,5 +1,16 @@
 # @opennextjs/cloudflare
 
+## 0.4.8
+
+### Patch Changes
+
+- ac8b271: fix waitUntil
+
+  Calling `waitUntil`/`after` was failing when mulitple requests were handled concurrently.
+  This is fixed by pulling opennextjs/opennextjs-aws#733
+
+- 761a312: import `randomUUID` from `node:crypto` to support NodeJS 18
+
 ## 0.4.7
 
 ### Patch Changes
