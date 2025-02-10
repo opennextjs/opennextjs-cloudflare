@@ -10,6 +10,7 @@ import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
 import * as patches from "./patches/index.js";
 import { ContentUpdater } from "./patches/plugins/content-updater.js";
+import { patchFetchCacheSetMissingWaitUntil } from "./patches/plugins/fetch-cache-wait-until.js";
 import { patchLoadInstrumentation } from "./patches/plugins/load-instrumentation.js";
 import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
 import { fixRequire } from "./patches/plugins/require.js";
@@ -87,6 +88,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       fixRequire(updater),
       handleOptionalDependencies(optionalDependencies),
       patchLoadInstrumentation(updater),
+      patchFetchCacheSetMissingWaitUntil(updater),
       // Apply updater updaters, must be the last plugin
       updater.plugin,
     ],
