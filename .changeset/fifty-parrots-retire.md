@@ -2,4 +2,4 @@
 "@opennextjs/cloudflare": patch
 ---
 
-Crypto does not generate errors even when node version is less than 18.
+import `randomUUID` from `node:crypto` to support NodeJS 18

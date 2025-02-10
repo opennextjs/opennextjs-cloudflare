@@ -1,4 +1,3 @@
-// TODO: Drop this file when Node.js 18 is deprecated
 import { randomUUID } from "node:crypto";
 
 import Enquirer from "enquirer";
