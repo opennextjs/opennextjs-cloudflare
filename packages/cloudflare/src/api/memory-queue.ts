@@ -20,6 +20,7 @@ class MemoryQueue implements Queue {
     );
 
     try {
+      // TODO: Drop the import - https://github.com/opennextjs/opennextjs-cloudflare/issues/361
       // @ts-expect-error
       const manifest = await import("./.next/prerender-manifest.json");
       const protocol = host.includes("localhost") ? "http" : "https";
