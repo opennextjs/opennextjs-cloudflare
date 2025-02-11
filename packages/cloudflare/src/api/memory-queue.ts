@@ -1,15 +1,21 @@
 import logger from "@opennextjs/aws/logger.js";
 import type { Queue, QueueMessage } from "@opennextjs/aws/types/overrides.js";
 
+type Options = { revalidationTimeoutMs: number };
+
+export const DEFAULT_REVALIDATION_TIMEOUT = 10_000;
+
 /**
  * The Memory Queue offers basic ISR revalidation by directly requesting a revalidation of a route.
  *
  * It offers basic support for in-memory de-duping per isolate.
  */
-class MemoryQueue implements Queue {
+export class MemoryQueue implements Queue {
   readonly name = "memory-queue";
 
   public revalidatedPaths = new Map<string, ReturnType<typeof setTimeout>>();
+
+  constructor(private opts: Options = { revalidationTimeoutMs: DEFAULT_REVALIDATION_TIMEOUT }) {}
 
   public async send({ MessageBody: { host, url }, MessageGroupId }: QueueMessage): Promise<void> {
     if (this.revalidatedPaths.has(MessageGroupId)) return;
@@ -17,7 +23,7 @@ class MemoryQueue implements Queue {
     this.revalidatedPaths.set(
       MessageGroupId,
       // force remove to allow new revalidations incase something went wrong
-      setTimeout(() => this.revalidatedPaths.delete(MessageGroupId), 10_000)
+      setTimeout(() => this.revalidatedPaths.delete(MessageGroupId), this.opts.revalidationTimeoutMs)
     );
 
     try {
