@@ -38,7 +38,6 @@ rule:
     - has: { regex: "CachedRouteKind.FETCH" }
     - has: { regex: "finally(.*?)$" }
 
-
 fix: |
   globalThis.__openNextAls.getStore().waitUntil($PROMISE)
 `;
