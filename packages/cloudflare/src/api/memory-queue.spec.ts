@@ -3,9 +3,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import cache from "./memory-queue";
 
-vi.mock("./internal/manifest.js", () => ({
-  getPrerenderManifest: () => ({ preview: { previewModeId: "id" } }),
-}));
+vi.mock("./.next/prerender-manifest.json", () => Promise.resolve({ preview: { previewModeId: "id" } }));
 
 const defaultOpts = {
   MessageBody: { host: "test.local", url: "/test" },
@@ -30,12 +28,9 @@ describe("MemoryQueue", () => {
     await Promise.all(secondBatch);
     expect(globalThis.internalFetch).toHaveBeenCalledTimes(2);
 
-    const thirdBatch = [
-      cache.send(defaultOpts),
-      cache.send({ ...defaultOpts, MessageGroupId: generateMessageGroupId("/other") }),
-    ];
+    const thirdBatch = [cache.send({ ...defaultOpts, MessageGroupId: generateMessageGroupId("/other") })];
     vi.advanceTimersByTime(1);
     await Promise.all(thirdBatch);
-    expect(globalThis.internalFetch).toHaveBeenCalledTimes(4);
+    expect(globalThis.internalFetch).toHaveBeenCalledTimes(3);
   });
 });

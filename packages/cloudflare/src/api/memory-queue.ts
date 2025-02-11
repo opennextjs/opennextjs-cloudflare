@@ -1,8 +1,6 @@
 import logger from "@opennextjs/aws/logger.js";
 import type { Queue, QueueMessage } from "@opennextjs/aws/types/overrides.js";
 
-import { getPrerenderManifest } from "./internal/manifest.js";
-
 /**
  * The Memory Queue offers basic ISR revalidation by directly requesting a revalidation of a route.
  *
@@ -23,9 +21,11 @@ class MemoryQueue implements Queue {
     );
 
     try {
-      const manifest = await getPrerenderManifest();
       const protocol = host.includes("localhost") ? "http" : "https";
 
+      // TODO: Drop the import - https://github.com/opennextjs/opennextjs-cloudflare/issues/361
+      // @ts-ignore
+      const manifest = await import("./.next/prerender-manifest.json");
       await globalThis.internalFetch(`${protocol}://${host}${url}`, {
         method: "HEAD",
         headers: {
