@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { patchCode } from "../ast/util.js";
-import { ruleForMinifiedCode, ruleForNonMinifiedCode } from "./fetch-cache-wait-until.js";
+import { rule } from "./fetch-cache-wait-until.js";
 
 describe("patchFetchCacheSetMissingWaitUntil", () => {
   test("on minified code", () => {
@@ -15,7 +15,7 @@ describe("patchFetchCacheSetMissingWaitUntil", () => {
   }).catch((e4) => console.warn("Failed to set fetch cache", u4, e4)).finally(X), a2;
 }`;
 
-    expect(patchCode(code, ruleForMinifiedCode)).toMatchInlineSnapshot(`
+    expect(patchCode(code, rule)).toMatchInlineSnapshot(`
       "{
         let [o4, a2] = (0, d2.cloneResponse)(e3);
         globalThis.__openNextAls?.getStore()?.waitUntil?.(o4.arrayBuffer().then(async (e4) => {
@@ -66,7 +66,7 @@ describe("patchFetchCacheSetMissingWaitUntil", () => {
       return cloned2;
     `;
 
-    expect(patchCode(code, ruleForNonMinifiedCode)).toMatchInlineSnapshot(`
+    expect(patchCode(code, rule)).toMatchInlineSnapshot(`
       "// We're cloning the response using this utility because there
             // exists a bug in the undici library around response cloning.
             // See the following pull request for more details:

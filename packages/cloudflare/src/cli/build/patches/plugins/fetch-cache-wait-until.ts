@@ -24,40 +24,21 @@ export function patchFetchCacheSetMissingWaitUntil(updater: ContentUpdater) {
       ),
       contentFilter: /arrayBuffer\(\)\s*\.then/,
     },
-    ({ contents }) => {
-      contents = patchCode(contents, ruleForMinifiedCode);
-      return patchCode(contents, ruleForNonMinifiedCode);
-    }
+    ({ contents }) => patchCode(contents, rule)
   );
 }
 
-export const ruleForMinifiedCode = `
+export const rule = `
 rule:
-  pattern: return $PROMISE, $CLONED2
-  regex: Failed to set fetch cache
-  follows:
-    kind: lexical_declaration
-    pattern: let [$CLONED1, $CLONED2]
+  kind: call_expression
+  pattern: $PROMISE
+  all:
+    - has: { pattern: "$$$_.then($$$_)", stopBy: end }
+    - has: { pattern: "Buffer.from", stopBy: end }
+    - has: { regex: "CachedRouteKind.FETCH" }
+    - has: { regex: "finally(.*?)$" }
+
 
 fix: |
-  globalThis.__openNextAls?.getStore()?.waitUntil?.($PROMISE);
-  return $CLONED2;
-`;
-
-export const ruleForNonMinifiedCode = `
-rule:
-  regex: Failed to set fetch cache
-  pattern: $PROMISE;
-  follows:
-    kind: comment
-    follows:
-      kind: comment
-      follows:
-        kind: comment
-        follows:
-          kind: lexical_declaration
-          pattern: const [cloned1, cloned2]
-
-fix: |
-  globalThis.__openNextAls?.getStore()?.waitUntil?.($PROMISE);
+  globalThis.__openNextAls.getStore().waitUntil($PROMISE)
 `;
