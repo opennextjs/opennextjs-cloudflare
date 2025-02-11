@@ -44,9 +44,7 @@ rule:
             kind: expression_statement
             precedes:
                 kind: return_statement
-  any:
     - has: { pattern: $_.FETCH, stopBy: end }
-    - has: { pattern: FETCH, stopBy: end }
 
 fix: |
   globalThis.__openNextAls?.getStore()?.waitUntil?.($PROMISE)
