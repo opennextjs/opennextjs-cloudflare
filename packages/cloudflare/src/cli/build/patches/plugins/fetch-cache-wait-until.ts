@@ -33,11 +33,21 @@ rule:
   kind: call_expression
   pattern: $PROMISE
   all:
-    - has: { pattern: "$$$_.then($$$_)", stopBy: end }
+    - has: { pattern: $_.arrayBuffer().then, stopBy: end }
     - has: { pattern: "Buffer.from", stopBy: end }
-    - has: { regex: "CachedRouteKind.FETCH" }
-    - has: { regex: "finally(.*?)$" }
+    - any:
+        - inside:
+            kind: sequence_expression
+            inside:
+                kind: return_statement
+        - inside:
+            kind: expression_statement
+            precedes:
+                kind: return_statement
+  any:
+    - has: { pattern: $_.FETCH, stopBy: end }
+    - has: { pattern: FETCH, stopBy: end }
 
 fix: |
-  globalThis.__openNextAls.getStore().waitUntil($PROMISE)
+  globalThis.__openNextAls?.getStore()?.waitUntil?.($PROMISE)
 `;

@@ -18,7 +18,7 @@ describe("patchFetchCacheSetMissingWaitUntil", () => {
     expect(patchCode(code, rule)).toMatchInlineSnapshot(`
       "{
         let [o4, a2] = (0, d2.cloneResponse)(e3);
-        return globalThis.__openNextAls.getStore().waitUntil(o4.arrayBuffer().then(async (e4) => {
+        return globalThis.__openNextAls?.getStore()?.waitUntil?.(o4.arrayBuffer().then(async (e4) => {
           var a3;
           let i4 = Buffer.from(e4), s3 = { headers: Object.fromEntries(o4.headers.entries()), body: i4.toString("base64"), status: o4.status, url: o4.url };
           null == $ || null == (a3 = $.serverComponentsHmrCache) || a3.set(n2, s3), F && await H.set(n2, { kind: c2.CachedRouteKind.FETCH, data: s3, revalidate: t5 }, { fetchCache: true, revalidate: r4, fetchUrl: _, fetchIdx: q, tags: A2 });
@@ -203,7 +203,7 @@ describe("patchFetchCacheSetMissingWaitUntil", () => {
                           // We are dynamically rendering including dev mode. We want to return
                           // the response to the caller as soon as possible because it might stream
                           // over a very long time.
-                          globalThis.__openNextAls.getStore().waitUntil(cloned1
+                          globalThis.__openNextAls?.getStore()?.waitUntil?.(cloned1
                             .arrayBuffer()
                             .then(async (arrayBuffer) => {
                               const bodyBuffer = Buffer.from(arrayBuffer)
@@ -409,7 +409,7 @@ describe("patchFetchCacheSetMissingWaitUntil", () => {
                 // We are dynamically rendering including dev mode. We want to return
                 // the response to the caller as soon as possible because it might stream
                 // over a very long time.
-                globalThis.__openNextAls.getStore().waitUntil(res
+                globalThis.__openNextAls?.getStore()?.waitUntil?.(res
                   .clone()
                   .arrayBuffer()
                   .then(async (arrayBuffer) => {
