@@ -1,3 +1,5 @@
+import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
+
 import { patchCode } from "../ast/util.js";
 import type { ContentUpdater } from "./content-updater.js";
 
@@ -16,7 +18,10 @@ export function patchFetchCacheSetMissingWaitUntil(updater: ContentUpdater) {
   return updater.updateContent(
     "patch-fetch-cache-set-missing-wait-until",
     {
-      filter: /(server\/chunks\/.*\.js|.*\.runtime\..*\.js|patch-fetch\.js)$/,
+      filter: getCrossPlatformPathRegex(
+        String.raw`(server/chunks/.*\.js|.*\.runtime\..*\.js|patch-fetch\.js)$`,
+        { escape: false }
+      ),
       contentFilter: /arrayBuffer\(\)\s*\.then/,
     },
     ({ contents }) => patchCode(contents, rule)
