@@ -59,16 +59,13 @@ export class ContentUpdater {
         build.onLoad({ filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/ }, async (args: OnLoadArgs) => {
           let contents = await readFile(args.path, "utf-8");
           for (const { filter, namespace, contentFilter, callback } of this.updaters.values()) {
-            // if the regex is sticky let's make sure we rewind it
-            filter.lastIndex = 0;
-
             if (namespace !== undefined && args.namespace !== namespace) {
               continue;
             }
-            if (!filter.test(args.path)) {
+            if (!args.path.match(filter)) {
               continue;
             }
-            if (!contentFilter.test(contents)) {
+            if (!contents.match(contentFilter)) {
               continue;
             }
             contents = (await callback({ contents, path: args.path })) ?? contents;
