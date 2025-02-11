@@ -12,13 +12,9 @@ export function validateMd5(data: Buffer, expectedHash: string) {
   );
 }
 
-test("the application's noop index page is visible and it allows navigating to the hello-world api route", async ({
-  page,
-}) => {
+test("index", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("This application doesn't have")).toBeVisible();
-  await page.getByRole("link", { name: "/api/hello" }).click();
-  await expect(page.getByText("Hello World!")).toBeVisible();
+  await expect(page.getByText("Test misc Next features")).toBeVisible();
 });
 
 test("the hello-world api GET route works as intended", async ({ page }) => {
