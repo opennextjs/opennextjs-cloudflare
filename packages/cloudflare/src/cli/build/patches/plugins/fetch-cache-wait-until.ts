@@ -1,4 +1,5 @@
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
+
 import { patchCode } from "../ast/util.js";
 import type { ContentUpdater } from "./content-updater.js";
 
