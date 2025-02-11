@@ -15,7 +15,10 @@ import type { ContentUpdater } from "./content-updater.js";
 export function patchFetchCacheSetMissingWaitUntil(updater: ContentUpdater) {
   return updater.updateContent(
     "patch-fetch-cache-set-missing-wait-until",
-    { filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/, contentFilter: /Failed to set fetch cache/ },
+    {
+      filter: /(server\/chunks\/.*\.js|.*\.runtime\..*\.js|patch-fetch\.js)$/,
+      contentFilter: /Failed to set fetch cache/,
+    },
     ({ contents }) => {
       contents = patchCode(contents, ruleForMinifiedCode);
       return patchCode(contents, ruleForNonMinifiedCode);
