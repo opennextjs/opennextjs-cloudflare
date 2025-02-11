@@ -17,7 +17,7 @@ export function patchFetchCacheSetMissingWaitUntil(updater: ContentUpdater) {
     "patch-fetch-cache-set-missing-wait-until",
     {
       filter: /(server\/chunks\/.*\.js|.*\.runtime\..*\.js|patch-fetch\.js)$/,
-      contentFilter: /Failed to set fetch cache/,
+      contentFilter: /arrayBuffer\(\)\s*\.then/,
     },
     ({ contents }) => {
       contents = patchCode(contents, ruleForMinifiedCode);
