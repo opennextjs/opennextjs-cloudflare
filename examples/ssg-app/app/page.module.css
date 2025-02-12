@@ -1,0 +1,17 @@
+.page {
+  display: grid;
+  grid-template-rows: 20px 1fr 20px;
+  align-items: center;
+  justify-items: center;
+  flex: 1;
+  border: 3px solid gray;
+  margin: 1rem;
+  margin-block-end: 0;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  grid-row-start: 2;
+}
