@@ -13,7 +13,7 @@
     "noPropertyAccessFromIndexSignature": false,
     "outDir": "./dist",
     "target": "ES2022",
-    "types": ["@cloudflare/workers-types"]
+    "types": ["@cloudflare/workers-types", "@opennextjs/aws/types/global.d.ts"]
   },
   "include": ["src/**/*.ts"]
 }

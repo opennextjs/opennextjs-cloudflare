@@ -15,7 +15,9 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
       typeof config.default?.override?.incrementalCache === "function",
     dftUseDummyTagCache: config.default?.override?.tagCache === "dummy",
     dftMaybeUseQueue:
-      config.default?.override?.queue === "dummy" || config.default?.override?.queue === "direct",
+      config.default?.override?.queue === "dummy" ||
+      config.default?.override?.queue === "direct" ||
+      typeof config.default?.override?.queue === "function",
     disableCacheInterception: config.dangerous?.enableCacheInterception !== true,
     mwIsMiddlewareExternal: config.middleware?.external == true,
     mwUseCloudflareWrapper: config.middleware?.override?.wrapper === "cloudflare-edge",
@@ -37,7 +39,7 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
               converter: "edge",
               incrementalCache: "dummy" | function,
               tagCache: "dummy",
-              queue: "dummy" | "direct",
+              queue: "dummy" | "direct" | function,
             },
           },
 
