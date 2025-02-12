@@ -1,6 +1,9 @@
-import * as path from "node:path";
+import path from "node:path";
+import url from "node:url";
 
-const templatesDirPath = path.resolve(`${import.meta.dirname}/../../templates`);
+const __filename = url.fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const templatesDirPath = path.join(__dirname, "/../../templates");
 
 /**
  * Utility for getting the resolved path to the package's templates directory
