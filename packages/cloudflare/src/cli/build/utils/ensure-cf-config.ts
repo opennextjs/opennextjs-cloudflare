@@ -18,7 +18,6 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
       config.default?.override?.queue === "dummy" ||
       config.default?.override?.queue === "direct" ||
       typeof config.default?.override?.queue === "function",
-    disableCacheInterception: config.dangerous?.enableCacheInterception !== true,
     mwIsMiddlewareExternal: config.middleware?.external == true,
     mwUseCloudflareWrapper: config.middleware?.override?.wrapper === "cloudflare-edge",
     mwUseEdgeConverter: config.middleware?.override?.converter === "edge",
@@ -50,10 +49,6 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
               converter: "edge",
               proxyExternalRequest: "fetch",
             },
-          },
-
-          "dangerous": {
-            "enableCacheInterception": false
           },
         }\n\n`.replace(/^ {8}/gm, "")
     );

@@ -21,10 +21,6 @@ const config = {
       proxyExternalRequest: "fetch",
     },
   },
-
-  dangerous: {
-    enableCacheInterception: false,
-  },
 };
 
 export default config;
