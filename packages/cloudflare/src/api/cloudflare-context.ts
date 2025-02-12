@@ -91,7 +91,7 @@ export function getCloudflareContext<
       throw new Error(
         `\n\nERROR: \`getCloudflareContext\` has been called in a static route` +
           ` that is not allowed, this can be solved in different ways:\n\n` +
-          ` - call \`getCloudflareContext\` in \`async\` mode\n` +
+          ` - call \`getCloudflareContext({async: true})\` to use the \`async\` mode\n` +
           ` - avoid calling \`getCloudflareContext\` in the route\n` +
           ` - make the route non static\n`
       );
