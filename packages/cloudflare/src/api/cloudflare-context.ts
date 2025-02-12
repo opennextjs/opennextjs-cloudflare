@@ -85,7 +85,7 @@ export function getCloudflareContext<
     // can work during SSG since for SSG Next.js creates (jest) workers that don't get access to the
     // normal global state. There isn't much we can do about this so we can only throw with a helpful
     // error message for the user.
-    // Note: Next.js sets globalThis.__NEXT_DATA__.nextExport to true for the worker, so we can use that to detect
+    // Note: Next.js sets globalThis.__NEXT_DATA__.nextExport to true for SSG routes, so we can use that to detect
     // wether the route is being SSG'd (source: https://github.com/vercel/next.js/blob/4e394608423/packages/next/src/export/worker.ts#L55-L57)
     if (!asyncMode && global.__NEXT_DATA__?.nextExport === true) {
       throw new Error(
