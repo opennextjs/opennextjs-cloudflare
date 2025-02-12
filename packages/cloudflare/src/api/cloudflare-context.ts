@@ -65,12 +65,12 @@ export function getCloudflareContext<
 export function getCloudflareContext<
   CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
   Context = ExecutionContext,
->(options?: { async?: false }): CloudflareContext<CfProperties, Context>;
+>(options?: { async: false }): CloudflareContext<CfProperties, Context>;
 export function getCloudflareContext<
   CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
   Context = ExecutionContext,
 >(
-  options: GetCloudflareContextOptions = {}
+  options: GetCloudflareContextOptions = { async: false }
 ): CloudflareContext<CfProperties, Context> | Promise<CloudflareContext<CfProperties, Context>> {
   const global = globalThis as InternalGlobalThis<CfProperties, Context>;
 
