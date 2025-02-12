@@ -1,5 +1,21 @@
 # @opennextjs/cloudflare
 
+## 0.5.0
+
+### Minor Changes
+
+- 82bb588: feat: basic in-memory de-duping revalidation queue
+
+### Patch Changes
+
+- 2e48d4f: fix: make sure that fetch cache `set`s are properly awaited
+
+  Next.js does not await promises that update the incremental cache for fetch requests,
+  that is needed in our runtime otherwise the cache updates get lost, so this change
+  makes sure that the promise is properly awaited via `waitUntil`
+
+- 0c26049: fix path to file template in `open-next.config.ts`.
+
 ## 0.4.8
 
 ### Patch Changes
