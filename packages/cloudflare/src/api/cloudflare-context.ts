@@ -45,13 +45,13 @@ type InternalGlobalThis<
   __NEXT_DATA__: Record<string, unknown>;
 };
 
-type GetCloudflareContextOptions = Partial<{
+type GetCloudflareContextOptions = {
   /**
    * Make `getCloudflareContext` return a promise of the cloudflare context instead of the object itself. This allows the
    * function to be called in statically generated routes.
    */
   async: boolean;
-}>;
+};
 
 /**
  * Utility to get the current Cloudflare context
