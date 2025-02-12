@@ -62,10 +62,10 @@ export class ContentUpdater {
             if (namespace !== undefined && args.namespace !== namespace) {
               continue;
             }
-            if (!filter.test(args.path)) {
+            if (!args.path.match(filter)) {
               continue;
             }
-            if (!contentFilter.test(contents)) {
+            if (!contents.match(contentFilter)) {
               continue;
             }
             contents = (await callback({ contents, path: args.path })) ?? contents;

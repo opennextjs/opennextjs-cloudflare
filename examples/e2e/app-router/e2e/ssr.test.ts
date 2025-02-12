@@ -28,7 +28,7 @@ test.skip("Server Side Render and loading.tsx", async ({ page }) => {
   }
 });
 
-test.skip("Fetch cache properly cached", async ({ page }) => {
+test("Fetch cache properly cached", async ({ page }) => {
   await page.goto("/ssr");
   const originalDate = await page.getByText("Cached fetch:").textContent();
   await page.waitForTimeout(2000);
