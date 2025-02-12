@@ -17,7 +17,7 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
     dftMaybeUseQueue:
       config.default?.override?.queue === "dummy" ||
       config.default?.override?.queue === "direct" ||
-      typeof config.default?.override?.incrementalCache === "function",
+      typeof config.default?.override?.queue === "function",
     disableCacheInterception: config.dangerous?.enableCacheInterception !== true,
     mwIsMiddlewareExternal: config.middleware?.external == true,
     mwUseCloudflareWrapper: config.middleware?.override?.wrapper === "cloudflare-edge",
