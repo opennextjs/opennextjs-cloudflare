@@ -91,26 +91,28 @@ export function getCloudflareContext<
   // source: https://github.com/vercel/next.js/blob/4e394608423/packages/next/src/export/worker.ts#L55-L57)
   const inSSG = global.__NEXT_DATA__?.nextExport === true;
 
-  if ((inNodejsRuntime || inSSG) && asyncMode) {
-    // we're in a node.js process and also in "async mode" so we can use wrangler to asynchronously get the context
-    return getCloudflareContextFromWrangler<CfProperties, Context>().then((context) => {
-      addCloudflareContextToNodejsGlobal(context);
-      return context;
-    });
-  }
-
-  // The sync mode of `getCloudflareContext`, relies on the context being set on the global state
-  // by either the worker entrypoint (in prod) or by `initOpenNextCloudflareForDev` (in dev), neither
-  // can work during SSG since for SSG Next.js creates (jest) workers that don't get access to the
-  // normal global state so we throw with a helpful error message.
-  if (inSSG) {
-    throw new Error(
-      `\n\nERROR: \`getCloudflareContext\` has been called in a static route,` +
-        ` that is not allowed, this can be solved in different ways:\n\n` +
-        ` - call \`getCloudflareContext({async: true})\` to use the \`async\` mode\n` +
-        ` - avoid calling \`getCloudflareContext\` in the route\n` +
-        ` - make the route non static\n`
-    );
+  if (asyncMode) {
+    if (inNodejsRuntime || inSSG) {
+      // we're in a node.js process and also in "async mode" so we can use wrangler to asynchronously get the context
+      return getCloudflareContextFromWrangler<CfProperties, Context>().then((context) => {
+        addCloudflareContextToNodejsGlobal(context);
+        return context;
+      });
+    }
+  } else {
+    // The sync mode of `getCloudflareContext`, relies on the context being set on the global state
+    // by either the worker entrypoint (in prod) or by `initOpenNextCloudflareForDev` (in dev), neither
+    // can work during SSG since for SSG Next.js creates (jest) workers that don't get access to the
+    // normal global state so we throw with a helpful error message.
+    if (inSSG) {
+      throw new Error(
+        `\n\nERROR: \`getCloudflareContext\` has been called in a static route,` +
+          ` that is not allowed, this can be solved in different ways:\n\n` +
+          ` - call \`getCloudflareContext({async: true})\` to use the \`async\` mode\n` +
+          ` - avoid calling \`getCloudflareContext\` in the route\n` +
+          ` - make the route non static\n`
+      );
+    }
   }
 
   // The cloudflare context is initialized by the worker so it is always available.
