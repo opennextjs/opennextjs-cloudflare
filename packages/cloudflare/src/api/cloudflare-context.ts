@@ -47,8 +47,8 @@ type InternalGlobalThis<
 
 type GetCloudflareContextOptions = {
   /**
-   * Make `getCloudflareContext` return a promise of the cloudflare context instead of the object itself. This allows the
-   * function to be called in statically generated routes.
+   * When `true`, `getCloudflareContext` returns a promise of the cloudflare context instead of the context,
+   * this is needed to access the context from statically generated routes.
    */
   async: boolean;
 };
