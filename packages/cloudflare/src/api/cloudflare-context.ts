@@ -97,7 +97,10 @@ export function getCloudflareContext<
     }
 
     if (options.async) {
-      return getAndSetCloudflareContextInNodejs();
+      return getCloudflareContextFromWrangler<CfProperties, Context>().then((context) => {
+        addCloudflareContextToNodejsGlobal(context);
+        return context;
+      });
     }
 
     // the cloudflare context is initialized by the worker and is always present in production/preview
@@ -159,7 +162,10 @@ function shouldContextInitializationRun(): boolean {
  *
  * @param cloudflareContext the cloudflare context to add to the node.sj global scope
  */
-function addCloudflareContextToNodejsGlobal(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
   const global = globalThis as InternalGlobalThis<CfProperties, Context>;
   global[cloudflareContextSymbol] = cloudflareContext;
 }
@@ -218,20 +224,4 @@ async function getCloudflareContextFromWrangler<
     cf: cf as unknown as CfProperties,
     ctx: ctx as Context,
   };
-}
-
-/**
- * Gets a local proxy version of the cloudflare context (created using `getPlatformProxy`) when running
- * in a Node.js process (so under `next dev` or for ssg under `next build`), is also sets this value on the
- * globalThis so that it can be accessed later.
- *
- * @returns the local proxy version of the cloudflare context
- */
-async function getAndSetCloudflareContextInNodejs<
-  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
-  Context = ExecutionContext,
->(): Promise<CloudflareContext<CfProperties, Context>> {
-  const context = await getCloudflareContextFromWrangler();
-  addCloudflareContextToNodejsGlobal(context);
-  return context as unknown as CloudflareContext<CfProperties, Context>;
 }
