@@ -96,7 +96,7 @@ export function getCloudflareContext<
       );
     }
 
-    if (options.async) {
+    if (asyncMode) {
       return getCloudflareContextFromWrangler<CfProperties, Context>().then((context) => {
         addCloudflareContextToNodejsGlobal(context);
         return context;
