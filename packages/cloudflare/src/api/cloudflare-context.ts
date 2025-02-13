@@ -79,48 +79,53 @@ export function getCloudflareContext<
   // whether `getCloudflareContext` is run in "async mode"
   const asyncMode = options.async;
 
-  if (!cloudflareContext) {
-    // The sync mode of `getCloudflareContext`, relies on the context being set on the global state
-    // by either the worker entrypoint (in prod) or by `initOpenNextCloudflareForDev` (in dev), neither
-    // can work during SSG since for SSG Next.js creates (jest) workers that don't get access to the
-    // normal global state so we throw with a helpful error message.
-    // Note: Next.js sets globalThis.__NEXT_DATA__.nextExport to true for SSG routes
-    // source: https://github.com/vercel/next.js/blob/4e394608423/packages/next/src/export/worker.ts#L55-L57)
-    if (!asyncMode && global.__NEXT_DATA__?.nextExport === true) {
-      throw new Error(
-        `\n\nERROR: \`getCloudflareContext\` has been called in a static route` +
-          ` that is not allowed, this can be solved in different ways:\n\n` +
-          ` - call \`getCloudflareContext({async: true})\` to use the \`async\` mode\n` +
-          ` - avoid calling \`getCloudflareContext\` in the route\n` +
-          ` - make the route non static\n`
-      );
-    }
+  if (cloudflareContext) {
+    return asyncMode ? Promise.resolve(cloudflareContext) : cloudflareContext;
+  }
 
-    if (asyncMode) {
-      return getCloudflareContextFromWrangler<CfProperties, Context>().then((context) => {
-        addCloudflareContextToNodejsGlobal(context);
-        return context;
-      });
-    }
+  const inNodejsRuntime = process.env.NEXT_RUNTIME === "nodejs";
 
-    // the cloudflare context is initialized by the worker and is always present in production/preview
-    // during local development (`next dev`) it might be missing only if the developers hasn't called
-    // the `initOpenNextCloudflareForDev` function in their Next.js config file
+  // Note: Next.js sets globalThis.__NEXT_DATA__.nextExport to true for SSG routes
+  // source: https://github.com/vercel/next.js/blob/4e394608423/packages/next/src/export/worker.ts#L55-L57)
+  const inSSG = global.__NEXT_DATA__?.nextExport === true;
+
+  if ((inNodejsRuntime || inSSG) && asyncMode) {
+    // we're in a node.js process and also in "async mode" so we can use wrangler to asynchronously get the context
+    return getCloudflareContextFromWrangler<CfProperties, Context>().then((context) => {
+      addCloudflareContextToNodejsGlobal(context);
+      return context;
+    });
+  }
+
+  // The sync mode of `getCloudflareContext`, relies on the context being set on the global state
+  // by either the worker entrypoint (in prod) or by `initOpenNextCloudflareForDev` (in dev), neither
+  // can work during SSG since for SSG Next.js creates (jest) workers that don't get access to the
+  // normal global state so we throw with a helpful error message.
+  if (inSSG) {
     throw new Error(
-      `\n\nERROR: \`getCloudflareContext\` has been called without having called` +
-        ` \`initOpenNextCloudflareForDev\` from the Next.js config file.\n` +
-        `You should update your Next.js config file as shown below:\n\n` +
-        "   ```\n   // next.config.mjs\n\n" +
-        `   import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";\n\n` +
-        `   initOpenNextCloudflareForDev();\n\n` +
-        "   const nextConfig = { ... };\n" +
-        "   export default nextConfig;\n" +
-        "   ```\n" +
-        "\n"
+      `\n\nERROR: \`getCloudflareContext\` has been called in a static route,` +
+        ` that is not allowed, this can be solved in different ways:\n\n` +
+        ` - call \`getCloudflareContext({async: true})\` to use the \`async\` mode\n` +
+        ` - avoid calling \`getCloudflareContext\` in the route\n` +
+        ` - make the route non static\n`
     );
   }
 
-  return cloudflareContext;
+  // the cloudflare context is initialized by the worker and is always present in production/preview
+  // during local development (`next dev`) it might be missing only if the developers hasn't called
+  // the `initOpenNextCloudflareForDev` function in their Next.js config file
+  throw new Error(
+    `\n\nERROR: \`getCloudflareContext\` has been called without having called` +
+      ` \`initOpenNextCloudflareForDev\` from the Next.js config file.\n` +
+      `You should update your Next.js config file as shown below:\n\n` +
+      "   ```\n   // next.config.mjs\n\n" +
+      `   import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";\n\n` +
+      `   initOpenNextCloudflareForDev();\n\n` +
+      "   const nextConfig = { ... };\n" +
+      "   export default nextConfig;\n" +
+      "   ```\n" +
+      "\n"
+  );
 }
 
 /**
