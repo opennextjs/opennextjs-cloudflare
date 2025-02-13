@@ -49,12 +49,15 @@ export async function createServerBundle(options: buildHelper.BuildOptions) {
 
   const remainingRoutes = new Set<string>();
 
-  const { appBuildOutputPath, monorepoRoot } = options;
-
-  const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
+  const { appBuildOutputPath } = options;
 
   // Find remaining routes
-  const serverPath = path.join(appBuildOutputPath, ".next", "standalone", packagePath, ".next", "server");
+  const serverPath = path.join(
+    appBuildOutputPath,
+    ".next/standalone",
+    buildHelper.getPackagePath(options),
+    ".next/server"
+  );
 
   // Find app dir routes
   if (fs.existsSync(path.join(serverPath, "app"))) {
@@ -111,7 +114,7 @@ async function generateBundle(
   //       `node_modules` inside `.next/standalone`, and others inside
   //       `.next/standalone/package/path` (ie. `.next`, `server.js`).
   //       We need to output the handler file inside the package path.
-  const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
+  const packagePath = buildHelper.getPackagePath(options);
   fs.mkdirSync(path.join(outputPath, packagePath), { recursive: true });
 
   const ext = fnOptions.runtime === "deno" ? "mjs" : "cjs";
@@ -167,7 +170,7 @@ async function generateBundle(
   const overrides = fnOptions.override ?? {};
 
   const isBefore13413 = buildHelper.compareSemver(options.nextVersion, "13.4.13") <= 0;
-  const isAfter141 = buildHelper.compareSemver(options.nextVersion, "14.0.4") >= 0;
+  const isAfter141 = buildHelper.compareSemver(options.nextVersion, "14.1") >= 0;
 
   const disableRouting = isBefore13413 || config.middleware?.external;
 
