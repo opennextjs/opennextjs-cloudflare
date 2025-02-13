@@ -80,13 +80,12 @@ export function getCloudflareContext<
   const asyncMode = options.async;
 
   if (!cloudflareContext) {
-    // The non-async mode of `getCloudflareContext`, relies on the context set on the global state
+    // The sync mode of `getCloudflareContext`, relies on the context being set on the global state
     // by either the worker entrypoint (in prod) or by `initOpenNextCloudflareForDev` (in dev), neither
     // can work during SSG since for SSG Next.js creates (jest) workers that don't get access to the
-    // normal global state. There isn't much we can do about this so we can only throw with a helpful
-    // error message for the user.
-    // Note: Next.js sets globalThis.__NEXT_DATA__.nextExport to true for SSG routes, so we can use that to detect
-    // wether the route is being SSG'd (source: https://github.com/vercel/next.js/blob/4e394608423/packages/next/src/export/worker.ts#L55-L57)
+    // normal global state so we throw with a helpful error message.
+    // Note: Next.js sets globalThis.__NEXT_DATA__.nextExport to true for SSG routes
+    // source: https://github.com/vercel/next.js/blob/4e394608423/packages/next/src/export/worker.ts#L55-L57)
     if (!asyncMode && global.__NEXT_DATA__?.nextExport === true) {
       throw new Error(
         `\n\nERROR: \`getCloudflareContext\` has been called in a static route` +
