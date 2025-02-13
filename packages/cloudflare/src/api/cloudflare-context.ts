@@ -83,6 +83,8 @@ export function getCloudflareContext<
     return asyncMode ? Promise.resolve(cloudflareContext) : cloudflareContext;
   }
 
+  // Note: Next.js sets process.env.NEXT_RUNTIME to 'nodejs' when the runtime in use is the node.js one
+  // source: https://github.com/vercel/next.js/blob/1e8603113/packages/next/src/build/webpack/plugins/define-env-plugin.ts#L179-L183
   const inNodejsRuntime = process.env.NEXT_RUNTIME === "nodejs";
 
   // Note: Next.js sets globalThis.__NEXT_DATA__.nextExport to true for SSG routes
