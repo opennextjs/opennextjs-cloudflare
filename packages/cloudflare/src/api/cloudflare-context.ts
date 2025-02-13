@@ -97,7 +97,7 @@ export function getCloudflareContext<
     }
 
     if (options.async) {
-      return getAndSetCloudflareContextInNextDev();
+      return getAndSetCloudflareContextInNodejs();
     }
 
     // the cloudflare context is initialized by the worker and is always present in production/preview
@@ -154,7 +154,7 @@ function shouldContextInitializationRun(): boolean {
 }
 
 /**
- * Adds the cloudflare context to the global scope in which the Next.js dev node.js process runs in, enabling
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
  * future calls to `getCloudflareContext` to retrieve and return such context
  *
  * @param cloudflareContext the cloudflare context to add to the node.sj global scope
@@ -221,13 +221,13 @@ async function getCloudflareContextFromWrangler<
 }
 
 /**
- * Gets a local proxy version of the cloudflare context (created using `getPlatformProxy`) when
- * running in the standard next dev server (via `next dev`), is also sets this value on the
+ * Gets a local proxy version of the cloudflare context (created using `getPlatformProxy`) when running
+ * in a Node.js process (so under `next dev` or for ssg under `next build`), is also sets this value on the
  * globalThis so that it can be accessed later.
  *
  * @returns the local proxy version of the cloudflare context
  */
-async function getAndSetCloudflareContextInNextDev<
+async function getAndSetCloudflareContextInNodejs<
   CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
   Context = ExecutionContext,
 >(): Promise<CloudflareContext<CfProperties, Context>> {
