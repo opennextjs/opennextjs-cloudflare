@@ -18,7 +18,8 @@ type TraceInfo = { version: number; files: string[] };
 export function patchVercelOgLibrary(buildOpts: BuildOptions) {
   const { appBuildOutputPath, outputDir } = buildOpts;
 
-  const packagePath = path.join(outputDir, "server-functions/default", getPackagePath(buildOpts));
+  const functionsPath = path.join(outputDir, "server-functions/default");
+  const packagePath = path.join(functionsPath, getPackagePath(buildOpts));
 
   for (const traceInfoPath of globSync(path.join(appBuildOutputPath, ".next/server/**/*.nft.json"))) {
     const traceInfo: TraceInfo = JSON.parse(readFileSync(traceInfoPath, { encoding: "utf8" }));
@@ -26,7 +27,7 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions) {
 
     if (!tracedNodePath) continue;
 
-    const outputDir = path.join(packagePath, "node_modules/next/dist/compiled/@vercel/og");
+    const outputDir = getOutputDir({ functionsPath, packagePath });
     const outputEdgePath = path.join(outputDir, "index.edge.js");
 
     // Ensure the edge version is available in the OpenNext node_modules.
@@ -54,4 +55,15 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions) {
     const { edits } = patchVercelOgImport(node);
     writeFileSync(routeFilePath, node.commitEdits(edits));
   }
+}
+
+function getOutputDir(opts: { functionsPath: string; packagePath: string }) {
+  const vercelOgNodeModulePath = "node_modules/next/dist/compiled/@vercel/og";
+
+  const packageOutputPath = path.join(opts.packagePath, vercelOgNodeModulePath);
+  if (existsSync(packageOutputPath)) {
+    return packageOutputPath;
+  }
+
+  return path.join(opts.functionsPath, vercelOgNodeModulePath);
 }
