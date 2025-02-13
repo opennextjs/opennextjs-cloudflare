@@ -1,9 +1,9 @@
 // List of all e2e tested apps
 const apps = [
   // examples
-  "api",
   "create-next-app",
   "middleware",
+  "playground",
   "vercel-blog-starter",
   "vercel-commerce",
   // e2e
