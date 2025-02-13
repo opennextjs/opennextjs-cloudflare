@@ -111,8 +111,8 @@ export function getCloudflareContext<
     );
   }
 
-  // the cloudflare context is initialized by the worker and is always present in production/preview
-  // during local development (`next dev`) it might be missing only if the developers hasn't called
+  // The cloudflare context is initialized by the worker so it is always available.
+  // During local development (`next dev`) it might be missing only if the developers hasn't called
   // the `initOpenNextCloudflareForDev` function in their Next.js config file
   throw new Error(
     `\n\nERROR: \`getCloudflareContext\` has been called without having called` +
