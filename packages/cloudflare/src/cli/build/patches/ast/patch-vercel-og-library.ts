@@ -10,8 +10,6 @@ import { patchVercelOgFallbackFont, patchVercelOgImport } from "./vercel-og.js";
 
 type TraceInfo = { version: number; files: string[] };
 
-const vercelOgNodeModulePath = "node_modules/next/dist/compiled/@vercel/og";
-
 /**
  * Patches the usage of @vercel/og to be compatible with Cloudflare Workers.
  *
@@ -60,6 +58,8 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions) {
 }
 
 function getOutputDir(opts: { functionsPath: string; packagePath: string }) {
+  const vercelOgNodeModulePath = "node_modules/next/dist/compiled/@vercel/og";
+
   const packageOutputPath = path.join(opts.packagePath, vercelOgNodeModulePath);
   if (existsSync(packageOutputPath)) {
     return packageOutputPath;
