@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 test("the index page should work", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("Hello from a Statically generated app")).toBeVisible();
+  await expect(page.getByText("Hello from a Statically generated page")).toBeVisible();
 });
 
 test("the APP_VERSION var from the cloudflare context should be displayed", async ({ page }) => {
