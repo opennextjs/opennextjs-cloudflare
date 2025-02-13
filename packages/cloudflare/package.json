@@ -1,7 +1,7 @@
 {
   "name": "@opennextjs/cloudflare",
   "description": "Cloudflare builder for next apps",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "type": "module",
   "scripts": {
     "clean": "rimraf dist",
