@@ -84,7 +84,8 @@ export function getCloudflareContext<
   }
 
   // Note: Next.js sets process.env.NEXT_RUNTIME to 'nodejs' when the runtime in use is the node.js one
-  // source: https://github.com/vercel/next.js/blob/1e8603113/packages/next/src/build/webpack/plugins/define-env-plugin.ts#L179-L183
+  // We want to detect when the runtime is the node.js one so that during development (`next dev`) we know wether
+  // we are or not in a node.js process and that access to wrangler's node.js apis
   const inNodejsRuntime = process.env.NEXT_RUNTIME === "nodejs";
 
   // Note: Next.js sets globalThis.__NEXT_DATA__.nextExport to true for SSG routes
