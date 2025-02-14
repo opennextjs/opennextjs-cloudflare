@@ -72,15 +72,74 @@ export function getCloudflareContext<
 >(
   options: GetCloudflareContextOptions = { async: false }
 ): CloudflareContext<CfProperties, Context> | Promise<CloudflareContext<CfProperties, Context>> {
+  return options.async ? getCloudflareContextAsync() : getCloudflareContextSync();
+}
+
+/**
+ * Get the cloudflare context from the current global scope
+ */
+function getCloudflareContextFromGlobalScope<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(): CloudflareContext<CfProperties, Context> | undefined {
   const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  return global[cloudflareContextSymbol];
+}
 
-  const cloudflareContext = global[cloudflareContextSymbol];
+/**
+ * Detects whether the current code is being evaluated in a statically generated route
+ */
+function inSSG<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(): boolean {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  // Note: Next.js sets globalThis.__NEXT_DATA__.nextExport to true for SSG routes
+  // source: https://github.com/vercel/next.js/blob/4e394608423/packages/next/src/export/worker.ts#L55-L57)
+  return global.__NEXT_DATA__?.nextExport === true;
+}
 
-  // whether `getCloudflareContext` is run in "async mode"
-  const asyncMode = options.async;
+/**
+ * Utility to get the current Cloudflare context in sync mode
+ */
+function getCloudflareContextSync<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(): CloudflareContext<CfProperties, Context> {
+  const cloudflareContext = getCloudflareContextFromGlobalScope<CfProperties, Context>();
 
   if (cloudflareContext) {
-    return asyncMode ? Promise.resolve(cloudflareContext) : cloudflareContext;
+    return cloudflareContext;
+  }
+
+  // The sync mode of `getCloudflareContext`, relies on the context being set on the global state
+  // by either the worker entrypoint (in prod) or by `initOpenNextCloudflareForDev` (in dev), neither
+  // can work during SSG since for SSG Next.js creates (jest) workers that don't get access to the
+  // normal global state so we throw with a helpful error message.
+  if (inSSG()) {
+    throw new Error(
+      `\n\nERROR: \`getCloudflareContext\` has been called in a static route,` +
+        ` that is not allowed, this can be solved in different ways:\n\n` +
+        ` - call \`getCloudflareContext({async: true})\` to use the \`async\` mode\n` +
+        ` - avoid calling \`getCloudflareContext\` in the route\n` +
+        ` - make the route non static\n`
+    );
+  }
+
+  throwMissingInitOpenNextCloudflareForDevError();
+}
+
+/**
+ * Utility to get the current Cloudflare context in async mode
+ */
+async function getCloudflareContextAsync<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(): Promise<CloudflareContext<CfProperties, Context>> {
+  const cloudflareContext = getCloudflareContextFromGlobalScope<CfProperties, Context>();
+
+  if (cloudflareContext) {
+    return cloudflareContext;
   }
 
   // Note: Next.js sets process.env.NEXT_RUNTIME to 'nodejs' when the runtime in use is the node.js one
@@ -88,35 +147,18 @@ export function getCloudflareContext<
   // we are or not in a node.js process and that access to wrangler's node.js apis
   const inNodejsRuntime = process.env.NEXT_RUNTIME === "nodejs";
 
-  // Note: Next.js sets globalThis.__NEXT_DATA__.nextExport to true for SSG routes
-  // source: https://github.com/vercel/next.js/blob/4e394608423/packages/next/src/export/worker.ts#L55-L57)
-  const inSSG = global.__NEXT_DATA__?.nextExport === true;
-
-  if (asyncMode) {
-    if (inNodejsRuntime || inSSG) {
-      // we're in a node.js process and also in "async mode" so we can use wrangler to asynchronously get the context
-      return getCloudflareContextFromWrangler<CfProperties, Context>().then((context) => {
-        addCloudflareContextToNodejsGlobal(context);
-        return context;
-      });
-    }
-  } else {
-    // The sync mode of `getCloudflareContext`, relies on the context being set on the global state
-    // by either the worker entrypoint (in prod) or by `initOpenNextCloudflareForDev` (in dev), neither
-    // can work during SSG since for SSG Next.js creates (jest) workers that don't get access to the
-    // normal global state so we throw with a helpful error message.
-    if (inSSG) {
-      throw new Error(
-        `\n\nERROR: \`getCloudflareContext\` has been called in a static route,` +
-          ` that is not allowed, this can be solved in different ways:\n\n` +
-          ` - call \`getCloudflareContext({async: true})\` to use the \`async\` mode\n` +
-          ` - avoid calling \`getCloudflareContext\` in the route\n` +
-          ` - make the route non static\n`
-      );
-    }
+  if (inNodejsRuntime || inSSG()) {
+    // we're in a node.js process and also in "async mode" so we can use wrangler to asynchronously get the context
+    const cloudflareContext = await getCloudflareContextFromWrangler<CfProperties, Context>();
+    addCloudflareContextToNodejsGlobal(cloudflareContext);
+    return cloudflareContext;
   }
 
-  // The cloudflare context is initialized by the worker so it is always available.
+  throwMissingInitOpenNextCloudflareForDevError();
+}
+
+function throwMissingInitOpenNextCloudflareForDevError(): never {
+  // In production the cloudflare context is initialized by the worker so it is always available.
   // During local development (`next dev`) it might be missing only if the developers hasn't called
   // the `initOpenNextCloudflareForDev` function in their Next.js config file
   throw new Error(
