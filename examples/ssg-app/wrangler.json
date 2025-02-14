@@ -10,13 +10,5 @@
   },
   "vars": {
     "APP_VERSION": "1.2.345"
-  },
-  "kv_namespaces": [
-    // Create a KV binding with the binding name "NEXT_CACHE_WORKERS_KV"
-    // to enable the KV based caching:
-    // {
-    //   "binding": "NEXT_CACHE_WORKERS_KV",
-    //   "id": "<BINDING_ID>"
-    // }
-  ]
+  }
 }
