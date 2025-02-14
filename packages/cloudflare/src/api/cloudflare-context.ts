@@ -126,7 +126,7 @@ function getCloudflareContextSync<
     );
   }
 
-  throwMissingInitOpenNextCloudflareForDevError();
+  throw new Error(initOpenNextCloudflareForDevErrorMsg);
 }
 
 /**
@@ -154,25 +154,7 @@ async function getCloudflareContextAsync<
     return cloudflareContext;
   }
 
-  throwMissingInitOpenNextCloudflareForDevError();
-}
-
-function throwMissingInitOpenNextCloudflareForDevError(): never {
-  // In production the cloudflare context is initialized by the worker so it is always available.
-  // During local development (`next dev`) it might be missing only if the developers hasn't called
-  // the `initOpenNextCloudflareForDev` function in their Next.js config file
-  throw new Error(
-    `\n\nERROR: \`getCloudflareContext\` has been called without having called` +
-      ` \`initOpenNextCloudflareForDev\` from the Next.js config file.\n` +
-      `You should update your Next.js config file as shown below:\n\n` +
-      "   ```\n   // next.config.mjs\n\n" +
-      `   import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";\n\n` +
-      `   initOpenNextCloudflareForDev();\n\n` +
-      "   const nextConfig = { ... };\n" +
-      "   export default nextConfig;\n" +
-      "   ```\n" +
-      "\n"
-  );
+  throw new Error(initOpenNextCloudflareForDevErrorMsg);
 }
 
 /**
@@ -277,3 +259,18 @@ async function getCloudflareContextFromWrangler<
     ctx: ctx as Context,
   };
 }
+
+// In production the cloudflare context is initialized by the worker so it is always available.
+// During local development (`next dev`) it might be missing only if the developers hasn't called
+// the `initOpenNextCloudflareForDev` function in their Next.js config file
+const initOpenNextCloudflareForDevErrorMsg =
+  `\n\nERROR: \`getCloudflareContext\` has been called without having called` +
+  ` \`initOpenNextCloudflareForDev\` from the Next.js config file.\n` +
+  `You should update your Next.js config file as shown below:\n\n` +
+  "   ```\n   // next.config.mjs\n\n" +
+  `   import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";\n\n` +
+  `   initOpenNextCloudflareForDev();\n\n` +
+  "   const nextConfig = { ... };\n" +
+  "   export default nextConfig;\n" +
+  "   ```\n" +
+  "\n";
