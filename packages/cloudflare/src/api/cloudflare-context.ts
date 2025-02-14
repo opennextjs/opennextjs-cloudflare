@@ -45,6 +45,14 @@ type InternalGlobalThis<
   __NEXT_DATA__: Record<string, unknown>;
 };
 
+type GetCloudflareContextOptions = {
+  /**
+   * When `true`, `getCloudflareContext` returns a promise of the cloudflare context instead of the context,
+   * this is needed to access the context from statically generated routes.
+   */
+  async: boolean;
+};
+
 /**
  * Utility to get the current Cloudflare context
  *
@@ -53,44 +61,100 @@ type InternalGlobalThis<
 export function getCloudflareContext<
   CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
   Context = ExecutionContext,
->(): CloudflareContext<CfProperties, Context> {
+>(options: { async: true }): Promise<CloudflareContext<CfProperties, Context>>;
+export function getCloudflareContext<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(options?: { async: false }): CloudflareContext<CfProperties, Context>;
+export function getCloudflareContext<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(
+  options: GetCloudflareContextOptions = { async: false }
+): CloudflareContext<CfProperties, Context> | Promise<CloudflareContext<CfProperties, Context>> {
+  return options.async ? getCloudflareContextAsync() : getCloudflareContextSync();
+}
+
+/**
+ * Get the cloudflare context from the current global scope
+ */
+function getCloudflareContextFromGlobalScope<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(): CloudflareContext<CfProperties, Context> | undefined {
   const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  return global[cloudflareContextSymbol];
+}
 
-  const cloudflareContext = global[cloudflareContextSymbol];
+/**
+ * Detects whether the current code is being evaluated in a statically generated route
+ */
+function inSSG<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(): boolean {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  // Note: Next.js sets globalThis.__NEXT_DATA__.nextExport to true for SSG routes
+  // source: https://github.com/vercel/next.js/blob/4e394608423/packages/next/src/export/worker.ts#L55-L57)
+  return global.__NEXT_DATA__?.nextExport === true;
+}
 
-  if (!cloudflareContext) {
-    // For SSG Next.js creates (jest) workers that run in parallel, those don't get the current global
-    // state so they can't get access to the cloudflare context, unfortunately there isn't anything we
-    // can do about this, so the only solution is to error asking the developer to opt-out of SSG
-    // Next.js sets globalThis.__NEXT_DATA__.nextExport to true for the worker, so we can use that to detect
-    // that the route is being SSG'd (source: https://github.com/vercel/next.js/blob/4e394608423/packages/next/src/export/worker.ts#L55-L57)
-    if (global.__NEXT_DATA__?.nextExport === true) {
-      throw new Error(
-        `\n\nERROR: \`getCloudflareContext\` has been called in a static route` +
-          ` that is not allowed, please either avoid calling \`getCloudflareContext\`` +
-          ` in the route or make the route non static (for example by exporting the` +
-          ` \`dynamic\` route segment config set to \`'force-dynamic'\`.\n`
-      );
-    }
+/**
+ * Utility to get the current Cloudflare context in sync mode
+ */
+function getCloudflareContextSync<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(): CloudflareContext<CfProperties, Context> {
+  const cloudflareContext = getCloudflareContextFromGlobalScope<CfProperties, Context>();
 
-    // the cloudflare context is initialized by the worker and is always present in production/preview
-    // during local development (`next dev`) it might be missing only if the developers hasn't called
-    // the `initOpenNextCloudflareForDev` function in their Next.js config file
+  if (cloudflareContext) {
+    return cloudflareContext;
+  }
+
+  // The sync mode of `getCloudflareContext`, relies on the context being set on the global state
+  // by either the worker entrypoint (in prod) or by `initOpenNextCloudflareForDev` (in dev), neither
+  // can work during SSG since for SSG Next.js creates (jest) workers that don't get access to the
+  // normal global state so we throw with a helpful error message.
+  if (inSSG()) {
     throw new Error(
-      `\n\nERROR: \`getCloudflareContext\` has been called without having called` +
-        ` \`initOpenNextCloudflareForDev\` from the Next.js config file.\n` +
-        `You should update your Next.js config file as shown below:\n\n` +
-        "   ```\n   // next.config.mjs\n\n" +
-        `   import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";\n\n` +
-        `   initOpenNextCloudflareForDev();\n\n` +
-        "   const nextConfig = { ... };\n" +
-        "   export default nextConfig;\n" +
-        "   ```\n" +
-        "\n"
+      `\n\nERROR: \`getCloudflareContext\` has been called in a static route,` +
+        ` that is not allowed, this can be solved in different ways:\n\n` +
+        ` - call \`getCloudflareContext({async: true})\` to use the \`async\` mode\n` +
+        ` - avoid calling \`getCloudflareContext\` in the route\n` +
+        ` - make the route non static\n`
     );
   }
 
-  return cloudflareContext;
+  throw new Error(initOpenNextCloudflareForDevErrorMsg);
+}
+
+/**
+ * Utility to get the current Cloudflare context in async mode
+ */
+async function getCloudflareContextAsync<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(): Promise<CloudflareContext<CfProperties, Context>> {
+  const cloudflareContext = getCloudflareContextFromGlobalScope<CfProperties, Context>();
+
+  if (cloudflareContext) {
+    return cloudflareContext;
+  }
+
+  // Note: Next.js sets process.env.NEXT_RUNTIME to 'nodejs' when the runtime in use is the node.js one
+  // We want to detect when the runtime is the node.js one so that during development (`next dev`) we know wether
+  // we are or not in a node.js process and that access to wrangler's node.js apis
+  const inNodejsRuntime = process.env.NEXT_RUNTIME === "nodejs";
+
+  if (inNodejsRuntime || inSSG()) {
+    // we're in a node.js process and also in "async mode" so we can use wrangler to asynchronously get the context
+    const cloudflareContext = await getCloudflareContextFromWrangler<CfProperties, Context>();
+    addCloudflareContextToNodejsGlobal(cloudflareContext);
+    return cloudflareContext;
+  }
+
+  throw new Error(initOpenNextCloudflareForDevErrorMsg);
 }
 
 /**
@@ -127,12 +191,15 @@ function shouldContextInitializationRun(): boolean {
 }
 
 /**
- * Adds the cloudflare context to the global scope in which the Next.js dev node.js process runs in, enabling
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
  * future calls to `getCloudflareContext` to retrieve and return such context
  *
  * @param cloudflareContext the cloudflare context to add to the node.sj global scope
  */
-function addCloudflareContextToNodejsGlobal(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
   const global = globalThis as InternalGlobalThis<CfProperties, Context>;
   global[cloudflareContextSymbol] = cloudflareContext;
 }
@@ -192,3 +259,18 @@ async function getCloudflareContextFromWrangler<
     ctx: ctx as Context,
   };
 }
+
+// In production the cloudflare context is initialized by the worker so it is always available.
+// During local development (`next dev`) it might be missing only if the developers hasn't called
+// the `initOpenNextCloudflareForDev` function in their Next.js config file
+const initOpenNextCloudflareForDevErrorMsg =
+  `\n\nERROR: \`getCloudflareContext\` has been called without having called` +
+  ` \`initOpenNextCloudflareForDev\` from the Next.js config file.\n` +
+  `You should update your Next.js config file as shown below:\n\n` +
+  "   ```\n   // next.config.mjs\n\n" +
+  `   import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";\n\n` +
+  `   initOpenNextCloudflareForDev();\n\n` +
+  "   const nextConfig = { ... };\n" +
+  "   export default nextConfig;\n" +
+  "   ```\n" +
+  "\n";
