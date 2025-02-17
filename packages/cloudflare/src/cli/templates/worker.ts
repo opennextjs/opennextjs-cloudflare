@@ -10,18 +10,12 @@ import { handler as serverHandler } from "./server-functions/default/handler.mjs
 
 const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
 
-// Note: this symbol needs to be kept in sync with the one defined in `src/api/get-cloudflare-context.ts`
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(globalThis as any)[Symbol.for("__cloudflare-context__")] = new Proxy(
-  {},
-  {
-    ownKeys: () => Reflect.ownKeys(cloudflareContextALS.getStore()!),
-    getOwnPropertyDescriptor: (_, ...args) =>
-      Reflect.getOwnPropertyDescriptor(cloudflareContextALS.getStore()!, ...args),
-    get: (_, property) => Reflect.get(cloudflareContextALS.getStore()!, property),
-    set: (_, property, value) => Reflect.set(cloudflareContextALS.getStore()!, property, value),
-  }
-);
+// Note: this symbol needs to be kept in sync with `src/api/get-cloudflare-context.ts`
+Object.defineProperty(globalThis, Symbol.for("__cloudflare-context__"), {
+  get() {
+    return cloudflareContextALS.getStore();
+  },
+});
 
 // Populate process.env on the first request
 let processEnvPopulated = false;
