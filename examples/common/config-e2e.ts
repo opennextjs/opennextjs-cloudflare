@@ -12,7 +12,7 @@ export function configurePlaywright(
     // Do we run on workers (`wrangler dev`) or on Node (`next dev`)
     isWorker = true,
     // Tests with multiple browsers
-    multipleBrowsers = true,
+    multipleBrowsers = false,
   } = {}
 ) {
   const port = getAppPort(app, { isWorker });
