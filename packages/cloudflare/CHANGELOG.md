@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 0.5.3
+
+### Patch Changes
+
+- [#394](https://github.com/opennextjs/opennextjs-cloudflare/pull/394) [`1479263`](https://github.com/opennextjs/opennextjs-cloudflare/commit/147926323ea98ab44151feb7db36b47722dcc8cc) Thanks [@vicb](https://github.com/vicb)! - fix: improve windows support
+
 ## 0.5.2
 
 ### Patch Changes
