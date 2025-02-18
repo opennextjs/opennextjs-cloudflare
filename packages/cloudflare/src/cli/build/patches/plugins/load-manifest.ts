@@ -53,6 +53,8 @@ function loadManifest($PATH, $$$ARGS) {
     },
     fix: `
 function loadManifest($PATH, $$$ARGS) {
+  const { platform } = require('process');
+  $PATH = platform === 'win32' ? $PATH.replaceAll('\\\\', '/') : $PATH;
   ${returnManifests}
   throw new Error(\`Unexpected loadManifest(\${$PATH}) call!\`);
 }`,

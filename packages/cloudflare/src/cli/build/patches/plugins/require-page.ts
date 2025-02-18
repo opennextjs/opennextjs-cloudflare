@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
+import { normalizePath } from "../../utils/normalize-path.js";
 import { patchCode, type RuleConfig } from "../ast/util.js";
 import type { ContentUpdater } from "./content-updater.js";
 
@@ -41,7 +42,7 @@ async function getRule(buildOpts: BuildOptions) {
     appPathsManifests = [];
   }
 
-  const manifests = pagesManifests.concat(appPathsManifests);
+  const manifests = pagesManifests.concat(appPathsManifests).map((path) => normalizePath(path));
 
   const htmlFiles = manifests.filter((file) => file.endsWith(".html"));
   const jsFiles = manifests.filter((file) => file.endsWith(".js"));
@@ -83,7 +84,8 @@ function requirePage($PAGE, $DIST_DIR, $IS_APP_PATH) {
     },
     fix: `
 function requirePage($PAGE, $DIST_DIR, $IS_APP_PATH) {
-  const pagePath = getPagePath($$$ARGS);
+  const { platform } = require('process');
+  const pagePath = platform === 'win32' ? getPagePath($$$ARGS).replaceAll('\\\\', '/') : getPagePath($$$ARGS);
   ${fnBody}
 }`,
   } satisfies RuleConfig;
