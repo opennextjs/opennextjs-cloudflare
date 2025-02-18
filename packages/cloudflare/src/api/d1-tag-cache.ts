@@ -4,9 +4,6 @@ import type { TagCache } from "@opennextjs/aws/types/overrides.js";
 
 import { getCloudflareContext } from "./cloudflare-context.js";
 
-// inlined during build
-const manifest = process.env.__OPENNEXT_CACHE_TAGS_MANIFEST;
-
 /**
  * An instance of the Tag Cache that uses a D1 binding (`NEXT_CACHE_D1`) as it's underlying data store.
  *
@@ -14,8 +11,6 @@ const manifest = process.env.__OPENNEXT_CACHE_TAGS_MANIFEST;
  * environment variable.
  *
  * There should be three columns created in the table; `tag`, `path`, and `revalidatedAt`.
- *
- * A combination of the D1 entries and the build-time tags manifest is used.
  */
 class D1TagCache implements TagCache {
   public readonly name = "d1-tag-cache";
@@ -34,10 +29,7 @@ class D1TagCache implements TagCache {
 
       if (!success) throw new Error(`D1 select failed for ${path}`);
 
-      const tags = this.mergeTagArrays(
-        manifest.paths[path],
-        results?.map((item) => item.tag)
-      );
+      const tags = results?.map((item) => this.removeBuildId(item.tag));
 
       debug("tags for path", path, tags);
       return tags;
@@ -61,10 +53,7 @@ class D1TagCache implements TagCache {
 
       if (!success) throw new Error(`D1 select failed for ${tag}`);
 
-      const paths = this.mergeTagArrays(
-        manifest.tags[tag],
-        results?.map((item) => item.path)
-      );
+      const paths = results?.map((item) => this.removeBuildId(item.path));
 
       debug("paths for tag", tag, paths);
       return paths;
@@ -144,16 +133,6 @@ class D1TagCache implements TagCache {
 
   protected getBuildId() {
     return process.env.NEXT_BUILD_ID ?? "no-build-id";
-  }
-
-  protected mergeTagArrays(...arrays: (string[] | undefined)[]) {
-    const set = new Set<string>();
-
-    for (const arr of arrays) {
-      arr?.forEach((v) => set.add(v));
-    }
-
-    return [...set.values()].map((v) => this.removeBuildId(v));
   }
 }
 
