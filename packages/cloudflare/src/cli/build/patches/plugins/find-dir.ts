@@ -36,6 +36,8 @@ rule:
   pattern: function findDir($DIR, $NAME) { $$$_ }
 fix: |-
   function findDir($DIR, $NAME) {
+    const { platform } = require('process');
+    $DIR = platform === 'win32' ? $DIR.replaceAll('\\\\', '/') : $DIR;
     if ($DIR.endsWith(".next/server")) {
       if ($NAME === "app") {
         return ${appExists};

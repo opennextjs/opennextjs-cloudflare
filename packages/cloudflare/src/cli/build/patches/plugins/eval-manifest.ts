@@ -60,6 +60,8 @@ function evalManifest($PATH, $$$ARGS) {
     },
     fix: `
 function evalManifest($PATH, $$$ARGS) {
+  const { platform } = require('process');
+  $PATH = platform === 'win32' ? $PATH.replaceAll('\\\\', '/') : $PATH;
   ${returnManifests}
   throw new Error(\`Unexpected evalManifest(\${$PATH}) call!\`);
 }`,
