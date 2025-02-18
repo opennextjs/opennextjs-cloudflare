@@ -7,7 +7,7 @@ import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import { patchCode, type RuleConfig } from "../ast/util.js";
 import type { ContentUpdater } from "./content-updater.js";
 
-export function inlineRequirePagePlugin(updater: ContentUpdater, buildOpts: BuildOptions) {
+export function inlineRequirePage(updater: ContentUpdater, buildOpts: BuildOptions) {
   return updater.updateContent(
     "inline-require-page",
     {
