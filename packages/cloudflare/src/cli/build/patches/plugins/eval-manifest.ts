@@ -61,7 +61,7 @@ function evalManifest($PATH, $$$ARGS) {
     fix: `
 function evalManifest($PATH, $$$ARGS) {
   ${returnManifests}
-  throw new Error("Unknown evalManifest: " + $PATH);
+  throw new Error(\`Unexpected evalManifest(\${$PATH}) call!\`);
 }`,
   } satisfies RuleConfig;
 }
