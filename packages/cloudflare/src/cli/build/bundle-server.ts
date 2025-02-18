@@ -12,6 +12,7 @@ import * as patches from "./patches/index.js";
 import { ContentUpdater } from "./patches/plugins/content-updater.js";
 import { inlineEvalManifest } from "./patches/plugins/eval-manifest.js";
 import { patchFetchCacheSetMissingWaitUntil } from "./patches/plugins/fetch-cache-wait-until.js";
+import { inlineFindDir } from "./patches/plugins/find-dir.js";
 import { patchLoadInstrumentation } from "./patches/plugins/load-instrumentation.js";
 import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
 import { fixRequire } from "./patches/plugins/require.js";
@@ -91,6 +92,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       patchLoadInstrumentation(updater),
       patchFetchCacheSetMissingWaitUntil(updater),
       inlineEvalManifest(updater, buildOpts),
+      inlineFindDir(updater, buildOpts),
       // Apply updater updaters, must be the last plugin
       updater.plugin,
     ],
@@ -195,7 +197,6 @@ export async function updateWorkerBundledCode(
     ["require", patches.patchRequire],
     ["`buildId` function", (code) => patches.patchBuildId(code, buildOpts)],
     ["`loadManifest` function", (code) => patches.patchLoadManifest(code, buildOpts)],
-    ["`findDir` function", (code) => patches.patchFindDir(code, buildOpts)],
     ["cacheHandler", (code) => patches.patchCache(code, buildOpts)],
     [
       "'require(this.middlewareManifestPath)'",
