@@ -14,6 +14,7 @@ import { inlineEvalManifest } from "./patches/plugins/eval-manifest.js";
 import { patchFetchCacheSetMissingWaitUntil } from "./patches/plugins/fetch-cache-wait-until.js";
 import { inlineFindDir } from "./patches/plugins/find-dir.js";
 import { patchLoadInstrumentation } from "./patches/plugins/load-instrumentation.js";
+import { inlineLoadManifest } from "./patches/plugins/load-manifest.js";
 import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
 import { fixRequire } from "./patches/plugins/require.js";
 import { shimRequireHook } from "./patches/plugins/require-hook.js";
@@ -93,6 +94,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       patchFetchCacheSetMissingWaitUntil(updater),
       inlineEvalManifest(updater, buildOpts),
       inlineFindDir(updater, buildOpts),
+      inlineLoadManifest(updater, buildOpts),
       // Apply updater updaters, must be the last plugin
       updater.plugin,
     ],
@@ -196,7 +198,6 @@ export async function updateWorkerBundledCode(
   const patchedCode = await patchCodeWithValidations(code, [
     ["require", patches.patchRequire],
     ["`buildId` function", (code) => patches.patchBuildId(code, buildOpts)],
-    ["`loadManifest` function", (code) => patches.patchLoadManifest(code, buildOpts)],
     ["cacheHandler", (code) => patches.patchCache(code, buildOpts)],
     [
       "'require(this.middlewareManifestPath)'",
