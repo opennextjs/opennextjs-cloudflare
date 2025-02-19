@@ -104,28 +104,24 @@ class D1TagCache implements TagCache {
     try {
       const uniqueTags = new Set<string>();
       const results = await db.batch(
-        tags.reduce<D1PreparedStatement[]>((acc, { tag, path, revalidatedAt }) => {
-          if (revalidatedAt === 1) {
-            // new tag/path mapping from set
-            acc.push(
-              db
+        tags
+          .map(({ tag, path, revalidatedAt }) => {
+            if (revalidatedAt === 1) {
+              // new tag/path mapping from set
+              return db
                 .prepare(`INSERT INTO ${table.tags} (tag, path) VALUES (?, ?)`)
-                .bind(this.getCacheKey(tag), this.getCacheKey(path))
-            );
-          }
+                .bind(this.getCacheKey(tag), this.getCacheKey(path));
+            }
 
-          if (!uniqueTags.has(tag) && revalidatedAt !== -1) {
-            // tag was revalidated
-            uniqueTags.add(tag);
-            acc.push(
-              db
+            if (!uniqueTags.has(tag) && revalidatedAt !== -1) {
+              // tag was revalidated
+              uniqueTags.add(tag);
+              return db
                 .prepare(`INSERT INTO ${table.revalidations} (tag, revalidatedAt) VALUES (?, ?)`)
-                .bind(this.getCacheKey(tag), revalidatedAt ?? Date.now())
-            );
-          }
-
-          return acc;
-        }, [])
+                .bind(this.getCacheKey(tag), revalidatedAt ?? Date.now());
+            }
+          })
+          .filter((stmt) => !!stmt)
       );
 
       const failedResults = results.filter((res) => !res.success);
