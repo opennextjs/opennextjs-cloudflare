@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
@@ -19,19 +19,22 @@ export function compileCacheAssetsManifestSqlFile(options: BuildOptions) {
 
   const table = process.env.NEXT_CACHE_D1 || "tags";
 
-  const stmts = [
-    `CREATE TABLE IF NOT EXISTS ${table} (tag TEXT NOT NULL, path TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag, path) ON CONFLICT REPLACE);`,
-  ];
+  mkdirSync(path.dirname(outputPath), { recursive: true });
+  writeFileSync(
+    outputPath,
+    `CREATE TABLE IF NOT EXISTS ${table} (tag TEXT NOT NULL, path TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag, path) ON CONFLICT REPLACE);\n`
+  );
 
   if (existsSync(rawManifestPath)) {
     const rawManifest: RawManifest = JSON.parse(readFileSync(rawManifestPath, "utf-8"));
 
-    rawManifest.forEach(({ tag: { S: tag }, path: { S: path }, revalidatedAt: { N: revalidatedAt } }) => {
-      stmts.push(
-        `INSERT INTO ${table} (tag, path, revalidatedAt) VALUES ('${tag}', '${path}', ${revalidatedAt});`
-      );
-    });
-  }
+    const values = rawManifest.map(
+      ({ tag, path, revalidatedAt }) =>
+        `(${JSON.stringify(tag.S)}, ${JSON.stringify(path.S)}, ${revalidatedAt.N})`
+    );
 
-  writeFileSync(outputPath, stmts.join("\n"));
+    if (values.length) {
+      appendFileSync(outputPath, `INSERT INTO tags (tag, path, revalidatedAt) VALUES ${values.join(", ")};`);
+    }
+  }
 }
