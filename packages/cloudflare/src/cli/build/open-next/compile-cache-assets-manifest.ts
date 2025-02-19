@@ -1,20 +1,13 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
-
-type RawManifest = {
-  tag: { S: string };
-  path: { S: string };
-  revalidatedAt: { N: string };
-}[];
+import type { TagCacheMetaFile } from "@opennextjs/aws/types/open-next.js";
 
 /**
  * Generates SQL statements that can be used to initialise the cache assets manifest in an SQL data store.
  */
-export function compileCacheAssetsManifestSqlFile(options: BuildOptions) {
-  // TODO: Expose the function for getting this data as an adapter-agnostic utility in AWS.
-  const rawManifestPath = path.join(options.outputDir, "dynamodb-provider/dynamodb-cache.json");
+export function compileCacheAssetsManifestSqlFile(options: BuildOptions, metaFiles: TagCacheMetaFile[]) {
   const outputPath = path.join(options.outputDir, "cloudflare/cache-assets-manifest.sql");
 
   const tagsTable = process.env.NEXT_CACHE_D1_TAGS_TABLE || "tags";
@@ -27,18 +20,12 @@ export function compileCacheAssetsManifestSqlFile(options: BuildOptions) {
      CREATE TABLE IF NOT EXISTS ${JSON.stringify(revalidationsTable)} (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);\n`
   );
 
-  if (existsSync(rawManifestPath)) {
-    const rawManifest: RawManifest = JSON.parse(readFileSync(rawManifestPath, "utf-8"));
+  const values = metaFiles.map(({ tag, path }) => `(${JSON.stringify(tag.S)}, ${JSON.stringify(path.S)})`);
 
-    const values = rawManifest.map(
-      ({ tag, path }) => `(${JSON.stringify(tag.S)}, ${JSON.stringify(path.S)})`
+  if (values.length) {
+    appendFileSync(
+      outputPath,
+      `INSERT INTO ${JSON.stringify(tagsTable)} (tag, path) VALUES ${values.join(", ")};`
     );
-
-    if (values.length) {
-      appendFileSync(
-        outputPath,
-        `INSERT INTO ${JSON.stringify(tagsTable)} (tag, path) VALUES ${values.join(", ")};`
-      );
-    }
   }
 }
