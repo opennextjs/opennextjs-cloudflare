@@ -92,7 +92,7 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
 
   await createServerBundle(options);
 
-  await bundleServer(options);
+  await bundleServer(options, projectOpts.customWorkerEntrypoint);
 
   if (!projectOpts.skipWranglerConfigCheck) {
     await createWranglerConfigIfNotExistent(projectOpts);

@@ -7,6 +7,8 @@ export type ProjectOptions = {
   skipNextBuild: boolean;
   // Whether the check to see if a wrangler config file exists should be skipped
   skipWranglerConfigCheck: boolean;
+  // The custom worker entrypoint file path
+  customWorkerEntrypoint?: string;
   // Whether minification of the worker should be enabled
   minify: boolean;
 };
