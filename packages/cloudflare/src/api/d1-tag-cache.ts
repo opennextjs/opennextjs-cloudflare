@@ -1,6 +1,7 @@
 import { debug, error } from "@opennextjs/aws/adapters/logger.js";
 import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 import type { TagCache } from "@opennextjs/aws/types/overrides.js";
+import { RecoverableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "./cloudflare-context.js";
 
@@ -36,7 +37,7 @@ class D1TagCache implements TagCache {
         .bind(path)
         .all<{ tag: string }>();
 
-      if (!success) throw new Error(`D1 select failed for ${path}`);
+      if (!success) throw new RecoverableError(`D1 select failed for ${path}`);
 
       const tags = results?.map((item) => this.removeBuildId(item.tag));
 
@@ -60,7 +61,7 @@ class D1TagCache implements TagCache {
         .bind(tag)
         .all<{ path: string }>();
 
-      if (!success) throw new Error(`D1 select failed for ${tag}`);
+      if (!success) throw new RecoverableError(`D1 select failed for ${tag}`);
 
       const paths = results?.map((item) => this.removeBuildId(item.path));
 
@@ -86,7 +87,7 @@ class D1TagCache implements TagCache {
         .bind(this.getCacheKey(path), lastModified ?? 0)
         .all<{ tag: string }>();
 
-      if (!success) throw new Error(`D1 select failed for ${path} - ${lastModified ?? 0}`);
+      if (!success) throw new RecoverableError(`D1 select failed for ${path} - ${lastModified ?? 0}`);
 
       debug("revalidatedTags", results);
       return results?.length > 0 ? -1 : (lastModified ?? Date.now());
@@ -101,26 +102,36 @@ class D1TagCache implements TagCache {
     if (isDisabled || tags.length === 0) return;
 
     try {
+      const uniqueTags = new Set<string>();
       const results = await db.batch(
-        tags.map(({ tag, path, revalidatedAt }) => {
+        tags.reduce<D1PreparedStatement[]>((acc, { tag, path, revalidatedAt }) => {
           if (revalidatedAt === 1) {
             // new tag/path mapping from set
-            return db
-              .prepare(`INSERT INTO ${table.tags} (tag, path) VALUES (?, ?)`)
-              .bind(this.getCacheKey(tag), this.getCacheKey(path));
+            acc.push(
+              db
+                .prepare(`INSERT INTO ${table.tags} (tag, path) VALUES (?, ?)`)
+                .bind(this.getCacheKey(tag), this.getCacheKey(path))
+            );
           }
 
-          // tag was revalidated
-          return db
-            .prepare(`INSERT INTO ${table.revalidations} (tag, revalidatedAt) VALUES (?, ?)`)
-            .bind(this.getCacheKey(tag), revalidatedAt ?? Date.now());
-        })
+          if (!uniqueTags.has(tag) && revalidatedAt !== -1) {
+            // tag was revalidated
+            uniqueTags.add(tag);
+            acc.push(
+              db
+                .prepare(`INSERT INTO ${table.revalidations} (tag, revalidatedAt) VALUES (?, ?)`)
+                .bind(this.getCacheKey(tag), revalidatedAt ?? Date.now())
+            );
+          }
+
+          return acc;
+        }, [])
       );
 
       const failedResults = results.filter((res) => !res.success);
 
       if (failedResults.length > 0) {
-        throw new Error(`${failedResults.length} tags failed to write`);
+        throw new RecoverableError(`${failedResults.length} tags failed to write`);
       }
     } catch (e) {
       error("Failed to batch write tags", e);
