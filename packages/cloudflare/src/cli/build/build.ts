@@ -87,10 +87,10 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
   createStaticAssets(options);
 
   if (config.dangerous?.disableIncrementalCache !== true) {
-    const { metaFiles } = createCacheAssets(options);
+    const { useTagCache, metaFiles } = createCacheAssets(options);
     copyCacheAssets(options);
 
-    if (config.dangerous?.disableTagCache !== true) {
+    if (useTagCache) {
       compileCacheAssetsManifestSqlFile(options, metaFiles);
     }
   }
