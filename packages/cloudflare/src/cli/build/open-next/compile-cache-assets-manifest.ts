@@ -17,24 +17,25 @@ export function compileCacheAssetsManifestSqlFile(options: BuildOptions) {
   const rawManifestPath = path.join(options.outputDir, "dynamodb-provider/dynamodb-cache.json");
   const outputPath = path.join(options.outputDir, "cloudflare/cache-assets-manifest.sql");
 
-  const table = process.env.NEXT_CACHE_D1 || "tags";
+  const tagsTable = process.env.NEXT_CACHE_D1_TAGS_TABLE || "tags";
+  const revalidationsTable = process.env.NEXT_CACHE_D1_REVALIDATIONS_TABLE || "revalidations";
 
   mkdirSync(path.dirname(outputPath), { recursive: true });
   writeFileSync(
     outputPath,
-    `CREATE TABLE IF NOT EXISTS ${table} (tag TEXT NOT NULL, path TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag, path) ON CONFLICT REPLACE);\n`
+    `CREATE TABLE IF NOT EXISTS ${tagsTable} (tag TEXT NOT NULL, path TEXT NOT NULL, UNIQUE(tag, path) ON CONFLICT REPLACE);
+     CREATE TABLE IF NOT EXISTS ${revalidationsTable} (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);\n`
   );
 
   if (existsSync(rawManifestPath)) {
     const rawManifest: RawManifest = JSON.parse(readFileSync(rawManifestPath, "utf-8"));
 
     const values = rawManifest.map(
-      ({ tag, path, revalidatedAt }) =>
-        `(${JSON.stringify(tag.S)}, ${JSON.stringify(path.S)}, ${revalidatedAt.N})`
+      ({ tag, path }) => `(${JSON.stringify(tag.S)}, ${JSON.stringify(path.S)})`
     );
 
     if (values.length) {
-      appendFileSync(outputPath, `INSERT INTO tags (tag, path, revalidatedAt) VALUES ${values.join(", ")};`);
+      appendFileSync(outputPath, `INSERT INTO ${tagsTable} (tag, path) VALUES ${values.join(", ")};`);
     }
   }
 }

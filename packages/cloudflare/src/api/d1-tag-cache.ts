@@ -7,10 +7,17 @@ import { getCloudflareContext } from "./cloudflare-context.js";
 /**
  * An instance of the Tag Cache that uses a D1 binding (`NEXT_CACHE_D1`) as it's underlying data store.
  *
- * The table used defaults to `tags`, but can be configured with the `NEXT_CACHE_D1_TABLE`
+ * **Tag/path mappings**
+ *
+ * Information about the relation between tags and paths is stored in a `tags` table that contains
+ * two columns; `tag`, and `path`. The table name can be configured with `NEXT_CACHE_D1_TAGS_TABLE`
  * environment variable.
  *
- * There should be three columns created in the table; `tag`, `path`, and `revalidatedAt`.
+ * **Tag revalidations**
+ *
+ * Revalidation times for tags are stored in a `revalidations` table that contains two columns; `tags`,
+ * and `revalidatedAt`. The table name can be configured with `NEXT_CACHE_D1_REVALIDATIONS_TABLE`
+ * environment variable.
  */
 class D1TagCache implements TagCache {
   public readonly name = "d1-tag-cache";
@@ -23,7 +30,7 @@ class D1TagCache implements TagCache {
 
     try {
       const { success, results } = await db
-        .prepare(`SELECT tag FROM ${table} WHERE path = ?`)
+        .prepare(`SELECT tag FROM ${table.tags} WHERE path = ?`)
         .bind(path)
         .all<{ tag: string }>();
 
@@ -47,7 +54,7 @@ class D1TagCache implements TagCache {
 
     try {
       const { success, results } = await db
-        .prepare(`SELECT path FROM ${table} WHERE tag = ?`)
+        .prepare(`SELECT path FROM ${table.tags} WHERE tag = ?`)
         .bind(tag)
         .all<{ path: string }>();
 
@@ -69,7 +76,11 @@ class D1TagCache implements TagCache {
 
     try {
       const { success, results } = await db
-        .prepare(`SELECT tag FROM ${table} WHERE path = ? AND revalidatedAt > ?`)
+        .prepare(
+          `SELECT ${table.revalidations}.tag FROM ${table.revalidations}
+            INNER JOIN ${table.tags} ON ${table.revalidations}.tag = ${table.tags}.tag
+            WHERE ${table.tags}.path = ? AND ${table.revalidations}.revalidatedAt > ?;`
+        )
         .bind(this.getCacheKey(path), lastModified ?? 0)
         .all<{ tag: string }>();
 
@@ -89,11 +100,19 @@ class D1TagCache implements TagCache {
 
     try {
       const results = await db.batch(
-        tags.map(({ tag, path, revalidatedAt }) =>
-          db
-            .prepare(`INSERT INTO ${table} (tag, path, revalidatedAt) VALUES(?, ?, ?)`)
-            .bind(this.getCacheKey(tag), this.getCacheKey(path), revalidatedAt ?? Date.now())
-        )
+        tags.map(({ tag, path, revalidatedAt }) => {
+          if (revalidatedAt === 1) {
+            // new tag/path mapping from set
+            return db
+              .prepare(`INSERT INTO ${table.tags} (tag, path) VALUES (?, ?)`)
+              .bind(this.getCacheKey(tag), this.getCacheKey(path));
+          }
+
+          // tag was revalidated
+          return db
+            .prepare(`INSERT INTO ${table.revalidations} (tag, revalidatedAt) VALUES (?, ?)`)
+            .bind(this.getCacheKey(tag), revalidatedAt ?? Date.now());
+        })
       );
 
       const failedResults = results.filter((res) => !res.success);
@@ -109,7 +128,6 @@ class D1TagCache implements TagCache {
   private getConfig() {
     const cfEnv = getCloudflareContext().env;
     const db = cfEnv.NEXT_CACHE_D1;
-    const table = cfEnv.NEXT_CACHE_D1_TABLE ?? "tags";
 
     if (!db) debug("No D1 database found");
 
@@ -120,7 +138,14 @@ class D1TagCache implements TagCache {
       return { isDisabled: true as const };
     }
 
-    return { isDisabled: false as const, db, table };
+    return {
+      isDisabled: false as const,
+      db,
+      table: {
+        tags: cfEnv.NEXT_CACHE_D1_TAGS_TABLE ?? "tags",
+        revalidations: cfEnv.NEXT_CACHE_D1_REVALIDATIONS_TABLE ?? "revalidations",
+      },
+    };
   }
 
   protected removeBuildId(key: string) {
