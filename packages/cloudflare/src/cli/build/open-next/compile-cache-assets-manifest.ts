@@ -14,8 +14,8 @@ type RawManifest = {
  */
 export function compileCacheAssetsManifestSqlFile(options: BuildOptions) {
   // TODO: Expose the function for getting this data as an adapter-agnostic utility in AWS.
-  const rawManifestPath = path.join(options.outputDir, "dynamodb-provider", "dynamodb-cache.json");
-  const outputPath = path.join(options.outputDir, "cache-assets-manifest.sql");
+  const rawManifestPath = path.join(options.outputDir, "dynamodb-provider/dynamodb-cache.json");
+  const outputPath = path.join(options.outputDir, "cloudflare/cache-assets-manifest.sql");
 
   const table = process.env.NEXT_CACHE_D1 || "tags";
 
