@@ -9,6 +9,8 @@ import { handler as middlewareHandler } from "./middleware/handler.mjs";
 // @ts-expect-error: resolved by wrangler build
 import { handler as serverHandler } from "./server-functions/default/handler.mjs";
 
+import { scheduledUtility } from "./scheduled";
+
 const cloudflareContextALS = new AsyncLocalStorage<CloudflareContext>();
 
 // Note: this symbol needs to be kept in sync with `src/api/get-cloudflare-context.ts`
@@ -48,8 +50,12 @@ export default {
     });
   },
   async scheduled(event, env, ctx) {
-    console.log("Scheduled!");
     console.log(event);
+    console.log("Triggered! Waiting 10 seconds...");
+
+    await scheduledUtility();
+
+    console.log("Finished waiting.");
   },
 } as ExportedHandler<{ ASSETS: Fetcher; NEXTJS_ENV?: string }>;
 

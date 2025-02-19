@@ -50,8 +50,13 @@ export async function bundleServer(buildOpts: BuildOptions, customWorkerEntrypoi
 
     await build({
       entryPoints: [customWorkerEntrypoint],
-      outfile: getOutputWorkerPath(buildOpts),
+      platform: "node",
       format: "esm",
+      target: "esnext",
+      minify: false,
+      bundle: true,
+      external: ["./env/next-env.mjs", "./middleware/handler.mjs", "./server-functions/default/handler.mjs"],
+      outfile: getOutputWorkerPath(buildOpts),
     });
   }
 
