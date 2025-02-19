@@ -23,8 +23,8 @@ export function compileCacheAssetsManifestSqlFile(options: BuildOptions) {
   mkdirSync(path.dirname(outputPath), { recursive: true });
   writeFileSync(
     outputPath,
-    `CREATE TABLE IF NOT EXISTS ${tagsTable} (tag TEXT NOT NULL, path TEXT NOT NULL, UNIQUE(tag, path) ON CONFLICT REPLACE);
-     CREATE TABLE IF NOT EXISTS ${revalidationsTable} (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);\n`
+    `CREATE TABLE IF NOT EXISTS ${JSON.stringify(tagsTable)} (tag TEXT NOT NULL, path TEXT NOT NULL, UNIQUE(tag, path) ON CONFLICT REPLACE);
+     CREATE TABLE IF NOT EXISTS ${JSON.stringify(revalidationsTable)} (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);\n`
   );
 
   if (existsSync(rawManifestPath)) {
@@ -35,7 +35,10 @@ export function compileCacheAssetsManifestSqlFile(options: BuildOptions) {
     );
 
     if (values.length) {
-      appendFileSync(outputPath, `INSERT INTO ${tagsTable} (tag, path) VALUES ${values.join(", ")};`);
+      appendFileSync(
+        outputPath,
+        `INSERT INTO ${JSON.stringify(tagsTable)} (tag, path) VALUES ${values.join(", ")};`
+      );
     }
   }
 }

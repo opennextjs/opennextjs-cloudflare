@@ -30,7 +30,7 @@ class D1TagCache implements TagCache {
 
     try {
       const { success, results } = await db
-        .prepare(`SELECT tag FROM ${table.tags} WHERE path = ?`)
+        .prepare(`SELECT tag FROM ${JSON.stringify(table.tags)} WHERE path = ?`)
         .bind(path)
         .all<{ tag: string }>();
 
@@ -54,7 +54,7 @@ class D1TagCache implements TagCache {
 
     try {
       const { success, results } = await db
-        .prepare(`SELECT path FROM ${table.tags} WHERE tag = ?`)
+        .prepare(`SELECT path FROM ${JSON.stringify(table.tags)} WHERE tag = ?`)
         .bind(tag)
         .all<{ path: string }>();
 
@@ -77,9 +77,9 @@ class D1TagCache implements TagCache {
     try {
       const { success, results } = await db
         .prepare(
-          `SELECT ${table.revalidations}.tag FROM ${table.revalidations}
-            INNER JOIN ${table.tags} ON ${table.revalidations}.tag = ${table.tags}.tag
-            WHERE ${table.tags}.path = ? AND ${table.revalidations}.revalidatedAt > ?;`
+          `SELECT ${JSON.stringify(table.revalidations)}.tag FROM ${JSON.stringify(table.revalidations)}
+            INNER JOIN ${JSON.stringify(table.tags)} ON ${JSON.stringify(table.revalidations)}.tag = ${JSON.stringify(table.tags)}.tag
+            WHERE ${JSON.stringify(table.tags)}.path = ? AND ${JSON.stringify(table.revalidations)}.revalidatedAt > ?;`
         )
         .bind(this.getCacheKey(path), lastModified ?? 0)
         .all<{ tag: string }>();
@@ -104,13 +104,13 @@ class D1TagCache implements TagCache {
           if (revalidatedAt === 1) {
             // new tag/path mapping from set
             return db
-              .prepare(`INSERT INTO ${table.tags} (tag, path) VALUES (?, ?)`)
+              .prepare(`INSERT INTO ${JSON.stringify(table.tags)} (tag, path) VALUES (?, ?)`)
               .bind(this.getCacheKey(tag), this.getCacheKey(path));
           }
 
           // tag was revalidated
           return db
-            .prepare(`INSERT INTO ${table.revalidations} (tag, revalidatedAt) VALUES (?, ?)`)
+            .prepare(`INSERT INTO ${JSON.stringify(table.revalidations)} (tag, revalidatedAt) VALUES (?, ?)`)
             .bind(this.getCacheKey(tag), revalidatedAt ?? Date.now());
         })
       );
