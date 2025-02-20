@@ -2,7 +2,7 @@ import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
-import type { TagCacheMetaFile } from "@opennextjs/aws/types/open-next.js";
+import type { TagCacheMetaFile } from "@opennextjs/aws/types/cache.js";
 
 /**
  * Generates SQL statements that can be used to initialise the cache assets manifest in an SQL data store.
