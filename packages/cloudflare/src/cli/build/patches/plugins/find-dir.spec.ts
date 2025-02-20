@@ -32,7 +32,7 @@ class NextNodeServer extends _baseserver.default {
             return _fs.default.readFileSync(buildIdFile, "utf8").trim();
         } catch (err) {
             if (err.code === "ENOENT") {
-                throw new Error(\`Could not find a production build in the '${this.distDir}' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id\`);
+                throw new Error(\`Could not find a production build in the '\${this.distDir}' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id\`);
             }
             throw err;
         }
