@@ -203,7 +203,6 @@ export async function updateWorkerBundledCode(
       "'require(this.middlewareManifestPath)'",
       (code) => patches.inlineMiddlewareManifestRequire(code, buildOpts),
     ],
-    ["exception bubbling", patches.patchExceptionBubbling],
     [
       "`patchAsyncStorage` call",
       (code) =>
