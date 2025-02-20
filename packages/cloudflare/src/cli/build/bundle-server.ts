@@ -9,6 +9,7 @@ import { build } from "esbuild";
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
 import * as patches from "./patches/index.js";
+import { inlineBuildId } from "./patches/plugins/build-id.js";
 import { ContentUpdater } from "./patches/plugins/content-updater.js";
 import { inlineEvalManifest } from "./patches/plugins/eval-manifest.js";
 import { patchFetchCacheSetMissingWaitUntil } from "./patches/plugins/fetch-cache-wait-until.js";
@@ -95,6 +96,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       inlineEvalManifest(updater, buildOpts),
       inlineFindDir(updater, buildOpts),
       inlineLoadManifest(updater, buildOpts),
+      inlineBuildId(updater),
       // Apply updater updaters, must be the last plugin
       updater.plugin,
     ],
@@ -197,7 +199,6 @@ export async function updateWorkerBundledCode(
 
   const patchedCode = await patchCodeWithValidations(code, [
     ["require", patches.patchRequire],
-    ["`buildId` function", (code) => patches.patchBuildId(code, buildOpts)],
     ["cacheHandler", (code) => patches.patchCache(code, buildOpts)],
     [
       "'require(this.middlewareManifestPath)'",
