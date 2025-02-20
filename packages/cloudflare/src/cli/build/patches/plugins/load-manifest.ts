@@ -1,5 +1,5 @@
 /**
- * Inline `loadManifest` as it relies on `readFileSync`that is not supported by workerd.
+ * Inline `loadManifest` as it relies on `readFileSync` that is not supported by workerd.
  */
 
 import { readFile } from "node:fs/promises";

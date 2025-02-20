@@ -1,5 +1,5 @@
 /**
- * Inline `getBuildId` as it relies on `readFileSync`that is not supported by workerd.
+ * Inline `getBuildId` as it relies on `readFileSync` that is not supported by workerd.
  */
 
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
@@ -18,7 +18,7 @@ export function inlineBuildId(updater: ContentUpdater) {
   );
 }
 
-const rule = `
+export const rule = `
 rule:
   kind: method_definition
   has:
