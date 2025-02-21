@@ -13,6 +13,7 @@ import { installDependencies } from "@opennextjs/aws/build/installDeps.js";
 import logger from "@opennextjs/aws/logger.js";
 import { minifyAll } from "@opennextjs/aws/minimize-js.js";
 import { openNextEdgePlugins } from "@opennextjs/aws/plugins/edge.js";
+import {openNextExternalMiddlewarePlugin} from "@opennextjs/aws/plugins/externalMiddleware.js"
 import { openNextReplacementPlugin } from "@opennextjs/aws/plugins/replacement.js";
 import { openNextResolvePlugin } from "@opennextjs/aws/plugins/resolve.js";
 import type { FunctionOptions, SplittedFunctionOptions } from "@opennextjs/aws/types/open-next.js";
@@ -198,9 +199,12 @@ async function generateBundle(
       overrides,
     }),
 
+    openNextExternalMiddlewarePlugin(
+      path.join(options.openNextDistDir, "core", "edgeFunctionHandler.js"),
+    ),
+
     openNextEdgePlugins({
       nextDir: path.join(options.appBuildOutputPath, ".next"),
-      edgeFunctionHandlerPath: path.join(options.openNextDistDir, "core", "edgeFunctionHandler.js"),
       isInCloudfare: true,
     }),
   ];
