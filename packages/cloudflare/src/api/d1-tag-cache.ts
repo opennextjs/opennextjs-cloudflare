@@ -24,14 +24,14 @@ class D1TagCache implements TagCache {
   public readonly name = "d1-tag-cache";
 
   public async getByPath(rawPath: string): Promise<string[]> {
-    const { isDisabled, db, table } = this.getConfig();
+    const { isDisabled, db, tables } = this.getConfig();
     if (isDisabled) return [];
 
     const path = this.getCacheKey(rawPath);
 
     try {
       const { success, results } = await db
-        .prepare(`SELECT tag FROM ${JSON.stringify(table.tags)} WHERE path = ?`)
+        .prepare(`SELECT tag FROM ${JSON.stringify(tables.tags)} WHERE path = ?`)
         .bind(path)
         .all<{ tag: string }>();
 
@@ -48,14 +48,14 @@ class D1TagCache implements TagCache {
   }
 
   public async getByTag(rawTag: string): Promise<string[]> {
-    const { isDisabled, db, table } = this.getConfig();
+    const { isDisabled, db, tables } = this.getConfig();
     if (isDisabled) return [];
 
     const tag = this.getCacheKey(rawTag);
 
     try {
       const { success, results } = await db
-        .prepare(`SELECT path FROM ${JSON.stringify(table.tags)} WHERE tag = ?`)
+        .prepare(`SELECT path FROM ${JSON.stringify(tables.tags)} WHERE tag = ?`)
         .bind(tag)
         .all<{ path: string }>();
 
@@ -72,15 +72,15 @@ class D1TagCache implements TagCache {
   }
 
   public async getLastModified(path: string, lastModified?: number): Promise<number> {
-    const { isDisabled, db, table } = this.getConfig();
+    const { isDisabled, db, tables } = this.getConfig();
     if (isDisabled) return lastModified ?? Date.now();
 
     try {
       const { success, results } = await db
         .prepare(
-          `SELECT ${JSON.stringify(table.revalidations)}.tag FROM ${JSON.stringify(table.revalidations)}
-            INNER JOIN ${JSON.stringify(table.tags)} ON ${JSON.stringify(table.revalidations)}.tag = ${JSON.stringify(table.tags)}.tag
-            WHERE ${JSON.stringify(table.tags)}.path = ? AND ${JSON.stringify(table.revalidations)}.revalidatedAt > ?;`
+          `SELECT ${JSON.stringify(tables.revalidations)}.tag FROM ${JSON.stringify(tables.revalidations)}
+            INNER JOIN ${JSON.stringify(tables.tags)} ON ${JSON.stringify(tables.revalidations)}.tag = ${JSON.stringify(tables.tags)}.tag
+            WHERE ${JSON.stringify(tables.tags)}.path = ? AND ${JSON.stringify(tables.revalidations)}.revalidatedAt > ?;`
         )
         .bind(this.getCacheKey(path), lastModified ?? 0)
         .all<{ tag: string }>();
@@ -96,7 +96,7 @@ class D1TagCache implements TagCache {
   }
 
   public async writeTags(tags: { tag: string; path: string; revalidatedAt?: number }[]): Promise<void> {
-    const { isDisabled, db, table } = this.getConfig();
+    const { isDisabled, db, tables } = this.getConfig();
     if (isDisabled || tags.length === 0) return;
 
     try {
@@ -107,7 +107,7 @@ class D1TagCache implements TagCache {
             if (revalidatedAt === 1) {
               // new tag/path mapping from set
               return db
-                .prepare(`INSERT INTO ${JSON.stringify(table.tags)} (tag, path) VALUES (?, ?)`)
+                .prepare(`INSERT INTO ${JSON.stringify(tables.tags)} (tag, path) VALUES (?, ?)`)
                 .bind(this.getCacheKey(tag), this.getCacheKey(path));
             }
 
@@ -115,7 +115,9 @@ class D1TagCache implements TagCache {
               // tag was revalidated
               uniqueTags.add(tag);
               return db
-                .prepare(`INSERT INTO ${JSON.stringify(table.revalidations)} (tag, revalidatedAt) VALUES (?, ?)`)
+                .prepare(
+                  `INSERT INTO ${JSON.stringify(tables.revalidations)} (tag, revalidatedAt) VALUES (?, ?)`
+                )
                 .bind(this.getCacheKey(tag), revalidatedAt ?? Date.now());
             }
           })
@@ -148,7 +150,7 @@ class D1TagCache implements TagCache {
     return {
       isDisabled: false as const,
       db,
-      table: {
+      tables: {
         tags: cfEnv.NEXT_CACHE_D1_TAGS_TABLE ?? "tags",
         revalidations: cfEnv.NEXT_CACHE_D1_REVALIDATIONS_TABLE ?? "revalidations",
       },
