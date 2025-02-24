@@ -1,11 +1,7 @@
-// NOTE: loading.tsx is currently broken on open - next
-//  This works locally but not on deployed apps
-
 import { expect, test } from "@playwright/test";
 
 // NOTE: We don't await page load b/c we want to see the Loading page
-// loading.tsx doesn't currently work: https://github.com/opennextjs/opennextjs-cloudflare/issues/313
-test.skip("Server Side Render and loading.tsx", async ({ page }) => {
+test("Server Side Render and loading.tsx", async ({ page }) => {
   test.setTimeout(600000);
   await page.goto("/");
   await page.getByRole("link", { name: "SSR" }).click();
