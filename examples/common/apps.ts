@@ -7,6 +7,7 @@ const apps = [
   "vercel-blog-starter",
   "vercel-commerce",
   "ssg-app",
+  "instrumentation-app",
   // e2e
   "app-pages-router",
   "app-router",
