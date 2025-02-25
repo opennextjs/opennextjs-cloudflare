@@ -14,7 +14,7 @@ import { ContentUpdater } from "./patches/plugins/content-updater.js";
 import { inlineEvalManifest } from "./patches/plugins/eval-manifest.js";
 import { patchFetchCacheSetMissingWaitUntil } from "./patches/plugins/fetch-cache-wait-until.js";
 import { inlineFindDir } from "./patches/plugins/find-dir.js";
-import { patchLoadInstrumentation } from "./patches/plugins/load-instrumentation.js";
+import { patchInstrumentation } from "./patches/plugins/instrumentation.js";
 import { inlineLoadManifest } from "./patches/plugins/load-manifest.js";
 import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
 import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations.js";
@@ -92,7 +92,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       setWranglerExternal(),
       fixRequire(updater),
       handleOptionalDependencies(optionalDependencies),
-      patchLoadInstrumentation(updater),
+      patchInstrumentation(updater, buildOpts),
       patchFetchCacheSetMissingWaitUntil(updater),
       inlineEvalManifest(updater, buildOpts),
       inlineFindDir(updater, buildOpts),

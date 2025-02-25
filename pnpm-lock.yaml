@@ -683,7 +683,7 @@ importers:
         specifier: 'catalog:'
         version: 3.107.3(@cloudflare/workers-types@4.20250109.0)
 
-  examples/playground:
+  examples/playground14:
     dependencies:
       next:
         specifier: 'catalog:'
@@ -694,6 +694,31 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@opennextjs/cloudflare':
+        specifier: workspace:*
+        version: link:../../packages/cloudflare
+      '@playwright/test':
+        specifier: 'catalog:'
+        version: 1.47.0
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.2.0
+      wrangler:
+        specifier: 'catalog:'
+        version: 3.107.3(@cloudflare/workers-types@4.20250109.0)
+
+  examples/playground15:
+    dependencies:
+      next:
+        specifier: ^15.1.7
+        version: 15.1.7(@opentelemetry/api@1.9.0)(@playwright/test@1.47.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
     devDependencies:
       '@opennextjs/cloudflare':
         specifier: workspace:*
@@ -12949,7 +12974,7 @@ snapshots:
 
   '@react-aria/ssr@3.9.5(react@19.0.0-rc-3208e73e-20240730)':
     dependencies:
-      '@swc/helpers': 0.5.12
+      '@swc/helpers': 0.5.15
       react: 19.0.0-rc-3208e73e-20240730
 
   '@react-aria/utils@3.25.2(react@19.0.0-rc-3208e73e-20240730)':

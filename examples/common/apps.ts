@@ -3,7 +3,8 @@ const apps = [
   // examples
   "create-next-app",
   "middleware",
-  "playground",
+  "playground14",
+  "playground15",
   "vercel-blog-starter",
   "vercel-commerce",
   "ssg-app",

@@ -1,0 +1,28 @@
+{
+  "name": "playground14",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "build:worker": "pnpm opennextjs-cloudflare",
+    "preview": "pnpm build:worker && pnpm wrangler dev",
+    "e2e": "playwright test -c e2e/playwright.config.ts",
+    "e2e:dev": "playwright test -c e2e/playwright.dev.config.ts",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv"
+  },
+  "dependencies": {
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@opennextjs/cloudflare": "workspace:*",
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "wrangler": "catalog:"
+  }
+}
