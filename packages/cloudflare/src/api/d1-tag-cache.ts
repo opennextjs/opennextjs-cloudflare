@@ -10,7 +10,7 @@ import { getCloudflareContext } from "./cloudflare-context.js";
  *
  * This table should be populated using an SQL file that is generated during the build process.
  *
- * **Tag/path mappings**
+ * **Tag/path mappings table**
  *
  * Information about the relation between tags and paths is stored in a `tags` table that contains
  * two columns; `tag`, and `path`. The table name can be configured with `NEXT_CACHE_D1_TAGS_TABLE`
