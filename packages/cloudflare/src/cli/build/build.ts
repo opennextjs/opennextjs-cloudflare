@@ -12,6 +12,7 @@ import logger from "@opennextjs/aws/logger.js";
 
 import type { ProjectOptions } from "../project-options.js";
 import { bundleServer } from "./bundle-server.js";
+import { compileCacheAssetsManifestSqlFile } from "./open-next/compile-cache-assets-manifest.js";
 import { compileEnvFiles } from "./open-next/compile-env-files.js";
 import { copyCacheAssets } from "./open-next/copyCacheAssets.js";
 import { createServerBundle } from "./open-next/createServerBundle.js";
@@ -86,8 +87,12 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
   createStaticAssets(options);
 
   if (config.dangerous?.disableIncrementalCache !== true) {
-    createCacheAssets(options);
+    const { useTagCache, metaFiles } = createCacheAssets(options);
     copyCacheAssets(options);
+
+    if (useTagCache) {
+      compileCacheAssetsManifestSqlFile(options, metaFiles);
+    }
   }
 
   await createServerBundle(options);

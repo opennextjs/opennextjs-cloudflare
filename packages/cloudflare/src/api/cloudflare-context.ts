@@ -3,6 +3,9 @@ import type { Context, RunningCodeOptions } from "node:vm";
 declare global {
   interface CloudflareEnv {
     NEXT_CACHE_WORKERS_KV?: KVNamespace;
+    NEXT_CACHE_D1?: D1Database;
+    NEXT_CACHE_D1_TAGS_TABLE?: string;
+    NEXT_CACHE_D1_REVALIDATIONS_TABLE?: string;
     ASSETS?: Fetcher;
   }
 }

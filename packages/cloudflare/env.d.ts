@@ -7,6 +7,8 @@ declare global {
       NEXT_PRIVATE_DEBUG_CACHE?: string;
       OPEN_NEXT_ORIGIN: string;
       NODE_ENV?: string;
+      NEXT_CACHE_D1_TAGS_TABLE?: string;
+      NEXT_CACHE_D1_REVALIDATIONS_TABLE?: string;
     }
   }
 }

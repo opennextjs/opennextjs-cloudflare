@@ -9,9 +9,11 @@
     "start": "next start --port 3001",
     "lint": "next lint",
     "clean": "rm -rf .turbo node_modules .next .open-next",
+    "d1:clean": "wrangler d1 execute NEXT_CACHE_D1 --command \"DROP TABLE IF EXISTS tags; DROP TABLE IF EXISTS revalidations\"",
+    "d1:setup": "wrangler d1 execute NEXT_CACHE_D1 --file .open-next/cloudflare/cache-assets-manifest.sql",
     "build:worker": "pnpm opennextjs-cloudflare",
-    "preview": "pnpm build:worker && pnpm wrangler dev",
-    "e2e": "playwright test -c e2e/playwright.config.ts"
+    "preview": "pnpm build:worker && pnpm d1:clean && pnpm d1:setup && pnpm wrangler dev",
+    "e2e": "pnpm d1:clean && pnpm d1:setup && playwright test -c e2e/playwright.config.ts"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "workspace:*",

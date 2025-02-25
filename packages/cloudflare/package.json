@@ -73,7 +73,7 @@
   "dependencies": {
     "@ast-grep/napi": "^0.34.1",
     "@dotenvx/dotenvx": "catalog:",
-    "@opennextjs/aws": "https://pkg.pr.new/@opennextjs/aws@733",
+    "@opennextjs/aws": "https://pkg.pr.new/@opennextjs/aws@748",
     "enquirer": "^2.4.1",
     "glob": "catalog:",
     "yaml": "^2.7.0"

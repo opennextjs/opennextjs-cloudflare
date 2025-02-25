@@ -13,5 +13,12 @@
       "binding": "NEXT_CACHE_WORKERS_KV",
       "id": "<BINDING_ID>"
     }
+  ],
+  "d1_databases": [
+    {
+      "binding": "NEXT_CACHE_D1",
+      "database_id": "NEXT_CACHE_D1",
+      "database_name": "NEXT_CACHE_D1"
+    }
   ]
 }
