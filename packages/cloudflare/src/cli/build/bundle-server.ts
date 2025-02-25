@@ -91,7 +91,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       setWranglerExternal(),
       fixRequire(updater),
       handleOptionalDependencies(optionalDependencies),
-      ...patchInstrumentation(updater, buildOpts),
+      patchInstrumentation(updater, buildOpts),
       patchFetchCacheSetMissingWaitUntil(updater),
       inlineEvalManifest(updater, buildOpts),
       inlineFindDir(updater, buildOpts),

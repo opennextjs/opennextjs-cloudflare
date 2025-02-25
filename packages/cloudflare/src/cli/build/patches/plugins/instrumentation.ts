@@ -9,18 +9,22 @@ import type { ContentUpdater } from "./content-updater.js";
 export function patchInstrumentation(updater: ContentUpdater, buildOpts: BuildOptions) {
   const builtInstrumentationPath = getBuiltInstrumentationPath(buildOpts);
 
-  return [
-    updater.updateContent(
-      "patch-load-instrumentation",
-      { filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/, contentFilter: /async loadInstrumentationModule\(/ },
-      async ({ contents }) => patchCode(contents, getNext15Rule(builtInstrumentationPath))
-    ),
-    updater.updateContent(
-      "patch-prepareImpl",
-      { filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/, contentFilter: /async prepareImpl\(/ },
-      async ({ contents }) => patchCode(contents, getNext14Rule(builtInstrumentationPath))
-    ),
-  ];
+  updater.updateContent(
+    "patch-instrumentation-next15",
+    { filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/, contentFilter: /async loadInstrumentationModule\(/ },
+    async ({ contents }) => patchCode(contents, getNext15Rule(builtInstrumentationPath))
+  );
+  
+  updater.updateContent(
+    "patch-instrumentation-next14",
+    { filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/, contentFilter: /async prepareImpl\(/ },
+    async ({ contents }) => patchCode(contents, getNext14Rule(builtInstrumentationPath))
+  );
+
+  return {
+    "patch-instrumentation",
+    setup() {},
+  };
 }
 
 export function getNext15Rule(builtInstrumentationPath: string | null) {
@@ -62,19 +66,15 @@ export function getNext14Rule(builtInstrumentationPath: string | null) {
  * instrumentation hook is provided in the app's source
  *
  * @param buildOpts the open-next build options
- * @returns a string pointing to the instrumentation.js file location, or null if such file is not found
+ * @returns the path to instrumentation.js, or null if it doesn't exist
  */
 function getBuiltInstrumentationPath(buildOpts: BuildOptions): string | null {
   const { outputDir } = buildOpts;
 
-  const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts));
-  const dotNextDir = join(baseDir, ".next");
-  const maybeBuiltInstrumentationPath = join(dotNextDir, "server", `${INSTRUMENTATION_HOOK_FILENAME}.js`);
-  const builtInstrumentationPath = existsSync(maybeBuiltInstrumentationPath)
+  const maybeBuiltInstrumentationPath = join(outputDir, "server-functions/default", getPackagePath(buildOpts), `.next/server/${INSTRUMENTATION_HOOK_FILENAME}.js` );
+  return existsSync(maybeBuiltInstrumentationPath)
     ? maybeBuiltInstrumentationPath
     : null;
-
-  return builtInstrumentationPath;
 }
 
 /**
