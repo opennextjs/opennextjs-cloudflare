@@ -35,7 +35,7 @@ rule:
 fix:
   function wrapfunction($FN, $MESSAGE) {
     if(typeof $FN !== 'function') throw new Error("argument fn must be a function");
-    return (...args) => {
+    return function deprecated_$FN(...args) {
       console.warn($MESSAGE);
       return $FN(...args);
     }
