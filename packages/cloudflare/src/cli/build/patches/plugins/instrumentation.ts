@@ -14,7 +14,7 @@ export function patchInstrumentation(updater: ContentUpdater, buildOpts: BuildOp
     { filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/, contentFilter: /async loadInstrumentationModule\(/ },
     async ({ contents }) => patchCode(contents, getNext15Rule(builtInstrumentationPath))
   );
-  
+
   updater.updateContent(
     "patch-instrumentation-next14",
     { filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/, contentFilter: /async prepareImpl\(/ },
@@ -22,7 +22,7 @@ export function patchInstrumentation(updater: ContentUpdater, buildOpts: BuildOp
   );
 
   return {
-    "patch-instrumentation",
+    name: "patch-instrumentation",
     setup() {},
   };
 }
@@ -71,10 +71,13 @@ export function getNext14Rule(builtInstrumentationPath: string | null) {
 function getBuiltInstrumentationPath(buildOpts: BuildOptions): string | null {
   const { outputDir } = buildOpts;
 
-  const maybeBuiltInstrumentationPath = join(outputDir, "server-functions/default", getPackagePath(buildOpts), `.next/server/${INSTRUMENTATION_HOOK_FILENAME}.js` );
-  return existsSync(maybeBuiltInstrumentationPath)
-    ? maybeBuiltInstrumentationPath
-    : null;
+  const maybeBuiltInstrumentationPath = join(
+    outputDir,
+    "server-functions/default",
+    getPackagePath(buildOpts),
+    `.next/server/${INSTRUMENTATION_HOOK_FILENAME}.js`
+  );
+  return existsSync(maybeBuiltInstrumentationPath) ? maybeBuiltInstrumentationPath : null;
 }
 
 /**
