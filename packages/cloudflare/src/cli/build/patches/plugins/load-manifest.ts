@@ -30,7 +30,7 @@ async function getRule(buildOpts: BuildOptions) {
   const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts));
   const dotNextDir = join(baseDir, ".next");
 
-  const manifests = await glob(join(dotNextDir, "**/*-manifest.json"));
+  const manifests = await glob(join(dotNextDir, "**/*-manifest.json"), { windowsPathsNoEscape: true });
 
   const returnManifests = (
     await Promise.all(
