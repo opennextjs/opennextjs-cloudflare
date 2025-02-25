@@ -1,5 +1,30 @@
 # @opennextjs/cloudflare
 
+## 0.5.4
+
+### Patch Changes
+
+- [#320](https://github.com/opennextjs/opennextjs-cloudflare/pull/320) [`ff2dd55`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ff2dd55aa5645f9c54b064ced02719ff83321a04) Thanks [@james-elicx](https://github.com/james-elicx)! - feat: d1 adapter for the tag cache
+
+- [#409](https://github.com/opennextjs/opennextjs-cloudflare/pull/409) [`a604c85`](https://github.com/opennextjs/opennextjs-cloudflare/commit/a604c8512c90921e90293c1e96a71926930234db) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - make sure that instrumentation files work
+
+  currently [instrumentation files](https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation)
+  in applications built using the adapter are ignored, the changes here
+  make sure that those are instead properly included in the applications
+
+- [#410](https://github.com/opennextjs/opennextjs-cloudflare/pull/410) [`d30424b`](https://github.com/opennextjs/opennextjs-cloudflare/commit/d30424baff219792a52e3b6c766398189be5f19e) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - remove `eval` calls introduced by `depd` wrapped functions
+
+  Some dependencies of Next.js (`raw-body` and `send`) use `depd` to deprecate some of their functions,
+  `depd` uses `eval` to generate a deprecated version of such functions, this causes `eval` warnings in
+  the terminal even if these functions are never called, the changes here by patching the depd `wrapfunction`
+  function so that it still retains the same type of behavior but without using `eval`
+
+- [#404](https://github.com/opennextjs/opennextjs-cloudflare/pull/404) [`12d385d`](https://github.com/opennextjs/opennextjs-cloudflare/commit/12d385d84ff0ab7e3475cd9fea01d03b6876c46d) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - fix incorrect (sync) `getCloudflareContext` error message
+
+  currently `getCloudflareContext` run in sync mode at the top level of a not static route
+  gives a misleading error message saying that the function needs to be run in a not static
+  route, the changes here correct this error message clarifying that the problem actually is
+
 ## 0.5.3
 
 ### Patch Changes
