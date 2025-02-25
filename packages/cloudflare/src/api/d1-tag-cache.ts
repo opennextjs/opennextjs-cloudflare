@@ -16,7 +16,7 @@ import { getCloudflareContext } from "./cloudflare-context.js";
  * two columns; `tag`, and `path`. The table name can be configured with `NEXT_CACHE_D1_TAGS_TABLE`
  * environment variable.
  *
- * **Tag revalidations**
+ * **Tag revalidations table**
  *
  * Revalidation times for tags are stored in a `revalidations` table that contains two columns; `tags`,
  * and `revalidatedAt`. The table name can be configured with `NEXT_CACHE_D1_REVALIDATIONS_TABLE`
