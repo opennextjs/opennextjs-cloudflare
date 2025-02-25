@@ -45,7 +45,7 @@ export default class NextNodeServer extends BaseServer<
   }
 }`;
 
-    expect(patchCode(code, await getRule("_file_does_not_exist_"))).toMatchInlineSnapshot(`
+    expect(patchCode(code, await getRule(null))).toMatchInlineSnapshot(`
       "export default class NextNodeServer extends BaseServer<
         Options,
         NodeNextRequest,

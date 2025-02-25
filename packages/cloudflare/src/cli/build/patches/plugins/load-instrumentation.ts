@@ -15,7 +15,10 @@ export function patchLoadInstrumentation(updater: ContentUpdater, buildOpts: Bui
 
   const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts));
   const dotNextDir = join(baseDir, ".next");
-  const builtInstrumentationPath = join(dotNextDir, "server", `${INSTRUMENTATION_HOOK_FILENAME}.js`);
+  const maybeBuiltInstrumentationPath = join(dotNextDir, "server", `${INSTRUMENTATION_HOOK_FILENAME}.js`);
+  const builtInstrumentationPath = existsSync(maybeBuiltInstrumentationPath)
+    ? maybeBuiltInstrumentationPath
+    : null;
 
   return updater.updateContent(
     "patch-load-instrumentation",
@@ -24,7 +27,7 @@ export function patchLoadInstrumentation(updater: ContentUpdater, buildOpts: Bui
   );
 }
 
-export async function getRule(builtInstrumentationPath: string) {
+export async function getRule(builtInstrumentationPath: string | null) {
   return `
     rule:
       kind: method_definition
@@ -34,7 +37,7 @@ export async function getRule(builtInstrumentationPath: string) {
 
     fix:
       async loadInstrumentationModule() {
-        this.instrumentation = ${existsSync(builtInstrumentationPath) ? `require('${builtInstrumentationPath}')` : "null"};
+        this.instrumentation = ${builtInstrumentationPath ? `require('${builtInstrumentationPath}')` : "null"};
         return this.instrumentation;
       }
   `;
