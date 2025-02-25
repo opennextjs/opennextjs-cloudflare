@@ -16,11 +16,11 @@ export function patchPrepareImpl(updater: ContentUpdater, buildOpts: BuildOption
   return updater.updateContent(
     "patch-prepareImpl",
     { filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/, contentFilter: /async prepareImpl\(/ },
-    async ({ contents }) => patchCode(contents, await getRule(builtInstrumentationPath))
+    async ({ contents }) => patchCode(contents, getRule(builtInstrumentationPath))
   );
 }
 
-export async function getRule(builtInstrumentationPath: string | null) {
+export function getRule(builtInstrumentationPath: string | null) {
   return `
     rule:
       kind: method_definition

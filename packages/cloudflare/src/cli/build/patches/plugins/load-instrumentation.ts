@@ -14,11 +14,11 @@ export function patchLoadInstrumentation(updater: ContentUpdater, buildOpts: Bui
   return updater.updateContent(
     "patch-load-instrumentation",
     { filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/, contentFilter: /async loadInstrumentationModule\(/ },
-    async ({ contents }) => patchCode(contents, await getRule(builtInstrumentationPath))
+    async ({ contents }) => patchCode(contents, getRule(builtInstrumentationPath))
   );
 }
 
-export async function getRule(builtInstrumentationPath: string | null) {
+export function getRule(builtInstrumentationPath: string | null) {
   return `
     rule:
       kind: method_definition
