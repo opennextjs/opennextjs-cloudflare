@@ -8,13 +8,13 @@ import { getCloudflareContext } from "./cloudflare-context.js";
 /**
  * An instance of the Tag Cache that uses a D1 binding (`NEXT_CACHE_D1`) as it's underlying data store.
  *
- * This table should be populated using an SQL file that is generated during the build process.
- *
  * **Tag/path mappings table**
  *
  * Information about the relation between tags and paths is stored in a `tags` table that contains
  * two columns; `tag`, and `path`. The table name can be configured with `NEXT_CACHE_D1_TAGS_TABLE`
  * environment variable.
+ *
+ * This table should be populated using an SQL file that is generated during the build process.
  *
  * **Tag revalidations table**
  *
