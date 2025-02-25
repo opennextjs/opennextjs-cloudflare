@@ -24,6 +24,11 @@
       "types": "./dist/api/index.d.ts",
       "default": "./dist/api/index.js"
     },
+    "./config": {
+      "import": "./dist/api/config.js",
+      "types": "./dist/api/config.d.ts",
+      "default": "./dist/api/config.js"
+    },
     "./*": {
       "import": "./dist/api/*.js",
       "types": "./dist/api/*.d.ts",
