@@ -1,6 +1,5 @@
 /**
- * Inline `evalManifest` as it relies on `readFileSync` and `runInNewContext`
- * that are not supported by workerd.
+ * Inline `findDir` as it relies on `existsSync` which is not supported by workerd.
  */
 
 import { existsSync } from "node:fs";
