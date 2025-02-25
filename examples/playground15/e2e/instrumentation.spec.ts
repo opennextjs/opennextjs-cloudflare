@@ -24,13 +24,13 @@ test.describe("instrumentation", () => {
     test("the instrumentation register hook nodejs logic should not effect edge routes", async ({ page }) => {
       const res = await page.request.get("/middleware-instrumentation");
       const respJson: Record<string, string> = await res.json();
-      expect(respJson["nodejs-instrumentation-setup"]).toEqual("undefined");
+      expect(respJson["nodejs-instrumentation-setup"]).toBeUndefined();
     });
 
     test("the instrumentation register hook edge logic should not effect nodejs routes", async ({ page }) => {
       const res = await page.request.get("/api/instrumentation");
       const respJson: Record<string, string> = await res.json();
-      expect(respJson["edge-instrumentation-setup"]).toEqual("undefined");
+      expect(respJson["edge-instrumentation-setup"]).toBeUndefined();
     });
   });
 });
