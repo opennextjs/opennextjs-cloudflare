@@ -1,4 +1,3 @@
-import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { describe, expect, test, vi } from "vitest";
 
 import { patchCode } from "../ast/util.js";
@@ -46,17 +45,7 @@ export default class NextNodeServer extends BaseServer<
   }
 }`;
 
-    expect(
-      patchCode(
-        code,
-        await getRule({
-          appBuildOutputPath: "",
-          appPath: "",
-          monorepoRoot: "",
-          outputDir: "",
-        } as BuildOptions)
-      )
-    ).toMatchInlineSnapshot(`
+    expect(patchCode(code, await getRule("_file_does_not_exist_"))).toMatchInlineSnapshot(`
       "export default class NextNodeServer extends BaseServer<
         Options,
         NodeNextRequest,
@@ -98,23 +87,13 @@ export default class NextNodeServer extends BaseServer<
   }
 }`;
 
-    expect(
-      patchCode(
-        code,
-        await getRule({
-          appBuildOutputPath: "_file_exists_",
-          appPath: "test",
-          monorepoRoot: "",
-          outputDir: "",
-        } as BuildOptions)
-      )
-    ).toMatchInlineSnapshot(`
+    expect(patchCode(code, await getRule("/_file_exists_/instrumentation.js"))).toMatchInlineSnapshot(`
       "export default class NextNodeServer extends BaseServer<
         Options,
         NodeNextRequest,
         NodeNextResponse
       > {
-        async loadInstrumentationModule() { this.instrumentation = require('server-functions/default/_file_exists_/.next/server/instrumentation.js'); return this.instrumentation; }
+        async loadInstrumentationModule() { this.instrumentation = require('/_file_exists_/instrumentation.js'); return this.instrumentation; }
       }"
     `);
   });

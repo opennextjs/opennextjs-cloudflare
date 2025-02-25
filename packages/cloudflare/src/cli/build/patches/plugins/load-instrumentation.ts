@@ -11,20 +11,20 @@ import { patchCode } from "../ast/util.js";
 import type { ContentUpdater } from "./content-updater.js";
 
 export function patchLoadInstrumentation(updater: ContentUpdater, buildOpts: BuildOptions) {
-  return updater.updateContent(
-    "patch-load-instrumentation",
-    { filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/, contentFilter: /async loadInstrumentationModule\(/ },
-    async ({ contents }) => patchCode(contents, await getRule(buildOpts))
-  );
-}
-
-export async function getRule(buildOpts: BuildOptions) {
   const { outputDir } = buildOpts;
 
   const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts));
   const dotNextDir = join(baseDir, ".next");
   const builtInstrumentationPath = join(dotNextDir, "server", `${INSTRUMENTATION_HOOK_FILENAME}.js`);
 
+  return updater.updateContent(
+    "patch-load-instrumentation",
+    { filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/, contentFilter: /async loadInstrumentationModule\(/ },
+    async ({ contents }) => patchCode(contents, await getRule(builtInstrumentationPath))
+  );
+}
+
+export async function getRule(builtInstrumentationPath: string) {
   return `
     rule:
       kind: method_definition
