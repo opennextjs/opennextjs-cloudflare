@@ -1,17 +1,7 @@
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, test } from "vitest";
 
 import { patchCode } from "../ast/util.js";
 import { getRule } from "./load-instrumentation.js";
-
-vi.mock(import("node:fs"), async (importOriginal) => {
-  const mod = await importOriginal();
-  return {
-    ...mod,
-    existsSync(path) {
-      return `${path}`.includes("_file_exists_");
-    },
-  };
-});
 
 describe("LoadInstrumentationModule", () => {
   const code = `
