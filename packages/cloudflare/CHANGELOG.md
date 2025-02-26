@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 0.5.5
+
+### Patch Changes
+
+- [#417](https://github.com/opennextjs/opennextjs-cloudflare/pull/417) [`6d3291f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/6d3291fdbdd9f0da4fcdabf4131b82288358b35f) Thanks [@vicb](https://github.com/vicb)! - define \_\_filename globally
+
+- [#413](https://github.com/opennextjs/opennextjs-cloudflare/pull/413) [`01e2bfb`](https://github.com/opennextjs/opennextjs-cloudflare/commit/01e2bfb81f8decccce46f7d4e8427a39113814b5) Thanks [@ha1fstack](https://github.com/ha1fstack)! - improve windows support
+
 ## 0.5.4
 
 ### Patch Changes
