@@ -29,7 +29,9 @@ async function getRule(buildOpts: BuildOptions) {
 
   const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts), ".next");
   const appDir = join(baseDir, "server/app");
-  const manifests = await glob(join(baseDir, "**/*_client-reference-manifest.js"));
+  const manifests = await glob(join(baseDir, "**/*_client-reference-manifest.js"), {
+    windowsPathsNoEscape: true,
+  });
 
   const returnManifests = manifests
     .map((manifest) => {
