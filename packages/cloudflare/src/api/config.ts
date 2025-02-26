@@ -50,10 +50,6 @@ export function defineCloudflareConfig(options: CloudflareConfigOptions = {}): O
         proxyExternalRequest: "fetch",
       },
     },
-
-    dangerous: {
-      enableCacheInterception: false,
-    },
   };
 }
 
