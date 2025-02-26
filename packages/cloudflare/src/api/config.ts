@@ -3,8 +3,6 @@ import type { IncrementalCache, Queue, TagCache } from "@opennextjs/aws/types/ov
 
 export type CloudflareConfigOptions = {
   /**
-   *
-   *
    * The incremental cache implementation to use, for more details see the [Caching documentation](https://opennext.js.org/cloudflare/caching))
    *
    * `@opennextjs/cloudflare` offers a kv incremental cache implementation ready
