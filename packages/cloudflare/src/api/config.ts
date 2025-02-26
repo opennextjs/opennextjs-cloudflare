@@ -3,7 +3,9 @@ import type { IncrementalCache, Queue, TagCache } from "@opennextjs/aws/types/ov
 
 export type CloudflareConfigOptions = {
   /**
-   * The incremental cache implementation to use (for more details see the [Incremental Cache documentation](https://opennext.js.org/aws/config/overrides/incremental_cache))
+   *
+   *
+   * The incremental cache implementation to use, for more details see the [Caching documentation](https://opennext.js.org/cloudflare/caching))
    *
    * `@opennextjs/cloudflare` offers a kv incremental cache implementation ready
    * to use which can be imported from `"@opennextjs/cloudflare/kv-cache"`
@@ -19,7 +21,7 @@ export type CloudflareConfigOptions = {
   incrementalCache?: IncrementalCache | (() => IncrementalCache | Promise<IncrementalCache>);
 
   /**
-   * The tag cache implementation to use (for more details see the [Tag Cache documentation](https://opennext.js.org/aws/config/overrides/tag_cache))
+   * The tag cache implementation to use, for more details see the [Caching documentation](https://opennext.js.org/cloudflare/caching))
    *
    * `@opennextjs/cloudflare` offers a d1 tag cache implementation ready
    * to use which can be imported from `"@opennextjs/cloudflare/d1-tag-cache"`
@@ -35,7 +37,7 @@ export type CloudflareConfigOptions = {
   tagCache?: TagCache | (() => TagCache | Promise<TagCache>);
 
   /**
-   * The revalidation queue implementation to use (for more details see the [Queue documentation](https://opennext.js.org/aws/config/overrides/queue))
+   * The revalidation queue implementation to use, for more details see the [Caching documentation](https://opennext.js.org/cloudflare/caching))
    *
    * `@opennextjs/cloudflare` offers an in memory queue implementation ready
    * to use which can be imported from `"@opennextjs/cloudflare/memory-queue"`
