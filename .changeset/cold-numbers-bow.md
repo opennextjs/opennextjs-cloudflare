@@ -12,7 +12,7 @@ Example usage:
 ```ts
 // open-next.config.ts
 import cache from "@opennextjs/cloudflare/kv-cache";
-import { defineCloudflareConfig } from "@opennextjs/cloudflare/config";
+import { defineCloudflareConfig } from "@opennextjs/cloudflare";
 
 export default defineCloudflareConfig({
   incrementalCache: cache,

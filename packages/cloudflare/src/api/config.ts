@@ -9,7 +9,7 @@ export type CloudflareConfigOptions = {
    * to use which can be imported from `"@opennextjs/cloudflare/kv-cache"`
    *
    * @example
-   *   import { defineCloudflareConfig } from "@opennextjs/cloudflare/config";
+   *   import { defineCloudflareConfig } from "@opennextjs/cloudflare";
    *   import cache from "@opennextjs/cloudflare/kv-cache";
    *
    *   export default defineCloudflareConfig({
@@ -25,7 +25,7 @@ export type CloudflareConfigOptions = {
    * to use which can be imported from `"@opennextjs/cloudflare/d1-tag-cache"`
    *
    * @example
-   *   import { defineCloudflareConfig } from "@opennextjs/cloudflare/config";
+   *   import { defineCloudflareConfig } from "@opennextjs/cloudflare";
    *   import cache from "@opennextjs/cloudflare/d1-tag-cache";
    *
    *   export default defineCloudflareConfig({
@@ -41,7 +41,7 @@ export type CloudflareConfigOptions = {
    * to use which can be imported from `"@opennextjs/cloudflare/memory-queue"`
    *
    * @example
-   *   import { defineCloudflareConfig } from "@opennextjs/cloudflare/config";
+   *   import { defineCloudflareConfig } from "@opennextjs/cloudflare";
    *   import memoryQueue from "@opennextjs/cloudflare/memory-queue";
    *
    *   export default defineCloudflareConfig({
