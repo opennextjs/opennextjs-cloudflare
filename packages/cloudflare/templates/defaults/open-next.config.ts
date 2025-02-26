@@ -1,7 +1,7 @@
 // default open-next.config.ts file created by @opennextjs/cloudflare
-import { defineConfig } from "@opennextjs/cloudflare/dist/api/config";
+import { defineCloudflareConfig } from "@opennextjs/cloudflare/dist/api/config";
 import cache from "@opennextjs/cloudflare/dist/api/kv-cache";
 
-export default defineConfig({
+export default defineCloudflareConfig({
   incrementalCache: cache,
 });

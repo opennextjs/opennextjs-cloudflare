@@ -29,7 +29,7 @@ export type CloudflareConfigOptions = {
  * @param options options that enabled you to configure the application's behavior
  * @returns the OpenNext configuration object
  */
-export function defineConfig(options: CloudflareConfigOptions = {}): OpenNextConfig {
+export function defineCloudflareConfig(options: CloudflareConfigOptions = {}): OpenNextConfig {
   const { incrementalCache, tagCache, queue } = options;
   return {
     default: {

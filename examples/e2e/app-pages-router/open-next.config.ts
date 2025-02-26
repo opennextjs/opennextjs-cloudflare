@@ -1,8 +1,8 @@
 import kvCache from "@opennextjs/cloudflare/kv-cache";
 import memoryQueue from "@opennextjs/cloudflare/memory-queue";
-import { defineConfig } from "@opennextjs/cloudflare/config";
+import { defineCloudflareConfig } from "@opennextjs/cloudflare/config";
 
-export default defineConfig({
+export default defineCloudflareConfig({
   incrementalCache: kvCache,
   queue: memoryQueue,
 });
