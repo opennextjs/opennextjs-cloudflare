@@ -21,7 +21,9 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions) {
   const functionsPath = path.join(outputDir, "server-functions/default");
   const packagePath = path.join(functionsPath, getPackagePath(buildOpts));
 
-  for (const traceInfoPath of globSync(path.join(appBuildOutputPath, ".next/server/**/*.nft.json"))) {
+  for (const traceInfoPath of globSync(path.join(appBuildOutputPath, ".next/server/**/*.nft.json"), {
+    windowsPathsNoEscape: true,
+  })) {
     const traceInfo: TraceInfo = JSON.parse(readFileSync(traceInfoPath, { encoding: "utf8" }));
     const tracedNodePath = traceInfo.files.find((p) => p.endsWith("@vercel/og/index.node.js"));
 
