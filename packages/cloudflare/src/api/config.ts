@@ -83,13 +83,13 @@ export function defineCloudflareConfig(options: CloudflareConfigOptions = {}): O
 
 function resolveOverride<T extends IncrementalCache | TagCache | Queue>(
   value: T | (() => T | Promise<T>) | undefined
-): (() => T | Promise<T>) | "dummy" {
+): (() => Promise<T>) | "dummy" {
   if (!value) {
     return "dummy";
   }
 
   if (typeof value === "function") {
-    return () => value();
+    return async () => value();
   }
 
   return async () => value;
