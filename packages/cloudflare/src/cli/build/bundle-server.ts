@@ -128,7 +128,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       // Note: we need the __non_webpack_require__ variable declared as it is used by next-server:
       // https://github.com/vercel/next.js/blob/be0c3283/packages/next/src/server/next-server.ts#L116-L119
       __non_webpack_require__: "require",
-      // Ask mhart if he can explain why the `define`s below are necessary
+      // We make sure that environment variables that Next.js expects are properly defined
       "process.env.NEXT_RUNTIME": '"nodejs"',
       "process.env.NODE_ENV": '"production"',
       "process.env.NEXT_MINIMAL": "true",
