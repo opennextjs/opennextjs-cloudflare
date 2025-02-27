@@ -1,5 +1,26 @@
 # @opennextjs/cloudflare
 
+## 0.5.6
+
+### Patch Changes
+
+- [#412](https://github.com/opennextjs/opennextjs-cloudflare/pull/412) [`58b200f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/58b200fc1d4f2a4906c13f8268fc7612457861a7) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - add `defineCloudflareConfig` utility
+
+  this change adds a new `defineCloudflareConfig` utility that developers can use in their `open-next.config.ts`
+  file to easily generate a configuration compatible with the adapter
+
+  Example usage:
+
+  ```ts
+  // open-next.config.ts
+  import { defineCloudflareConfig } from "@opennextjs/cloudflare";
+  import kvIncrementalCache from "@opennextjs/cloudflare/kv-cache";
+
+  export default defineCloudflareConfig({
+    incrementalCache: kvIncrementalCache,
+  });
+  ```
+
 ## 0.5.5
 
 ### Patch Changes
