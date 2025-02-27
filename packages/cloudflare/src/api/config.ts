@@ -89,7 +89,7 @@ function resolveOverride<T extends IncrementalCache | TagCache | Queue>(
   }
 
   if (typeof value === "function") {
-    return async () => value();
+    return async () => await value();
   }
 
   return async () => value;
