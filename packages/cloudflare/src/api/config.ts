@@ -1,4 +1,4 @@
-import { OpenNextConfig } from "@opennextjs/aws/types/open-next";
+import { BaseOverride, LazyLoadedOverride, OpenNextConfig } from "@opennextjs/aws/types/open-next";
 import type { IncrementalCache, Queue, TagCache } from "@opennextjs/aws/types/overrides";
 
 export type CloudflareConfigOptions = {
@@ -59,6 +59,7 @@ export type CloudflareConfigOptions = {
  */
 export function defineCloudflareConfig(options: CloudflareConfigOptions = {}): OpenNextConfig {
   const { incrementalCache, tagCache, queue } = options;
+
   return {
     default: {
       override: {
@@ -81,12 +82,22 @@ export function defineCloudflareConfig(options: CloudflareConfigOptions = {}): O
   };
 }
 
+type DummyOrLazyLoadedOverride<T extends BaseOverride> = "dummy" | LazyLoadedOverride<T>;
+
+type ResolveOverrideReturn<T extends IncrementalCache | TagCache | Queue> = T extends Queue
+  ? "direct" | DummyOrLazyLoadedOverride<T>
+  : DummyOrLazyLoadedOverride<T>;
+
 function resolveOverride<T extends IncrementalCache | TagCache | Queue>(
-  value: T | (() => T | Promise<T>) | undefined
-): (() => T | Promise<T>) | "dummy" {
-  if (!value) {
-    return "dummy";
+  value: undefined | "dummy" | "direct" | T | (() => T | Promise<T>)
+): ResolveOverrideReturn<T> {
+  if (!value || value === "dummy") {
+    return "dummy" as ResolveOverrideReturn<T>;
   }
 
-  return typeof value === "function" ? value : () => value;
+  if (value === "direct") {
+    return "direct" as ResolveOverrideReturn<T>;
+  }
+
+  return (typeof value === "function" ? value : () => value) as ResolveOverrideReturn<T>;
 }
