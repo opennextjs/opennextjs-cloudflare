@@ -10,10 +10,10 @@ export type CloudflareConfigOptions = {
    *
    * @example
    *   import { defineCloudflareConfig } from "@opennextjs/cloudflare";
-   *   import cache from "@opennextjs/cloudflare/kv-cache";
+   *   import kvIncrementalCache from "@opennextjs/cloudflare/kv-cache";
    *
    *   export default defineCloudflareConfig({
-   *     incrementalCache: cache,
+   *     incrementalCache: kvIncrementalCache,
    *   });
    */
   incrementalCache?: "dummy" | IncrementalCache | (() => IncrementalCache | Promise<IncrementalCache>);
@@ -26,10 +26,10 @@ export type CloudflareConfigOptions = {
    *
    * @example
    *   import { defineCloudflareConfig } from "@opennextjs/cloudflare";
-   *   import cache from "@opennextjs/cloudflare/d1-tag-cache";
+   *   import d1TagCache from "@opennextjs/cloudflare/d1-tag-cache";
    *
    *   export default defineCloudflareConfig({
-   *     tagCache: cache,
+   *     tagCache: d1TagCache,
    *   });
    */
   tagCache?: "dummy" | TagCache | (() => TagCache | Promise<TagCache>);
