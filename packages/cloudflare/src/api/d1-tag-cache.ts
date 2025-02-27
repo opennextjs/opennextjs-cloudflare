@@ -1,6 +1,6 @@
 import { debug, error } from "@opennextjs/aws/adapters/logger.js";
 import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
-import type { TagCache } from "@opennextjs/aws/types/overrides.js";
+import type { OriginalTagCache } from "@opennextjs/aws/types/overrides.js";
 import { RecoverableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "./cloudflare-context.js";
@@ -22,7 +22,7 @@ import { getCloudflareContext } from "./cloudflare-context.js";
  * and `revalidatedAt`. The table name can be configured with `NEXT_CACHE_D1_REVALIDATIONS_TABLE`
  * environment variable.
  */
-class D1TagCache implements TagCache {
+class D1TagCache implements OriginalTagCache {
   public readonly name = "d1-tag-cache";
 
   public async getByPath(rawPath: string): Promise<string[]> {
