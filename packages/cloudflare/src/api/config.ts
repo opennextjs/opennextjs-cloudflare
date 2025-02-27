@@ -16,7 +16,7 @@ export type CloudflareConfigOptions = {
    *     incrementalCache: cache,
    *   });
    */
-  incrementalCache?: IncrementalCache | (() => IncrementalCache | Promise<IncrementalCache>);
+  incrementalCache?: "dummy" | IncrementalCache | (() => IncrementalCache | Promise<IncrementalCache>);
 
   /**
    * The tag cache implementation to use, for more details see the [Caching documentation](https://opennext.js.org/cloudflare/caching))
@@ -32,7 +32,7 @@ export type CloudflareConfigOptions = {
    *     tagCache: cache,
    *   });
    */
-  tagCache?: TagCache | (() => TagCache | Promise<TagCache>);
+  tagCache?: "dummy" | TagCache | (() => TagCache | Promise<TagCache>);
 
   /**
    * The revalidation queue implementation to use, for more details see the [Caching documentation](https://opennext.js.org/cloudflare/caching))
@@ -48,7 +48,7 @@ export type CloudflareConfigOptions = {
    *     queue: memoryQueue,
    *   });
    */
-  queue?: Queue | (() => Queue | Promise<Queue>);
+  queue?: "dummy" | "direct" | Queue | (() => Queue | Promise<Queue>);
 };
 
 /**
@@ -88,9 +88,5 @@ function resolveOverride<T extends IncrementalCache | TagCache | Queue>(
     return "dummy";
   }
 
-  if (typeof value === "function") {
-    return () => value();
-  }
-
-  return async () => value;
+  return typeof value === "function" ? value : () => value;
 }
