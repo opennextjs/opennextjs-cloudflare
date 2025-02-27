@@ -13,6 +13,7 @@ import { installDependencies } from "@opennextjs/aws/build/installDeps.js";
 import logger from "@opennextjs/aws/logger.js";
 import { minifyAll } from "@opennextjs/aws/minimize-js.js";
 import { openNextEdgePlugins } from "@opennextjs/aws/plugins/edge.js";
+import { openNextExternalMiddlewarePlugin } from "@opennextjs/aws/plugins/externalMiddleware.js";
 import { openNextReplacementPlugin } from "@opennextjs/aws/plugins/replacement.js";
 import { openNextResolvePlugin } from "@opennextjs/aws/plugins/resolve.js";
 import type { FunctionOptions, SplittedFunctionOptions } from "@opennextjs/aws/types/open-next.js";
@@ -150,13 +151,13 @@ async function generateBundle(
   buildHelper.copyEnvFile(appBuildOutputPath, packagePath, outputPath);
 
   // Copy all necessary traced files
-  await copyTracedFiles(
-    appBuildOutputPath,
+  await copyTracedFiles({
+    buildOutputPath: appBuildOutputPath,
     packagePath,
-    outputPath,
-    fnOptions.routes ?? ["app/page.tsx"],
-    isBundled
-  );
+    outputDir: outputPath,
+    routes: fnOptions.routes ?? ["app/page.tsx"],
+    bundledNextServer: isBundled,
+  });
 
   // Build Lambda code
   // note: bundle in OpenNext package b/c the adapter relies on the
@@ -198,9 +199,10 @@ async function generateBundle(
       overrides,
     }),
 
+    openNextExternalMiddlewarePlugin(path.join(options.openNextDistDir, "core/edgeFunctionHandler.js")),
+
     openNextEdgePlugins({
       nextDir: path.join(options.appBuildOutputPath, ".next"),
-      edgeFunctionHandlerPath: path.join(options.openNextDistDir, "core", "edgeFunctionHandler.js"),
       isInCloudfare: true,
     }),
   ];
