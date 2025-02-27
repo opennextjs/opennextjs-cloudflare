@@ -199,7 +199,7 @@ async function generateBundle(
       overrides,
     }),
 
-    openNextExternalMiddlewarePlugin(path.join(options.openNextDistDir, "core", "edgeFunctionHandler.js")),
+    openNextExternalMiddlewarePlugin(path.join(options.openNextDistDir, "core/edgeFunctionHandler.js")),
 
     openNextEdgePlugins({
       nextDir: path.join(options.appBuildOutputPath, ".next"),
