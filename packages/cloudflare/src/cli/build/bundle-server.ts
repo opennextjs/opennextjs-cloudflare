@@ -104,6 +104,11 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
     ],
     external: ["./middleware/handler.mjs"],
     alias: {
+      // Note: it looks like node-fetch is actually not necessary for us, so we could replace it with an empty shim
+      //       but just to be safe we replace it with a module that re-exports the native fetch
+      //       we do this to both save on bundle size (there isn't really any benefit in us shipping the node-fetch code)
+      //       and also get rid of a warning in the terminal caused by the package (because it performs an === comparison with -0)
+      "next/dist/compiled/node-fetch": path.join(buildOpts.outputDir, "cloudflare-templates/shims/fetch.js"),
       // Note: we apply an empty shim to next/dist/compiled/ws because it generates two `eval`s:
       //   eval("require")("bufferutil");
       //   eval("require")("utf-8-validate");
