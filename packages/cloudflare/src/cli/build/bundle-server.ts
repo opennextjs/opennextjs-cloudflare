@@ -44,8 +44,23 @@ const optionalDependencies = [
 /**
  * Bundle the Open Next server.
  */
-export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
+export async function bundleServer(buildOpts: BuildOptions, customWorkerEntrypoint?: string): Promise<void> {
   patches.copyPackageCliFiles(packageDistDir, buildOpts);
+
+  if (customWorkerEntrypoint) {
+    console.log(`\x1b[35m📦 Compiling custom worker entrypoint...\n\x1b[0m`);
+
+    await build({
+      entryPoints: [customWorkerEntrypoint],
+      platform: "node",
+      format: "esm",
+      target: "esnext",
+      minify: false,
+      bundle: true,
+      external: ["./env/next-env.mjs", "./middleware/handler.mjs", "./server-functions/default/handler.mjs"],
+      outfile: getOutputWorkerPath(buildOpts),
+    });
+  }
 
   const { appPath, outputDir, monorepoRoot } = buildOpts;
   const serverFiles = path.join(

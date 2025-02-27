@@ -5,10 +5,11 @@ import { parseArgs } from "node:util";
 export function getArgs(): {
   skipNextBuild: boolean;
   skipWranglerConfigCheck: boolean;
+  customWorkerEntrypoint?: string;
   outputDir?: string;
   minify: boolean;
 } {
-  const { skipBuild, skipWranglerConfigCheck, output, noMinify } = parseArgs({
+  const { skipBuild, skipWranglerConfigCheck, output, noMinify, customWorkerEntrypoint } = parseArgs({
     options: {
       skipBuild: {
         type: "boolean",
@@ -22,6 +23,9 @@ export function getArgs(): {
       noMinify: {
         type: "boolean",
         default: false,
+      },
+      customWorkerEntrypoint: {
+        type: "string",
       },
       skipWranglerConfigCheck: {
         type: "boolean",
@@ -39,6 +43,7 @@ export function getArgs(): {
 
   return {
     outputDir,
+    customWorkerEntrypoint,
     skipNextBuild: skipBuild || ["1", "true", "yes"].includes(String(process.env.SKIP_NEXT_APP_BUILD)),
     skipWranglerConfigCheck:
       skipWranglerConfigCheck ||
