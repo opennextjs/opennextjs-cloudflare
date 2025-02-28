@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 0.5.7
+
+### Patch Changes
+
+- [#429](https://github.com/opennextjs/opennextjs-cloudflare/pull/429) [`1c80772`](https://github.com/opennextjs/opennextjs-cloudflare/commit/1c807722f848b1eee59ef6f8a107f8525d602ea9) Thanks [@vicb](https://github.com/vicb)! - fix import paths in templates
+
 ## 0.5.6
 
 ### Patch Changes
