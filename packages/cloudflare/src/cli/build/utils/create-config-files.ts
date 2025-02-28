@@ -41,7 +41,7 @@ export async function createWranglerConfigIfNotExistent(projectOpts: ProjectOpti
     return;
   }
 
-  let wranglerConfig = readFileSync(join(getPackageTemplatesDirPath(), "defaults/wrangler.json"), "utf8");
+  let wranglerConfig = readFileSync(join(getPackageTemplatesDirPath(), "wrangler.json"), "utf8");
 
   const appName = getAppNameFromPackageJson(projectOpts.sourceDir) ?? "app-name";
   if (appName) {
@@ -111,6 +111,6 @@ export async function createOpenNextConfigIfNotExistent(projectOpts: ProjectOpti
       throw new Error("The `open-next.config.ts` file is required, aborting!");
     }
 
-    cpSync(join(getPackageTemplatesDirPath(), "defaults/open-next.config.ts"), openNextConfigPath);
+    cpSync(join(getPackageTemplatesDirPath(), "open-next.config.ts"), openNextConfigPath);
   }
 }
