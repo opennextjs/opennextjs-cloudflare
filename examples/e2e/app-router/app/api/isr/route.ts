@@ -9,15 +9,18 @@ export async function GET(request: NextRequest) {
   // this fails at build time when next.js tries to evaluate the route
   try {
     // @ts-expect-error
-    const prerenderManifest = await import(/* webpackIgnore: true */ "./.next/prerender-manifest.json");
+    const prerenderManifest = await import(/* webpackIgnore: true */ "../../../../prerender-manifest.json", {
+      with: { type: "json" },
+    });
     manifest = prerenderManifest.default;
-  } catch {
+  } catch (e) {
+    console.error(e);
     return new Response(null, { status: 500 });
   }
 
   const previewId = manifest.preview.previewModeId;
 
-  const host = request.headers.get("host");
+  const host = request.headers.get("host") ?? "localhost:3001";
   const result = await fetch(`http${host?.includes("localhost") ? "" : "s"}://${host}/isr`, {
     headers: { "x-prerender-revalidate": previewId },
     method: "HEAD",
