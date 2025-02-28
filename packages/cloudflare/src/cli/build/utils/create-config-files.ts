@@ -41,7 +41,7 @@ export async function createWranglerConfigIfNotExistent(projectOpts: ProjectOpti
     return;
   }
 
-  let wranglerConfig = readFileSync(join(getPackageTemplatesDirPath(), "defaults/wrangler.json"), "utf8");
+  let wranglerConfig = readFileSync(join(getPackageTemplatesDirPath(), "defaults/wrangler.jsonc"), "utf8");
 
   const appName = getAppNameFromPackageJson(projectOpts.sourceDir) ?? "app-name";
   if (appName) {
@@ -56,7 +56,7 @@ export async function createWranglerConfigIfNotExistent(projectOpts: ProjectOpti
     );
   }
 
-  writeFileSync(join(projectOpts.sourceDir, "wrangler.json"), wranglerConfig);
+  writeFileSync(join(projectOpts.sourceDir, "wrangler.jsonc"), wranglerConfig);
 }
 
 function getAppNameFromPackageJson(sourceDir: string): string | undefined {
