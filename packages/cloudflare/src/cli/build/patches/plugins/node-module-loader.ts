@@ -36,7 +36,9 @@ async function getRule(buildOpts: BuildOptions) {
     pagesManifests = [];
   }
 
-  const files = pagesManifests.map((path) => normalizePath(path));
+  const manifests = pagesManifests.map((path) => normalizePath(path));
+
+  const files = manifests.filter((file) => file.endsWith(".js"));
 
   // Inline fs access and dynamic requires that are not supported by workerd.
   const fnBody = `
