@@ -7,6 +7,7 @@ import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import { normalizePath } from "../../utils/normalize-path.js";
 import { patchCode, type RuleConfig } from "../ast/util.js";
 import type { ContentUpdater } from "./content-updater.js";
+import { posix, sep } from "node:path";
 
 export function inlineNodeModuleLoader(updater: ContentUpdater, buildOpts: BuildOptions) {
   return updater.updateContent(
@@ -41,7 +42,7 @@ async function getRule(buildOpts: BuildOptions) {
   const fnBody = `
 ${files
   .map(
-    (file) => `if ($ID.endsWith("${file}")) {
+    (file) => `if ($ID.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)}).endsWith(${JSON.stringify(file)})) {
   return require(${JSON.stringify(join(serverDir, file))});
 }`
   )
