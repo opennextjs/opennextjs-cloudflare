@@ -33,18 +33,15 @@ async function getRule(buildOpts: BuildOptions) {
     pagesManifests = Object.values(JSON.parse(await readFile(pagesManifestFile, "utf-8")));
   } catch {
     // The file does not exist
-    pagesManifests = [];
   }
 
-  const manifests = pagesManifests.map((path) => normalizePath(path));
-
-  const files = manifests.filter((file) => file.endsWith(".js"));
+  const files = pagesManifests.filter((file) => file.endsWith(".js")).map(normalizePath);
 
   // Inline fs access and dynamic requires that are not supported by workerd.
   const fnBody = `
 ${files
   .map(
-    (file) => `if (id.endsWith("${file}")) {
+    (file) => `if ($ID.endsWith("${file}")) {
   return require(${JSON.stringify(join(serverDir, file))});
 }`
   )
