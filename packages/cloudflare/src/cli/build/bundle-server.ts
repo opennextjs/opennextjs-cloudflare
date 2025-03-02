@@ -16,12 +16,11 @@ import { patchFetchCacheSetMissingWaitUntil } from "./patches/plugins/fetch-cach
 import { inlineFindDir } from "./patches/plugins/find-dir.js";
 import { patchInstrumentation } from "./patches/plugins/instrumentation.js";
 import { inlineLoadManifest } from "./patches/plugins/load-manifest.js";
-import { inlineNodeModuleLoader } from "./patches/plugins/node-module-loader.js";
+import { inlineDynamicRequires } from "./patches/plugins/dynamic-requires.js";
 import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
 import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations.js";
 import { fixRequire } from "./patches/plugins/require.js";
 import { shimRequireHook } from "./patches/plugins/require-hook.js";
-import { inlineRequirePage } from "./patches/plugins/require-page.js";
 import { setWranglerExternal } from "./patches/plugins/wrangler-external.js";
 import { normalizePath, patchCodeWithValidations } from "./utils/index.js";
 
@@ -89,8 +88,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
     conditions: [],
     plugins: [
       shimRequireHook(buildOpts),
-      inlineRequirePage(updater, buildOpts),
-      inlineNodeModuleLoader(updater, buildOpts),
+      inlineDynamicRequires(updater, buildOpts),
       setWranglerExternal(),
       fixRequire(updater),
       handleOptionalDependencies(optionalDependencies),
