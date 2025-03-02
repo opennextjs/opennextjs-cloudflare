@@ -1,14 +1,13 @@
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join , posix, sep } from "node:path";
 
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
+import type { Plugin } from "esbuild";
 
 import { normalizePath } from "../../utils/normalize-path.js";
 import { patchCode, type RuleConfig } from "../ast/util.js";
 import type { ContentUpdater } from "./content-updater.js";
-import { posix, sep } from "node:path";
-import type { Plugin } from "esbuild";
 
 async function getPagesManifests(serverDir: string): Promise<string[]> {
   try {
@@ -36,9 +35,8 @@ function getRequires(idVariable: string, files: string[], serverDir: string) {
   // Inline fs access and dynamic requires that are not supported by workerd.
   return files
     .map(
-      (
-        file
-      ) => `if (${idVariable}.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)}).endsWith(${JSON.stringify(normalizePath(file))})) {
+      (file) => `
+    if (${idVariable}.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)}).endsWith(${JSON.stringify(normalizePath(file))})) {
       return require(${JSON.stringify(join(serverDir, file))});
     }`
     )
@@ -71,7 +69,7 @@ export function inlineDynamicRequires(updater: ContentUpdater, buildOpts: BuildO
 async function getNodeModuleLoaderRule(buildOpts: BuildOptions) {
   const serverDir = getServerDir(buildOpts);
 
-  let manifests = await getPagesManifests(serverDir);
+  const manifests = await getPagesManifests(serverDir);
 
   const files = manifests.filter((file) => file.endsWith(".js"));
 
