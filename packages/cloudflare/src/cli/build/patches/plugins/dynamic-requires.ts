@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { join , posix, sep } from "node:path";
+import { join, posix, sep } from "node:path";
 
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
@@ -83,11 +83,12 @@ rule:
     - has:
         field: parameters
         has:
-          kind: identifier
+          kind: required_parameter
           pattern: $ID
   inside:
-    stopBy: 
+    stopBy:
       kind: class_declaration
+    kind: class_declaration
     has:
       field: name
       regex: ^NodeModuleLoader$
