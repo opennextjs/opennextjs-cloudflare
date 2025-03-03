@@ -93,7 +93,7 @@ rule:
       field: name
       regex: ^NodeModuleLoader$
 fix: |
-  async load($ID) {  
+  async load($ID) {
     ${getRequires("$ID", files, serverDir)}
   }`;
 }
@@ -119,9 +119,8 @@ function requirePage($PAGE, $DIST_DIR, $IS_APP_PATH) {
     }, // Inline fs access and dynamic require that are not supported by workerd.
     fix: `
 function requirePage($PAGE, $DIST_DIR, $IS_APP_PATH) {
-  const { platform } = require('process');
-  const pagePath = platform === 'win32' ? getPagePath($$$ARGS).replaceAll('\\\\', '/') : getPagePath($$$ARGS);
-  
+  const pagePath = getPagePath($$$ARGS).replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
+
   // html
   ${(
     await Promise.all(

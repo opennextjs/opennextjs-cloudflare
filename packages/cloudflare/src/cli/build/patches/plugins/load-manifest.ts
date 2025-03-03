@@ -3,7 +3,7 @@
  */
 
 import { readFile } from "node:fs/promises";
-import { join, relative } from "node:path";
+import { join, posix, relative, sep } from "node:path";
 
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
@@ -53,8 +53,7 @@ function loadManifest($PATH, $$$ARGS) {
     },
     fix: `
 function loadManifest($PATH, $$$ARGS) {
-  const { platform } = require('process');
-  $PATH = platform === 'win32' ? $PATH.replaceAll('\\\\', '/') : $PATH;
+  $PATH = $PATH.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
   ${returnManifests}
   throw new Error(\`Unexpected loadManifest(\${$PATH}) call!\`);
 }`,

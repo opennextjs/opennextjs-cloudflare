@@ -3,7 +3,7 @@
  * that are not supported by workerd.
  */
 
-import { join, relative } from "node:path";
+import { join, posix, relative, sep } from "node:path";
 
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
@@ -62,8 +62,7 @@ function evalManifest($PATH, $$$ARGS) {
     },
     fix: `
 function evalManifest($PATH, $$$ARGS) {
-  const { platform } = require('process');
-  $PATH = platform === 'win32' ? $PATH.replaceAll('\\\\', '/') : $PATH;
+  $PATH = $PATH.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
   ${returnManifests}
   throw new Error(\`Unexpected evalManifest(\${$PATH}) call!\`);
 }`,
