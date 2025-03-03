@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 0.5.8
+
+### Patch Changes
+
+- [#431](https://github.com/opennextjs/opennextjs-cloudflare/pull/431) [`9ad6714`](https://github.com/opennextjs/opennextjs-cloudflare/commit/9ad67145ee718c67b94bbfcbc144a565b3fd0dae) Thanks [@HyperKiko](https://github.com/HyperKiko)! - fix pages api routes
+
+  fixed pages api routes by inlining a dynamic require in the `NodeModuleLoader` class
+
 ## 0.5.7
 
 ### Patch Changes
