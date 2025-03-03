@@ -3,7 +3,7 @@
  */
 
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, posix, sep } from "node:path";
 
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
@@ -35,8 +35,7 @@ rule:
   pattern: function findDir($DIR, $NAME) { $$$_ }
 fix: |-
   function findDir($DIR, $NAME) {
-    const { platform } = require('process');
-    $DIR = platform === 'win32' ? $DIR.replaceAll('\\\\', '/') : $DIR;
+    $DIR = $DIR.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
     if ($DIR.endsWith(".next/server")) {
       if ($NAME === "app") {
         return ${appExists};

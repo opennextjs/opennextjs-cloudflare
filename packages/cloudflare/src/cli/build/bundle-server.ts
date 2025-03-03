@@ -11,6 +11,7 @@ import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
 import * as patches from "./patches/index.js";
 import { inlineBuildId } from "./patches/plugins/build-id.js";
 import { ContentUpdater } from "./patches/plugins/content-updater.js";
+import { inlineDynamicRequires } from "./patches/plugins/dynamic-requires.js";
 import { inlineEvalManifest } from "./patches/plugins/eval-manifest.js";
 import { patchFetchCacheSetMissingWaitUntil } from "./patches/plugins/fetch-cache-wait-until.js";
 import { inlineFindDir } from "./patches/plugins/find-dir.js";
@@ -20,7 +21,6 @@ import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
 import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations.js";
 import { fixRequire } from "./patches/plugins/require.js";
 import { shimRequireHook } from "./patches/plugins/require-hook.js";
-import { inlineRequirePage } from "./patches/plugins/require-page.js";
 import { setWranglerExternal } from "./patches/plugins/wrangler-external.js";
 import { normalizePath, patchCodeWithValidations } from "./utils/index.js";
 
@@ -88,7 +88,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
     conditions: [],
     plugins: [
       shimRequireHook(buildOpts),
-      inlineRequirePage(updater, buildOpts),
+      inlineDynamicRequires(updater, buildOpts),
       setWranglerExternal(),
       fixRequire(updater),
       handleOptionalDependencies(optionalDependencies),
