@@ -54,7 +54,7 @@ export async function populateCache(opts: BuildOptions, config: OpenNextConfig, 
     logger.info("Incremental cache does not need populating");
   }
 
-  if (!config.dangerous?.disableTagCache && tagCache) {
+  if (!config.dangerous?.disableTagCache && !config.dangerous?.disableIncrementalCache && tagCache) {
     const name = await resolveCacheName(tagCache);
     switch (name) {
       case "d1-tag-cache": {
