@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
@@ -35,15 +36,25 @@ function runWrangler(opts: BuildOptions, mode: CacheBindingMode, args: string[])
 
   if (result.status !== 0) {
     logger.error("Failed to populate cache");
+    process.exit(1);
   } else {
     logger.info("Successfully populated cache");
   }
 }
 
 export async function populateCache(opts: BuildOptions, config: OpenNextConfig, mode: CacheBindingMode) {
-  const { tagCache } = config.default.override ?? {};
+  const { incrementalCache, tagCache } = config.default.override ?? {};
 
-  if (tagCache) {
+  if (!existsSync(opts.outputDir)) {
+    logger.error("Unable to populate cache: Open Next build not found");
+    process.exit(1);
+  }
+
+  if (!config.dangerous?.disableIncrementalCache && incrementalCache) {
+    logger.info("Incremental cache does not need populating");
+  }
+
+  if (!config.dangerous?.disableTagCache && tagCache) {
     const name = await resolveCacheName(tagCache);
     switch (name) {
       case "d1-tag-cache": {
@@ -56,6 +67,8 @@ export async function populateCache(opts: BuildOptions, config: OpenNextConfig, 
         ]);
         break;
       }
+      default:
+        logger.info("Tag cache does not need populating");
     }
   }
 }
