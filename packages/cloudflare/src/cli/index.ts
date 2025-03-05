@@ -6,7 +6,7 @@ import { build } from "./build/build.js";
 
 const nextAppDir = process.cwd();
 
-const { skipNextBuild, skipWranglerConfigCheck, outputDir, minify } = getArgs();
+const { skipNextBuild, skipWranglerConfigCheck, outputDir, minify, populateCache } = getArgs();
 
 await build({
   sourceDir: nextAppDir,
@@ -14,4 +14,5 @@ await build({
   skipNextBuild,
   skipWranglerConfigCheck,
   minify,
+  populateCache,
 });
