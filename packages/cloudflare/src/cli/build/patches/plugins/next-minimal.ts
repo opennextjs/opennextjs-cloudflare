@@ -71,7 +71,7 @@ fix:
 export function patchNextMinimal(updater: ContentUpdater) {
   updater.updateContent(
     "patch-abortController-next15.2",
-    { filter: /app-page\.runtime\.prod\.(js)$/, contentFilter: /new AbortController/ },
+    { filter: /app-page(-experimental)?\.runtime\.prod\.(js)$/, contentFilter: /new AbortController/ },
     async ({ contents }) => {
       return patchCode(contents, abortControllerRule);
     }
