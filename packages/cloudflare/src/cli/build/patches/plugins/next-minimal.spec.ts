@@ -38,8 +38,8 @@ async function h(e3, t3) {
 
 describe("Abort controller", () => {
   test("minimal", () => {
-    expect(patchCode(appPageRuntimeProdJs,abortControllerRule )).toBe(
-`let p = {signal:{aborted: false}};
+    expect(patchCode(appPageRuntimeProdJs, abortControllerRule)).toBe(
+      `let p = {signal:{aborted: false}};
 async function h(e3, t3) {
   let { flightRouterState: r3, nextUrl: a2, prefetchKind: i2 } = t3, u2 = { [n2.hY]: "1", [n2.B]: encodeURIComponent(JSON.stringify(r3)) };
   i2 === o.ob.AUTO && (u2[n2._V] = "1"), a2 && (u2[n2.kO] = a2);
@@ -70,6 +70,7 @@ async function h(e3, t3) {
     return p.signal.aborted || console.error("Failed to fetch RSC payload for " + e3 + ". Falling back to browser navigation.", t4), { flightData: e3.toString(), canonicalUrl: void 0, couldBeIntercepted: false, prerendered: false, postponed: false, staleTime: -1 };
   }
 }
-`);
+`
+    );
   });
-})
+});

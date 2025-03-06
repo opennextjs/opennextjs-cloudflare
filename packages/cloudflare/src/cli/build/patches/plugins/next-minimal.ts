@@ -35,7 +35,7 @@ rule:
                     
 fix:
   'let $VAR = {signal:{aborted: false}};'
-`
+`;
 
 // This rule is used instead of defining `process.env.NEXT_MINIMAL` in the `esbuild config.
 // Do we want to entirely replace these functions to reduce the bundle size?
@@ -66,19 +66,27 @@ rule:
                   pattern: res.statusCode = 400;
 fix:
   'true'                
-`
+`;
 
 export function patchNextMinimal(updater: ContentUpdater) {
-    updater.updateContent("patch-abortController-next15.2", { filter: /app-page\.runtime\.prod\.(js)$/, contentFilter: /new AbortController/ }, async ({ contents }) => {
-      return patchCode(contents, abortControllerRule)
-    });
+  updater.updateContent(
+    "patch-abortController-next15.2",
+    { filter: /app-page\.runtime\.prod\.(js)$/, contentFilter: /new AbortController/ },
+    async ({ contents }) => {
+      return patchCode(contents, abortControllerRule);
+    }
+  );
 
-    updater.updateContent("patch-next-minimal", { filter: /next-server\.(js)$/, contentFilter: /.*/ }, async ({ contents }) => {
-      return patchCode(contents, nextMinimalRule)
-    });
-    
-    return {
-        name: "patch-abortController",
-        setup() { },
-    };
+  updater.updateContent(
+    "patch-next-minimal",
+    { filter: /next-server\.(js)$/, contentFilter: /.*/ },
+    async ({ contents }) => {
+      return patchCode(contents, nextMinimalRule);
+    }
+  );
+
+  return {
+    name: "patch-abortController",
+    setup() {},
+  };
 }
