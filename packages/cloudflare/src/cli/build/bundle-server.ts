@@ -17,6 +17,7 @@ import { patchFetchCacheSetMissingWaitUntil } from "./patches/plugins/fetch-cach
 import { inlineFindDir } from "./patches/plugins/find-dir.js";
 import { patchInstrumentation } from "./patches/plugins/instrumentation.js";
 import { inlineLoadManifest } from "./patches/plugins/load-manifest.js";
+import { patchNextMinimal } from "./patches/plugins/next-minimal.js";
 import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
 import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations.js";
 import { fixRequire } from "./patches/plugins/require.js";
@@ -99,6 +100,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       inlineLoadManifest(updater, buildOpts),
       inlineBuildId(updater),
       patchDepdDeprecations(updater),
+      patchNextMinimal(updater),
       // Apply updater updaters, must be the last plugin
       updater.plugin,
     ],
@@ -136,7 +138,8 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       // We make sure that environment variables that Next.js expects are properly defined
       "process.env.NEXT_RUNTIME": '"nodejs"',
       "process.env.NODE_ENV": '"production"',
-      "process.env.NEXT_MINIMAL": "true",
+      "process.env.TURBOPACK": "false",
+      // Ideally here we should define the `process.env.__NEXT_EXPERIMENTAL_REACT`, but this would require that function splitting is enabled for the case where both versions are needed (i.e. page and app router routes)
     },
     platform: "node",
     banner: {
