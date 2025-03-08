@@ -2,14 +2,15 @@ import { mkdirSync, type Stats, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 
-import { CacheBindingMode } from "./build/utils/index.js";
+import type { CacheBindingMode } from "./build/utils/index.js";
+import { isCacheBindingMode } from "./build/utils/index.js";
 
 export function getArgs(): {
   skipNextBuild: boolean;
   skipWranglerConfigCheck: boolean;
   outputDir?: string;
   minify: boolean;
-  populateCache?: { mode: "local" | "remote"; onlyPopulate: boolean };
+  populateCache?: { mode: CacheBindingMode; onlyPopulate: boolean };
 } {
   const { skipBuild, skipWranglerConfigCheck, output, noMinify, populateCache, onlyPopulateCache } =
     parseArgs({
@@ -50,7 +51,7 @@ export function getArgs(): {
 
   if (
     (populateCache !== undefined || onlyPopulateCache) &&
-    (!populateCache?.length || !["local", "remote"].includes(populateCache))
+    (!populateCache?.length || !isCacheBindingMode(populateCache))
   ) {
     throw new Error(`Error: missing mode for populate cache flag, expected 'local' | 'remote'`);
   }
@@ -62,9 +63,7 @@ export function getArgs(): {
       skipWranglerConfigCheck ||
       ["1", "true", "yes"].includes(String(process.env.SKIP_WRANGLER_CONFIG_CHECK)),
     minify: !noMinify,
-    populateCache: populateCache
-      ? { mode: populateCache as CacheBindingMode, onlyPopulate: !!onlyPopulateCache }
-      : undefined,
+    populateCache: populateCache ? { mode: populateCache, onlyPopulate: !!onlyPopulateCache } : undefined,
   };
 }
 

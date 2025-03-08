@@ -72,3 +72,7 @@ export async function populateCache(opts: BuildOptions, config: OpenNextConfig, 
     }
   }
 }
+
+export function isCacheBindingMode(v: string | undefined): v is CacheBindingMode {
+  return !!v && ["local", "remote"].includes(v);
+}
