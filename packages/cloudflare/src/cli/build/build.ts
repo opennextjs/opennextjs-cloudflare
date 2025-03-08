@@ -63,7 +63,7 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
   logger.info(`@opennextjs/cloudflare version: ${cloudflare}`);
   logger.info(`@opennextjs/aws version: ${aws}`);
 
-  if (projectOpts.populateCache?.onlyPopulate) {
+  if (projectOpts.populateCache?.onlyPopulateWithoutBuilding) {
     populateCache(options, config, projectOpts.populateCache.mode);
     return;
   }
