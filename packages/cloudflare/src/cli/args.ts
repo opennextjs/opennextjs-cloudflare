@@ -10,7 +10,7 @@ export function getArgs(): {
   skipWranglerConfigCheck: boolean;
   outputDir?: string;
   minify: boolean;
-  populateCache?: { mode: CacheBindingMode; onlyPopulate: boolean };
+  populateCache?: { mode: CacheBindingMode; onlyPopulateWithoutBuilding: boolean };
 } {
   const { skipBuild, skipWranglerConfigCheck, output, noMinify, populateCache, onlyPopulateCache } =
     parseArgs({
@@ -63,7 +63,9 @@ export function getArgs(): {
       skipWranglerConfigCheck ||
       ["1", "true", "yes"].includes(String(process.env.SKIP_WRANGLER_CONFIG_CHECK)),
     minify: !noMinify,
-    populateCache: populateCache ? { mode: populateCache, onlyPopulate: !!onlyPopulateCache } : undefined,
+    populateCache: populateCache
+      ? { mode: populateCache, onlyPopulateWithoutBuilding: !!onlyPopulateCache }
+      : undefined,
   };
 }
 

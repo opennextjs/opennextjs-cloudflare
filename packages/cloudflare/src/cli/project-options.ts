@@ -11,5 +11,5 @@ export type ProjectOptions = {
   skipWranglerConfigCheck: boolean;
   // Whether minification of the worker should be enabled
   minify: boolean;
-  populateCache?: { mode: CacheBindingMode; onlyPopulate: boolean };
+  populateCache?: { mode: CacheBindingMode; onlyPopulateWithoutBuilding: boolean };
 };
