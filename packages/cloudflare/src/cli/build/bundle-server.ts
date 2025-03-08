@@ -23,7 +23,7 @@ import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations
 import { fixRequire } from "./patches/plugins/require.js";
 import { shimRequireHook } from "./patches/plugins/require-hook.js";
 import { setWranglerExternal } from "./patches/plugins/wrangler-external.js";
-import { normalizePath, patchCodeWithValidations } from "./utils/index.js";
+import { needsExperimentalReact, normalizePath, patchCodeWithValidations } from "./utils/index.js";
 
 /** The dist directory of the Cloudflare adapter package */
 const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -139,7 +139,8 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       "process.env.NEXT_RUNTIME": '"nodejs"',
       "process.env.NODE_ENV": '"production"',
       "process.env.TURBOPACK": "false",
-      // Ideally here we should define the `process.env.__NEXT_EXPERIMENTAL_REACT`, but this would require that function splitting is enabled for the case where both versions are needed (i.e. page and app router routes)
+      // This define should be safe to use for Next 14.2+
+      "process.env.__NEXT_EXPERIMENTAL_REACT": `${needsExperimentalReact(nextConfig)}`,
     },
     platform: "node",
     banner: {
