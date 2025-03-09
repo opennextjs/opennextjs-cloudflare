@@ -6,6 +6,8 @@ declare global {
     NEXT_CACHE_D1?: D1Database;
     NEXT_CACHE_D1_TAGS_TABLE?: string;
     NEXT_CACHE_D1_REVALIDATIONS_TABLE?: string;
+    NEXT_CACHE_R2_BUCKET?: R2Bucket;
+    NEXT_CACHE_R2_DIRECTORY?: string;
     ASSETS?: Fetcher;
   }
 }
