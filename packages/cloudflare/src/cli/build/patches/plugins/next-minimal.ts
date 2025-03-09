@@ -2,7 +2,7 @@ import { patchCode } from "../ast/util.js";
 import { ContentUpdater } from "./content-updater.js";
 
 // We try to be as specific as possible to avoid patching the wrong thing here
-// It seems that there is a bug in the worker runtime. When the AbortController is created outside of the request context it throws an error (not sure if it's expected or not) except in this case.
+// It seems that there is a bug in the worker runtime. When the AbortController is created outside of the request context it throws an error (not sure if it's expected or not) except in this case. https://github.com/cloudflare/workerd/issues/3657
 // It fails while requiring the `app-page.runtime.prod.js` file, but instead of throwing an error, it just return an empty object for the `require('app-page.runtime.prod.js')` call which makes every request to an app router page fail.
 // If it's a bug in workerd and it's not expected to throw an error, we can remove this patch.
 export const abortControllerRule = `
@@ -71,7 +71,7 @@ fix:
 export function patchNextMinimal(updater: ContentUpdater) {
   updater.updateContent(
     "patch-abortController-next15.2",
-    { filter: /app-page(-experimental)?\.runtime\.prod\.(js)$/, contentFilter: /new AbortController/ },
+    { filter: /app-page(-experimental)?\.runtime\.prod\.js$/, contentFilter: /new AbortController/ },
     async ({ contents }) => {
       return patchCode(contents, abortControllerRule);
     }
