@@ -26,5 +26,12 @@
       "binding": "NEXT_CACHE_REVALIDATION_WORKER",
       "service": "app-router"
     }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "NEXT_CACHE_R2_BUCKET",
+      "bucket_name": "NEXT_CACHE_R2_BUCKET",
+      "preview_bucket_name": "NEXT_CACHE_R2_BUCKET"
+    }
   ]
 }
