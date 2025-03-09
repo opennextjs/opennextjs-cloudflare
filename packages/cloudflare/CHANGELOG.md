@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 0.5.9
+
+### Patch Changes
+
+- [#441](https://github.com/opennextjs/opennextjs-cloudflare/pull/441) [`4966779`](https://github.com/opennextjs/opennextjs-cloudflare/commit/4966779cabb9607eb59eae49e87d555323fdfaf1) Thanks [@conico974](https://github.com/conico974)! - Fix for `Invariant: renderHTML should not be called in minimal mode`
+
 ## 0.5.8
 
 ### Patch Changes
