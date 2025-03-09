@@ -17,12 +17,13 @@ import { patchFetchCacheSetMissingWaitUntil } from "./patches/plugins/fetch-cach
 import { inlineFindDir } from "./patches/plugins/find-dir.js";
 import { patchInstrumentation } from "./patches/plugins/instrumentation.js";
 import { inlineLoadManifest } from "./patches/plugins/load-manifest.js";
+import { patchNextMinimal } from "./patches/plugins/next-minimal.js";
 import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
 import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations.js";
 import { fixRequire } from "./patches/plugins/require.js";
 import { shimRequireHook } from "./patches/plugins/require-hook.js";
 import { setWranglerExternal } from "./patches/plugins/wrangler-external.js";
-import { normalizePath, patchCodeWithValidations } from "./utils/index.js";
+import { needsExperimentalReact, normalizePath, patchCodeWithValidations } from "./utils/index.js";
 
 /** The dist directory of the Cloudflare adapter package */
 const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -99,6 +100,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       inlineLoadManifest(updater, buildOpts),
       inlineBuildId(updater),
       patchDepdDeprecations(updater),
+      patchNextMinimal(updater),
       // Apply updater updaters, must be the last plugin
       updater.plugin,
     ],
@@ -136,7 +138,12 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       // We make sure that environment variables that Next.js expects are properly defined
       "process.env.NEXT_RUNTIME": '"nodejs"',
       "process.env.NODE_ENV": '"production"',
-      "process.env.NEXT_MINIMAL": "true",
+      // The 2 following defines are used to reduce the bundle size by removing unnecessary code
+      // Next uses different precompiled renderers (i.e. `app-page.runtime.prod.js`) based on if you use `TURBOPACK` or some experimental React features
+      // Turbopack is not supported for build at the moment, so we disable it
+      "process.env.TURBOPACK": "false",
+      // This define should be safe to use for Next 14.2+, earlier versions (13.5 and less) will cause trouble
+      "process.env.__NEXT_EXPERIMENTAL_REACT": `${needsExperimentalReact(nextConfig)}`,
     },
     platform: "node",
     banner: {
