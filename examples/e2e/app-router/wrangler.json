@@ -20,5 +20,11 @@
       "database_id": "NEXT_CACHE_D1",
       "database_name": "NEXT_CACHE_D1"
     }
+  ],
+  "services": [
+    {
+      "binding": "NEXT_CACHE_REVALIDATION_WORKER",
+      "service": "app-router"
+    }
   ]
 }
