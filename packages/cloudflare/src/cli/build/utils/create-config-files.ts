@@ -6,15 +6,10 @@ import type { ProjectOptions } from "../../project-options.js";
 import { askConfirmation } from "../../utils/ask-confirmation.js";
 
 /**
- * Creates a `wrangler.json` file for the user if a wrangler config file doesn't already exist,
+ * Creates a `wrangler.jsonc` file for the user if a wrangler config file doesn't already exist,
  * but only after asking for the user's confirmation.
  *
  * If the user refuses a warning is shown (which offers ways to opt out of this check to the user).
- *
- * Note: we generate a wrangler.json file with comments instead of using the jsonc extension,
- *       we decided to do that since json is more common than jsonc, wrangler also parses
- *       them in the same way and we also expect developers to associate `wrangler.json`
- *       files to the jsonc language
  *
  * @param projectOpts The options for the project
  */
@@ -41,7 +36,7 @@ export async function createWranglerConfigIfNotExistent(projectOpts: ProjectOpti
     return;
   }
 
-  let wranglerConfig = readFileSync(join(getPackageTemplatesDirPath(), "wrangler.json"), "utf8");
+  let wranglerConfig = readFileSync(join(getPackageTemplatesDirPath(), "wrangler.jsonc"), "utf8");
 
   const appName = getAppNameFromPackageJson(projectOpts.sourceDir) ?? "app-name";
   if (appName) {
@@ -56,7 +51,7 @@ export async function createWranglerConfigIfNotExistent(projectOpts: ProjectOpti
     );
   }
 
-  writeFileSync(join(projectOpts.sourceDir, "wrangler.json"), wranglerConfig);
+  writeFileSync(join(projectOpts.sourceDir, "wrangler.jsonc"), wranglerConfig);
 }
 
 function getAppNameFromPackageJson(sourceDir: string): string | undefined {
