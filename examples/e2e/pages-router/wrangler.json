@@ -13,5 +13,11 @@
       "binding": "NEXT_CACHE_WORKERS_KV",
       "id": "<BINDING_ID>"
     }
+  ],
+  "services": [
+    {
+      "binding": "NEXT_CACHE_REVALIDATION_WORKER",
+      "service": "pages-router"
+    }
   ]
 }

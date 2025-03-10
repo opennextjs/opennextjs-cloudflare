@@ -1,5 +1,8 @@
 import logger from "@opennextjs/aws/logger.js";
 import type { Queue, QueueMessage } from "@opennextjs/aws/types/overrides.js";
+import { IgnorableError } from "@opennextjs/aws/utils/error.js";
+
+import { getCloudflareContext } from "./cloudflare-context";
 
 export const DEFAULT_REVALIDATION_TIMEOUT_MS = 10_000;
 
@@ -7,6 +10,8 @@ export const DEFAULT_REVALIDATION_TIMEOUT_MS = 10_000;
  * The Memory Queue offers basic ISR revalidation by directly requesting a revalidation of a route.
  *
  * It offers basic support for in-memory de-duping per isolate.
+ *
+ * A service binding called `NEXT_CACHE_REVALIDATION_WORKER` that points to your worker is required.
  */
 export class MemoryQueue implements Queue {
   readonly name = "memory-queue";
@@ -16,6 +21,9 @@ export class MemoryQueue implements Queue {
   constructor(private opts = { revalidationTimeoutMs: DEFAULT_REVALIDATION_TIMEOUT_MS }) {}
 
   async send({ MessageBody: { host, url }, MessageGroupId }: QueueMessage): Promise<void> {
+    const service = getCloudflareContext().env.NEXT_CACHE_REVALIDATION_WORKER;
+    if (!service) throw new IgnorableError("No service binding for cache revalidation worker");
+
     if (this.revalidatedPaths.has(MessageGroupId)) return;
 
     this.revalidatedPaths.set(
@@ -30,7 +38,7 @@ export class MemoryQueue implements Queue {
       // TODO: Drop the import - https://github.com/opennextjs/opennextjs-cloudflare/issues/361
       // @ts-ignore
       const manifest = await import("./.next/prerender-manifest.json");
-      await globalThis.internalFetch(`${protocol}://${host}${url}`, {
+      await service.fetch(`${protocol}://${host}${url}`, {
         method: "HEAD",
         headers: {
           "x-prerender-revalidate": manifest.preview.previewModeId,
