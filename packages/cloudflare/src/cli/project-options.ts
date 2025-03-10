@@ -1,3 +1,5 @@
+import type { CacheBindingMode } from "./build/utils/index.js";
+
 export type ProjectOptions = {
   // Next app root folder
   sourceDir: string;
@@ -9,4 +11,5 @@ export type ProjectOptions = {
   skipWranglerConfigCheck: boolean;
   // Whether minification of the worker should be enabled
   minify: boolean;
+  populateCache?: { mode: CacheBindingMode; onlyPopulateWithoutBuilding: boolean };
 };
