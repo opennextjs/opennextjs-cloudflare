@@ -47,10 +47,9 @@ export function inlineDynamicRequires(updater: ContentUpdater, buildOpts: BuildO
   updater.updateContent(
     "inline-node-module-loader",
     {
-      filter: getCrossPlatformPathRegex(
-        String.raw`/next/dist/server/lib/module-loader/node-module-loader\.js$`,
-        { escape: false }
-      ),
+      filter: getCrossPlatformPathRegex(String.raw`/module-loader/node-module-loader\.js$`, {
+        escape: false,
+      }),
       contentFilter: /class NodeModuleLoader {/,
     },
     async ({ contents }) => patchCode(contents, await getNodeModuleLoaderRule(buildOpts))
