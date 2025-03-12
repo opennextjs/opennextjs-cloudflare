@@ -51,6 +51,7 @@ ${chunks.map((chunk) => `         case ${chunk}: $INSTALL(require("./chunks/${ch
 
 // Inline the code when there is a single chunk.
 // For example when there is a single Pages API route.
+// Note: The chunk does not always exist which explain the need for the try...catch.
 export const singleChunkRule = `
 rule:
   pattern: ($CHUNK_ID, $_PROMISES) => { $$$ }
@@ -62,8 +63,9 @@ rule:
 fix: |
   ($CHUNK_ID, _) => {
     if (!$INSTALLED_CHUNK[$CHUNK_ID]) {
-      $INSTALL(require("./chunks/$SELF_ID.js"));
-      $INSTALLED_CHUNK[$CHUNK_ID] = 1;
+      try {
+        $INSTALL(require("./chunks/$SELF_ID.js"));
+      } catch {}
     }
   }
 `;

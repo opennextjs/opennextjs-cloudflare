@@ -82,8 +82,9 @@ describe("webpack runtime", () => {
         "/******/ 		// require() chunk loading for javascript
         /******/ 		__webpack_require__.f.require = (chunkId, _) => {
           if (!installedChunks[chunkId]) {
-            installChunk(require("./chunks/710.js"));
-            installedChunks[chunkId] = 1;
+            try {
+              installChunk(require("./chunks/710.js"));
+            } catch {}
           }
         }
         ;
@@ -99,8 +100,9 @@ describe("webpack runtime", () => {
       expect(patchCode(code, singleChunkRule)).toMatchInlineSnapshot(`
         "o.f.require=(t, _) => {
           if (!e[t]) {
-            r(require("./chunks/710.js"));
-            e[t] = 1;
+            try {
+              r(require("./chunks/710.js"));
+            } catch {}
           }
         }
 
