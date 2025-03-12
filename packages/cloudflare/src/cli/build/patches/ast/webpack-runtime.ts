@@ -7,6 +7,7 @@
  *
  *  This patch unrolls the dynamic require for all the existing chunks:
  *
+ *  For multiple chunks:
  *     switch (chunkId) {
  *       case ID1: installChunk(require("./chunks/ID1"); break;
  *       case ID2: installChunk(require("./chunks/ID2"); break;
@@ -14,16 +15,20 @@
  *       case SELF_ID: installedChunks[chunkId] = 1; break;
  *       default: throw new Error(`Unknown chunk ${chunkId}`);
  *     }
+ *
+ * For a single chunk:
+ *     require("./chunks/CHUNK_ID.js");
  */
 
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 
 import { patchCode } from "./util.js";
 
-export function buildInlineChunksRule(chunks: number[]) {
+// Inline the code when there are multiple chunks
+export function buildMultipleChunksRule(chunks: number[]) {
   return `
 rule:
   pattern: ($CHUNK_ID, $_PROMISES) => { $$$ }
@@ -44,8 +49,30 @@ ${chunks.map((chunk) => `         case ${chunk}: $INSTALL(require("./chunks/${ch
   }`;
 }
 
+// Inline the code when there is a single chunk.
+// For example when there is a single Pages API route.
+// Note: The chunk does not always exist which explain the need for the try...catch.
+export const singleChunkRule = `
+rule:
+  pattern: ($CHUNK_ID, $_PROMISES) => { $$$ }
+  inside: {pattern: $_.$_.require = $$$_, stopBy: end}
+  all:
+    - has: {pattern: $INSTALL(require("./chunks/" + $$$)), stopBy: end}
+    - has: {pattern: $SELF_ID == $CHUNK_ID, stopBy: end}
+    - has: {pattern: "$INSTALLED_CHUNK[$CHUNK_ID] = 1", stopBy: end}
+fix: |
+  ($CHUNK_ID, _) => {
+    if (!$INSTALLED_CHUNK[$CHUNK_ID]) {
+      try {
+        $INSTALL(require("./chunks/$SELF_ID.js"));
+      } catch {}
+    }
+  }
+`;
+
 /**
- * Fixes the webpack-runtime.js file by removing its webpack dynamic requires.
+ * Fixes the webpack-runtime.js and webpack-api-runtime.js files by inlining
+ * the webpack dynamic requires.
  */
 export async function patchWebpackRuntime(buildOpts: BuildOptions) {
   const { outputDir } = buildOpts;
@@ -57,8 +84,6 @@ export async function patchWebpackRuntime(buildOpts: BuildOptions) {
     ".next/server"
   );
 
-  const runtimeFile = join(dotNextServerDir, "webpack-runtime.js");
-  const runtimeCode = readFileSync(runtimeFile, "utf-8");
   // Look for all the chunks.
   const chunks = readdirSync(join(dotNextServerDir, "chunks"))
     .filter((chunk) => /^\d+\.js$/.test(chunk))
@@ -66,5 +91,21 @@ export async function patchWebpackRuntime(buildOpts: BuildOptions) {
       return Number(chunk.replace(/\.js$/, ""));
     });
 
-  writeFileSync(runtimeFile, patchCode(runtimeCode, buildInlineChunksRule(chunks)));
+  patchFile(join(dotNextServerDir, "webpack-runtime.js"), chunks);
+  patchFile(join(dotNextServerDir, "webpack-api-runtime.js"), chunks);
+}
+
+/**
+ * Inline chunks when the file exists.
+ *
+ * @param filename Path to the webpack runtime.
+ * @param chunks List of chunks in the chunks folder.
+ */
+function patchFile(filename: string, chunks: number[]) {
+  if (existsSync(filename)) {
+    let code = readFileSync(filename, "utf-8");
+    code = patchCode(code, buildMultipleChunksRule(chunks));
+    code = patchCode(code, singleChunkRule);
+    writeFileSync(filename, code);
+  }
 }
