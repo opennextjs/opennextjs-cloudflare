@@ -24,7 +24,7 @@ catalog:
   glob: ^11.0.0
   globals: ^15.9.0
   mock-fs: ^5.4.1
-  next: 14.2.11
+  next: ~14.2.24
   package-manager-detector: ^0.2.0
   react-dom: ^18
   react: ^18
@@ -42,7 +42,7 @@ catalogs:
     "@types/react-dom": 19.0.0
     "@types/react": 19.0.0
     autoprefixer: 10.4.15
-    next: 15.2.0
+    next: ~15.2.2
     postcss: 8.4.27
     react-dom: 19.0.0
     react: 19.0.0
