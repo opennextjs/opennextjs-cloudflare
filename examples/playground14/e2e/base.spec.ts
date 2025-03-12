@@ -52,6 +52,11 @@ test.describe("playground/base", () => {
     await expect(res.json()).resolves.toEqual({ nextUrl: expectedURL, url: expectedURL });
   });
 
+  test("Pages router API routes", async ({ page }) => {
+    const res = await page.request.get("/api/pages");
+    expect(await res.json()).toEqual({ hello: "world" });
+  });
+
   test("generates an og image successfully", async ({ page }) => {
     const res = await page.request.get("/og");
     expect(res.status()).toEqual(200);
