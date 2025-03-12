@@ -15,7 +15,7 @@ const ONE_YEAR_IN_SECONDS = 31536000;
  * An instance of the Incremental Cache that uses an R2 bucket (`NEXT_CACHE_R2_BUCKET`) as it's
  * underlying data store.
  *
- * The directory that the cache entries are stored in can be confused with the `NEXT_CACHE_R2_DIRECTORY`
+ * The directory that the cache entries are stored in can be confused with the `NEXT_CACHE_R2_PREFIX`
  * environment variable, and defaults to `incremental-cache`.
  *
  * The cache uses an instance of the Cache API (`incremental-cache`) to store a local version of the
@@ -126,7 +126,7 @@ class R2IncrementalCache implements IncrementalCache {
   }
 
   protected getR2Key(key: string, isFetch?: boolean): string {
-    const directory = getCloudflareContext().env.NEXT_CACHE_R2_DIRECTORY ?? "incremental-cache";
+    const directory = getCloudflareContext().env.NEXT_CACHE_R2_PREFIX ?? "incremental-cache";
     return `${directory}/${this.getBaseCacheKey(key, isFetch)}`;
   }
 
