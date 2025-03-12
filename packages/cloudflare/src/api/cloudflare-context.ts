@@ -1,5 +1,7 @@
 import type { Context, RunningCodeOptions } from "node:vm";
 
+import type { DurableObjectQueueHandler } from "./durable-objects/queue";
+
 declare global {
   interface CloudflareEnv {
     NEXT_CACHE_WORKERS_KV?: KVNamespace;
@@ -7,6 +9,7 @@ declare global {
     NEXT_CACHE_D1_TAGS_TABLE?: string;
     NEXT_CACHE_D1_REVALIDATIONS_TABLE?: string;
     NEXT_CACHE_REVALIDATION_WORKER?: Service;
+    NEXT_CACHE_REVALIDATION_DURABLE_OBJECT?: DurableObjectNamespace<DurableObjectQueueHandler>;
     ASSETS?: Fetcher;
   }
 }
