@@ -84,7 +84,7 @@ export async function populateCache(opts: BuildOptions, config: OpenNextConfig, 
         assets.forEach(({ fsPath, destPath }) => {
           const fullDestPath = path.join(
             "NEXT_CACHE_R2_BUCKET",
-            process.env.NEXT_CACHE_R2_DIRECTORY ?? "incremental-cache",
+            process.env.NEXT_CACHE_R2_PREFIX ?? "incremental-cache",
             destPath
           );
 
