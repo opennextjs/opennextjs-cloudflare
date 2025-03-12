@@ -89,19 +89,21 @@ export async function patchWebpackRuntime(buildOpts: BuildOptions) {
       return Number(chunk.replace(/\.js$/, ""));
     });
 
-  const runtimeFile = join(dotNextServerDir, "webpack-runtime.js");
-  if (existsSync(runtimeFile)) {
-    let code = readFileSync(runtimeFile, "utf-8");
-    code = patchCode(code, buildMultipleChunksRule(chunks));
-    code = patchCode(code, singleChunkRule);
-    writeFileSync(runtimeFile, code);
-  }
+  patchFile(join(dotNextServerDir, "webpack-runtime.js"), chunks);
+  patchFile(join(dotNextServerDir, "webpack-api-runtime.js"), chunks);
+}
 
-  const apiRuntimeFile = join(dotNextServerDir, "webpack-api-runtime.js");
-  if (existsSync(apiRuntimeFile)) {
-    let code = readFileSync(runtimeFile, "utf-8");
+/**
+ * Inline chunks when the file exists.
+ *
+ * @param filename Path to the webpack runtime.
+ * @param chunks List of chunks in the chunks folder.
+ */
+function patchFile(filename: string, chunks: number[]) {
+  if (existsSync(filename)) {
+    let code = readFileSync(filename, "utf-8");
     code = patchCode(code, buildMultipleChunksRule(chunks));
     code = patchCode(code, singleChunkRule);
-    writeFileSync(apiRuntimeFile, code);
+    writeFileSync(filename, code);
   }
 }
