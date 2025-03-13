@@ -18,6 +18,17 @@ declare global {
     NEXT_CACHE_REVALIDATION_DURABLE_OBJECT?: DurableObjectNamespace<DurableObjectQueueHandler>;
     // Asset binding
     ASSETS?: Fetcher;
+
+    // Below are the potential environment variables that can be set by the user to configure the durable object queue handler
+    // The max number of revalidations that can be processed by the durable worker at the same time
+    MAX_REVALIDATION_BY_DURABLE_OBJECT?: string;
+    // The max time in milliseconds that a revalidation can take before being considered as failed
+    REVALIDATION_TIMEOUT_MS?: string;
+    // The amount of time after which a revalidation will be attempted again if it failed
+    // If it fails again it will exponentially back off until it reaches the max retry interval
+    REVALIDATION_RETRY_INTERVAL_MS?: string;
+    // The maximum number of attempts that can be made to revalidate a path
+    MAX_REVALIDATION_ATTEMPTS?: string;
   }
 }
 

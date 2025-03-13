@@ -8,8 +8,10 @@ import {
 } from "@opennextjs/aws/utils/error.js";
 import { DurableObject } from "cloudflare:workers";
 
-const MAX_REVALIDATION_BY_DURABLE_OBJECT = 5;
+const DEFAULT_MAX_REVALIDATION_BY_DURABLE_OBJECT = 5;
 const DEFAULT_REVALIDATION_TIMEOUT_MS = 10_000;
+const DEFAULT_REVALIDATION_RETRY_INTERVAL_MS = 2_000;
+const DEFAULT_MAX_REVALIDATION_ATTEMPTS = 6;
 
 interface FailedState {
   msg: QueueMessage;
@@ -29,8 +31,11 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
 
   service: NonNullable<CloudflareEnv["NEXT_CACHE_REVALIDATION_WORKER"]>;
 
-  // TODO: allow this to be configurable - How do we want todo that? env variable? passed down from the queue override ?
-  maxRevalidations = MAX_REVALIDATION_BY_DURABLE_OBJECT;
+  // Configurable params
+  maxRevalidations = DEFAULT_MAX_REVALIDATION_BY_DURABLE_OBJECT;
+  revalidationTimeout = DEFAULT_REVALIDATION_TIMEOUT_MS;
+  revalidationRetryInterval = DEFAULT_REVALIDATION_RETRY_INTERVAL_MS;
+  maxRevalidationAttempts = DEFAULT_MAX_REVALIDATION_ATTEMPTS;
 
   constructor(ctx: DurableObjectState, env: CloudflareEnv) {
     super(ctx, env);
@@ -42,6 +47,22 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
 
     // We restore the state
     ctx.blockConcurrencyWhile(() => this.initState());
+
+    this.maxRevalidations = env.MAX_REVALIDATION_BY_DURABLE_OBJECT
+      ? parseInt(env.MAX_REVALIDATION_BY_DURABLE_OBJECT)
+      : DEFAULT_MAX_REVALIDATION_BY_DURABLE_OBJECT;
+
+    this.revalidationTimeout = env.REVALIDATION_TIMEOUT_MS
+      ? parseInt(env.REVALIDATION_TIMEOUT_MS)
+      : DEFAULT_REVALIDATION_TIMEOUT_MS;
+
+    this.revalidationRetryInterval = env.REVALIDATION_RETRY_INTERVAL_MS
+      ? parseInt(env.REVALIDATION_RETRY_INTERVAL_MS)
+      : DEFAULT_REVALIDATION_RETRY_INTERVAL_MS;
+
+    this.maxRevalidationAttempts = env.MAX_REVALIDATION_ATTEMPTS
+      ? parseInt(env.MAX_REVALIDATION_ATTEMPTS)
+      : DEFAULT_MAX_REVALIDATION_ATTEMPTS;
   }
 
   async revalidate(msg: QueueMessage) {
@@ -55,7 +76,7 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     // We don't need to revalidate in this case
     if (this.checkSyncTable(msg)) return;
 
-    if (this.ongoingRevalidations.size >= MAX_REVALIDATION_BY_DURABLE_OBJECT) {
+    if (this.ongoingRevalidations.size >= this.maxRevalidations) {
       const ongoingRevalidations = this.ongoingRevalidations.values();
       // When there is more than the max revalidations, we block concurrency until one of the revalidations finishes
       // We still await the promise to ensure the revalidation is completed
@@ -86,7 +107,7 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
           "x-prerender-revalidate": process.env.__NEXT_PREVIEW_MODE_ID!,
           "x-isr": "1",
         },
-        signal: AbortSignal.timeout(DEFAULT_REVALIDATION_TIMEOUT_MS),
+        signal: AbortSignal.timeout(this.revalidationTimeout),
       });
       // Now we need to handle errors from the fetch
       if (response.status === 200 && response.headers.get("x-nextjs-cache") !== "REVALIDATED") {
@@ -158,12 +179,12 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
 
   async addToFailedState(msg: QueueMessage) {
     const existingFailedState = this.routeInFailedState.get(msg.MessageDeduplicationId);
-    let nextAlarm = Date.now() + 2_000;
+    let nextAlarm = Date.now() + this.revalidationRetryInterval;
 
     let updatedFailedState: FailedState;
 
     if (existingFailedState) {
-      if (existingFailedState.retryCount >= 6) {
+      if (existingFailedState.retryCount >= this.maxRevalidationAttempts) {
         // We give up after 6 retries and log the error
         error(
           `The revalidation for ${msg.MessageBody.host}${msg.MessageBody.url} has failed after 6 retries. It will not be tried again, but subsequent ISR requests will retry.`
@@ -171,7 +192,8 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
         this.routeInFailedState.delete(msg.MessageDeduplicationId);
         return;
       }
-      nextAlarm = Date.now() + Math.pow(2, existingFailedState.retryCount + 1) * 2_000;
+      nextAlarm =
+        Date.now() + Math.pow(2, existingFailedState.retryCount + 1) * this.revalidationRetryInterval;
       updatedFailedState = {
         ...existingFailedState,
         retryCount: existingFailedState.retryCount + 1,
@@ -206,7 +228,7 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     );
     if (nextAlarmToSetup < Date.now()) {
       // We don't want to set an alarm in the past
-      nextAlarmToSetup = Date.now() + 2_000;
+      nextAlarmToSetup = Date.now() + this.revalidationRetryInterval;
     }
     await this.ctx.storage.setAlarm(nextAlarmToSetup);
   }
