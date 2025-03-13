@@ -54,6 +54,10 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     // The route is already in a failed state, it will be retried later
     if (this.routeInFailedState.has(msg.MessageDeduplicationId)) return;
 
+    // If the last success is newer than the last modified, it's likely that the regional cache is out of date
+    // We don't need to revalidate in this case
+    if (this.checkSyncTable(msg)) return;
+
     if (this.ongoingRevalidations.size >= MAX_REVALIDATION_BY_DURABLE_OBJECT) {
       const ongoingRevalidations = this.ongoingRevalidations.values();
       // When there is more than the max revalidations, we block concurrency until one of the revalidations finishes
@@ -78,6 +82,7 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
         previewModeId,
       } = msg;
       const protocol = host.includes("localhost") ? "http" : "https";
+      console.log('previewModeId', previewModeId);
 
       const response = await this.service.fetch(`${protocol}://${host}${url}`, {
         method: "HEAD",
@@ -109,6 +114,13 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
         // An unknown error occurred, most likely from something in user code like missing auth in the middleware
         throw new RecoverableError(`An unknown error occurred while revalidating ${host}${url}`);
       }
+      // Everything went well, we can update the sync table
+      // We use unixepoch here because without IO the date doesn't change and it will make the e2e tests fail
+      this.sql.exec(
+        "INSERT OR REPLACE INTO sync (id, lastSuccess) VALUES (?, unixepoch())",
+        // We cannot use the deduplication id because it's not unique per route - every time a route is revalidated, the deduplication id is different.
+        `${host}${url}`
+      );
     } catch (e) {
       // Do we want to propagate the error to the calling worker?
       if (!isOpenNextError(e)) {
@@ -133,7 +145,6 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     const allEventsToRetry = nextEventToRetry ? [nextEventToRetry, ...expiredEvents] : expiredEvents;
     for (const event of allEventsToRetry) {
       await this.executeRevalidation(event.msg);
-      this.routeInFailedState.delete(event.msg.MessageDeduplicationId);
     }
   }
 
@@ -196,6 +207,9 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     // We store the failed state as a blob, we don't want to do anything with it anyway besides restoring
     this.sql.exec("CREATE TABLE IF NOT EXISTS failed_state (id TEXT PRIMARY KEY, data TEXT)");
 
+    // We create the sync table to handle eventually consistent incremental cache
+    this.sql.exec("CREATE TABLE IF NOT EXISTS sync (id TEXT PRIMARY KEY, lastSuccess INTEGER)");
+
     const failedStateCursor = this.sql.exec<{ id: string; data: string }>("SELECT * FROM failed_state");
     for (const row of failedStateCursor) {
       this.routeInFailedState.set(row.id, JSON.parse(row.data));
@@ -203,5 +217,25 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
 
     // Now that we have restored the failed state, we can restore the alarm as well
     await this.addAlarm();
+  }
+
+  /**
+   * 
+   * @param msg 
+   * @returns `true` if the route has been revalidated since the lastModified from the message, `false` otherwise
+   */
+  checkSyncTable(msg: ExtendedQueueMessage) {
+    try {
+      const isNewer = this.sql.exec<{ isNewer: number }>(
+        "SELECT COUNT(*) as isNewer FROM sync WHERE id = ? AND lastSuccess > ?",
+        `${msg.MessageBody.host}${msg.MessageBody.url}`,
+       Math.round(msg.MessageBody.lastModified/1000)
+      ).one().isNewer;
+
+      return isNewer > 0;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    }catch(e: unknown){
+      return false;
+    }
   }
 }
