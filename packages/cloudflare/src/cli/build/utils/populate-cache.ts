@@ -98,7 +98,7 @@ export async function populateCache(opts: BuildOptions, config: OpenNextConfig, 
         break;
       }
       default:
-        logger.info("INcremental cache does not need populating");
+        logger.info("Incremental cache does not need populating");
     }
   }
 

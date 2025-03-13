@@ -3,7 +3,6 @@ import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "./cloudflare-context.js";
-import { IncrementalCacheEntry } from "./internal/incremental-cache.js";
 
 /**
  * An instance of the Incremental Cache that uses an R2 bucket (`NEXT_CACHE_R2_BUCKET`) as it's
@@ -31,7 +30,10 @@ class R2IncrementalCache implements IncrementalCache {
       const r2Object = await r2.get(this.getR2Key(key, isFetch));
       if (!r2Object) return null;
 
-      return r2Object.json();
+      return {
+        value: await r2Object.json(),
+        lastModified: r2Object.uploaded.getTime(),
+      };
     } catch (e) {
       error("Failed to get from cache", e);
       return null;
@@ -49,14 +51,7 @@ class R2IncrementalCache implements IncrementalCache {
     debug(`Set ${key}`);
 
     try {
-      const entry: IncrementalCacheEntry<IsFetch> = {
-        value,
-        // Note: `Date.now()` returns the time of the last IO rather than the actual time.
-        //       See https://developers.cloudflare.com/workers/reference/security-model/
-        lastModified: Date.now(),
-      };
-
-      await r2.put(this.getR2Key(key, isFetch), JSON.stringify(entry));
+      await r2.put(this.getR2Key(key, isFetch), JSON.stringify(value));
     } catch (e) {
       error("Failed to set to cache", e);
     }
