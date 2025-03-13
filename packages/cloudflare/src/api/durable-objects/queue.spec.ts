@@ -29,7 +29,9 @@ const createDurableObjectQueue = ({
       setAlarm: vi.fn(),
       getAlarm: vi.fn(),
       sql: {
-        exec: vi.fn(),
+        exec: vi.fn().mockImplementation(() => ({
+          one: vi.fn()
+        })),
       },
     },
   };
