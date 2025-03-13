@@ -11,12 +11,8 @@ import { DurableObject } from "cloudflare:workers";
 const MAX_REVALIDATION_BY_DURABLE_OBJECT = 5;
 const DEFAULT_REVALIDATION_TIMEOUT_MS = 10_000;
 
-interface ExtendedQueueMessage extends QueueMessage {
-  previewModeId: string;
-}
-
 interface FailedState {
-  msg: ExtendedQueueMessage;
+  msg: QueueMessage;
   retryCount: number;
   nextAlarm: number;
 }
@@ -48,7 +44,7 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     ctx.blockConcurrencyWhile(() => this.initState());
   }
 
-  async revalidate(msg: ExtendedQueueMessage) {
+  async revalidate(msg: QueueMessage) {
     // If there is already an ongoing revalidation, we don't need to revalidate again
     if (this.ongoingRevalidations.has(msg.MessageDeduplicationId)) return;
 
@@ -76,25 +72,24 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     this.ctx.waitUntil(revalidationPromise);
   }
 
-  private async executeRevalidation(msg: ExtendedQueueMessage) {
+  private async executeRevalidation(msg: QueueMessage) {
     try {
       const {
         MessageBody: { host, url },
-        previewModeId,
       } = msg;
       const protocol = host.includes("localhost") ? "http" : "https";
 
       const response = await this.service.fetch(`${protocol}://${host}${url}`, {
         method: "HEAD",
         headers: {
-          "x-prerender-revalidate": previewModeId,
+          // This is defined during build
+          "x-prerender-revalidate": process.env.__NEXT_PREVIEW_MODE_ID!,
           "x-isr": "1",
         },
         signal: AbortSignal.timeout(DEFAULT_REVALIDATION_TIMEOUT_MS),
       });
       // Now we need to handle errors from the fetch
       if (response.status === 200 && response.headers.get("x-nextjs-cache") !== "REVALIDATED") {
-        // TODO: when restoring from the failed state during a new deployment, previewModeId will be different and we'll be in this case. Figure out how to handle this.
         this.routeInFailedState.delete(msg.MessageDeduplicationId);
         throw new FatalError(
           `The revalidation for ${host}${url} cannot be done. This error should never happen.`
@@ -122,7 +117,7 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
         throw new RecoverableError(`An unknown error occurred while revalidating ${host}${url}`);
       }
       // Everything went well, we can update the sync table
-      // We use unixepoch here because without IO the date doesn't change and it will make the e2e tests fail
+      // We use unixepoch here,it also works with Date.now()/1000, but not with Date.now() alone- we need to investigate this
       this.sql.exec(
         "INSERT OR REPLACE INTO sync (id, lastSuccess) VALUES (?, unixepoch())",
         // We cannot use the deduplication id because it's not unique per route - every time a route is revalidated, the deduplication id is different.
@@ -159,7 +154,7 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     }
   }
 
-  async addToFailedState(msg: ExtendedQueueMessage) {
+  async addToFailedState(msg: QueueMessage) {
     const existingFailedState = this.routeInFailedState.get(msg.MessageDeduplicationId);
     let nextAlarm = Date.now() + 2_000;
 
@@ -233,21 +228,21 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
   }
 
   /**
-   * 
-   * @param msg 
+   *
+   * @param msg
    * @returns `true` if the route has been revalidated since the lastModified from the message, `false` otherwise
    */
-  checkSyncTable(msg: ExtendedQueueMessage) {
+  checkSyncTable(msg: QueueMessage) {
     try {
-      const isNewer = this.sql.exec<{ isNewer: number }>(
-        "SELECT COUNT(*) as isNewer FROM sync WHERE id = ? AND lastSuccess > ?",
-        `${msg.MessageBody.host}${msg.MessageBody.url}`,
-       Math.round(msg.MessageBody.lastModified/1000)
-      ).one().isNewer;
+      const isNewer = this.sql
+        .exec<{
+          isNewer: number;
+        }>("SELECT COUNT(*) as isNewer FROM sync WHERE id = ? AND lastSuccess > ?", `${msg.MessageBody.host}${msg.MessageBody.url}`, Math.round(msg.MessageBody.lastModified / 1000))
+        .one().isNewer;
 
       return isNewer > 0;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    }catch(e: unknown){
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (e: unknown) {
       return false;
     }
   }
