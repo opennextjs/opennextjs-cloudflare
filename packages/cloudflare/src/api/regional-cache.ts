@@ -8,8 +8,18 @@ const ONE_YEAR_IN_SECONDS = 31536000;
 const ONE_MINUTE_IN_SECONDS = 60;
 
 type Options = {
+  /**
+   * The mode to use for the regional cache.
+   *
+   * - `short-lived`: Re-use a cache entry for up to a minute after it has been retrieved.
+   * - `long-lived`: Re-use a cache entry until it is revalidated.
+   */
   mode: "short-lived" | "long-lived";
-  shouldLazilyUpdateOnCacheHit?: boolean;
+  /**
+   * Whether the regional cache entry should be updated in the background or not when it experiences
+   * a cache hit.
+   */
+  shouldLazilyUpdateOnCacheHit: boolean;
 };
 
 class RegionalCache implements IncrementalCache {
@@ -130,6 +140,19 @@ class RegionalCache implements IncrementalCache {
   }
 }
 
+/**
+ * A regional cache will wrap an incremental cache and provide faster cache lookups for an entry
+ * when making requests within the region.
+ *
+ * The regional cache uses the Cache API.
+ *
+ * @param cache - Incremental cache instance.
+ * @param opts.mode - The mode to use for the regional cache.
+ * - `short-lived`: Re-use a cache entry for up to a minute after it has been retrieved.
+ * - `long-lived`: Re-use a cache entry until it is revalidated.
+ * @param opts.shouldLazilyUpdateOnCacheHit - Whether the regional cache entry should be updated in
+ * the background or not when it experiences a cache hit.
+ */
 export function withRegionalCache(cache: IncrementalCache, opts: Options) {
   return new RegionalCache(cache, opts);
 }
