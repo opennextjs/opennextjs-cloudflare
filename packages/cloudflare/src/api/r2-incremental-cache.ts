@@ -3,13 +3,7 @@ import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "./cloudflare-context.js";
-
-type Entry<IsFetch extends boolean> = {
-  value: CacheValue<IsFetch>;
-  lastModified: number;
-};
-
-const ONE_YEAR_IN_SECONDS = 31536000;
+import { IncrementalCacheEntry } from "./internal/incremental-cache.js";
 
 /**
  * An instance of the Incremental Cache that uses an R2 bucket (`NEXT_CACHE_R2_BUCKET`) as it's
@@ -24,8 +18,6 @@ const ONE_YEAR_IN_SECONDS = 31536000;
 class R2IncrementalCache implements IncrementalCache {
   readonly name = "r2-incremental-cache";
 
-  protected localCache: Cache | undefined;
-
   async get<IsFetch extends boolean = false>(
     key: string,
     isFetch?: IsFetch
@@ -36,39 +28,12 @@ class R2IncrementalCache implements IncrementalCache {
     debug(`Get ${key}`);
 
     try {
-      const r2Response = r2.get(this.getR2Key(key));
-
-      const localCacheKey = this.getLocalCacheKey(key, isFetch);
-
-      // Check for a cached entry as this will be faster than R2.
-      const cachedResponse = await this.getFromLocalCache(localCacheKey);
-      if (cachedResponse) {
-        debug(` -> Cached response`);
-        // Update the local cache after the R2 fetch has completed.
-        getCloudflareContext().ctx.waitUntil(
-          Promise.resolve(r2Response).then(async (res) => {
-            if (res) {
-              const entry: Entry<IsFetch> = await res.json();
-              await this.putToLocalCache(localCacheKey, JSON.stringify(entry), entry.value.revalidate);
-            }
-          })
-        );
-
-        return cachedResponse.json();
-      }
-
-      const r2Object = await r2Response;
+      const r2Object = await r2.get(this.getR2Key(key, isFetch));
       if (!r2Object) return null;
-      const entry: Entry<IsFetch> = await r2Object.json();
 
-      // Update the locale cache after retrieving from R2.
-      getCloudflareContext().ctx.waitUntil(
-        this.putToLocalCache(localCacheKey, JSON.stringify(entry), entry.value.revalidate)
-      );
-
-      return entry;
+      return r2Object.json();
     } catch (e) {
-      error(`Failed to get from cache`, e);
+      error("Failed to get from cache", e);
       return null;
     }
   }
@@ -84,24 +49,16 @@ class R2IncrementalCache implements IncrementalCache {
     debug(`Set ${key}`);
 
     try {
-      const entry: Entry<IsFetch> = {
+      const entry: IncrementalCacheEntry<IsFetch> = {
         value,
         // Note: `Date.now()` returns the time of the last IO rather than the actual time.
         //       See https://developers.cloudflare.com/workers/reference/security-model/
         lastModified: Date.now(),
       };
 
-      await Promise.all([
-        r2.put(this.getR2Key(key, isFetch), JSON.stringify(entry)),
-        // Update the locale cache for faster retrieval.
-        this.putToLocalCache(
-          this.getLocalCacheKey(key, isFetch),
-          JSON.stringify(entry),
-          entry.value.revalidate
-        ),
-      ]);
+      await r2.put(this.getR2Key(key, isFetch), JSON.stringify(entry));
     } catch (e) {
-      error(`Failed to set to cache`, e);
+      error("Failed to set to cache", e);
     }
   }
 
@@ -112,59 +69,16 @@ class R2IncrementalCache implements IncrementalCache {
     debug(`Delete ${key}`);
 
     try {
-      await Promise.all([
-        r2.delete(this.getR2Key(key)),
-        this.deleteFromLocalCache(this.getLocalCacheKey(key)),
-      ]);
+      await r2.delete(this.getR2Key(key));
     } catch (e) {
-      error(`Failed to delete from cache`, e);
+      error("Failed to delete from cache", e);
     }
-  }
-
-  protected getBaseCacheKey(key: string, isFetch?: boolean): string {
-    return `${process.env.NEXT_BUILD_ID ?? "no-build-id"}/${key}.${isFetch ? "fetch" : "cache"}`;
   }
 
   protected getR2Key(key: string, isFetch?: boolean): string {
     const directory = getCloudflareContext().env.NEXT_CACHE_R2_PREFIX ?? "incremental-cache";
-    return `${directory}/${this.getBaseCacheKey(key, isFetch)}`;
-  }
 
-  protected getLocalCacheKey(key: string, isFetch?: boolean) {
-    return new Request(new URL(this.getBaseCacheKey(key, isFetch), "http://cache.local"));
-  }
-
-  protected async getLocalCacheInstance(): Promise<Cache> {
-    if (this.localCache) return this.localCache;
-
-    this.localCache = await caches.open("incremental-cache");
-    return this.localCache;
-  }
-
-  protected async getFromLocalCache(key: Request) {
-    const cache = await this.getLocalCacheInstance();
-    return cache.match(key);
-  }
-
-  protected async putToLocalCache(
-    key: Request,
-    entry: string,
-    revalidate: number | false | undefined
-  ): Promise<void> {
-    const cache = await this.getLocalCacheInstance();
-    await cache.put(
-      key,
-      new Response(entry, {
-        headers: new Headers({
-          "cache-control": `max-age=${revalidate || ONE_YEAR_IN_SECONDS}`,
-        }),
-      })
-    );
-  }
-
-  protected async deleteFromLocalCache(key: Request) {
-    const cache = await this.getLocalCacheInstance();
-    await cache.delete(key);
+    return `${directory}/${process.env.NEXT_BUILD_ID ?? "no-build-id"}/${key}.${isFetch ? "fetch" : "cache"}`;
   }
 }
 
