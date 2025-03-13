@@ -111,6 +111,15 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
 
         throw new RecoverableError(`An unknown error occurred while revalidating ${host}${url}`);
       }
+      // Everything went well, we can update the sync table
+      // We use unixepoch here,it also works with Date.now()/1000, but not with Date.now() alone.
+      // TODO: This needs to be investigated
+      this.sql.exec(
+        "INSERT OR REPLACE INTO sync (id, lastSuccess, buildId) VALUES (?, unixepoch(), ?)",
+        // We cannot use the deduplication id because it's not unique per route - every time a route is revalidated, the deduplication id is different.
+        `${host}${url}`,
+        process.env.__NEXT_BUILD_ID
+      );
       // If everything went well, we can remove the route from the failed state
       this.routeInFailedState.delete(msg.MessageDeduplicationId);
     } catch (e) {
@@ -170,9 +179,10 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     }
     this.routeInFailedState.set(msg.MessageDeduplicationId, updatedFailedState);
     this.sql.exec(
-      "INSERT OR REPLACE INTO failed_state (id, data) VALUES (?, ?)",
+      "INSERT OR REPLACE INTO failed_state (id, data, buildId) VALUES (?, ?, ?)",
       msg.MessageDeduplicationId,
-      JSON.stringify(updatedFailedState)
+      JSON.stringify(updatedFailedState),
+      process.env.__NEXT_BUILD_ID
     );
     // We probably want to do something if routeInFailedState is becoming too big, at least log it
     await this.addAlarm();
@@ -198,10 +208,14 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
   // We only restore the failed state and the alarm
   async initState() {
     // We store the failed state as a blob, we don't want to do anything with it anyway besides restoring
-    this.sql.exec("CREATE TABLE IF NOT EXISTS failed_state (id TEXT PRIMARY KEY, data TEXT)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS failed_state (id TEXT PRIMARY KEY, data TEXT, buildId TEXT)");
 
     // We create the sync table to handle eventually consistent incremental cache
-    this.sql.exec("CREATE TABLE IF NOT EXISTS sync (id TEXT PRIMARY KEY, lastSuccess INTEGER)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS sync (id TEXT PRIMARY KEY, lastSuccess INTEGER, buildId TEXT)");
+
+    // Before doing anything else, we clear the DB for any potential old data
+    this.sql.exec("DELETE FROM failed_state WHERE buildId != ?", process.env.__NEXT_BUILD_ID);
+    this.sql.exec("DELETE FROM sync WHERE buildId != ?", process.env.__NEXT_BUILD_ID);
 
     const failedStateCursor = this.sql.exec<{ id: string; data: string }>("SELECT * FROM failed_state");
     for (const row of failedStateCursor) {
@@ -222,7 +236,11 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
       const isNewer = this.sql
         .exec<{
           isNewer: number;
-        }>("SELECT COUNT(*) as isNewer FROM sync WHERE id = ? AND lastSuccess > ?", `${msg.MessageBody.host}${msg.MessageBody.url}`, Math.round(msg.MessageBody.lastModified / 1000))
+        }>(
+          "SELECT COUNT(*) as isNewer FROM sync WHERE id = ? AND lastSuccess > ?",
+          `${msg.MessageBody.host}${msg.MessageBody.url}`,
+          Math.round(msg.MessageBody.lastModified / 1000)
+        )
         .one().isNewer;
 
       return isNewer > 0;
