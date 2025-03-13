@@ -72,15 +72,14 @@ class RegionalCache implements IncrementalCache {
     isFetch?: IsFetch
   ): Promise<void> {
     try {
-      await Promise.all([
-        this.store.set(key, value, isFetch),
-        this.putToCache(this.getCacheKey(key, isFetch), {
-          value,
-          // Note: `Date.now()` returns the time of the last IO rather than the actual time.
-          //       See https://developers.cloudflare.com/workers/reference/security-model/
-          lastModified: Date.now(),
-        }),
-      ]);
+      await this.store.set(key, value, isFetch);
+
+      await this.putToCache(this.getCacheKey(key, isFetch), {
+        value,
+        // Note: `Date.now()` returns the time of the last IO rather than the actual time.
+        //       See https://developers.cloudflare.com/workers/reference/security-model/
+        lastModified: Date.now(),
+      });
     } catch (e) {
       error(`Failed to get from regional cache`, e);
     }
@@ -88,8 +87,10 @@ class RegionalCache implements IncrementalCache {
 
   async delete(key: string): Promise<void> {
     try {
+      await this.store.delete(key);
+
       const cache = await this.getCacheInstance();
-      await Promise.all([this.store.delete(key), cache.delete(this.getCacheKey(key))]);
+      await cache.delete(this.getCacheKey(key));
     } catch (e) {
       error("Failed to delete from regional cache", e);
     }
