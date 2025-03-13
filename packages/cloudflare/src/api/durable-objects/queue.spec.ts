@@ -52,8 +52,8 @@ const createDurableObjectQueue = ({
   });
 };
 
-const createMessage = (dedupId: string) => ({
-  MessageBody: { host: "test.local", url: "/test" },
+const createMessage = (dedupId: string, lastModified = Date.now()) => ({
+  MessageBody: { host: "test.local", url: "/test", eTag: "test", lastModified },
   MessageGroupId: "test.local/test",
   MessageDeduplicationId: dedupId,
   previewModeId: "test",
