@@ -146,6 +146,9 @@ class RegionalCache implements IncrementalCache {
  *
  * The regional cache uses the Cache API.
  *
+ * **WARNING:** If an entry is revalidated in one region, it will trigger an additional revalidation if
+ * a request is made to another region that has an entry stored in its regional cache.
+ *
  * @param cache - Incremental cache instance.
  * @param opts.mode - The mode to use for the regional cache.
  * - `short-lived`: Re-use a cache entry for up to a minute after it has been retrieved.
