@@ -28,7 +28,7 @@ const createDurableObjectQueue = ({
       getAlarm: vi.fn(),
       sql: {
         exec: vi.fn().mockImplementation(() => ({
-          one: vi.fn()
+          one: vi.fn(),
         })),
       },
     },
@@ -65,6 +65,7 @@ const createMessage = (dedupId: string, lastModified = Date.now()) => ({
 describe("DurableObjectQueue", () => {
   describe("successful revalidation", () => {
     it("should process a single revalidation", async () => {
+      process.env.__NEXT_PREVIEW_MODE_ID = "test";
       const queue = createDurableObjectQueue({ fetchDuration: 10 });
       const firstRequest = await queue.revalidate(createMessage("id"));
       expect(firstRequest).toBeUndefined();
