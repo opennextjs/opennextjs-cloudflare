@@ -8,6 +8,20 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "NEXT_CACHE_REVALIDATION_DURABLE_OBJECT",
+        "class_name": "DurableObjectQueueHandler"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["DurableObjectQueueHandler"]
+    }
+  ],
   "kv_namespaces": [
     {
       "binding": "NEXT_CACHE_WORKERS_KV",
