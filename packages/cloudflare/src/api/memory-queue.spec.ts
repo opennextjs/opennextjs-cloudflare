@@ -12,6 +12,13 @@ vi.mock("./cloudflare-context", () => ({
   }),
 }));
 
+const generateMessageBody = ({ host, url }: { host: string; url: string }) => ({
+  host,
+  url,
+  eTag: "etag",
+  lastModified: Date.now(),
+});
+
 describe("MemoryQueue", () => {
   beforeAll(() => {
     vi.useFakeTimers();
@@ -22,7 +29,7 @@ describe("MemoryQueue", () => {
 
   it("should process revalidations for a path", async () => {
     const firstRequest = cache.send({
-      MessageBody: { host: "test.local", url: "/test" },
+      MessageBody: generateMessageBody({ host: "test.local", url: "/test" }),
       MessageGroupId: generateMessageGroupId("/test"),
       MessageDeduplicationId: "",
     });
@@ -31,7 +38,7 @@ describe("MemoryQueue", () => {
     expect(mockServiceWorkerFetch).toHaveBeenCalledTimes(1);
 
     const secondRequest = cache.send({
-      MessageBody: { host: "test.local", url: "/test" },
+      MessageBody: generateMessageBody({ host: "test.local", url: "/test" }),
       MessageGroupId: generateMessageGroupId("/test"),
       MessageDeduplicationId: "",
     });
@@ -42,7 +49,7 @@ describe("MemoryQueue", () => {
 
   it("should process revalidations for multiple paths", async () => {
     const firstRequest = cache.send({
-      MessageBody: { host: "test.local", url: "/test" },
+      MessageBody: generateMessageBody({ host: "test.local", url: "/test" }),
       MessageGroupId: generateMessageGroupId("/test"),
       MessageDeduplicationId: "",
     });
@@ -51,7 +58,7 @@ describe("MemoryQueue", () => {
     expect(mockServiceWorkerFetch).toHaveBeenCalledTimes(1);
 
     const secondRequest = cache.send({
-      MessageBody: { host: "test.local", url: "/test" },
+      MessageBody: generateMessageBody({ host: "test.local", url: "/test" }),
       MessageGroupId: generateMessageGroupId("/other"),
       MessageDeduplicationId: "",
     });
@@ -63,12 +70,12 @@ describe("MemoryQueue", () => {
   it("should de-dupe revalidations", async () => {
     const requests = [
       cache.send({
-        MessageBody: { host: "test.local", url: "/test" },
+        MessageBody: generateMessageBody({ host: "test.local", url: "/test" }),
         MessageGroupId: generateMessageGroupId("/test"),
         MessageDeduplicationId: "",
       }),
       cache.send({
-        MessageBody: { host: "test.local", url: "/test" },
+        MessageBody: generateMessageBody({ host: "test.local", url: "/test" }),
         MessageGroupId: generateMessageGroupId("/test"),
         MessageDeduplicationId: "",
       }),
