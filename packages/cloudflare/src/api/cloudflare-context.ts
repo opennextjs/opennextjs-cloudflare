@@ -7,7 +7,9 @@ declare global {
     NEXT_CACHE_D1_TAGS_TABLE?: string;
     NEXT_CACHE_D1_REVALIDATIONS_TABLE?: string;
     NEXT_CACHE_REVALIDATION_WORKER?: Service;
+    // R2 bucket used for the incremental cache
     NEXT_CACHE_R2_BUCKET?: R2Bucket;
+    // Prefix used for the R2 incremental cache bucket
     NEXT_CACHE_R2_PREFIX?: string;
     ASSETS?: Fetcher;
   }
