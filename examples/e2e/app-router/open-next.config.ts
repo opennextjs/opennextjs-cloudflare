@@ -6,7 +6,10 @@ import memoryQueue from "@opennextjs/cloudflare/memory-queue";
 import { withRegionalCache } from "@opennextjs/cloudflare/regional-cache";
 
 export default defineCloudflareConfig({
-  incrementalCache: withRegionalCache(r2IncrementalCache, { mode: "long-lived" }),
+  incrementalCache: withRegionalCache(r2IncrementalCache, {
+    mode: "long-lived",
+    shouldLazilyUpdateOnCacheHit: true,
+  }),
   tagCache: d1TagCache,
   queue: memoryQueue,
 });
