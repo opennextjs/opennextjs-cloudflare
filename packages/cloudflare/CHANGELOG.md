@@ -1,5 +1,15 @@
 # @opennextjs/cloudflare
 
+## 0.5.11
+
+### Patch Changes
+
+- [#455](https://github.com/opennextjs/opennextjs-cloudflare/pull/455) [`1d40ab1`](https://github.com/opennextjs/opennextjs-cloudflare/commit/1d40ab12e7c581d69a773d56885f10fa33f3b2b8) Thanks [@vicb](https://github.com/vicb)! - sync with `@opennextjs/aws@3.5.2`
+
+- [#453](https://github.com/opennextjs/opennextjs-cloudflare/pull/453) [`95caa87`](https://github.com/opennextjs/opennextjs-cloudflare/commit/95caa87cd9f1880972f1657e2a7ab79daf86dc0a) Thanks [@vicb](https://github.com/vicb)! - fix: Pages router API routes with Next 14
+
+- [#452](https://github.com/opennextjs/opennextjs-cloudflare/pull/452) [`161a5f7`](https://github.com/opennextjs/opennextjs-cloudflare/commit/161a5f7f53af0435576f44dc5c15df230c6a3090) Thanks [@vicb](https://github.com/vicb)! - fix: patch the webpack runtime when there is a single chunk
+
 ## 0.5.10
 
 ### Patch Changes
