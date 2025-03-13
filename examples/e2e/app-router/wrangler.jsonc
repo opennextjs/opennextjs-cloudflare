@@ -19,7 +19,7 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_classes": ["DurableObjectQueueHandler"]
+      "new_sqlite_classes": ["DurableObjectQueueHandler"]
     }
   ],
   "kv_namespaces": [

@@ -15,17 +15,21 @@ interface ExtendedQueueMessage extends QueueMessage {
   previewModeId: string;
 }
 
+interface FailedState {
+  msg: ExtendedQueueMessage;
+  retryCount: number;
+  nextAlarm: number;
+}
+
 export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
   // Ongoing revalidations are deduped by the deduplication id
   // Since this is running in waitUntil, we expect the durable object state to persist this during the duration of the revalidation
   // TODO: handle incremental cache with only eventual consistency (i.e. KV or R2/D1 with the optional cache layer on top)
   ongoingRevalidations = new Map<string, Promise<void>>();
 
-  // TODO: restore the state of the failed revalidations - Probably in the next PR where i'll add the storage
-  routeInFailedState = new Map<
-    string,
-    { msg: ExtendedQueueMessage; retryCount: number; nextAlarm: number }
-  >();
+  sql: SqlStorage;
+
+  routeInFailedState = new Map<string, FailedState>();
 
   service: NonNullable<CloudflareEnv["NEXT_CACHE_REVALIDATION_WORKER"]>;
 
@@ -38,6 +42,10 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     // If there is no service binding, we throw an error because we can't revalidate without it
     if (!service) throw new IgnorableError("No service binding for cache revalidation worker");
     this.service = service;
+    this.sql = ctx.storage.sql;
+
+    // We restore the state
+    ctx.blockConcurrencyWhile(() => this.initState());
   }
 
   async revalidate(msg: ExtendedQueueMessage) {
@@ -72,7 +80,6 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
       } = msg;
       const protocol = host.includes("localhost") ? "http" : "https";
 
-      //TODO: handle the different types of errors that can occur during the fetch (i.e. timeout, network error, etc)
       const response = await this.service.fetch(`${protocol}://${host}${url}`, {
         method: "HEAD",
         headers: {
@@ -137,6 +144,8 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     const existingFailedState = this.routeInFailedState.get(msg.MessageDeduplicationId);
     let nextAlarm = Date.now() + 2_000;
 
+    let updatedFailedState: FailedState;
+
     if (existingFailedState) {
       if (existingFailedState.retryCount >= 6) {
         // We give up after 6 retries and log the error
@@ -147,18 +156,24 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
         return;
       }
       nextAlarm = Date.now() + Math.pow(2, existingFailedState.retryCount + 1) * 2_000;
-      this.routeInFailedState.set(msg.MessageDeduplicationId, {
+      updatedFailedState = {
         ...existingFailedState,
         retryCount: existingFailedState.retryCount + 1,
         nextAlarm,
-      });
+      };
     } else {
-      this.routeInFailedState.set(msg.MessageDeduplicationId, {
+      updatedFailedState = {
         msg,
         retryCount: 1,
         nextAlarm,
-      });
+      };
     }
+    this.routeInFailedState.set(msg.MessageDeduplicationId, updatedFailedState);
+    this.sql.exec(
+      "INSERT OR REPLACE INTO failed_state (id, data) VALUES (?, ?)",
+      msg.MessageDeduplicationId,
+      JSON.stringify(updatedFailedState)
+    );
     // We probably want to do something if routeInFailedState is becoming too big, at least log it
     await this.addAlarm();
   }
@@ -168,10 +183,30 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     if (existingAlarm) return;
     if (this.routeInFailedState.size === 0) return;
 
-    const nextAlarmToSetup = Array.from(this.routeInFailedState.values()).reduce(
+    let nextAlarmToSetup = Array.from(this.routeInFailedState.values()).reduce(
       (acc, { nextAlarm }) => Math.min(acc, nextAlarm),
       Infinity
     );
+    if (nextAlarmToSetup < Date.now()) {
+      // We don't want to set an alarm in the past
+      nextAlarmToSetup = Date.now() + 2_000;
+    }
     await this.ctx.storage.setAlarm(nextAlarmToSetup);
+  }
+
+  // This function is used to restore the state of the durable object
+  // We don't restore the ongoing revalidations because we cannot know in which state they are
+  // We only restore the failed state and the alarm
+  async initState() {
+    // We store the failed state as a blob, we don't want to do anything with it anyway besides restoring
+    this.sql.exec("CREATE TABLE IF NOT EXISTS failed_state (id TEXT PRIMARY KEY, data TEXT)");
+
+    const failedStateCursor = this.sql.exec<{ id: string; data: string }>("SELECT * FROM failed_state");
+    for (const row of failedStateCursor) {
+      this.routeInFailedState.set(row.id, JSON.parse(row.data));
+    }
+
+    // Now that we have restored the failed state, we can restore the alarm as well
+    await this.addAlarm();
   }
 }
