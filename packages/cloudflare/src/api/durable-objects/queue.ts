@@ -54,10 +54,6 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     // The route is already in a failed state, it will be retried later
     if (this.routeInFailedState.has(msg.MessageDeduplicationId)) return;
 
-    // If the last success is newer than the last modified, it's likely that the regional cache is out of date
-    // We don't need to revalidate in this case
-    if (this.checkSyncTable(msg)) return;
-
     if (this.ongoingRevalidations.size >= MAX_REVALIDATION_BY_DURABLE_OBJECT) {
       const ongoingRevalidations = this.ongoingRevalidations.values();
       // When there is more than the max revalidations, we block concurrency until one of the revalidations finishes
@@ -82,7 +78,6 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
         previewModeId,
       } = msg;
       const protocol = host.includes("localhost") ? "http" : "https";
-      console.log('previewModeId', previewModeId);
 
       const response = await this.service.fetch(`${protocol}://${host}${url}`, {
         method: "HEAD",
@@ -94,12 +89,15 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
       });
       // Now we need to handle errors from the fetch
       if (response.status === 200 && response.headers.get("x-nextjs-cache") !== "REVALIDATED") {
-        // Something is very wrong here, it means that either the page is not ISR/SSG (and we shouldn't be here) or the `x-prerender-revalidate` header is not correct (and it should not happen either)
+        // TODO: when restoring from the failed state during a new deployment, previewModeId will be different and we'll be in this case. Figure out how to handle this.
+        this.routeInFailedState.delete(msg.MessageDeduplicationId);
         throw new FatalError(
           `The revalidation for ${host}${url} cannot be done. This error should never happen.`
         );
       } else if (response.status === 404) {
         // The page is not found, we should not revalidate it
+        // We remove the route from the failed state because it might be expected (i.e. a route that was deleted)
+        this.routeInFailedState.delete(msg.MessageDeduplicationId);
         throw new IgnorableError(
           `The revalidation for ${host}${url} cannot be done because the page is not found. It's either expected or an error in user code itself`
         );
@@ -112,15 +110,14 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
       } else if (response.status !== 200) {
         // TODO: check if we need to handle cloudflare specific status codes/errors
         // An unknown error occurred, most likely from something in user code like missing auth in the middleware
+
+        // We probably want to retry in this case as well
+        await this.addToFailedState(msg);
+
         throw new RecoverableError(`An unknown error occurred while revalidating ${host}${url}`);
       }
-      // Everything went well, we can update the sync table
-      // We use unixepoch here because without IO the date doesn't change and it will make the e2e tests fail
-      this.sql.exec(
-        "INSERT OR REPLACE INTO sync (id, lastSuccess) VALUES (?, unixepoch())",
-        // We cannot use the deduplication id because it's not unique per route - every time a route is revalidated, the deduplication id is different.
-        `${host}${url}`
-      );
+      // If everything went well, we can remove the route from the failed state
+      this.routeInFailedState.delete(msg.MessageDeduplicationId);
     } catch (e) {
       // Do we want to propagate the error to the calling worker?
       if (!isOpenNextError(e)) {
@@ -145,6 +142,7 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     const allEventsToRetry = nextEventToRetry ? [nextEventToRetry, ...expiredEvents] : expiredEvents;
     for (const event of allEventsToRetry) {
       await this.executeRevalidation(event.msg);
+      this.routeInFailedState.delete(event.msg.MessageDeduplicationId);
     }
   }
 
