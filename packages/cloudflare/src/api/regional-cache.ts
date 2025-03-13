@@ -9,6 +9,7 @@ const ONE_MINUTE_IN_SECONDS = 60;
 
 type Options = {
   mode: "short-lived" | "long-lived";
+  shouldLazilyUpdateOnCacheHit?: boolean;
 };
 
 class RegionalCache implements IncrementalCache {
@@ -28,31 +29,31 @@ class RegionalCache implements IncrementalCache {
     isFetch?: IsFetch
   ): Promise<WithLastModified<CacheValue<IsFetch>> | null> {
     try {
-      const storeResponse = this.store.get(key, isFetch);
-
+      const cache = await this.getCacheInstance();
       const localCacheKey = this.getCacheKey(key, isFetch);
 
       // Check for a cached entry as this will be faster than the store response.
-      const cache = await this.getCacheInstance();
       const cachedResponse = await cache.match(localCacheKey);
       if (cachedResponse) {
         debug("Get - cached response");
 
-        // Update the local cache after the R2 fetch has completed.
-        getCloudflareContext().ctx.waitUntil(
-          Promise.resolve(storeResponse).then(async (rawEntry) => {
-            const { value, lastModified } = rawEntry ?? {};
+        // Re-fetch from the store and update the regional cache in the background
+        if (this.opts.shouldLazilyUpdateOnCacheHit) {
+          getCloudflareContext().ctx.waitUntil(
+            this.store.get(key, isFetch).then(async (rawEntry) => {
+              const { value, lastModified } = rawEntry ?? {};
 
-            if (value && typeof lastModified === "number") {
-              await this.putToCache(localCacheKey, { value, lastModified });
-            }
-          })
-        );
+              if (value && typeof lastModified === "number") {
+                await this.putToCache(localCacheKey, { value, lastModified });
+              }
+            })
+          );
+        }
 
         return cachedResponse.json();
       }
 
-      const rawEntry = await storeResponse;
+      const rawEntry = await this.store.get(key, isFetch);
       const { value, lastModified } = rawEntry ?? {};
       if (!value || typeof lastModified !== "number") return null;
 
