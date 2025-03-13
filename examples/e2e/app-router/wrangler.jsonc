@@ -19,9 +19,7 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_classes": [
-        "DurableObjectQueueHandler"
-      ]
+      "new_classes": ["DurableObjectQueueHandler"]
     }
   ],
   "kv_namespaces": [

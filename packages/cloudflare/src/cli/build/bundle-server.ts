@@ -54,24 +54,17 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
     "server-functions/default",
     getPackagePath(buildOpts),
     ".next"
-  )
-  const serverFiles = path.join(
-    baseManifestPath,
-    "required-server-files.json"
   );
+  const serverFiles = path.join(baseManifestPath, "required-server-files.json");
   const nextConfig = JSON.parse(fs.readFileSync(serverFiles, "utf-8")).config;
 
   // TODO: This is a temporary solution to get the previewModeId from the prerender-manifest.json
   //       We should find a better way to get this value, probably directly provided from aws
   //       probably in an env variable exactly as for BUILD_ID
-  const prerenderManifest = path.join(
-    baseManifestPath,
-    "prerender-manifest.json"
-  );
+  const prerenderManifest = path.join(baseManifestPath, "prerender-manifest.json");
   const prerenderManifestContent = fs.readFileSync(prerenderManifest, "utf-8");
   const prerenderManifestJson = JSON.parse(prerenderManifestContent);
   const previewModeId = prerenderManifestJson.preview.previewModeId;
-
 
   console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
 

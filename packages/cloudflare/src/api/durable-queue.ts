@@ -3,8 +3,6 @@ import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "./cloudflare-context";
 
-
-
 export default {
   name: "durable-queue",
   send: async (msg: QueueMessage) => {
@@ -18,5 +16,5 @@ export default {
       ...msg,
       previewModeId,
     });
-  }
+  },
 } satisfies Queue;
