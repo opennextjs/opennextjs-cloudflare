@@ -11,10 +11,8 @@ export default {
 
     const id = durableObject.idFromName(msg.MessageGroupId);
     const stub = durableObject.get(id);
-    const previewModeId = process.env.__NEXT_PREVIEW_MODE_ID!;
     await stub.revalidate({
       ...msg,
-      previewModeId,
     });
   },
 } satisfies Queue;

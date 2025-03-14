@@ -14,6 +14,7 @@ import type { ProjectOptions } from "../project-options.js";
 import { bundleServer } from "./bundle-server.js";
 import { compileCacheAssetsManifestSqlFile } from "./open-next/compile-cache-assets-manifest.js";
 import { compileEnvFiles } from "./open-next/compile-env-files.js";
+import { compileDurableObjects } from "./open-next/compileDurableObjects.js";
 import { copyCacheAssets } from "./open-next/copyCacheAssets.js";
 import { createServerBundle } from "./open-next/createServerBundle.js";
 import {
@@ -96,6 +97,8 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
   }
 
   await createServerBundle(options);
+
+  await compileDurableObjects(options);
 
   await bundleServer(options);
 

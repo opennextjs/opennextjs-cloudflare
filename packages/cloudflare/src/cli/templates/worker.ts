@@ -18,7 +18,7 @@ Object.defineProperty(globalThis, Symbol.for("__cloudflare-context__"), {
 });
 
 //@ts-expect-error: Will be resolved by wrangler build
-export { DurableObjectQueueHandler } from "@opennextjs/cloudflare/durable-objects/queue";
+export { DurableObjectQueueHandler } from "./.build/durable-objects/queue.js";
 
 // Populate process.env on the first request
 let processEnvPopulated = false;
