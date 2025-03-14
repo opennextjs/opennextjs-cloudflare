@@ -1,4 +1,4 @@
-import { error } from "@opennextjs/aws/adapters/logger.js";
+import { debug, error } from "@opennextjs/aws/adapters/logger.js";
 import type { QueueMessage } from "@opennextjs/aws/types/overrides";
 import {
   FatalError,
@@ -45,7 +45,10 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     this.sql = ctx.storage.sql;
 
     // We restore the state
-    ctx.blockConcurrencyWhile(() => this.initState());
+    ctx.blockConcurrencyWhile(async () => {
+      debug(`Restoring the state of the durable object`);
+      await this.initState();
+    });
 
     this.maxRevalidations = env.MAX_REVALIDATION_BY_DURABLE_OBJECT
       ? parseInt(env.MAX_REVALIDATION_BY_DURABLE_OBJECT)
@@ -62,6 +65,8 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     this.maxRevalidationAttempts = env.MAX_REVALIDATION_ATTEMPTS
       ? parseInt(env.MAX_REVALIDATION_ATTEMPTS)
       : DEFAULT_MAX_REVALIDATION_ATTEMPTS;
+
+    debug(`Durable object initialized`);
   }
 
   async revalidate(msg: QueueMessage) {
@@ -72,11 +77,17 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     if (this.routeInFailedState.has(msg.MessageDeduplicationId)) return;
 
     if (this.ongoingRevalidations.size >= this.maxRevalidations) {
+      debug(
+        `The maximum number of revalidations (${this.maxRevalidations}) is reached. Blocking until one of the revalidations finishes.`
+      );
       const ongoingRevalidations = this.ongoingRevalidations.values();
       // When there is more than the max revalidations, we block concurrency until one of the revalidations finishes
       // We still await the promise to ensure the revalidation is completed
       // This is fine because the queue itself run inside a waitUntil
-      await this.ctx.blockConcurrencyWhile(() => Promise.race(ongoingRevalidations));
+      await this.ctx.blockConcurrencyWhile(async () => {
+        debug(`Waiting for one of the revalidations to finish`);
+        await Promise.race(ongoingRevalidations);
+      });
     }
 
     const revalidationPromise = this.executeRevalidation(msg);
@@ -90,6 +101,7 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
 
   private async executeRevalidation(msg: QueueMessage) {
     try {
+      debug(`Revalidating ${msg.MessageBody.host}${msg.MessageBody.url}`);
       const {
         MessageBody: { host, url },
       } = msg;
@@ -166,12 +178,14 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     );
     const allEventsToRetry = nextEventToRetry ? [nextEventToRetry, ...expiredEvents] : expiredEvents;
     for (const event of allEventsToRetry) {
+      debug(`Retrying revalidation for ${event.msg.MessageBody.host}${event.msg.MessageBody.url}`);
       await this.executeRevalidation(event.msg);
       this.routeInFailedState.delete(event.msg.MessageDeduplicationId);
     }
   }
 
   async addToFailedState(msg: QueueMessage) {
+    debug(`Adding ${msg.MessageBody.host}${msg.MessageBody.url} to the failed state`);
     const existingFailedState = this.routeInFailedState.get(msg.MessageDeduplicationId);
 
     let updatedFailedState: FailedState;
