@@ -18,8 +18,10 @@ type Options = {
   /**
    * Whether the regional cache entry should be updated in the background or not when it experiences
    * a cache hit.
+   *
+   * Defaults to `false` for the `short-lived` mode, and `true` for the `long-lived` mode.
    */
-  shouldLazilyUpdateOnCacheHit: boolean;
+  shouldLazilyUpdateOnCacheHit?: boolean;
 };
 
 class RegionalCache implements IncrementalCache {
@@ -32,6 +34,8 @@ class RegionalCache implements IncrementalCache {
     private opts: Options
   ) {
     this.name = this.store.name;
+
+    this.opts.shouldLazilyUpdateOnCacheHit ??= this.opts.mode === "long-lived";
   }
 
   async get<IsFetch extends boolean = false>(
@@ -155,6 +159,8 @@ class RegionalCache implements IncrementalCache {
  * - `long-lived`: Re-use a cache entry until it is revalidated.
  * @param opts.shouldLazilyUpdateOnCacheHit - Whether the regional cache entry should be updated in
  * the background or not when it experiences a cache hit.
+ *
+ * Defaults to `false` for the `short-lived` mode, and `true` for the `long-lived` mode.
  */
 export function withRegionalCache(cache: IncrementalCache, opts: Options) {
   return new RegionalCache(cache, opts);
