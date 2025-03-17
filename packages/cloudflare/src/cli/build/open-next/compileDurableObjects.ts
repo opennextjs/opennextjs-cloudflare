@@ -6,7 +6,10 @@ import { type BuildOptions, esbuildSync, getPackagePath } from "@opennextjs/aws/
 
 export function compileDurableObjects(buildOpts: BuildOptions) {
   const _require = createRequire(import.meta.url);
-  const entryPoints = [_require.resolve("@opennextjs/cloudflare/durable-objects/queue")];
+  const entryPoints = [
+    _require.resolve("@opennextjs/cloudflare/durable-objects/queue"),
+    _require.resolve("@opennextjs/cloudflare/durable-objects/sharded-tag-cache"),
+  ];
 
   const { outputDir } = buildOpts;
 

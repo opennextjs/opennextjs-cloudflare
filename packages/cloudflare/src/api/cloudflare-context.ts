@@ -1,6 +1,7 @@
 import type { Context, RunningCodeOptions } from "node:vm";
 
 import type { DurableObjectQueueHandler } from "./durable-objects/queue";
+import { DOShardedTagCache } from "./durable-objects/sharded-tag-cache";
 
 declare global {
   interface CloudflareEnv {
@@ -16,6 +17,9 @@ declare global {
     NEXT_CACHE_REVALIDATION_WORKER?: Service;
     // Durable Object namespace to use for the durable object queue handler
     NEXT_CACHE_REVALIDATION_DURABLE_OBJECT?: DurableObjectNamespace<DurableObjectQueueHandler>;
+    // Durables object namespace to use for the sharded tag cache
+    NEXT_CACHE_D1_SHARDED?: DurableObjectNamespace<DOShardedTagCache>;
+
     // Asset binding
     ASSETS?: Fetcher;
 
