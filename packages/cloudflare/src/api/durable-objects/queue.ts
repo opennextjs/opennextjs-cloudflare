@@ -76,6 +76,10 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     // The route is already in a failed state, it will be retried later
     if (this.routeInFailedState.has(msg.MessageDeduplicationId)) return;
 
+    // If the last success is newer than the last modified, it's likely that the regional cache is out of date
+    // We don't need to revalidate in this case
+    if (this.checkSyncTable(msg)) return;
+
     if (this.ongoingRevalidations.size >= this.maxRevalidations) {
       debug(
         `The maximum number of revalidations (${this.maxRevalidations}) is reached. Blocking until one of the revalidations finishes.`
@@ -180,7 +184,6 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     for (const event of allEventsToRetry) {
       debug(`Retrying revalidation for ${event.msg.MessageBody.host}${event.msg.MessageBody.url}`);
       await this.executeRevalidation(event.msg);
-      this.routeInFailedState.delete(event.msg.MessageDeduplicationId);
     }
   }
 
