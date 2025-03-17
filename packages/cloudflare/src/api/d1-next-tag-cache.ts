@@ -1,4 +1,4 @@
-import { debug } from "@opennextjs/aws/adapters/logger.js";
+import { debug, error } from "@opennextjs/aws/adapters/logger.js";
 import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 import type { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
 import { RecoverableError } from "@opennextjs/aws/utils/error.js";
@@ -12,15 +12,22 @@ export class D1NextModeTagCache implements NextModeTagCache {
   async hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean> {
     const { isDisabled, db, tables } = this.getConfig();
     if (isDisabled) return false;
-    const result = await db
-      .prepare(
-        `SELECT COUNT(*) as cnt FROM ${JSON.stringify(tables.revalidations)} WHERE tag IN (${tags.map(() => "?").join(", ")}) AND revalidatedAt > ?`
-      )
-      .bind(...tags.map((tag) => this.getCacheKey(tag)), lastModified ?? Date.now())
-      .first<{ cnt: number }>();
-    if (!result) throw new RecoverableError(`D1 select failed for ${tags}`);
+    try {
+      const result = await db
+        .prepare(
+          `SELECT COUNT(*) as cnt FROM ${JSON.stringify(tables.revalidations)} WHERE tag IN (${tags.map(() => "?").join(", ")}) AND revalidatedAt > ?`
+        )
+        .bind(...tags.map((tag) => this.getCacheKey(tag)), lastModified ?? Date.now())
+        .first<{ cnt: number }>();
+      if (!result) throw new RecoverableError(`D1 select failed for ${tags}`);
 
-    return result.cnt > 0;
+      return result.cnt > 0;
+    } catch (e) {
+      error(e);
+      // By default we don't want to crash here, so we return false
+      // We still log the error though so we can debug it
+      return false;
+    }
   }
 
   async writeTags(tags: string[]): Promise<void> {
