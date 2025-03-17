@@ -13,7 +13,7 @@ class ShardedD1TagCache implements NextModeTagCache {
   mode = "nextMode" as const;
   public readonly name = "sharded-d1-tag-cache";
 
-  constructor(private opts: ShardedD1TagCacheOptions = { numberOfShards: 4 }) { }
+  constructor(private opts: ShardedD1TagCacheOptions = { numberOfShards: 4 }) {}
 
   private getDurableObjectStub(shardId: string) {
     const durableObject = getCloudflareContext().env.NEXT_CACHE_D1_SHARDED;
@@ -25,7 +25,10 @@ class ShardedD1TagCache implements NextModeTagCache {
 
   private generateShards(tags: string[]) {
     // For each tag, we generate a message group id
-    const messageGroupIds = tags.map((tag) => ({ shardId: generateShardId(tag, this.opts.numberOfShards, "shard"), tag }));
+    const messageGroupIds = tags.map((tag) => ({
+      shardId: generateShardId(tag, this.opts.numberOfShards, "shard"),
+      tag,
+    }));
     // We group the tags by shard
     const shards = new Map<string, string[]>();
     for (const { shardId, tag } of messageGroupIds) {
@@ -63,7 +66,7 @@ class ShardedD1TagCache implements NextModeTagCache {
     const shardsResult = await Promise.all(
       Array.from(shards.entries()).map(async ([shardId, shardedTags]) => {
         const stub = this.getDurableObjectStub(shardId);
-        return stub.hasBeenRevalidated(shardedTags, lastModified)
+        return stub.hasBeenRevalidated(shardedTags, lastModified);
       })
     );
     return shardsResult.some((result) => result);

@@ -21,7 +21,7 @@ export class DOShardedTagCache extends DurableObject<CloudflareEnv> {
         lastModified ?? Date.now()
       )
       .one();
-      console.log("Checking revalidation for tags", tags, result);
+    console.log("Checking revalidation for tags", tags, result);
     return result.cnt > 0;
   }
 
