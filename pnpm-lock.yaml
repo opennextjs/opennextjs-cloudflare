@@ -898,8 +898,8 @@ importers:
         specifier: 'catalog:'
         version: 1.31.0
       '@opennextjs/aws':
-        specifier: https://pkg.pr.new/@opennextjs/aws@773
-        version: https://pkg.pr.new/@opennextjs/aws@773
+        specifier: https://pkg.pr.new/@opennextjs/aws@778
+        version: https://pkg.pr.new/@opennextjs/aws@778
       enquirer:
         specifier: ^2.4.1
         version: 2.4.1
@@ -3809,8 +3809,8 @@ packages:
     resolution: {integrity: sha512-8H4FeoxeLb24N2iWO9H3Tp8ln16YG1V3c+gIzwi+5lc+PRie/5TEjNOd1x1LLc/O9s0P2i4JjEQiDk8MFBI4TA==}
     hasBin: true
 
-  '@opennextjs/aws@https://pkg.pr.new/@opennextjs/aws@773':
-    resolution: {tarball: https://pkg.pr.new/@opennextjs/aws@773}
+  '@opennextjs/aws@https://pkg.pr.new/@opennextjs/aws@778':
+    resolution: {tarball: https://pkg.pr.new/@opennextjs/aws@778}
     version: 3.5.2
     hasBin: true
 
@@ -13044,7 +13044,7 @@ snapshots:
       - aws-crt
       - supports-color
 
-  '@opennextjs/aws@https://pkg.pr.new/@opennextjs/aws@773':
+  '@opennextjs/aws@https://pkg.pr.new/@opennextjs/aws@778':
     dependencies:
       '@aws-sdk/client-cloudfront': 3.398.0
       '@aws-sdk/client-dynamodb': 3.699.0
