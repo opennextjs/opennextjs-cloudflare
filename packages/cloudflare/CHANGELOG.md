@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 0.5.12
+
+### Patch Changes
+
+- [#467](https://github.com/opennextjs/opennextjs-cloudflare/pull/467) [`09c5116`](https://github.com/opennextjs/opennextjs-cloudflare/commit/09c51167d4e6327bd48081bc18a9adb70a70dd04) Thanks [@vicb](https://github.com/vicb)! - Update wrangler dependency
+
 ## 0.5.11
 
 ### Patch Changes
