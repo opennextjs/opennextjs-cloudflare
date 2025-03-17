@@ -1,5 +1,7 @@
 import type { Context, RunningCodeOptions } from "node:vm";
 
+import type { GetPlatformProxyOptions } from "wrangler";
+
 import type { DurableObjectQueueHandler } from "./durable-objects/queue";
 import { DOShardedTagCache } from "./durable-objects/sharded-tag-cache";
 
@@ -290,12 +292,13 @@ async function monkeyPatchVmModuleEdgeContext(cloudflareContext: CloudflareConte
 async function getCloudflareContextFromWrangler<
   CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
   Context = ExecutionContext,
->(): Promise<CloudflareContext<CfProperties, Context>> {
+>(options?: Omit<GetPlatformProxyOptions, "environment">): Promise<CloudflareContext<CfProperties, Context>> {
   // Note: we never want wrangler to be bundled in the Next.js app, that's why the import below looks like it does
   const { getPlatformProxy } = await import(/* webpackIgnore: true */ `${"__wrangler".replaceAll("_", "")}`);
   const { env, cf, ctx } = await getPlatformProxy({
     // This allows the selection of a wrangler environment while running in next dev mode
     environment: process.env.NEXT_DEV_WRANGLER_ENV,
+    ...options,
   });
   return {
     env,
