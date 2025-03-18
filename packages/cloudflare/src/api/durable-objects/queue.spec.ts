@@ -4,12 +4,10 @@ import { DurableObjectQueueHandler } from "./queue";
 
 vi.mock("cloudflare:workers", () => ({
   DurableObject: class {
-    ctx: DurableObjectState;
-    env: CloudflareEnv;
-    constructor(ctx: DurableObjectState, env: CloudflareEnv) {
-      this.ctx = ctx;
-      this.env = env;
-    }
+    constructor(
+      public ctx: DurableObjectState,
+      public env: CloudflareEnv
+    ) {}
   },
 }));
 
@@ -100,7 +98,7 @@ describe("DurableObjectQueue", () => {
       // the next one should block until one of the previous ones finishes
       const blockedReq = queue.revalidate(createMessage("id6"));
 
-      expect(queue.ongoingRevalidations.size).toBe(5);
+      expect(queue.ongoingRevalidations.size).toBe(queue.maxRevalidations);
       expect(queue.ongoingRevalidations.has("id6")).toBe(false);
       expect(Array.from(queue.ongoingRevalidations.keys())).toEqual(["id", "id2", "id3", "id4", "id5"]);
 
@@ -203,14 +201,14 @@ describe("DurableObjectQueue", () => {
 
     it("should add an alarm if there are failed states", async () => {
       const queue = createDurableObjectQueue({ fetchDuration: 10 });
-      queue.routeInFailedState.set("id", { msg: createMessage("id"), retryCount: 0, nextAlarm: 1000 });
+      queue.routeInFailedState.set("id", { msg: createMessage("id"), retryCount: 0, nextAlarmMs: 1000 });
       await queue.addAlarm();
       expect(getStorage(queue).setAlarm).toHaveBeenCalledWith(1000);
     });
 
     it("should not add an alarm if there is already an alarm set", async () => {
       const queue = createDurableObjectQueue({ fetchDuration: 10 });
-      queue.routeInFailedState.set("id", { msg: createMessage("id"), retryCount: 0, nextAlarm: 1000 });
+      queue.routeInFailedState.set("id", { msg: createMessage("id"), retryCount: 0, nextAlarmMs: 1000 });
       // @ts-expect-error
       queue.ctx.storage.getAlarm.mockResolvedValueOnce(1000);
       await queue.addAlarm();
@@ -219,8 +217,8 @@ describe("DurableObjectQueue", () => {
 
     it("should set the alarm to the lowest nextAlarm", async () => {
       const queue = createDurableObjectQueue({ fetchDuration: 10 });
-      queue.routeInFailedState.set("id", { msg: createMessage("id"), retryCount: 0, nextAlarm: 1000 });
-      queue.routeInFailedState.set("id2", { msg: createMessage("id2"), retryCount: 0, nextAlarm: 500 });
+      queue.routeInFailedState.set("id", { msg: createMessage("id"), retryCount: 0, nextAlarmMs: 1000 });
+      queue.routeInFailedState.set("id2", { msg: createMessage("id2"), retryCount: 0, nextAlarmMs: 500 });
       await queue.addAlarm();
       expect(getStorage(queue).setAlarm).toHaveBeenCalledWith(500);
     });
@@ -238,7 +236,7 @@ describe("DurableObjectQueue", () => {
     it("should add a failed state with the correct nextAlarm", async () => {
       const queue = createDurableObjectQueue({ fetchDuration: 10 });
       await queue.addToFailedState(createMessage("id"));
-      expect(queue.routeInFailedState.get("id")?.nextAlarm).toBeGreaterThan(Date.now());
+      expect(queue.routeInFailedState.get("id")?.nextAlarmMs).toBeGreaterThan(Date.now());
       expect(queue.routeInFailedState.get("id")?.retryCount).toBe(1);
     });
 
@@ -246,13 +244,13 @@ describe("DurableObjectQueue", () => {
       const queue = createDurableObjectQueue({ fetchDuration: 10 });
       await queue.addToFailedState(createMessage("id"));
       await queue.addToFailedState(createMessage("id"));
-      expect(queue.routeInFailedState.get("id")?.nextAlarm).toBeGreaterThan(Date.now());
+      expect(queue.routeInFailedState.get("id")?.nextAlarmMs).toBeGreaterThan(Date.now());
       expect(queue.routeInFailedState.get("id")?.retryCount).toBe(2);
     });
 
     it("should not add a failed state if it has been retried 6 times", async () => {
       const queue = createDurableObjectQueue({ fetchDuration: 10 });
-      queue.routeInFailedState.set("id", { msg: createMessage("id"), retryCount: 6, nextAlarm: 1000 });
+      queue.routeInFailedState.set("id", { msg: createMessage("id"), retryCount: 6, nextAlarmMs: 1000 });
       await queue.addToFailedState(createMessage("id"));
       expect(queue.routeInFailedState.size).toBe(0);
     });
@@ -264,12 +262,12 @@ describe("DurableObjectQueue", () => {
       queue.routeInFailedState.set("id", {
         msg: createMessage("id"),
         retryCount: 0,
-        nextAlarm: Date.now() - 1000,
+        nextAlarmMs: Date.now() - 1000,
       });
       queue.routeInFailedState.set("id2", {
         msg: createMessage("id2"),
         retryCount: 0,
-        nextAlarm: Date.now() - 1000,
+        nextAlarmMs: Date.now() - 1000,
       });
       await queue.alarm();
       expect(queue.routeInFailedState.size).toBe(0);
@@ -281,12 +279,12 @@ describe("DurableObjectQueue", () => {
       queue.routeInFailedState.set("id", {
         msg: createMessage("id"),
         retryCount: 0,
-        nextAlarm: Date.now() + 1000,
+        nextAlarmMs: Date.now() + 1000,
       });
       queue.routeInFailedState.set("id2", {
         msg: createMessage("id2"),
         retryCount: 0,
-        nextAlarm: Date.now() + 500,
+        nextAlarmMs: Date.now() + 500,
       });
       await queue.alarm();
       expect(queue.routeInFailedState.size).toBe(1);
@@ -299,12 +297,12 @@ describe("DurableObjectQueue", () => {
       queue.routeInFailedState.set("id", {
         msg: createMessage("id"),
         retryCount: 0,
-        nextAlarm: Date.now() + 1000,
+        nextAlarmMs: Date.now() + 1000,
       });
       queue.routeInFailedState.set("id2", {
         msg: createMessage("id2"),
         retryCount: 0,
-        nextAlarm: Date.now() - 1000,
+        nextAlarmMs: Date.now() - 1000,
       });
       await queue.alarm();
       expect(queue.routeInFailedState.size).toBe(0);

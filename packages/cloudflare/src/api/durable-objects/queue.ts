@@ -24,7 +24,7 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
   // TODO: restore the state of the failed revalidations - Probably in the next PR where i'll add the storage
   routeInFailedState = new Map<
     string,
-    { msg: ExtendedQueueMessage; retryCount: number; nextAlarm: number }
+    { msg: ExtendedQueueMessage; retryCount: number; nextAlarmMs: number }
   >();
 
   service: NonNullable<CloudflareEnv["NEXT_CACHE_REVALIDATION_WORKER"]>;
@@ -34,10 +34,9 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
 
   constructor(ctx: DurableObjectState, env: CloudflareEnv) {
     super(ctx, env);
-    const service = env.NEXT_CACHE_REVALIDATION_WORKER;
+    this.service = env.NEXT_CACHE_REVALIDATION_WORKER!;
     // If there is no service binding, we throw an error because we can't revalidate without it
-    if (!service) throw new IgnorableError("No service binding for cache revalidation worker");
-    this.service = service;
+    if (!this.service) throw new IgnorableError("No service binding for cache revalidation worker");
   }
 
   async revalidate(msg: ExtendedQueueMessage) {
@@ -115,18 +114,16 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
   }
 
   override async alarm() {
+    const currentDateTime = Date.now();
     // We fetch the first event that needs to be retried or if the date is expired
     const nextEventToRetry = Array.from(this.routeInFailedState.values())
-      .filter((failing) => failing.nextAlarm > Date.now())
-      .sort(({ nextAlarm: a }, { nextAlarm: b }) => a - b)[0];
+      .filter(({ nextAlarmMs }) => nextAlarmMs > currentDateTime)
+      .sort(({ nextAlarmMs: a }, { nextAlarmMs: b }) => a - b)[0];
     // We also have to check if there are expired events, if the revalidation takes too long, or if the
     const expiredEvents = Array.from(this.routeInFailedState.values()).filter(
-      ({ nextAlarm }) => nextAlarm <= Date.now()
+      ({ nextAlarmMs }) => nextAlarmMs <= currentDateTime
     );
-    const allEventsToRetry =
-      nextEventToRetry && nextEventToRetry.nextAlarm > Date.now()
-        ? [nextEventToRetry, ...expiredEvents]
-        : expiredEvents;
+    const allEventsToRetry = nextEventToRetry ? [nextEventToRetry, ...expiredEvents] : expiredEvents;
     for (const event of allEventsToRetry) {
       await this.executeRevalidation(event.msg);
       this.routeInFailedState.delete(event.msg.MessageDeduplicationId);
@@ -135,7 +132,6 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
 
   async addToFailedState(msg: ExtendedQueueMessage) {
     const existingFailedState = this.routeInFailedState.get(msg.MessageDeduplicationId);
-    let nextAlarm = Date.now() + 2_000;
 
     if (existingFailedState) {
       if (existingFailedState.retryCount >= 6) {
@@ -146,17 +142,18 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
         this.routeInFailedState.delete(msg.MessageDeduplicationId);
         return;
       }
-      nextAlarm = Date.now() + Math.pow(2, existingFailedState.retryCount + 1) * 2_000;
+      const nextAlarm = Date.now() + Math.pow(2, existingFailedState.retryCount + 1) * 2_000;
       this.routeInFailedState.set(msg.MessageDeduplicationId, {
         ...existingFailedState,
         retryCount: existingFailedState.retryCount + 1,
-        nextAlarm,
+        nextAlarmMs: nextAlarm,
       });
     } else {
+      const nextAlarm = Date.now() + 2_000;
       this.routeInFailedState.set(msg.MessageDeduplicationId, {
         msg,
         retryCount: 1,
-        nextAlarm,
+        nextAlarmMs: nextAlarm,
       });
     }
     // We probably want to do something if routeInFailedState is becoming too big, at least log it
@@ -168,9 +165,8 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     if (existingAlarm) return;
     if (this.routeInFailedState.size === 0) return;
 
-    const nextAlarmToSetup = Array.from(this.routeInFailedState.values()).reduce(
-      (acc, { nextAlarm }) => Math.min(acc, nextAlarm),
-      Infinity
+    const nextAlarmToSetup = Math.min(
+      ...Array.from(this.routeInFailedState.values()).map(({ nextAlarmMs }) => nextAlarmMs)
     );
     await this.ctx.storage.setAlarm(nextAlarmToSetup);
   }
