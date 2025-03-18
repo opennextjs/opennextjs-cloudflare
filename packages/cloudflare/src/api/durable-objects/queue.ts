@@ -202,7 +202,8 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
         this.routeInFailedState.delete(msg.MessageDeduplicationId);
         return;
       }
-      const nextAlarmMs = Date.now() + Math.pow(2, existingFailedState.retryCount + 1) * this.revalidationRetryInterval;
+      const nextAlarmMs =
+        Date.now() + Math.pow(2, existingFailedState.retryCount + 1) * this.revalidationRetryInterval;
       updatedFailedState = {
         ...existingFailedState,
         retryCount: existingFailedState.retryCount + 1,
