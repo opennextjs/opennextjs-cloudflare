@@ -299,7 +299,7 @@ async function getCloudflareContextFromWrangler<
   const { env, cf, ctx } = await getPlatformProxy({
     // This allows the selection of a wrangler environment while running in next dev mode
     ...options,
-    environment: process.env.NEXT_DEV_WRANGLER_ENV,   
+    environment: process.env.NEXT_DEV_WRANGLER_ENV,
   });
   return {
     env,
