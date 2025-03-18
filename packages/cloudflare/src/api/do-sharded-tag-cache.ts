@@ -47,7 +47,7 @@ class ShardedD1TagCache implements NextModeTagCache {
    * @param tags
    * @returns A map of shardId to tags
    */
-  private generateShards(tags: string[]) {
+  generateShards(tags: string[]) {
     // For each tag, we generate a message group id
     const messageGroupIds = tags.map((tag) => ({
       shardId: generateShardId(tag, this.opts.numberOfShards, "shard"),
@@ -156,11 +156,16 @@ class ShardedD1TagCache implements NextModeTagCache {
   }
 
   async getFromRegionalCache(shardId: string, tags: string[]) {
-    if (!this.opts.regionalCache) return;
-    const cache = await this.getCacheInstance();
-    if (!cache) return;
-    const key = await this.getCacheKey(shardId, tags);
-    return cache.match(key);
+    try {
+      if (!this.opts.regionalCache) return;
+      const cache = await this.getCacheInstance();
+      if (!cache) return;
+      const key = await this.getCacheKey(shardId, tags);
+      return cache.match(key);
+    } catch (e) {
+      error("Error while fetching from regional cache", e);
+      return;
+    }
   }
 
   async putToRegionalCache(shardId: string, tags: string[], hasBeenRevalidated: boolean) {
