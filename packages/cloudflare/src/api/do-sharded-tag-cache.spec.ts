@@ -131,7 +131,7 @@ describe("DOShardedTagCache", () => {
         dangerous: { disableTagCache: false },
       };
     });
-    it("should return if the cache is disabled", async () => {
+    it("should return early if the cache is disabled", async () => {
       globalThis.openNextConfig = {
         dangerous: { disableTagCache: true },
       };
