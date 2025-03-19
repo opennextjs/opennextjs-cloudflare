@@ -26,6 +26,11 @@ const createDurableObjectQueue = ({
     storage: {
       setAlarm: vi.fn(),
       getAlarm: vi.fn(),
+      sql: {
+        exec: vi.fn().mockImplementation(() => ({
+          one: vi.fn(),
+        })),
+      },
     },
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -60,6 +65,7 @@ const createMessage = (dedupId: string, lastModified = Date.now()) => ({
 describe("DurableObjectQueue", () => {
   describe("successful revalidation", () => {
     it("should process a single revalidation", async () => {
+      process.env.__NEXT_PREVIEW_MODE_ID = "test";
       const queue = createDurableObjectQueue({ fetchDuration: 10 });
       const firstRequest = await queue.revalidate(createMessage("id"));
       expect(firstRequest).toBeUndefined();
@@ -102,8 +108,9 @@ describe("DurableObjectQueue", () => {
       expect(queue.ongoingRevalidations.has("id6")).toBe(false);
       expect(Array.from(queue.ongoingRevalidations.keys())).toEqual(["id", "id2", "id3", "id4", "id5"]);
 
+      // BlockConcurrencyWhile is called twice here, first time during creation of the object and second time when we try to revalidate
       // @ts-expect-error
-      expect(queue.ctx.blockConcurrencyWhile).toHaveBeenCalledTimes(1);
+      expect(queue.ctx.blockConcurrencyWhile).toHaveBeenCalledTimes(2);
 
       // Here we await the blocked request to ensure it's resolved
       await blockedReq;
@@ -201,9 +208,10 @@ describe("DurableObjectQueue", () => {
 
     it("should add an alarm if there are failed states", async () => {
       const queue = createDurableObjectQueue({ fetchDuration: 10 });
-      queue.routeInFailedState.set("id", { msg: createMessage("id"), retryCount: 0, nextAlarmMs: 1000 });
+      const nextAlarmMs = Date.now() + 1000;
+      queue.routeInFailedState.set("id", { msg: createMessage("id"), retryCount: 0, nextAlarmMs });
       await queue.addAlarm();
-      expect(getStorage(queue).setAlarm).toHaveBeenCalledWith(1000);
+      expect(getStorage(queue).setAlarm).toHaveBeenCalledWith(nextAlarmMs);
     });
 
     it("should not add an alarm if there is already an alarm set", async () => {
@@ -217,10 +225,16 @@ describe("DurableObjectQueue", () => {
 
     it("should set the alarm to the lowest nextAlarm", async () => {
       const queue = createDurableObjectQueue({ fetchDuration: 10 });
-      queue.routeInFailedState.set("id", { msg: createMessage("id"), retryCount: 0, nextAlarmMs: 1000 });
-      queue.routeInFailedState.set("id2", { msg: createMessage("id2"), retryCount: 0, nextAlarmMs: 500 });
+      const nextAlarmMs = Date.now() + 1000;
+      const firstAlarm = Date.now() + 500;
+      queue.routeInFailedState.set("id", { msg: createMessage("id"), retryCount: 0, nextAlarmMs });
+      queue.routeInFailedState.set("id2", {
+        msg: createMessage("id2"),
+        retryCount: 0,
+        nextAlarmMs: firstAlarm,
+      });
       await queue.addAlarm();
-      expect(getStorage(queue).setAlarm).toHaveBeenCalledWith(500);
+      expect(getStorage(queue).setAlarm).toHaveBeenCalledWith(firstAlarm);
     });
   });
 
