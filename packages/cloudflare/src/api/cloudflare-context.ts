@@ -1,12 +1,22 @@
 import type { Context, RunningCodeOptions } from "node:vm";
 
+import type { DurableObjectQueueHandler } from "./durable-objects/queue";
+
 declare global {
   interface CloudflareEnv {
+    // KV used for the incremental cache
     NEXT_CACHE_WORKERS_KV?: KVNamespace;
+    // D1 db used for the tag cache
     NEXT_CACHE_D1?: D1Database;
+    // D1 table to use for the tag cache for the tag/path mapping
     NEXT_CACHE_D1_TAGS_TABLE?: string;
+    // D1 table to use for the tag cache for storing the tag and their associated revalidation times
     NEXT_CACHE_D1_REVALIDATIONS_TABLE?: string;
+    // Service binding for the worker itself to be able to call itself from within the worker
     NEXT_CACHE_REVALIDATION_WORKER?: Service;
+    // Durable Object namespace to use for the durable object queue handler
+    NEXT_CACHE_REVALIDATION_DURABLE_OBJECT?: DurableObjectNamespace<DurableObjectQueueHandler>;
+    // Asset binding
     ASSETS?: Fetcher;
   }
 }
