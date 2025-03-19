@@ -32,10 +32,10 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
   service: NonNullable<CloudflareEnv["NEXT_CACHE_REVALIDATION_WORKER"]>;
 
   // Configurable params
-  maxRevalidations = DEFAULT_MAX_REVALIDATION_BY_DURABLE_OBJECT;
-  revalidationTimeout = DEFAULT_REVALIDATION_TIMEOUT_MS;
-  revalidationRetryInterval = DEFAULT_REVALIDATION_RETRY_INTERVAL_MS;
-  maxRevalidationAttempts = DEFAULT_MAX_REVALIDATION_ATTEMPTS;
+  readonly maxRevalidations: number;
+  readonly revalidationTimeout: number;
+  readonly revalidationRetryInterval: number;
+  readonly maxRevalidationAttempts: number;
 
   constructor(ctx: DurableObjectState, env: CloudflareEnv) {
     super(ctx, env);
