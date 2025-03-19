@@ -142,18 +142,17 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
         this.routeInFailedState.delete(msg.MessageDeduplicationId);
         return;
       }
-      const nextAlarm = Date.now() + Math.pow(2, existingFailedState.retryCount + 1) * 2_000;
+      const nextAlarmMs = Date.now() + Math.pow(2, existingFailedState.retryCount + 1) * 2_000;
       this.routeInFailedState.set(msg.MessageDeduplicationId, {
         ...existingFailedState,
         retryCount: existingFailedState.retryCount + 1,
-        nextAlarmMs: nextAlarm,
+        nextAlarmMs,
       });
     } else {
-      const nextAlarm = Date.now() + 2_000;
       this.routeInFailedState.set(msg.MessageDeduplicationId, {
         msg,
         retryCount: 1,
-        nextAlarmMs: nextAlarm,
+        nextAlarmMs: Date.now() + 2_000,
       });
     }
     // We probably want to do something if routeInFailedState is becoming too big, at least log it
