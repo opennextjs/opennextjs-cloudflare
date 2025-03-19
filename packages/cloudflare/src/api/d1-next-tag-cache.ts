@@ -4,10 +4,11 @@ import type { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
 import { RecoverableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "./cloudflare-context.js";
+import { DEFAULT_NEXT_CACHE_D1_REVALIDATIONS_TABLE } from "./constants.js";
 
 export class D1NextModeTagCache implements NextModeTagCache {
-  mode = "nextMode" as const;
-  name = "d1-next-mode-tag-cache";
+  readonly mode = "nextMode" as const;
+  readonly name = "d1-next-mode-tag-cache";
 
   async hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean> {
     const { isDisabled, db, tables } = this.getConfig();
@@ -15,7 +16,7 @@ export class D1NextModeTagCache implements NextModeTagCache {
     try {
       const result = await db
         .prepare(
-          `SELECT COUNT(*) as cnt FROM ${JSON.stringify(tables.revalidations)} WHERE tag IN (${tags.map(() => "?").join(", ")}) AND revalidatedAt > ?`
+          `SELECT COUNT(*) as cnt FROM ${JSON.stringify(tables.revalidations)} WHERE tag IN (${tags.map(() => "?").join(", ")}) AND revalidatedAt > ? LIMIT 1`
         )
         .bind(...tags.map((tag) => this.getCacheKey(tag)), lastModified ?? Date.now())
         .first<{ cnt: number }>();
@@ -60,7 +61,7 @@ export class D1NextModeTagCache implements NextModeTagCache {
       isDisabled: false as const,
       db,
       tables: {
-        revalidations: cfEnv.NEXT_CACHE_D1_REVALIDATIONS_TABLE ?? "revalidations",
+        revalidations: cfEnv.NEXT_CACHE_D1_REVALIDATIONS_TABLE ?? DEFAULT_NEXT_CACHE_D1_REVALIDATIONS_TABLE,
       },
     };
   }

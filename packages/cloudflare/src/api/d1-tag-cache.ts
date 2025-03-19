@@ -4,6 +4,7 @@ import type { OriginalTagCache } from "@opennextjs/aws/types/overrides.js";
 import { RecoverableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "./cloudflare-context.js";
+import { DEFAULT_NEXT_CACHE_D1_REVALIDATIONS_TABLE } from "./constants.js";
 
 /**
  * An instance of the Tag Cache that uses a D1 binding (`NEXT_CACHE_D1`) as it's underlying data store.
@@ -154,7 +155,7 @@ class D1TagCache implements OriginalTagCache {
       db,
       tables: {
         tags: cfEnv.NEXT_CACHE_D1_TAGS_TABLE ?? "tags",
-        revalidations: cfEnv.NEXT_CACHE_D1_REVALIDATIONS_TABLE ?? "revalidations",
+        revalidations: cfEnv.NEXT_CACHE_D1_REVALIDATIONS_TABLE ?? DEFAULT_NEXT_CACHE_D1_REVALIDATIONS_TABLE,
       },
     };
   }
