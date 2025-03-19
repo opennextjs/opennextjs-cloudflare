@@ -272,17 +272,17 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
    */
   checkSyncTable(msg: QueueMessage) {
     try {
-      const isNewer = this.sql
+      const numNewer = this.sql
         .exec<{
-          isNewer: number;
+          numNewer: number;
         }>(
-          "SELECT COUNT(*) as isNewer FROM sync WHERE id = ? AND lastSuccess > ?",
+          "SELECT COUNT(*) as numNewer FROM sync WHERE id = ? AND lastSuccess > ? LIMIT 1",
           `${msg.MessageBody.host}${msg.MessageBody.url}`,
           Math.round(msg.MessageBody.lastModified / 1000)
         )
-        .one().isNewer;
+        .one().numNewer;
 
-      return isNewer > 0;
+      return numNewer > 0;
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e: unknown) {
       return false;

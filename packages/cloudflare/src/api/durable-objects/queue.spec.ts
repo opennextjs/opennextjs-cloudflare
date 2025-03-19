@@ -208,10 +208,10 @@ describe("DurableObjectQueue", () => {
 
     it("should add an alarm if there are failed states", async () => {
       const queue = createDurableObjectQueue({ fetchDuration: 10 });
-      const nextAlarm = Date.now() + 1000;
-      queue.routeInFailedState.set("id", { msg: createMessage("id"), retryCount: 0, nextAlarmMs: nextAlarm });
+      const nextAlarmMs = Date.now() + 1000;
+      queue.routeInFailedState.set("id", { msg: createMessage("id"), retryCount: 0, nextAlarmMs });
       await queue.addAlarm();
-      expect(getStorage(queue).setAlarm).toHaveBeenCalledWith(nextAlarm);
+      expect(getStorage(queue).setAlarm).toHaveBeenCalledWith(nextAlarmMs);
     });
 
     it("should not add an alarm if there is already an alarm set", async () => {
@@ -225,9 +225,9 @@ describe("DurableObjectQueue", () => {
 
     it("should set the alarm to the lowest nextAlarm", async () => {
       const queue = createDurableObjectQueue({ fetchDuration: 10 });
-      const nextAlarm = Date.now() + 1000;
+      const nextAlarmMs = Date.now() + 1000;
       const firstAlarm = Date.now() + 500;
-      queue.routeInFailedState.set("id", { msg: createMessage("id"), retryCount: 0, nextAlarmMs: nextAlarm });
+      queue.routeInFailedState.set("id", { msg: createMessage("id"), retryCount: 0, nextAlarmMs });
       queue.routeInFailedState.set("id2", {
         msg: createMessage("id2"),
         retryCount: 0,

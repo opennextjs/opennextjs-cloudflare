@@ -1,7 +1,7 @@
-import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
+import { loadBuildId, loadPrerenderManifest } from "@opennextjs/aws/adapters/config/util.js";
 import { type BuildOptions, esbuildSync, getPackagePath } from "@opennextjs/aws/build/helper.js";
 
 export function compileDurableObjects(buildOpts: BuildOptions) {
@@ -17,13 +17,12 @@ export function compileDurableObjects(buildOpts: BuildOptions) {
     ".next"
   );
 
-  // TODO: Reuse the manifest
-  const prerenderManifest = path.join(baseManifestPath, "prerender-manifest.json");
-  const prerenderManifestContent = fs.readFileSync(prerenderManifest, "utf-8");
-  const prerenderManifestJson = JSON.parse(prerenderManifestContent);
-  const previewModeId = prerenderManifestJson.preview.previewModeId;
+  // We need to change the type in aws
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const prerenderManifest = loadPrerenderManifest(baseManifestPath) as any;
+  const previewModeId = prerenderManifest.preview.previewModeId;
 
-  const BUILD_ID = fs.readFileSync(path.join(baseManifestPath, "BUILD_ID"), "utf-8");
+  const BUILD_ID = loadBuildId(baseManifestPath);
 
   return esbuildSync(
     {
