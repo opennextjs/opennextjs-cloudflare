@@ -10,7 +10,8 @@ interface ShardedD1TagCacheOptions {
   /**
    * The number of shards that will be used.
    * 1 shards means 1 durable object instance.
-   * Be aware that the more shards you have, the more requests you will make to the Durable Object
+   * The number of requests made to Durable Objects will scale linearly with the number of shards.
+   * For example, a request involving 5 tags may access between 1 and 5 shards, with the upper limit being the lesser of the number of tags or the number of shards
    * @default 4
    */
   numberOfShards: number;
@@ -25,11 +26,11 @@ interface ShardedD1TagCacheOptions {
    * Increasing this value will reduce the number of requests to the Durable Object, but it could make `revalidateTags`/`revalidatePath` call being longer to take effect
    * @default 5
    */
-  regionalCacheTtl?: number;
+  regionalCacheTtlSec?: number;
 }
 class ShardedD1TagCache implements NextModeTagCache {
-  mode = "nextMode" as const;
-  public readonly name = "sharded-d1-tag-cache";
+  readonly mode = "nextMode" as const;
+  readonly name = "sharded-d1-tag-cache";
   localCache?: Cache;
 
   constructor(private opts: ShardedD1TagCacheOptions = { numberOfShards: 4 }) {}
@@ -176,7 +177,7 @@ class ShardedD1TagCache implements NextModeTagCache {
     await cache.put(
       key,
       new Response(`${hasBeenRevalidated}`, {
-        headers: { "cache-control": `max-age=${this.opts.regionalCacheTtl ?? 5}` },
+        headers: { "cache-control": `max-age=${this.opts.regionalCacheTtlSec ?? 5}` },
       })
     );
   }
