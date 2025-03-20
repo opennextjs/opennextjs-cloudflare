@@ -12,6 +12,9 @@ const apps = [
   "app-pages-router",
   "app-router",
   "pages-router",
+  // overrides
+  "d1-tag-next",
+  "memory-queue",
   // bugs
   "gh-119",
   "gh-219",

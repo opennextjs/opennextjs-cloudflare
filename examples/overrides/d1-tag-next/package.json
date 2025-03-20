@@ -1,0 +1,30 @@
+{
+  "name": "d1-tag-next",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "d1:clean": "wrangler d1 execute NEXT_CACHE_D1 --command \"DROP TABLE IF EXISTS revalidations\"",
+    "d1:setup": "wrangler d1 execute NEXT_CACHE_D1 --command \"CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);\"",
+    "build:worker": "opennextjs-cloudflare && pnpm d1:clean && pnpm d1:setup",
+    "preview": "pnpm build:worker && pnpm wrangler dev",
+    "e2e": "playwright test -c e2e/playwright.config.ts"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "next": "15.1.7"
+  },
+  "devDependencies": {
+    "@opennextjs/cloudflare": "workspace:*",
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

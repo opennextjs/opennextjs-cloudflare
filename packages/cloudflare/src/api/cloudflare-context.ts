@@ -1,17 +1,42 @@
 import type { Context, RunningCodeOptions } from "node:vm";
 
+import type { DurableObjectQueueHandler } from "./durable-objects/queue";
+import { DOShardedTagCache } from "./durable-objects/sharded-tag-cache";
+
 declare global {
   interface CloudflareEnv {
+    // KV used for the incremental cache
     NEXT_CACHE_WORKERS_KV?: KVNamespace;
+    // D1 db used for the tag cache
     NEXT_CACHE_D1?: D1Database;
+    // D1 table to use for the tag cache for the tag/path mapping
     NEXT_CACHE_D1_TAGS_TABLE?: string;
+    // D1 table to use for the tag cache for storing the tag and their associated revalidation times
     NEXT_CACHE_D1_REVALIDATIONS_TABLE?: string;
+    // Service binding for the worker itself to be able to call itself from within the worker
     NEXT_CACHE_REVALIDATION_WORKER?: Service;
     // R2 bucket used for the incremental cache
     NEXT_CACHE_R2_BUCKET?: R2Bucket;
     // Prefix used for the R2 incremental cache bucket
     NEXT_CACHE_R2_PREFIX?: string;
+    // Durable Object namespace to use for the durable object queue handler
+    NEXT_CACHE_REVALIDATION_DURABLE_OBJECT?: DurableObjectNamespace<DurableObjectQueueHandler>;
+    // Durables object namespace to use for the sharded tag cache
+    NEXT_CACHE_D1_SHARDED?: DurableObjectNamespace<DOShardedTagCache>;
+
+    // Asset binding
     ASSETS?: Fetcher;
+
+    // Below are the potential environment variables that can be set by the user to configure the durable object queue handler
+    // The max number of revalidations that can be processed by the durable worker at the same time
+    MAX_REVALIDATION_BY_DURABLE_OBJECT?: string;
+    // The max time in milliseconds that a revalidation can take before being considered as failed
+    REVALIDATION_TIMEOUT_MS?: string;
+    // The amount of time after which a revalidation will be attempted again if it failed
+    // If it fails again it will exponentially back off until it reaches the max retry interval
+    REVALIDATION_RETRY_INTERVAL_MS?: string;
+    // The maximum number of attempts that can be made to revalidate a path
+    MAX_REVALIDATION_ATTEMPTS?: string;
   }
 }
 
