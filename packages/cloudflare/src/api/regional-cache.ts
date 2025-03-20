@@ -4,15 +4,15 @@ import { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/
 import { getCloudflareContext } from "./cloudflare-context.js";
 import { IncrementalCacheEntry } from "./internal/incremental-cache.js";
 
-const ONE_YEAR_IN_SECONDS = 31536000;
 const ONE_MINUTE_IN_SECONDS = 60;
+const THIRTY_MINUTES_IN_SECONDS = ONE_MINUTE_IN_SECONDS * 30;
 
 type Options = {
   /**
    * The mode to use for the regional cache.
    *
    * - `short-lived`: Re-use a cache entry for up to a minute after it has been retrieved.
-   * - `long-lived`: Re-use a cache entry until it is revalidated.
+   * - `long-lived`: Re-use a fetch cache entry until it is revalidated, or an ISR/SSG entry for up to 30 minutes.
    */
   mode: "short-lived" | "long-lived";
   /**
@@ -133,7 +133,7 @@ class RegionalCache implements IncrementalCache {
     const age =
       this.opts.mode === "short-lived"
         ? ONE_MINUTE_IN_SECONDS
-        : entry.value.revalidate || ONE_YEAR_IN_SECONDS;
+        : entry.value.revalidate || THIRTY_MINUTES_IN_SECONDS;
 
     await cache.put(
       key,
@@ -156,7 +156,7 @@ class RegionalCache implements IncrementalCache {
  * @param cache - Incremental cache instance.
  * @param opts.mode - The mode to use for the regional cache.
  * - `short-lived`: Re-use a cache entry for up to a minute after it has been retrieved.
- * - `long-lived`: Re-use a cache entry until it is revalidated.
+ * - `long-lived`: Re-use a fetch cache entry until it is revalidated, or an ISR/SSG entry for up to 30 minutes.
  * @param opts.shouldLazilyUpdateOnCacheHit - Whether the regional cache entry should be updated in
  * the background or not when it experiences a cache hit.
  *
