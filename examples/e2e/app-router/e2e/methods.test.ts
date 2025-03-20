@@ -82,11 +82,11 @@ test.describe("all supported methods should work in route handlers", () => {
 });
 
 test("formData should work in POST route handler", async ({ request }) => {
+  const formData = new FormData();
+  formData.append("name", "OpenNext [] () %&#!%$#");
+  formData.append("email", "opennext@opennext.com");
   const postRes = await request.post("/methods/post/formdata", {
-    form: {
-      name: "OpenNext [] () %&#!%$#",
-      email: "opennext@opennext.com",
-    },
+    form: formData,
   });
   expect(postRes.status()).toBe(202);
   const postData = await postRes.json();
