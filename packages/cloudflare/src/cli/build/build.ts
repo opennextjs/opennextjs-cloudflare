@@ -21,6 +21,7 @@ import {
   createOpenNextConfigIfNotExistent,
   createWranglerConfigIfNotExistent,
   ensureCloudflareConfig,
+  populateCache,
 } from "./utils/index.js";
 import { getVersion } from "./utils/version.js";
 
@@ -63,6 +64,11 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
   logger.info(`@opennextjs/cloudflare version: ${cloudflare}`);
   logger.info(`@opennextjs/aws version: ${aws}`);
 
+  if (projectOpts.populateCache?.onlyPopulateWithoutBuilding) {
+    populateCache(options, config, projectOpts.populateCache.mode);
+    return;
+  }
+
   if (projectOpts.skipNextBuild) {
     logger.warn("Skipping Next.js build");
   } else {
@@ -104,6 +110,10 @@ export async function build(projectOpts: ProjectOptions): Promise<void> {
 
   if (!projectOpts.skipWranglerConfigCheck) {
     await createWranglerConfigIfNotExistent(projectOpts);
+  }
+
+  if (projectOpts.populateCache) {
+    populateCache(options, config, projectOpts.populateCache.mode);
   }
 
   logger.info("OpenNext build complete.");

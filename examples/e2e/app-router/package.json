@@ -10,8 +10,7 @@
     "lint": "next lint",
     "clean": "rm -rf .turbo node_modules .next .open-next",
     "d1:clean": "wrangler d1 execute NEXT_CACHE_D1 --command \"DROP TABLE IF EXISTS tags; DROP TABLE IF EXISTS revalidations\"",
-    "d1:setup": "wrangler d1 execute NEXT_CACHE_D1 --file .open-next/cloudflare/cache-assets-manifest.sql",
-    "build:worker": "pnpm opennextjs-cloudflare && pnpm d1:clean && pnpm d1:setup",
+    "build:worker": "pnpm d1:clean && pnpm opennextjs-cloudflare --populateCache=local",
     "preview": "pnpm build:worker && pnpm wrangler dev",
     "e2e": "playwright test -c e2e/playwright.config.ts"
   },
