@@ -11,7 +11,7 @@ catalog:
   "@cloudflare/workers-types": ^4.20250224.0
   "@dotenvx/dotenvx": 1.31.0
   "@eslint/js": ^9.11.1
-  "@playwright/test": 1.47.0
+  "@playwright/test": ^1.51.1
   "@tsconfig/strictest": ^2.0.5
   "@types/mock-fs": ^4.13.4
   "@types/node": ^22.2.0
