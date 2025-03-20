@@ -19,6 +19,8 @@ Object.defineProperty(globalThis, Symbol.for("__cloudflare-context__"), {
 
 //@ts-expect-error: Will be resolved by wrangler build
 export { DurableObjectQueueHandler } from "./.build/durable-objects/queue.js";
+//@ts-expect-error: Will be resolved by wrangler build
+export { DOShardedTagCache } from "./.build/durable-objects/sharded-tag-cache.js";
 
 // Populate process.env on the first request
 let processEnvPopulated = false;
