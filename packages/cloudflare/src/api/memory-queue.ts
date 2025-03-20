@@ -1,4 +1,4 @@
-import { debug, error } from "@opennextjs/aws/adapters/logger";
+import { debug, error } from "@opennextjs/aws/adapters/logger.js";
 import type { Queue, QueueMessage } from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
