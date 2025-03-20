@@ -26,7 +26,7 @@ export function runWrangler(
   );
 
   if (result.status !== 0) {
-    logger.error("Failed to populate cache");
+    logger.error("Wrangler command failed");
     process.exit(1);
   }
 }

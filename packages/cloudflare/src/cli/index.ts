@@ -38,11 +38,11 @@ async function runCommand(args: Arguments) {
     case "build":
       return build(options, config, { ...args, sourceDir: baseDir });
     case "preview":
-      return preview(options, config);
+      return preview(options, config, args);
     case "deploy":
-      return deploy(options, config);
+      return deploy(options, config, args);
     case "populateCache":
-      return populateCache(options, config, { target: args.target });
+      return populateCache(options, config, args);
   }
 }
 
