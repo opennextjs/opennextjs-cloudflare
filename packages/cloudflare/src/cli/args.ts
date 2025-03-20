@@ -2,7 +2,7 @@ import { mkdirSync, type Stats, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 
-import { isWranglerTarget, WranglerTarget } from "./utils/run-wrangler";
+import { isWranglerTarget, WranglerTarget } from "./utils/run-wrangler.js";
 
 export type Arguments = (
   | {
