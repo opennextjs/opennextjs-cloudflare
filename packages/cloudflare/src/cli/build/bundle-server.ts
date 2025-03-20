@@ -21,6 +21,7 @@ import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
 import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations.js";
 import { fixRequire } from "./patches/plugins/require.js";
 import { shimRequireHook } from "./patches/plugins/require-hook.js";
+import { patchResRevalidate } from "./patches/plugins/res-revalidate.js";
 import { setWranglerExternal } from "./patches/plugins/wrangler-external.js";
 import { needsExperimentalReact, normalizePath, patchCodeWithValidations } from "./utils/index.js";
 
@@ -99,6 +100,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       inlineLoadManifest(updater, buildOpts),
       inlineBuildId(updater),
       patchDepdDeprecations(updater),
+      patchResRevalidate(updater),
       patchNextMinimal(updater),
       // Apply updater updates, must be the last plugin
       updater.plugin,
