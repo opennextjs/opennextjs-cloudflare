@@ -1,4 +1,4 @@
-import { debug,error } from "@opennextjs/aws/adapters/logger";
+import { debug, error } from "@opennextjs/aws/adapters/logger";
 import type { Queue, QueueMessage } from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
@@ -26,9 +26,7 @@ export class MemoryQueue implements Queue {
 
     if (this.revalidatedPaths.has(MessageDeduplicationId)) return;
 
-    this.revalidatedPaths.add(
-      MessageDeduplicationId,
-    );
+    this.revalidatedPaths.add(MessageDeduplicationId);
 
     try {
       const protocol = host.includes("localhost") ? "http" : "https";
@@ -47,7 +45,7 @@ export class MemoryQueue implements Queue {
       });
 
       // Here we want at least to log when the revalidation was not successful
-      if(response.status !== 200 || response.headers.get("x-nextjs-cache") !== "REVALIDATED") {
+      if (response.status !== 200 || response.headers.get("x-nextjs-cache") !== "REVALIDATED") {
         error(`Revalidation failed for ${url} with status ${response.status}`);
       }
       debug(`Revalidation successful for ${url}`);
