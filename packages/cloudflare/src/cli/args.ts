@@ -2,8 +2,7 @@ import { mkdirSync, type Stats, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 
-import type { CacheBindingTarget } from "./build/utils/index.js";
-import { isCacheBindingTarget } from "./build/utils/index.js";
+import { isWranglerTarget, WranglerTarget } from "./utils/run-wrangler";
 
 export type Arguments = (
   | {
@@ -13,7 +12,7 @@ export type Arguments = (
       minify: boolean;
     }
   | { command: "preview" | "deploy" }
-  | { command: "populateCache"; target: CacheBindingTarget }
+  | { command: "populateCache"; target: WranglerTarget }
 ) & { outputDir?: string };
 
 export function getArgs(): Arguments {
@@ -47,7 +46,7 @@ export function getArgs(): Arguments {
     case "deploy":
       return { command: "preview", outputDir };
     case "populateCache":
-      if (!isCacheBindingTarget(positionals[1])) {
+      if (!isWranglerTarget(positionals[1])) {
         throw new Error(`Error: invalid target for populating the cache, expected 'local' | 'remote'`);
       }
       return { command: "populateCache", outputDir, target: positionals[1] };
