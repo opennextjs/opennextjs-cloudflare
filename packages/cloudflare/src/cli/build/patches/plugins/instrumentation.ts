@@ -2,24 +2,31 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
+import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
+import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
 
-import { patchCode } from "../ast/util.js";
-import type { ContentUpdater } from "./content-updater.js";
-
-export function patchInstrumentation(updater: ContentUpdater, buildOpts: BuildOptions) {
+export function patchInstrumentation(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
   const builtInstrumentationPath = getBuiltInstrumentationPath(buildOpts);
 
-  updater.updateContent(
-    "patch-instrumentation-next15",
-    { filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/, contentFilter: /async loadInstrumentationModule\(/ },
-    async ({ contents }) => patchCode(contents, getNext15Rule(builtInstrumentationPath))
-  );
+  updater.updateContent("patch-instrumentation-next15", [
+    {
+      field: {
+        filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/,
+        contentFilter: /async loadInstrumentationModule\(/,
+        callback: ({ contents }) => patchCode(contents, getNext15Rule(builtInstrumentationPath)),
+      },
+    },
+  ]);
 
-  updater.updateContent(
-    "patch-instrumentation-next14",
-    { filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/, contentFilter: /async prepareImpl\(/ },
-    async ({ contents }) => patchCode(contents, getNext14Rule(builtInstrumentationPath))
-  );
+  updater.updateContent("patch-instrumentation-next14", [
+    {
+      field: {
+        filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/,
+        contentFilter: /async prepareImpl\(/,
+        callback: ({ contents }) => patchCode(contents, getNext14Rule(builtInstrumentationPath)),
+      },
+    },
+  ]);
 
   return {
     name: "patch-instrumentation",

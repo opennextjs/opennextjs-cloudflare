@@ -1,5 +1,5 @@
-import { patchCode } from "../ast/util.js";
-import { ContentUpdater } from "./content-updater.js";
+import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
+import { ContentUpdater, type Plugin } from "@opennextjs/aws/plugins/content-updater.js";
 
 // We try to be as specific as possible to avoid patching the wrong thing here
 // It seems that there is a bug in the worker runtime. When the AbortController is created outside of the request context it throws an error (not sure if it's expected or not) except in this case. https://github.com/cloudflare/workerd/issues/3657
@@ -7,7 +7,7 @@ import { ContentUpdater } from "./content-updater.js";
 // If it's a bug in workerd and it's not expected to throw an error, we can remove this patch.
 export const abortControllerRule = `
 rule:
-  all: 
+  all:
     - kind: lexical_declaration
       pattern: let $VAR = new AbortController
     - precedes:
@@ -21,10 +21,10 @@ rule:
               kind: catch_clause
               has:
                 kind: statement_block
-                has: 
+                has:
                   kind: return_statement
-                  all: 
-                    - has: 
+                  all:
+                    - has:
                         stopBy: end
                         kind: member_expression
                         pattern: $VAR.signal.aborted
@@ -32,19 +32,19 @@ rule:
                         stopBy: end
                         kind: call_expression
                         regex: console.error\\("Failed to fetch RSC payload for
-                    
+
 fix:
   'let $VAR = {signal:{aborted: false}};'
 `;
 
 // This rule is used instead of defining `process.env.NEXT_MINIMAL` in the `esbuild config.
 // Do we want to entirely replace these functions to reduce the bundle size?
-// In next `renderHTML` is used as a fallback in case of errors, but in minimal mode it just throws the error and the responsability of handling it is on the infra.
+// In next `renderHTML` is used as a fallback in case of errors, but in minimal mode it just throws the error and the responsibility of handling it is on the infra.
 export const nextMinimalRule = `
 rule:
   kind: member_expression
   pattern: process.env.NEXT_MINIMAL
-  any: 
+  any:
     - inside:
         kind: parenthesized_expression
         stopBy: end
@@ -65,25 +65,33 @@ rule:
                   kind: expression_statement
                   pattern: res.statusCode = 400;
 fix:
-  'true'                
+  'true'
 `;
 
-export function patchNextMinimal(updater: ContentUpdater) {
-  updater.updateContent(
-    "patch-abortController-next15.2",
-    { filter: /app-page(-experimental)?\.runtime\.prod\.js$/, contentFilter: /new AbortController/ },
-    async ({ contents }) => {
-      return patchCode(contents, abortControllerRule);
-    }
-  );
+export function patchNextMinimal(updater: ContentUpdater): Plugin {
+  updater.updateContent("patch-abortController-next15.2", [
+    {
+      field: {
+        filter: /app-page(-experimental)?\.runtime\.prod\.js$/,
+        contentFilter: /new AbortController/,
+        callback: ({ contents }) => {
+          return patchCode(contents, abortControllerRule);
+        },
+      },
+    },
+  ]);
 
-  updater.updateContent(
-    "patch-next-minimal",
-    { filter: /next-server\.(js)$/, contentFilter: /.*/ },
-    async ({ contents }) => {
-      return patchCode(contents, nextMinimalRule);
-    }
-  );
+  updater.updateContent("patch-next-minimal", [
+    {
+      field: {
+        filter: /next-server\.(js)$/,
+        contentFilter: /.*/,
+        callback: ({ contents }) => {
+          return patchCode(contents, nextMinimalRule);
+        },
+      },
+    },
+  ]);
 
   return {
     name: "patch-abortController",
