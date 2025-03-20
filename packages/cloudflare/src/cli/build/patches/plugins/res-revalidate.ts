@@ -57,16 +57,15 @@ rule:
                         kind: identifier
                       
 fix: await (await import("@opennextjs/cloudflare")).getCloudflareContext().env.NEXT_CACHE_REVALIDATION_WORKER.fetch(\`\${$REQ.headers.host.includes("localhost") ? "http":"https" }://\${$REQ.headers.host}$URL_PATH\`,{method:'HEAD', headers:$HEADERS})
-`
+`;
 
 export function patchResRevalidate(updater: ContentUpdater) {
   return updater.updateContent(
     "patch-res-revalidate",
     {
-      filter: getCrossPlatformPathRegex(
-        String.raw`(pages-api\.runtime\.prod\.js|api-resolver\.js)$`,
-        { escape: false }
-      ),
+      filter: getCrossPlatformPathRegex(String.raw`(pages-api\.runtime\.prod\.js|api-resolver\.js)$`, {
+        escape: false,
+      }),
       contentFilter: /\.trustHostHeader/,
     },
     ({ contents }) => patchCode(contents, rule)
