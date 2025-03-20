@@ -11,7 +11,7 @@ export type Arguments = (
       skipWranglerConfigCheck: boolean;
       minify: boolean;
     }
-  | { command: "preview" | "deploy" }
+  | { command: "preview" | "deploy"; passthroughArgs: string[] }
   | { command: "populateCache"; target: WranglerTarget }
 ) & { outputDir?: string };
 
@@ -42,9 +42,8 @@ export function getArgs(): Arguments {
         minify: !values.noMinify,
       };
     case "preview":
-      return { command: "preview", outputDir };
     case "deploy":
-      return { command: "preview", outputDir };
+      return { command: positionals[0], outputDir, passthroughArgs: getPassthroughArgs() };
     case "populateCache":
       if (!isWranglerTarget(positionals[1])) {
         throw new Error(`Error: invalid target for populating the cache, expected 'local' | 'remote'`);
@@ -53,6 +52,11 @@ export function getArgs(): Arguments {
     default:
       throw new Error("Error: invalid command, expected 'build' | 'preview' | 'deploy' | 'populateCache'");
   }
+}
+
+function getPassthroughArgs() {
+  const passthroughPos = process.argv.indexOf("--");
+  return passthroughPos === -1 ? [] : process.argv.slice(passthroughPos + 1);
 }
 
 function assertDirArg(path: string, argName?: string, make?: boolean) {
