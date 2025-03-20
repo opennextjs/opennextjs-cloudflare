@@ -65,11 +65,11 @@ export async function populateCache(
             destPath
           );
 
-          runWrangler(options.packager, { ...populateCacheOptions, excludeRemoteFlag: true }, [
-            "r2 object put",
-            JSON.stringify(fullDestPath),
-            `--file ${JSON.stringify(fsPath)}`,
-          ]);
+          runWrangler(
+            options,
+            ["r2 object put", JSON.stringify(fullDestPath), `--file ${JSON.stringify(fsPath)}`],
+            { ...populateCacheOptions, excludeRemoteFlag: true, logging: "error" }
+          );
         });
         logger.info(`Successfully populated cache with ${assets.length} assets`);
         break;
@@ -85,11 +85,15 @@ export async function populateCache(
       case "d1-tag-cache": {
         logger.info("\nPopulating D1 tag cache...");
 
-        runWrangler(options.packager, populateCacheOptions, [
-          "d1 execute",
-          "NEXT_CACHE_D1",
-          `--file ${JSON.stringify(path.join(options.outputDir, "cloudflare/cache-assets-manifest.sql"))}`,
-        ]);
+        runWrangler(
+          options,
+          [
+            "d1 execute",
+            "NEXT_CACHE_D1",
+            `--file ${JSON.stringify(path.join(options.outputDir, "cloudflare/cache-assets-manifest.sql"))}`,
+          ],
+          { ...populateCacheOptions, logging: "error" }
+        );
         logger.info("Successfully populated cache");
         break;
       }

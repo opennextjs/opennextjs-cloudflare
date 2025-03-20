@@ -1,16 +1,17 @@
 import { spawnSync } from "node:child_process";
 
+import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import logger from "@opennextjs/aws/logger.js";
 
 export type WranglerTarget = "local" | "remote";
 
 export function runWrangler(
-  pm: string,
-  wranglerOpts: { target: WranglerTarget; excludeRemoteFlag?: boolean },
-  args: string[]
+  options: BuildOptions,
+  args: string[],
+  wranglerOpts: { target?: WranglerTarget; excludeRemoteFlag?: boolean; logging?: "all" | "error" } = {}
 ) {
   const result = spawnSync(
-    pm,
+    options.packager,
     [
       "exec",
       "wrangler",
@@ -20,7 +21,7 @@ export function runWrangler(
     ].filter((v): v is string => !!v),
     {
       shell: true,
-      stdio: ["ignore", "ignore", "inherit"],
+      stdio: wranglerOpts.logging === "error" ? ["ignore", "ignore", "inherit"] : "inherit",
     }
   );
 

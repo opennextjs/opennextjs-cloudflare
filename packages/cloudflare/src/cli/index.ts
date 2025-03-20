@@ -36,7 +36,7 @@ async function runCommand(args: Arguments) {
 
   switch (args.command) {
     case "build":
-      return build(options, config, args);
+      return build(options, config, { ...args, sourceDir: baseDir });
     case "preview":
       return preview(options, config);
     case "deploy":
