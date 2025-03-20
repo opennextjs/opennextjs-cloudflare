@@ -31,7 +31,7 @@ describe("MemoryQueue", () => {
     const firstRequest = cache.send({
       MessageBody: generateMessageBody({ host: "test.local", url: "/test" }),
       MessageGroupId: generateMessageGroupId("/test"),
-      MessageDeduplicationId: "",
+      MessageDeduplicationId: "/test",
     });
     vi.advanceTimersByTime(DEFAULT_REVALIDATION_TIMEOUT_MS);
     await firstRequest;
@@ -40,7 +40,7 @@ describe("MemoryQueue", () => {
     const secondRequest = cache.send({
       MessageBody: generateMessageBody({ host: "test.local", url: "/test" }),
       MessageGroupId: generateMessageGroupId("/test"),
-      MessageDeduplicationId: "",
+      MessageDeduplicationId: "/test",
     });
     vi.advanceTimersByTime(1);
     await secondRequest;
@@ -51,7 +51,7 @@ describe("MemoryQueue", () => {
     const firstRequest = cache.send({
       MessageBody: generateMessageBody({ host: "test.local", url: "/test" }),
       MessageGroupId: generateMessageGroupId("/test"),
-      MessageDeduplicationId: "",
+      MessageDeduplicationId: "/test",
     });
     vi.advanceTimersByTime(1);
     await firstRequest;
@@ -60,7 +60,7 @@ describe("MemoryQueue", () => {
     const secondRequest = cache.send({
       MessageBody: generateMessageBody({ host: "test.local", url: "/test" }),
       MessageGroupId: generateMessageGroupId("/other"),
-      MessageDeduplicationId: "",
+      MessageDeduplicationId: "/other",
     });
     vi.advanceTimersByTime(1);
     await secondRequest;
@@ -72,12 +72,12 @@ describe("MemoryQueue", () => {
       cache.send({
         MessageBody: generateMessageBody({ host: "test.local", url: "/test" }),
         MessageGroupId: generateMessageGroupId("/test"),
-        MessageDeduplicationId: "",
+        MessageDeduplicationId: "/test",
       }),
       cache.send({
         MessageBody: generateMessageBody({ host: "test.local", url: "/test" }),
         MessageGroupId: generateMessageGroupId("/test"),
-        MessageDeduplicationId: "",
+        MessageDeduplicationId: "/test",
       }),
     ];
     vi.advanceTimersByTime(1);

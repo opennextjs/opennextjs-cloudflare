@@ -20,16 +20,16 @@ export class MemoryQueue implements Queue {
 
   constructor(private opts = { revalidationTimeoutMs: DEFAULT_REVALIDATION_TIMEOUT_MS }) {}
 
-  async send({ MessageBody: { host, url }, MessageGroupId }: QueueMessage): Promise<void> {
+  async send({ MessageBody: { host, url }, MessageDeduplicationId }: QueueMessage): Promise<void> {
     const service = getCloudflareContext().env.NEXT_CACHE_REVALIDATION_WORKER;
     if (!service) throw new IgnorableError("No service binding for cache revalidation worker");
 
-    if (this.revalidatedPaths.has(MessageGroupId)) return;
+    if (this.revalidatedPaths.has(MessageDeduplicationId)) return;
 
     this.revalidatedPaths.set(
-      MessageGroupId,
+      MessageDeduplicationId,
       // force remove to allow new revalidations incase something went wrong
-      setTimeout(() => this.revalidatedPaths.delete(MessageGroupId), this.opts.revalidationTimeoutMs)
+      setTimeout(() => this.revalidatedPaths.delete(MessageDeduplicationId), this.opts.revalidationTimeoutMs)
     );
 
     try {
@@ -48,8 +48,8 @@ export class MemoryQueue implements Queue {
     } catch (e) {
       logger.error(e);
     } finally {
-      clearTimeout(this.revalidatedPaths.get(MessageGroupId));
-      this.revalidatedPaths.delete(MessageGroupId);
+      clearTimeout(this.revalidatedPaths.get(MessageDeduplicationId));
+      this.revalidatedPaths.delete(MessageDeduplicationId);
     }
   }
 }
