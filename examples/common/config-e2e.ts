@@ -23,13 +23,14 @@ export function configurePlaywright(
   let command: string;
   let timeout: number;
   if (isWorker) {
+    const env = app === "r2-incremental-cache" ? "--env e2e" : "";
     if (isCI) {
       // Do not build on CI - there is a preceding build step
-      command = `pnpm preview:worker -- --port ${port} --inspector-port ${inspectorPort}`;
+      command = `pnpm preview:worker -- --port ${port} --inspector-port ${inspectorPort} ${env}`;
       timeout = 100_000;
     } else {
       timeout = 500_000;
-      command = `pnpm preview -- --port ${port} --inspector-port ${inspectorPort}`;
+      command = `pnpm preview -- --port ${port} --inspector-port ${inspectorPort} ${env}`;
     }
   } else {
     timeout = 100_000;

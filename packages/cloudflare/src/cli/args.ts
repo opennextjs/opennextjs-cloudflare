@@ -2,7 +2,8 @@ import { mkdirSync, type Stats, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 
-import { isWranglerTarget, WranglerTarget } from "./utils/run-wrangler.js";
+import type { WranglerTarget } from "./utils/run-wrangler.js";
+import { getWranglerEnvironmentFlag, isWranglerTarget } from "./utils/run-wrangler.js";
 
 export type Arguments = (
   | {
@@ -11,8 +12,15 @@ export type Arguments = (
       skipWranglerConfigCheck: boolean;
       minify: boolean;
     }
-  | { command: "preview" | "deploy"; passthroughArgs: string[] }
-  | { command: "populateCache"; target: WranglerTarget }
+  | {
+      command: "preview" | "deploy";
+      passthroughArgs: string[];
+    }
+  | {
+      command: "populateCache";
+      target: WranglerTarget;
+      environment?: string;
+    }
 ) & { outputDir?: string };
 
 export function getArgs(): Arguments {
@@ -29,6 +37,8 @@ export function getArgs(): Arguments {
   const outputDir = values.output ? resolve(values.output) : undefined;
   if (outputDir) assertDirArg(outputDir, "output", true);
 
+  const passthroughArgs = getPassthroughArgs();
+
   switch (positionals[0]) {
     case "build":
       return {
@@ -43,12 +53,21 @@ export function getArgs(): Arguments {
       };
     case "preview":
     case "deploy":
-      return { command: positionals[0], outputDir, passthroughArgs: getPassthroughArgs() };
+      return {
+        command: positionals[0],
+        outputDir,
+        passthroughArgs,
+      };
     case "populateCache":
       if (!isWranglerTarget(positionals[1])) {
         throw new Error(`Error: invalid target for populating the cache, expected 'local' | 'remote'`);
       }
-      return { command: "populateCache", outputDir, target: positionals[1] };
+      return {
+        command: "populateCache",
+        outputDir,
+        target: positionals[1],
+        environment: getWranglerEnvironmentFlag(passthroughArgs),
+      };
     default:
       throw new Error("Error: invalid command, expected 'build' | 'preview' | 'deploy' | 'populateCache'");
   }

@@ -8,24 +8,31 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
-  "d1_databases": [
-    {
-      "binding": "NEXT_CACHE_D1",
-      "database_id": "NEXT_CACHE_D1",
-      "database_name": "NEXT_CACHE_D1"
+  "env": {
+    "e2e": {
+      "d1_databases": [
+        {
+          "binding": "NEXT_CACHE_D1",
+          "database_id": "NEXT_CACHE_D1",
+          "database_name": "NEXT_CACHE_D1"
+        }
+      ],
+      "services": [
+        {
+          "binding": "NEXT_CACHE_REVALIDATION_WORKER",
+          "service": "r2-incremental-cache-e2e"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "NEXT_CACHE_R2_BUCKET",
+          "bucket_name": "NEXT_CACHE_R2_BUCKET",
+          "preview_bucket_name": "NEXT_CACHE_R2_BUCKET"
+        }
+      ]
+    },
+    "prod": {
+      // left blank to test that environment configuration works properly
     }
-  ],
-  "services": [
-    {
-      "binding": "NEXT_CACHE_REVALIDATION_WORKER",
-      "service": "r2-incremental-cache"
-    }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "NEXT_CACHE_R2_BUCKET",
-      "bucket_name": "NEXT_CACHE_R2_BUCKET",
-      "preview_bucket_name": "NEXT_CACHE_R2_BUCKET"
-    }
-  ]
+  }
 }
