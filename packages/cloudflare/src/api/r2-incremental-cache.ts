@@ -17,12 +17,6 @@ import { getCloudflareContext } from "./cloudflare-context.js";
 class R2IncrementalCache implements IncrementalCache {
   readonly name = "r2-incremental-cache";
 
-  protected directory: string;
-
-  constructor() {
-    this.directory = getCloudflareContext().env.NEXT_CACHE_R2_PREFIX ?? "incremental-cache";
-  }
-
   async get<IsFetch extends boolean = false>(
     key: string,
     isFetch?: IsFetch
@@ -77,7 +71,9 @@ class R2IncrementalCache implements IncrementalCache {
   }
 
   protected getR2Key(key: string, isFetch?: boolean): string {
-    return `${this.directory}/${process.env.NEXT_BUILD_ID ?? "no-build-id"}/${key}.${isFetch ? "fetch" : "cache"}`;
+    const directory = getCloudflareContext().env.NEXT_CACHE_R2_PREFIX ?? "incremental-cache";
+
+    return `${directory}/${process.env.NEXT_BUILD_ID ?? "no-build-id"}/${key}.${isFetch ? "fetch" : "cache"}`;
   }
 }
 
