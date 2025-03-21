@@ -15,10 +15,12 @@ const createDurableObjectQueue = ({
   fetchDuration,
   statusCode,
   headers,
+  disableSQLite,
 }: {
   fetchDuration: number;
   statusCode?: number;
   headers?: Headers;
+  disableSQLite?: boolean;
 }) => {
   const mockState = {
     waitUntil: vi.fn(),
@@ -52,6 +54,7 @@ const createDurableObjectQueue = ({
       ),
       connect: vi.fn(),
     },
+    REVALIDATION_DO_DISABLE_SQLITE: disableSQLite ? "true" : undefined,
   });
 };
 
@@ -321,6 +324,31 @@ describe("DurableObjectQueue", () => {
       await queue.alarm();
       expect(queue.routeInFailedState.size).toBe(0);
       expect(queue.service.fetch).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("disableSQLite", () => {
+    it("should not initialize the sqlite storage", async () => {
+      const queue = createDurableObjectQueue({ fetchDuration: 10, disableSQLite: true });
+      expect(queue.sql.exec).not.toHaveBeenCalled();
+    });
+
+    it("should not write to the sqlite storage on failed state", async () => {
+      const queue = createDurableObjectQueue({ fetchDuration: 10, disableSQLite: true });
+      await queue.addToFailedState(createMessage("id"));
+      expect(queue.sql.exec).not.toHaveBeenCalled();
+    });
+
+    it("should not read from the sqlite storage on checkSyncTable", async () => {
+      const queue = createDurableObjectQueue({ fetchDuration: 10, disableSQLite: true });
+      queue.checkSyncTable(createMessage("id"));
+      expect(queue.sql.exec).not.toHaveBeenCalled();
+    });
+
+    it("should not write to sql on successful revalidation", async () => {
+      const queue = createDurableObjectQueue({ fetchDuration: 10, disableSQLite: true });
+      await queue.revalidate(createMessage("id"));
+      expect(queue.sql.exec).not.toHaveBeenCalled();
     });
   });
 });

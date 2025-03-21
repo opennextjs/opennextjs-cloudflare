@@ -37,6 +37,9 @@ declare global {
     REVALIDATION_RETRY_INTERVAL_MS?: string;
     // The maximum number of attempts that can be made to revalidate a path
     MAX_REVALIDATION_ATTEMPTS?: string;
+    // Disable SQLite for the durable object queue handler
+    // This can be safely used if you don't use an eventually consistent incremental cache (i.e. R2 without the regional cache for example)
+    REVALIDATION_DO_DISABLE_SQLITE?: string;
   }
 }
 
