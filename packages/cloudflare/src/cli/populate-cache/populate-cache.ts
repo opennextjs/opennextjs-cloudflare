@@ -46,7 +46,7 @@ function getCacheAssetPaths(opts: BuildOptions) {
 export async function populateCache(
   options: BuildOptions,
   config: OpenNextConfig,
-  populateCacheOptions: { target: WranglerTarget }
+  populateCacheOptions: { target: WranglerTarget; environment?: string }
 ) {
   const { incrementalCache, tagCache } = config.default.override ?? {};
 
@@ -72,7 +72,9 @@ export async function populateCache(
           runWrangler(
             options,
             ["r2 object put", JSON.stringify(fullDestPath), `--file ${JSON.stringify(fsPath)}`],
-            { ...populateCacheOptions, excludeRemoteFlag: true, logging: "error" }
+            // NOTE: R2 does not support the environment flag and results in the following error:
+            // Incorrect type for the 'cacheExpiry' field on 'HttpMetadata': the provided value is not of type 'date'.
+            { target: populateCacheOptions.target, excludeRemoteFlag: true, logging: "error" }
           );
         });
         logger.info(`Successfully populated cache with ${assets.length} assets`);

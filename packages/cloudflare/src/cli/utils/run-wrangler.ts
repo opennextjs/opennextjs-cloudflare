@@ -5,17 +5,21 @@ import logger from "@opennextjs/aws/logger.js";
 
 export type WranglerTarget = "local" | "remote";
 
-export function runWrangler(
-  options: BuildOptions,
-  args: string[],
-  wranglerOpts: { target?: WranglerTarget; excludeRemoteFlag?: boolean; logging?: "all" | "error" } = {}
-) {
+type WranglerOptions = {
+  target?: WranglerTarget;
+  environment?: string;
+  excludeRemoteFlag?: boolean;
+  logging?: "all" | "error";
+};
+
+export function runWrangler(options: BuildOptions, args: string[], wranglerOpts: WranglerOptions = {}) {
   const result = spawnSync(
     options.packager,
     [
       "exec",
       "wrangler",
       ...args,
+      wranglerOpts.environment && `--env ${wranglerOpts.environment}`,
       wranglerOpts.target === "remote" && !wranglerOpts.excludeRemoteFlag && "--remote",
       wranglerOpts.target === "local" && "--local",
     ].filter((v): v is string => !!v),
@@ -33,4 +37,25 @@ export function runWrangler(
 
 export function isWranglerTarget(v: string | undefined): v is WranglerTarget {
   return !!v && ["local", "remote"].includes(v);
+}
+
+/**
+ * Find the value of the environment flag (`--env` / `-e`) used by Wrangler.
+ *
+ * @param args - CLI arguments.
+ * @returns Value of the environment flag.
+ */
+export function getWranglerEnvironmentFlag(args: string[]) {
+  for (let i = 0; i <= args.length; i++) {
+    const arg = args[i];
+    if (!arg) continue;
+
+    if (arg === "--env" || arg === "-e") {
+      return args[i + 1];
+    }
+
+    if (arg.startsWith("--env=") || arg.startsWith("-e=")) {
+      return arg.split("=")[1];
+    }
+  }
 }
