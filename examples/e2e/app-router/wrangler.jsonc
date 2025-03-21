@@ -8,6 +8,24 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "NEXT_CACHE_REVALIDATION_DURABLE_OBJECT",
+        "class_name": "DurableObjectQueueHandler"
+      },
+      {
+        "name": "NEXT_CACHE_D1_SHARDED",
+        "class_name": "DOShardedTagCache"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["DurableObjectQueueHandler", "DOShardedTagCache"]
+    }
+  ],
   "kv_namespaces": [
     {
       "binding": "NEXT_CACHE_WORKERS_KV",

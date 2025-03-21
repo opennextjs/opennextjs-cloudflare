@@ -49,12 +49,13 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
   patches.copyPackageCliFiles(packageDistDir, buildOpts);
 
   const { appPath, outputDir, monorepoRoot } = buildOpts;
-  const serverFiles = path.join(
+  const baseManifestPath = path.join(
     outputDir,
     "server-functions/default",
     getPackagePath(buildOpts),
-    ".next/required-server-files.json"
+    ".next"
   );
+  const serverFiles = path.join(baseManifestPath, "required-server-files.json");
   const nextConfig = JSON.parse(fs.readFileSync(serverFiles, "utf-8")).config;
 
   console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);

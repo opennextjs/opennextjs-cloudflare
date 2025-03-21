@@ -1,0 +1,14 @@
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+footer {
+  padding: 1rem;
+  display: flex;
+  justify-content: end;
+}

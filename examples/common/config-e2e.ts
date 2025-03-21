@@ -13,6 +13,8 @@ export function configurePlaywright(
     isWorker = true,
     // Tests with multiple browsers
     multipleBrowsers = false,
+    // Whether to run tests in single file in parallel
+    parallel = true,
   } = {}
 ) {
   const port = getAppPort(app, { isWorker });
@@ -60,7 +62,7 @@ export function configurePlaywright(
     /* ignore runtime specific tests */
     testIgnore: isWorker ? "*next.spec.ts" : "*cloudflare.spec.ts",
     /* Run tests in files in parallel */
-    fullyParallel: true,
+    fullyParallel: parallel,
     /* Fail the build on CI if you accidentally left test.only in the source code. */
     forbidOnly: isCI,
     /* Retry on CI only */

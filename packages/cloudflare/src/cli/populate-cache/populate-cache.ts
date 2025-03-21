@@ -25,7 +25,10 @@ async function resolveCacheName(
 }
 
 function getCacheAssetPaths(opts: BuildOptions) {
-  return globSync(path.join(opts.outputDir, "cache/**/*"), { withFileTypes: true })
+  return globSync(path.join(opts.outputDir, "cache/**/*"), {
+    withFileTypes: true,
+    windowsPathsNoEscape: true,
+  })
     .filter((f) => f.isFile())
     .map((f) => {
       const relativePath = path.relative(path.join(opts.outputDir, "cache"), f.fullpathPosix());

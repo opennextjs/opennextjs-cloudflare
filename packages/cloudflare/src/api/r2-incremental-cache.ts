@@ -8,7 +8,7 @@ import { getCloudflareContext } from "./cloudflare-context.js";
  * An instance of the Incremental Cache that uses an R2 bucket (`NEXT_CACHE_R2_BUCKET`) as it's
  * underlying data store.
  *
- * The directory that the cache entries are stored in can be confused with the `NEXT_CACHE_R2_PREFIX`
+ * The directory that the cache entries are stored in can be configured with the `NEXT_CACHE_R2_PREFIX`
  * environment variable, and defaults to `incremental-cache`.
  *
  * The cache uses an instance of the Cache API (`incremental-cache`) to store a local version of the

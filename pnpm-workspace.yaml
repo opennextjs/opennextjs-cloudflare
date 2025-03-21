@@ -3,6 +3,7 @@ packages:
   - examples/*
   - examples/e2e/*
   - examples/bugs/*
+  - examples/overrides/*
   - "!examples/common"
   - benchmarking
 
@@ -10,7 +11,7 @@ catalog:
   "@cloudflare/workers-types": ^4.20250224.0
   "@dotenvx/dotenvx": 1.31.0
   "@eslint/js": ^9.11.1
-  "@playwright/test": 1.47.0
+  "@playwright/test": ^1.51.1
   "@tsconfig/strictest": ^2.0.5
   "@types/mock-fs": ^4.13.4
   "@types/node": ^22.2.0
@@ -33,7 +34,7 @@ catalog:
   typescript-eslint: ^8.7.0
   typescript: ^5.7.3
   vitest: ^2.1.1
-  wrangler: ^3.111.0
+  wrangler: "^3.114.1 || ^4.0.0"
 
 # e2e tests
 catalogs:
