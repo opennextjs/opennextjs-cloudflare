@@ -6,9 +6,34 @@ on:
   pull_request:
 
 jobs:
+  get-e2e-packages:
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.get-e2e-packages.outputs.packages }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        uses: ./.github/actions/install-dependencies
+
+      - name: Get packages
+        run: |
+          set -x
+
+          {
+            echo "packages='[\"$(pnpm m ls --depth -1 | grep -e 'examples/' | tr ' ' '\n' | grep -o '.*@\d' | rev | cut -c3- | rev | sed -e 's/\\(.*\\)/\"\\1\"/' | paste -sd, - | sed 's/,/","/g')\"]'"
+          } >> "$GITHUB_OUTPUT"
+
   test:
     timeout-minutes: 30
     runs-on: ubuntu-latest
+    needs: get-e2e-packages
+    strategy:
+      fail-fast: true
+      matrix:
+        package: ${{ fromJson(needs.get-e2e-packages.outputs.packages) }}
+    name: ${{ matrix.package }} E2Es
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -23,13 +48,13 @@ jobs:
         run: pnpm build
 
       - name: Build all workers
-        run: pnpm -r build:worker
+        run: pnpm --filter ${{ matrix.package }} build:worker
 
       - name: Run playwright tests
-        run: pnpm e2e
+        run: pnpm --filter ${{ matrix.package }} e2e
 
       - name: Run playwright dev tests
-        run: pnpm e2e:dev
+        run: pnpm --filter ${{ matrix.package }} e2e:dev
 
       - uses: actions/upload-artifact@v4
         if: always()
