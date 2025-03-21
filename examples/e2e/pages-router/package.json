@@ -9,8 +9,9 @@
     "start": "next start --port 3002",
     "lint": "next lint",
     "clean": "rm -rf .turbo node_modules .next .open-next",
-    "build:worker": "pnpm opennextjs-cloudflare",
-    "preview": "pnpm build:worker && pnpm wrangler dev",
+    "build:worker": "pnpm opennextjs-cloudflare build",
+    "preview:worker": "pnpm opennextjs-cloudflare preview",
+    "preview": "pnpm build:worker && pnpm preview:worker",
     "e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "dependencies": {

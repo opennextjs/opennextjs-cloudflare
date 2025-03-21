@@ -92,10 +92,10 @@ export async function getLatestCompatDate(): Promise<string | undefined> {
  *
  * If the user refuses an error is thrown (since the file is mandatory).
  *
- * @param projectOpts The options for the project
+ * @param sourceDir The source directory for the project
  */
-export async function createOpenNextConfigIfNotExistent(projectOpts: ProjectOptions): Promise<void> {
-  const openNextConfigPath = join(projectOpts.sourceDir, "open-next.config.ts");
+export async function createOpenNextConfigIfNotExistent(sourceDir: string): Promise<void> {
+  const openNextConfigPath = join(sourceDir, "open-next.config.ts");
 
   if (!existsSync(openNextConfigPath)) {
     const answer = await askConfirmation(

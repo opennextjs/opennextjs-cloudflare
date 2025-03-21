@@ -7,8 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "build:worker": "opennextjs-cloudflare",
-    "preview": "pnpm build:worker && pnpm wrangler dev",
+    "build:worker": "pnpm opennextjs-cloudflare build",
+    "preview:worker": "pnpm opennextjs-cloudflare preview",
+    "preview": "pnpm build:worker && pnpm preview:worker",
     "e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "dependencies": {

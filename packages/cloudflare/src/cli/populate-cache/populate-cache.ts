@@ -1,4 +1,3 @@
-import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
@@ -13,7 +12,8 @@ import type {
 import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides.js";
 import { globSync } from "glob";
 
-export type CacheBindingMode = "local" | "remote";
+import type { WranglerTarget } from "../utils/run-wrangler.js";
+import { runWrangler } from "../utils/run-wrangler.js";
 
 async function resolveCacheName(
   value:
@@ -23,32 +23,6 @@ async function resolveCacheName(
     | LazyLoadedOverride<TagCache>
 ) {
   return typeof value === "function" ? (await value()).name : value;
-}
-
-function runWrangler(
-  opts: BuildOptions,
-  wranglerOpts: { mode: CacheBindingMode; excludeRemoteFlag?: boolean },
-  args: string[]
-) {
-  const result = spawnSync(
-    opts.packager,
-    [
-      "exec",
-      "wrangler",
-      ...args,
-      wranglerOpts.mode === "remote" && !wranglerOpts.excludeRemoteFlag && "--remote",
-      wranglerOpts.mode === "local" && "--local",
-    ].filter((v): v is string => !!v),
-    {
-      shell: true,
-      stdio: ["ignore", "ignore", "inherit"],
-    }
-  );
-
-  if (result.status !== 0) {
-    logger.error("Failed to populate cache");
-    process.exit(1);
-  }
 }
 
 function getCacheAssetPaths(opts: BuildOptions) {
@@ -69,10 +43,14 @@ function getCacheAssetPaths(opts: BuildOptions) {
     });
 }
 
-export async function populateCache(opts: BuildOptions, config: OpenNextConfig, mode: CacheBindingMode) {
+export async function populateCache(
+  options: BuildOptions,
+  config: OpenNextConfig,
+  populateCacheOptions: { target: WranglerTarget }
+) {
   const { incrementalCache, tagCache } = config.default.override ?? {};
 
-  if (!existsSync(opts.outputDir)) {
+  if (!existsSync(options.outputDir)) {
     logger.error("Unable to populate cache: Open Next build not found");
     process.exit(1);
   }
@@ -83,7 +61,7 @@ export async function populateCache(opts: BuildOptions, config: OpenNextConfig, 
       case "r2-incremental-cache": {
         logger.info("\nPopulating R2 incremental cache...");
 
-        const assets = getCacheAssetPaths(opts);
+        const assets = getCacheAssetPaths(options);
         assets.forEach(({ fsPath, destPath }) => {
           const fullDestPath = path.join(
             "NEXT_CACHE_R2_BUCKET",
@@ -91,11 +69,11 @@ export async function populateCache(opts: BuildOptions, config: OpenNextConfig, 
             destPath
           );
 
-          runWrangler(opts, { mode, excludeRemoteFlag: true }, [
-            "r2 object put",
-            JSON.stringify(fullDestPath),
-            `--file ${JSON.stringify(fsPath)}`,
-          ]);
+          runWrangler(
+            options,
+            ["r2 object put", JSON.stringify(fullDestPath), `--file ${JSON.stringify(fsPath)}`],
+            { ...populateCacheOptions, excludeRemoteFlag: true, logging: "error" }
+          );
         });
         logger.info(`Successfully populated cache with ${assets.length} assets`);
         break;
@@ -111,11 +89,15 @@ export async function populateCache(opts: BuildOptions, config: OpenNextConfig, 
       case "d1-tag-cache": {
         logger.info("\nPopulating D1 tag cache...");
 
-        runWrangler(opts, { mode }, [
-          "d1 execute",
-          "NEXT_CACHE_D1",
-          `--file ${JSON.stringify(path.join(opts.outputDir, "cloudflare/cache-assets-manifest.sql"))}`,
-        ]);
+        runWrangler(
+          options,
+          [
+            "d1 execute",
+            "NEXT_CACHE_D1",
+            `--file ${JSON.stringify(path.join(options.outputDir, "cloudflare/cache-assets-manifest.sql"))}`,
+          ],
+          { ...populateCacheOptions, logging: "error" }
+        );
         logger.info("Successfully populated cache");
         break;
       }
@@ -123,8 +105,4 @@ export async function populateCache(opts: BuildOptions, config: OpenNextConfig, 
         logger.info("Tag cache does not need populating");
     }
   }
-}
-
-export function isCacheBindingMode(v: string | undefined): v is CacheBindingMode {
-  return !!v && ["local", "remote"].includes(v);
 }

@@ -12,8 +12,9 @@
     "prettier": "prettier --write --ignore-unknown .",
     "prettier:check": "prettier --check --ignore-unknown .",
     "test": "pnpm prettier:check",
-    "tofix-build:worker": "opennextjs-cloudflare",
-    "tofix-preview": "pnpm build:worker && pnpm wrangler dev"
+    "tofix-build:worker": "pnpm opennextjs-cloudflare build",
+    "tofix-preview:worker": "pnpm opennextjs-cloudflare preview",
+    "tofix-preview": "pnpm build:worker && pnpm preview:worker"
   },
   "dependencies": {
     "@headlessui/react": "^2.1.2",

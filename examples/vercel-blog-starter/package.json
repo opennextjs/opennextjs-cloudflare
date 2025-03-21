@@ -5,8 +5,9 @@
     "dev": "next",
     "build": "next build",
     "start": "next start",
-    "build:worker": "opennextjs-cloudflare",
-    "preview": "pnpm build:worker && pnpm wrangler dev"
+    "build:worker": "pnpm opennextjs-cloudflare build",
+    "preview:worker": "pnpm opennextjs-cloudflare preview",
+    "preview": "pnpm build:worker && pnpm preview:worker"
   },
   "dependencies": {
     "classnames": "^2.5.1",
