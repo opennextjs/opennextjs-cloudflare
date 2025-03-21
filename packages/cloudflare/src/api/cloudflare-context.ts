@@ -15,6 +15,10 @@ declare global {
     NEXT_CACHE_D1_REVALIDATIONS_TABLE?: string;
     // Service binding for the worker itself to be able to call itself from within the worker
     NEXT_CACHE_REVALIDATION_WORKER?: Service;
+    // R2 bucket used for the incremental cache
+    NEXT_CACHE_R2_BUCKET?: R2Bucket;
+    // Prefix used for the R2 incremental cache bucket
+    NEXT_CACHE_R2_PREFIX?: string;
     // Durable Object namespace to use for the durable object queue handler
     NEXT_CACHE_REVALIDATION_DURABLE_OBJECT?: DurableObjectNamespace<DurableObjectQueueHandler>;
     // Durables object namespace to use for the sharded tag cache

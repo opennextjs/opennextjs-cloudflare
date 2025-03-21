@@ -15,6 +15,7 @@ const apps = [
   // overrides
   "d1-tag-next",
   "memory-queue",
+  "r2-incremental-cache",
   // bugs
   "gh-119",
   "gh-219",
