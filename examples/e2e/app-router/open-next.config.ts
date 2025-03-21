@@ -6,6 +6,6 @@ import shardedTagCache from "@opennextjs/cloudflare/do-sharded-tag-cache";
 
 export default defineCloudflareConfig({
   incrementalCache: kvIncrementalCache,
-  tagCache: shardedTagCache({ numberOfShards: 12, regionalCache: true }),
+  tagCache: shardedTagCache({ numberOfShards: 12}),
   queue: doQueue,
 });
