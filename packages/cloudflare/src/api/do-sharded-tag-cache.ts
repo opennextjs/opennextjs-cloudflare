@@ -9,6 +9,7 @@ import { getCloudflareContext } from "./cloudflare-context";
 const SOFT_TAG_PREFIX = "_N_T_/";
 export const DEFAULT_MAX_SOFT_SHARDS = 4;
 export const DEFAULT_MAX_HARD_SHARDS = 2;
+export const DEFAULT_MAX_WRITE_RETRIES = 3;
 
 interface ShardedD1TagCacheOptions {
   /**
@@ -52,17 +53,25 @@ interface ShardedD1TagCacheOptions {
     softShards: number;
     hardShards: number;
   };
+
+  /**
+   * The number of retries to perform when writing tags
+   * @default 3
+   */
+  maxWriteRetries?: number;
 }
 class ShardedD1TagCache implements NextModeTagCache {
   readonly mode = "nextMode" as const;
   readonly name = "sharded-d1-tag-cache";
   readonly maxSoftShards: number;
   readonly maxHardShards: number;
+  readonly maxWriteRetries: number;
   localCache?: Cache;
 
   constructor(private opts: ShardedD1TagCacheOptions = { numberOfShards: 4 }) {
     this.maxSoftShards = opts.doubleShardingOpts?.softShards ?? DEFAULT_MAX_SOFT_SHARDS;
     this.maxHardShards = opts.doubleShardingOpts?.hardShards ?? DEFAULT_MAX_HARD_SHARDS;
+    this.maxWriteRetries = opts.maxWriteRetries ?? DEFAULT_MAX_WRITE_RETRIES;
   }
 
   private getDurableObjectStub(shardId: string) {
@@ -201,15 +210,32 @@ class ShardedD1TagCache implements NextModeTagCache {
     const { isDisabled } = await this.getConfig();
     if (isDisabled) return;
     const shards = this.generateShards(tags, true);
+    const currentTime = Date.now();
     // We then create a new durable object for each shard
     await Promise.all(
       Array.from(shards.entries()).map(async ([shardId, shardedTags]) => {
-        const stub = this.getDurableObjectStub(shardId);
-        await stub.writeTags(shardedTags);
-        // Depending on the shards and the tags, deleting from the regional cache will not work for every tag
-        await this.deleteRegionalCache(shardId, shardedTags);
+        await this.performWriteTagsWithRetry(shardId, shardedTags, currentTime);
       })
     );
+  }
+
+  async performWriteTagsWithRetry(shardId: string, tags: string[], lastModified: number, retryNumber = 0) {
+    if (retryNumber >= this.maxWriteRetries) {
+      error("Error while writing tags, too many retries");
+      // Do we want to throw an error here ?
+      //TODO: we'd probably want to send a message to a dead letter queue
+      return;
+    }
+    try {
+      const stub = this.getDurableObjectStub(shardId);
+      // We need to write the same revalidation time for all tags
+      await stub.writeTags(tags, lastModified);
+      // Depending on the shards and the tags, deleting from the regional cache will not work for every tag
+      await this.deleteRegionalCache(shardId, tags);
+    } catch (e) {
+      error("Error while writing tags", e);
+      await this.performWriteTagsWithRetry(shardId, tags, lastModified, retryNumber + 1);
+    }
   }
 
   // Cache API
@@ -258,11 +284,16 @@ class ShardedD1TagCache implements NextModeTagCache {
   }
 
   async deleteRegionalCache(shardId: string, tags: string[]) {
-    if (!this.opts.regionalCache) return;
-    const cache = await this.getCacheInstance();
-    if (!cache) return;
-    const key = await this.getCacheKey(shardId, tags);
-    await cache.delete(key);
+    // We never want to crash because of the cache
+    try {
+      if (!this.opts.regionalCache) return;
+      const cache = await this.getCacheInstance();
+      if (!cache) return;
+      const key = await this.getCacheKey(shardId, tags);
+      await cache.delete(key);
+    }catch(e){
+      debug("Error while deleting from regional cache", e);
+    }
   }
 }
 

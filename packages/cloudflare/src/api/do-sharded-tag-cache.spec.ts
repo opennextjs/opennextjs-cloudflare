@@ -171,6 +171,11 @@ describe("DOShardedTagCache", () => {
       globalThis.openNextConfig = {
         dangerous: { disableTagCache: false },
       };
+      vi.useFakeTimers();
+      vi.setSystemTime(1000)
+    });
+    afterEach(() => {
+      vi.useRealTimers();
     });
     it("should return early if the cache is disabled", async () => {
       globalThis.openNextConfig = {
@@ -187,7 +192,7 @@ describe("DOShardedTagCache", () => {
       await cache.writeTags(["tag1"]);
       expect(idFromNameMock).toHaveBeenCalled();
       expect(writeTagsMock).toHaveBeenCalled();
-      expect(writeTagsMock).toHaveBeenCalledWith(["tag1"]);
+      expect(writeTagsMock).toHaveBeenCalledWith(["tag1"], 1000);
     });
 
     it("should write the tags to the cache for multiple shards", async () => {
@@ -195,8 +200,8 @@ describe("DOShardedTagCache", () => {
       await cache.writeTags(["tag1", "tag2"]);
       expect(idFromNameMock).toHaveBeenCalledTimes(2);
       expect(writeTagsMock).toHaveBeenCalledTimes(2);
-      expect(writeTagsMock).toHaveBeenCalledWith(["tag1"]);
-      expect(writeTagsMock).toHaveBeenCalledWith(["tag2"]);
+      expect(writeTagsMock).toHaveBeenCalledWith(["tag1"], 1000);
+      expect(writeTagsMock).toHaveBeenCalledWith(["tag2"], 1000);
     });
 
     it('should write to all the double sharded shards if "generateAllShards" is true', async () => {
@@ -204,8 +209,8 @@ describe("DOShardedTagCache", () => {
       await cache.writeTags(["tag1", "_N_T_/tag1"]);
       expect(idFromNameMock).toHaveBeenCalledTimes(6);
       expect(writeTagsMock).toHaveBeenCalledTimes(6);
-      expect(writeTagsMock).toHaveBeenCalledWith(["tag1"]);
-      expect(writeTagsMock).toHaveBeenCalledWith(["_N_T_/tag1"]);
+      expect(writeTagsMock).toHaveBeenCalledWith(["tag1"], 1000);
+      expect(writeTagsMock).toHaveBeenCalledWith(["_N_T_/tag1"], 1000);
     });
 
     it("should call deleteRegionalCache", async () => {
@@ -267,4 +272,34 @@ describe("DOShardedTagCache", () => {
       expect(reqKey2.url).toBe("http://local.cache/shard/shard-hard-1?tags=tag1");
     });
   });
+
+  describe("performWriteTagsWithRetry", () => {
+
+    it("should retry if it fails", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(1000);
+      const cache = doShardedTagCache();
+      writeTagsMock.mockImplementationOnce(() => {
+        throw new Error("error");
+      }
+      );
+      const spiedFn = vi.spyOn(cache, "performWriteTagsWithRetry");
+      await cache.performWriteTagsWithRetry("tag1", ["tag1"], Date.now());
+      expect(writeTagsMock).toHaveBeenCalledTimes(2);
+      expect(spiedFn).toHaveBeenCalledTimes(2);
+      expect(spiedFn).toHaveBeenCalledWith("tag1", ["tag1"], 1000, 1);
+
+      vi.useRealTimers();
+    });
+
+    it("should stop retrying after 3 times", async () => {
+      const cache = doShardedTagCache();
+      const spiedFn = vi.spyOn(cache, "performWriteTagsWithRetry");
+      await cache.performWriteTagsWithRetry("tag1", ["tag1"], Date.now(), 3);
+      expect(writeTagsMock).not.toHaveBeenCalled();
+      expect(spiedFn).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+    }
+    );
+  })
 });
