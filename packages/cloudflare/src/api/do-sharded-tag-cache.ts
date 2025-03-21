@@ -6,6 +6,8 @@ import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "./cloudflare-context";
 
+const SOFT_TAG_PREFIX = "_N_T_/";
+
 interface ShardedD1TagCacheOptions {
   /**
    * The number of shards that will be used.
@@ -49,11 +51,18 @@ class ShardedD1TagCache implements NextModeTagCache {
    * @returns A map of shardId to tags
    */
   generateShards(tags: string[]) {
-    // For each tag, we generate a message group id
-    const messageGroupIds = tags.map((tag) => ({
-      shardId: generateShardId(tag, this.opts.numberOfShards, "shard"),
+    // Here we'll start by splitting soft tags from hard tags
+    // This will greatly increase the cache hit rate for the soft tag (which are the most likely to cause issue because of load)
+    const softTags = tags.filter((tag) => tag.startsWith(SOFT_TAG_PREFIX)).map((tag) => ({
+      shardId: generateShardId(tag, this.opts.numberOfShards, "shard-soft"),
       tag,
     }));
+    const hardTags = tags.filter((tag) => !tag.startsWith(SOFT_TAG_PREFIX)).map((tag) => ({
+      shardId: generateShardId(tag, this.opts.numberOfShards, "shard-hard"),
+      tag,
+    }));
+    // For each tag, we generate a message group id
+    const messageGroupIds = [...softTags, ...hardTags];
     // We group the tags by shard
     const shards = new Map<string, string[]>();
     for (const { shardId, tag } of messageGroupIds) {
