@@ -223,7 +223,11 @@ class ShardedD1TagCache implements NextModeTagCache {
     if (retryNumber >= this.maxWriteRetries) {
       error("Error while writing tags, too many retries");
       // Do we want to throw an error here ?
-      //TODO: we'd probably want to send a message to a dead letter queue
+      await getCloudflareContext().env.NEXT_CACHE_D1_SHARDED_DLQ?.send({
+        failingShardId: shardId,
+        failingTags: tags,
+        lastModified,
+      });
       return;
     }
     try {

@@ -9,9 +9,12 @@ const getMock = vi
   .fn()
   .mockReturnValue({ hasBeenRevalidated: hasBeenRevalidatedMock, writeTags: writeTagsMock });
 const waitUntilMock = vi.fn().mockImplementation(async (fn) => fn());
+const sendDLQMock = vi.fn();
 vi.mock("./cloudflare-context", () => ({
   getCloudflareContext: () => ({
-    env: { NEXT_CACHE_D1_SHARDED: { idFromName: idFromNameMock, get: getMock } },
+    env: { NEXT_CACHE_D1_SHARDED: { idFromName: idFromNameMock, get: getMock }, NEXT_CACHE_D1_SHARDED_DLQ: {
+      send: sendDLQMock,
+    } },
     ctx: { waitUntil: waitUntilMock },
   }),
 }));
@@ -284,20 +287,31 @@ describe("DOShardedTagCache", () => {
       }
       );
       const spiedFn = vi.spyOn(cache, "performWriteTagsWithRetry");
-      await cache.performWriteTagsWithRetry("tag1", ["tag1"], Date.now());
+      await cache.performWriteTagsWithRetry("shard", ["tag1"], Date.now());
       expect(writeTagsMock).toHaveBeenCalledTimes(2);
       expect(spiedFn).toHaveBeenCalledTimes(2);
-      expect(spiedFn).toHaveBeenCalledWith("tag1", ["tag1"], 1000, 1);
+      expect(spiedFn).toHaveBeenCalledWith("shard", ["tag1"], 1000, 1);
+      expect(sendDLQMock).not.toHaveBeenCalled();
+      
 
       vi.useRealTimers();
     });
 
     it("should stop retrying after 3 times", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(1000);
       const cache = doShardedTagCache();
       const spiedFn = vi.spyOn(cache, "performWriteTagsWithRetry");
-      await cache.performWriteTagsWithRetry("tag1", ["tag1"], Date.now(), 3);
+      await cache.performWriteTagsWithRetry("shard", ["tag1"], Date.now(), 3);
       expect(writeTagsMock).not.toHaveBeenCalled();
       expect(spiedFn).toHaveBeenCalledTimes(1);
+
+      expect(sendDLQMock).toHaveBeenCalledWith({
+        failingShardId: "shard",
+        failingTags: ["tag1"],
+        lastModified: 1000,
+      });
+
       vi.useRealTimers();
     }
     );
