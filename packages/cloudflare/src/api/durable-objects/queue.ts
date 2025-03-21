@@ -36,6 +36,7 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
   readonly revalidationTimeout: number;
   readonly revalidationRetryInterval: number;
   readonly maxRevalidationAttempts: number;
+  readonly disableSQLite: boolean;
 
   constructor(ctx: DurableObjectState, env: CloudflareEnv) {
     super(ctx, env);
@@ -43,12 +44,6 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     // If there is no service binding, we throw an error because we can't revalidate without it
     if (!this.service) throw new IgnorableError("No service binding for cache revalidation worker");
     this.sql = ctx.storage.sql;
-
-    // We restore the state
-    ctx.blockConcurrencyWhile(async () => {
-      debug(`Restoring the state of the durable object`);
-      await this.initState();
-    });
 
     this.maxRevalidations = env.MAX_REVALIDATION_BY_DURABLE_OBJECT
       ? parseInt(env.MAX_REVALIDATION_BY_DURABLE_OBJECT)
@@ -65,6 +60,14 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     this.maxRevalidationAttempts = env.MAX_REVALIDATION_ATTEMPTS
       ? parseInt(env.MAX_REVALIDATION_ATTEMPTS)
       : DEFAULT_MAX_REVALIDATION_ATTEMPTS;
+
+    this.disableSQLite = env.REVALIDATION_DO_DISABLE_SQLITE === "true";
+
+    // We restore the state
+    ctx.blockConcurrencyWhile(async () => {
+      debug(`Restoring the state of the durable object`);
+      await this.initState();
+    });
 
     debug(`Durable object initialized`);
   }
@@ -103,7 +106,7 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     this.ctx.waitUntil(revalidationPromise);
   }
 
-  private async executeRevalidation(msg: QueueMessage) {
+  async executeRevalidation(msg: QueueMessage) {
     try {
       debug(`Revalidating ${msg.MessageBody.host}${msg.MessageBody.url}`);
       const {
@@ -151,12 +154,14 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
       // Everything went well, we can update the sync table
       // We use unixepoch here,it also works with Date.now()/1000, but not with Date.now() alone.
       // TODO: This needs to be investigated
-      this.sql.exec(
-        "INSERT OR REPLACE INTO sync (id, lastSuccess, buildId) VALUES (?, unixepoch(), ?)",
-        // We cannot use the deduplication id because it's not unique per route - every time a route is revalidated, the deduplication id is different.
-        `${host}${url}`,
-        process.env.__NEXT_BUILD_ID
-      );
+      if (!this.disableSQLite) {
+        this.sql.exec(
+          "INSERT OR REPLACE INTO sync (id, lastSuccess, buildId) VALUES (?, unixepoch(), ?)",
+          // We cannot use the deduplication id because it's not unique per route - every time a route is revalidated, the deduplication id is different.
+          `${host}${url}`,
+          process.env.__NEXT_BUILD_ID
+        );
+      }
       // If everything went well, we can remove the route from the failed state
       this.routeInFailedState.delete(msg.MessageDeduplicationId);
     } catch (e) {
@@ -217,12 +222,14 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
       };
     }
     this.routeInFailedState.set(msg.MessageDeduplicationId, updatedFailedState);
-    this.sql.exec(
-      "INSERT OR REPLACE INTO failed_state (id, data, buildId) VALUES (?, ?, ?)",
-      msg.MessageDeduplicationId,
-      JSON.stringify(updatedFailedState),
-      process.env.__NEXT_BUILD_ID
-    );
+    if (!this.disableSQLite) {
+      this.sql.exec(
+        "INSERT OR REPLACE INTO failed_state (id, data, buildId) VALUES (?, ?, ?)",
+        msg.MessageDeduplicationId,
+        JSON.stringify(updatedFailedState),
+        process.env.__NEXT_BUILD_ID
+      );
+    }
     // We probably want to do something if routeInFailedState is becoming too big, at least log it
     await this.addAlarm();
   }
@@ -246,6 +253,7 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
   // We don't restore the ongoing revalidations because we cannot know in which state they are
   // We only restore the failed state and the alarm
   async initState() {
+    if (this.disableSQLite) return;
     // We store the failed state as a blob, we don't want to do anything with it anyway besides restoring
     this.sql.exec("CREATE TABLE IF NOT EXISTS failed_state (id TEXT PRIMARY KEY, data TEXT, buildId TEXT)");
 
@@ -272,6 +280,7 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
    */
   checkSyncTable(msg: QueueMessage) {
     try {
+      if (this.disableSQLite) return false;
       const numNewer = this.sql
         .exec<{
           numNewer: number;
