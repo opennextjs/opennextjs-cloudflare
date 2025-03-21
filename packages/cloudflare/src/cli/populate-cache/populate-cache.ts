@@ -94,10 +94,10 @@ export async function populateCache(
           [
             "d1 execute",
             "NEXT_CACHE_D1",
-            `--command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);"`
+            `--command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);"`,
           ],
           { ...populateCacheOptions, logging: "error" }
-        )
+        );
 
         logger.info("\nSuccessfully created D1 table");
         break;
