@@ -7,24 +7,22 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "d1:clean": "wrangler d1 execute NEXT_CACHE_D1 --command \"DROP TABLE IF EXISTS revalidations\"",
-    "d1:setup": "wrangler d1 execute NEXT_CACHE_D1 --command \"CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);\"",
-    "build:worker": "pnpm d1:clean && pnpm opennextjs-cloudflare build && pnpm d1:setup",
+    "build:worker": "pnpm opennextjs-cloudflare build",
     "preview:worker": "pnpm opennextjs-cloudflare preview",
     "preview": "pnpm build:worker && pnpm preview:worker",
     "e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "next": "15.1.7"
+    "react": "catalog:e2e",
+    "react-dom": "catalog:e2e",
+    "next": "catalog:e2e"
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "workspace:*",
     "@playwright/test": "catalog:",
     "@types/node": "catalog:",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/react": "catalog:e2e",
+    "@types/react-dom": "catalog:e2e",
     "typescript": "catalog:",
     "wrangler": "catalog:"
   }

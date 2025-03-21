@@ -86,6 +86,23 @@ export async function populateCache(
   if (!config.dangerous?.disableTagCache && !config.dangerous?.disableIncrementalCache && tagCache) {
     const name = await resolveCacheName(tagCache);
     switch (name) {
+      case "d1-next-mode-tag-cache": {
+        logger.info("\nCreating D1 table if necessary...");
+        const revalidationsTable = process.env.NEXT_CACHE_D1_REVALIDATIONS_TABLE || "revalidations";
+
+        runWrangler(
+          options,
+          [
+            "d1 execute",
+            "NEXT_CACHE_D1",
+            `--command "CREATE TABLE IF NOT EXISTS ${JSON.stringify(revalidationsTable)} (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);"`,
+          ],
+          { ...populateCacheOptions, logging: "error" }
+        );
+
+        logger.info("\nSuccessfully created D1 table");
+        break;
+      }
       case "d1-tag-cache": {
         logger.info("\nPopulating D1 tag cache...");
 
