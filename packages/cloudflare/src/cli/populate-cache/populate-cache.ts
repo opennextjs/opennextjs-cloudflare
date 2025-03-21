@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-import { BuildOptions } from "@opennextjs/aws/build/helper.js";
+import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import logger from "@opennextjs/aws/logger.js";
 import type {
   IncludedIncrementalCache,
@@ -12,7 +12,8 @@ import type {
 import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides.js";
 import { globSync } from "glob";
 
-import { runWrangler, WranglerTarget } from "../utils/run-wrangler.js";
+import type { WranglerTarget } from "../utils/run-wrangler.js";
+import { runWrangler } from "../utils/run-wrangler.js";
 
 async function resolveCacheName(
   value:

@@ -9,8 +9,9 @@
     "lint": "next lint",
     "d1:clean": "wrangler d1 execute NEXT_CACHE_D1 --command \"DROP TABLE IF EXISTS revalidations\"",
     "d1:setup": "wrangler d1 execute NEXT_CACHE_D1 --command \"CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);\"",
-    "build:worker": "opennextjs-cloudflare && pnpm d1:clean && pnpm d1:setup",
-    "preview": "pnpm build:worker && pnpm wrangler dev",
+    "build:worker": "pnpm d1:clean && pnpm opennextjs-cloudflare build && pnpm d1:setup",
+    "preview:worker": "pnpm opennextjs-cloudflare preview",
+    "preview": "pnpm build:worker && pnpm preview:worker",
     "e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "dependencies": {
