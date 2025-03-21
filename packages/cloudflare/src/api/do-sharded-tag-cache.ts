@@ -88,16 +88,35 @@ class ShardedD1TagCache implements NextModeTagCache {
 
   /**
    * This function generates an array for the double sharding
+   * @param tags The tags to generate shards for
    * @param shardType Whether to generate shards for soft or hard tags
    * @param generateAllShards Whether to generate all shards or only one
-   * @returns An array of shard with just one element if `generateAllShards` is false, otherwise an array of all possible shards index (necessary for write)
-   * It will return [-1] if we need to generate a random number
+   * @returns An array of shardId and tag
    */
-  private generateShardArray(shardType: "soft" | "hard", generateAllShards = false) {
-    if (!this.opts.enableDoubleSharding) return [1];
-    const shards = shardType === "soft" ? this.maxSoftShards : this.maxHardShards;
-    if (generateAllShards) return Array.from({ length: shards }, (_, i) => i + 1);
-    return [-1];
+  private generateShardArray(tags: string[], shardType: "soft" | "hard", generateAllShards = false) {
+    let doubleShardArray = [1];
+    const isSoft = shardType === "soft";
+    if (this.opts.enableDoubleSharding) {
+      const shards = isSoft ? this.maxSoftShards : this.maxHardShards;
+      doubleShardArray = generateAllShards ? Array.from({ length: shards }, (_, i) => i + 1) : [-1];
+    }
+    return doubleShardArray
+      .map((shard) => {
+        return tags
+          .filter((tag) => (isSoft ? tag.startsWith(SOFT_TAG_PREFIX) : !tag.startsWith(SOFT_TAG_PREFIX)))
+          .map((tag) => {
+            const baseShardId = generateShardId(tag, this.opts.numberOfShards, `shard-${shardType}`);
+            const randomShardId = this.generateRandomNumberBetween(
+              1,
+              isSoft ? this.maxSoftShards : this.maxHardShards
+            );
+            return {
+              shardId: `${baseShardId}-${shard === -1 ? randomShardId : shard}`,
+              tag,
+            };
+          });
+      })
+      .flat();
   }
 
   /**
@@ -108,29 +127,9 @@ class ShardedD1TagCache implements NextModeTagCache {
   generateShards(tags: string[], generateAllShards = false) {
     // Here we'll start by splitting soft tags from hard tags
     // This will greatly increase the cache hit rate for the soft tag (which are the most likely to cause issue because of load)
-    const softTags = this.generateShardArray("soft", generateAllShards)
-      .map((shard) => {
-        return tags
-          .filter((tag) => tag.startsWith(SOFT_TAG_PREFIX))
-          .map((tag) => ({
-            shardId: `${generateShardId(tag, this.opts.numberOfShards, "shard-soft")}-${shard === -1 ? this.generateRandomNumberBetween(1, this.maxSoftShards) : shard}`,
-            tag,
-          }));
-      })
-      .flat();
+    const softTags = this.generateShardArray(tags, "soft", generateAllShards);
 
-    const hardTags = this.generateShardArray("hard", generateAllShards)
-      .map((shard) => {
-        return tags
-          .filter((tag) => !tag.startsWith(SOFT_TAG_PREFIX))
-          .map((tag) => ({
-            shardId: `${generateShardId(tag, this.opts.numberOfShards, "shard-hard")}-${
-              shard === -1 ? this.generateRandomNumberBetween(1, this.maxHardShards) : shard
-            }`,
-            tag,
-          }));
-      })
-      .flat();
+    const hardTags = this.generateShardArray(tags, "hard", generateAllShards);
     // For each tag, we generate a message group id
     const messageGroupIds = [...softTags, ...hardTags];
     // We group the tags by shard
@@ -295,7 +294,7 @@ class ShardedD1TagCache implements NextModeTagCache {
       if (!cache) return;
       const key = await this.getCacheKey(shardId, tags);
       await cache.delete(key);
-    }catch(e){
+    } catch (e) {
       debug("Error while deleting from regional cache", e);
     }
   }

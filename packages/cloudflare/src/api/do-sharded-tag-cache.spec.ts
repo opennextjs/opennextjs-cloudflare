@@ -12,9 +12,12 @@ const waitUntilMock = vi.fn().mockImplementation(async (fn) => fn());
 const sendDLQMock = vi.fn();
 vi.mock("./cloudflare-context", () => ({
   getCloudflareContext: () => ({
-    env: { NEXT_CACHE_D1_SHARDED: { idFromName: idFromNameMock, get: getMock }, NEXT_CACHE_D1_SHARDED_DLQ: {
-      send: sendDLQMock,
-    } },
+    env: {
+      NEXT_CACHE_D1_SHARDED: { idFromName: idFromNameMock, get: getMock },
+      NEXT_CACHE_D1_SHARDED_DLQ: {
+        send: sendDLQMock,
+      },
+    },
     ctx: { waitUntil: waitUntilMock },
   }),
 }));
@@ -175,7 +178,7 @@ describe("DOShardedTagCache", () => {
         dangerous: { disableTagCache: false },
       };
       vi.useFakeTimers();
-      vi.setSystemTime(1000)
+      vi.setSystemTime(1000);
     });
     afterEach(() => {
       vi.useRealTimers();
@@ -277,22 +280,19 @@ describe("DOShardedTagCache", () => {
   });
 
   describe("performWriteTagsWithRetry", () => {
-
     it("should retry if it fails", async () => {
       vi.useFakeTimers();
       vi.setSystemTime(1000);
       const cache = doShardedTagCache();
       writeTagsMock.mockImplementationOnce(() => {
         throw new Error("error");
-      }
-      );
+      });
       const spiedFn = vi.spyOn(cache, "performWriteTagsWithRetry");
       await cache.performWriteTagsWithRetry("shard", ["tag1"], Date.now());
       expect(writeTagsMock).toHaveBeenCalledTimes(2);
       expect(spiedFn).toHaveBeenCalledTimes(2);
       expect(spiedFn).toHaveBeenCalledWith("shard", ["tag1"], 1000, 1);
       expect(sendDLQMock).not.toHaveBeenCalled();
-      
 
       vi.useRealTimers();
     });
@@ -313,7 +313,6 @@ describe("DOShardedTagCache", () => {
       });
 
       vi.useRealTimers();
-    }
-    );
-  })
+    });
+  });
 });
