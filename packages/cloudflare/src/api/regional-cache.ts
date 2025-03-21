@@ -12,7 +12,7 @@ type Options = {
    * The mode to use for the regional cache.
    *
    * - `short-lived`: Re-use a cache entry for up to a minute after it has been retrieved.
-   * - `long-lived`: Re-use a fetch cache entry until it is revalidated, or an ISR/SSG entry for up to 30 minutes.
+   * - `long-lived`: Re-use a fetch cache entry until it is revalidated (per-region), or an ISR/SSG entry for up to 30 minutes.
    */
   mode: "short-lived" | "long-lived";
   /**
@@ -156,7 +156,7 @@ class RegionalCache implements IncrementalCache {
  * @param cache - Incremental cache instance.
  * @param opts.mode - The mode to use for the regional cache.
  * - `short-lived`: Re-use a cache entry for up to a minute after it has been retrieved.
- * - `long-lived`: Re-use a fetch cache entry until it is revalidated, or an ISR/SSG entry for up to 30 minutes.
+ * - `long-lived`: Re-use a fetch cache entry until it is revalidated (per-region), or an ISR/SSG entry for up to 30 minutes.
  * @param opts.shouldLazilyUpdateOnCacheHit - Whether the regional cache entry should be updated in
  * the background or not when it experiences a cache hit.
  *

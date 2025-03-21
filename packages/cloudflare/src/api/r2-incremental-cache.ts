@@ -8,7 +8,7 @@ import { getCloudflareContext } from "./cloudflare-context.js";
  * An instance of the Incremental Cache that uses an R2 bucket (`NEXT_CACHE_R2_BUCKET`) as it's
  * underlying data store.
  *
- * The directory that the cache entries are stored in can be confused with the `NEXT_CACHE_R2_PREFIX`
+ * The directory that the cache entries are stored in can be configured with the `NEXT_CACHE_R2_PREFIX`
  * environment variable, and defaults to `incremental-cache`.
  *
  * The cache uses an instance of the Cache API (`incremental-cache`) to store a local version of the
@@ -16,6 +16,12 @@ import { getCloudflareContext } from "./cloudflare-context.js";
  */
 class R2IncrementalCache implements IncrementalCache {
   readonly name = "r2-incremental-cache";
+
+  protected directory: string;
+
+  constructor() {
+    this.directory = getCloudflareContext().env.NEXT_CACHE_R2_PREFIX ?? "incremental-cache";
+  }
 
   async get<IsFetch extends boolean = false>(
     key: string,
@@ -71,9 +77,7 @@ class R2IncrementalCache implements IncrementalCache {
   }
 
   protected getR2Key(key: string, isFetch?: boolean): string {
-    const directory = getCloudflareContext().env.NEXT_CACHE_R2_PREFIX ?? "incremental-cache";
-
-    return `${directory}/${process.env.NEXT_BUILD_ID ?? "no-build-id"}/${key}.${isFetch ? "fetch" : "cache"}`;
+    return `${this.directory}/${process.env.NEXT_BUILD_ID ?? "no-build-id"}/${key}.${isFetch ? "fetch" : "cache"}`;
   }
 }
 
