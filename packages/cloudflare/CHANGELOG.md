@@ -1,5 +1,40 @@
 # @opennextjs/cloudflare
 
+## 0.6.0
+
+### Minor Changes
+
+- [#479](https://github.com/opennextjs/opennextjs-cloudflare/pull/479) [`0c93e8b`](https://github.com/opennextjs/opennextjs-cloudflare/commit/0c93e8b3e22960553c6537b6e83b84cbd8724423) Thanks [@james-elicx](https://github.com/james-elicx)! - feat: commands for cli actions
+
+  The OpenNext Cloudflare CLI now uses the following commands;
+
+  - `build`: build the application
+  - `populateCache`: populate either the local or remote cache
+  - `preview`: populate the local cache and start a dev server
+  - `deploy`: populate the remote cache and deploy to production
+
+- [#490](https://github.com/opennextjs/opennextjs-cloudflare/pull/490) [`00f6071`](https://github.com/opennextjs/opennextjs-cloudflare/commit/00f60716227a883d9c3138e3797aaba9bd8fed33) Thanks [@vicb](https://github.com/vicb)! - Drop the deprecated kvCache in favor of kv-cache
+
+### Patch Changes
+
+- [#487](https://github.com/opennextjs/opennextjs-cloudflare/pull/487) [`0702d2e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/0702d2ea8b6480d358f750060e510b466bdf8fd5) Thanks [@james-elicx](https://github.com/james-elicx)! - feat: support passing the wrangler environment when populating the cache
+
+- [#480](https://github.com/opennextjs/opennextjs-cloudflare/pull/480) [`e0ec01d`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e0ec01d50d3ae9f15294735f8fd28d84d29140ca) Thanks [@conico974](https://github.com/conico974)! - fix deduplication for memory queue and add some log
+
+- [#470](https://github.com/opennextjs/opennextjs-cloudflare/pull/470) [`2650043`](https://github.com/opennextjs/opennextjs-cloudflare/commit/26500437cd9e6cabf44f6308a124ca0687754bf8) Thanks [@conico974](https://github.com/conico974)! - feat: add a sharded SQLite Durable object implementation for the tag cache
+
+- [#485](https://github.com/opennextjs/opennextjs-cloudflare/pull/485) [`ced7d46`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ced7d4639209fd45f34c5109de89a0671b5d1874) Thanks [@conico974](https://github.com/conico974)! - add an option for disabling sqlite on the durable object queue
+
+- [#460](https://github.com/opennextjs/opennextjs-cloudflare/pull/460) [`60171f5`](https://github.com/opennextjs/opennextjs-cloudflare/commit/60171f58a2817acb2ecef4ea67a3a60ab522bc0d) Thanks [@conico974](https://github.com/conico974)! - feat: durable object de-duping revalidation queue
+
+- [#436](https://github.com/opennextjs/opennextjs-cloudflare/pull/436) [`86c0139`](https://github.com/opennextjs/opennextjs-cloudflare/commit/86c0139535350f5806c27a665f6ec8fcfb96e398) Thanks [@james-elicx](https://github.com/james-elicx)! - feat: auto-populating d1 cache data
+
+- [#464](https://github.com/opennextjs/opennextjs-cloudflare/pull/464) [`acfc7f3`](https://github.com/opennextjs/opennextjs-cloudflare/commit/acfc7f35a387b84607674e93d8ef66db4e634669) Thanks [@conico974](https://github.com/conico974)! - Implement next mode for d1 tag cache that will reduce write
+
+- [#486](https://github.com/opennextjs/opennextjs-cloudflare/pull/486) [`25a8f4c`](https://github.com/opennextjs/opennextjs-cloudflare/commit/25a8f4c82c71cbf0c3dedd79d9a4f52e012bc95e) Thanks [@conico974](https://github.com/conico974)! - auto create table for D1NextModeTagCache
+
+- [#443](https://github.com/opennextjs/opennextjs-cloudflare/pull/443) [`54508ff`](https://github.com/opennextjs/opennextjs-cloudflare/commit/54508ffc613cc12d27e014c472632a59db7d7833) Thanks [@james-elicx](https://github.com/james-elicx)! - feat: r2 adapter for the incremental cache
+
 ## 0.5.12
 
 ### Patch Changes
