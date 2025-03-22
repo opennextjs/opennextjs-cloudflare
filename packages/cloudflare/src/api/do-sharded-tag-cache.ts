@@ -6,10 +6,16 @@ import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "./cloudflare-context";
 
+const SOFT_TAG_PREFIX = "_N_T_/";
+export const DEFAULT_MAX_SOFT_SHARDS = 4;
+export const DEFAULT_MAX_HARD_SHARDS = 2;
+export const DEFAULT_MAX_WRITE_RETRIES = 3;
+
 interface ShardedD1TagCacheOptions {
   /**
    * The number of shards that will be used.
    * 1 shards means 1 durable object instance.
+   * Soft (internal next tags used for `revalidatePath`) and hard tags (the one you define in your app) will be split in different shards.
    * The number of requests made to Durable Objects will scale linearly with the number of shards.
    * For example, a request involving 5 tags may access between 1 and 5 shards, with the upper limit being the lesser of the number of tags or the number of shards
    * @default 4
@@ -27,13 +33,46 @@ interface ShardedD1TagCacheOptions {
    * @default 5
    */
   regionalCacheTtlSec?: number;
+
+  /**
+   * Whether to enable double sharding
+   * Double sharding will split each shards into N shards to spread the load even more
+   * For example with N being 2, tag `tag1` could be send to shard `shard-hard-1-1` and `shard-hard-1-2`
+   * The first part will always stay the same for a given tag, the second part will be randomly generated between 1 and N
+   * On read you only need to read from one of the shards, but on write you need to write to all shards
+   * @default false
+   */
+  enableDoubleSharding?: boolean;
+
+  /**
+   * The number of shards that will be used for double sharding
+   * Soft shards are more often accessed than hard shards, so it is recommended to have more soft shards than hard shards
+   * @default { softShards: 4, hardShards: 2 }
+   */
+  doubleShardingOpts?: {
+    softShards: number;
+    hardShards: number;
+  };
+
+  /**
+   * The number of retries to perform when writing tags
+   * @default 3
+   */
+  maxWriteRetries?: number;
 }
 class ShardedD1TagCache implements NextModeTagCache {
   readonly mode = "nextMode" as const;
   readonly name = "sharded-d1-tag-cache";
+  readonly maxSoftShards: number;
+  readonly maxHardShards: number;
+  readonly maxWriteRetries: number;
   localCache?: Cache;
 
-  constructor(private opts: ShardedD1TagCacheOptions = { numberOfShards: 4 }) {}
+  constructor(private opts: ShardedD1TagCacheOptions = { numberOfShards: 4 }) {
+    this.maxSoftShards = opts.doubleShardingOpts?.softShards ?? DEFAULT_MAX_SOFT_SHARDS;
+    this.maxHardShards = opts.doubleShardingOpts?.hardShards ?? DEFAULT_MAX_HARD_SHARDS;
+    this.maxWriteRetries = opts.maxWriteRetries ?? DEFAULT_MAX_WRITE_RETRIES;
+  }
 
   private getDurableObjectStub(shardId: string) {
     const durableObject = getCloudflareContext().env.NEXT_CACHE_D1_SHARDED;
@@ -43,17 +82,56 @@ class ShardedD1TagCache implements NextModeTagCache {
     return durableObject.get(id);
   }
 
+  private generateRandomNumberBetween(min: number, max: number) {
+    return Math.floor(Math.random() * (max - min + 1) + min);
+  }
+
+  /**
+   * This function generates an array for the double sharding
+   * @param tags The tags to generate shards for
+   * @param shardType Whether to generate shards for soft or hard tags
+   * @param generateAllShards Whether to generate all shards or only one
+   * @returns An array of shardId and tag
+   */
+  private generateShardArray(tags: string[], shardType: "soft" | "hard", generateAllShards = false) {
+    let doubleShardArray = [1];
+    const isSoft = shardType === "soft";
+    if (this.opts.enableDoubleSharding) {
+      const shards = isSoft ? this.maxSoftShards : this.maxHardShards;
+      doubleShardArray = generateAllShards ? Array.from({ length: shards }, (_, i) => i + 1) : [-1];
+    }
+    return doubleShardArray
+      .map((shard) => {
+        return tags
+          .filter((tag) => (isSoft ? tag.startsWith(SOFT_TAG_PREFIX) : !tag.startsWith(SOFT_TAG_PREFIX)))
+          .map((tag) => {
+            const baseShardId = generateShardId(tag, this.opts.numberOfShards, `shard-${shardType}`);
+            const randomShardId = this.generateRandomNumberBetween(
+              1,
+              isSoft ? this.maxSoftShards : this.maxHardShards
+            );
+            return {
+              shardId: `${baseShardId}-${shard === -1 ? randomShardId : shard}`,
+              tag,
+            };
+          });
+      })
+      .flat();
+  }
+
   /**
    * Same tags are guaranteed to be in the same shard
    * @param tags
    * @returns A map of shardId to tags
    */
-  generateShards(tags: string[]) {
+  generateShards(tags: string[], generateAllShards = false) {
+    // Here we'll start by splitting soft tags from hard tags
+    // This will greatly increase the cache hit rate for the soft tag (which are the most likely to cause issue because of load)
+    const softTags = this.generateShardArray(tags, "soft", generateAllShards);
+
+    const hardTags = this.generateShardArray(tags, "hard", generateAllShards);
     // For each tag, we generate a message group id
-    const messageGroupIds = tags.map((tag) => ({
-      shardId: generateShardId(tag, this.opts.numberOfShards, "shard"),
-      tag,
-    }));
+    const messageGroupIds = [...softTags, ...hardTags];
     // We group the tags by shard
     const shards = new Map<string, string[]>();
     for (const { shardId, tag } of messageGroupIds) {
@@ -130,16 +208,37 @@ class ShardedD1TagCache implements NextModeTagCache {
   async writeTags(tags: string[]): Promise<void> {
     const { isDisabled } = await this.getConfig();
     if (isDisabled) return;
-    const shards = this.generateShards(tags);
+    const shards = this.generateShards(tags, true);
+    const currentTime = Date.now();
     // We then create a new durable object for each shard
     await Promise.all(
       Array.from(shards.entries()).map(async ([shardId, shardedTags]) => {
-        const stub = this.getDurableObjectStub(shardId);
-        await stub.writeTags(shardedTags);
-        // Depending on the shards and the tags, deleting from the regional cache will not work for every tag
-        await this.deleteRegionalCache(shardId, shardedTags);
+        await this.performWriteTagsWithRetry(shardId, shardedTags, currentTime);
       })
     );
+  }
+
+  async performWriteTagsWithRetry(shardId: string, tags: string[], lastModified: number, retryNumber = 0) {
+    if (retryNumber >= this.maxWriteRetries) {
+      error("Error while writing tags, too many retries");
+      // Do we want to throw an error here ?
+      await getCloudflareContext().env.NEXT_CACHE_D1_SHARDED_DLQ?.send({
+        failingShardId: shardId,
+        failingTags: tags,
+        lastModified,
+      });
+      return;
+    }
+    try {
+      const stub = this.getDurableObjectStub(shardId);
+      // We need to write the same revalidation time for all tags
+      await stub.writeTags(tags, lastModified);
+      // Depending on the shards and the tags, deleting from the regional cache will not work for every tag
+      await this.deleteRegionalCache(shardId, tags);
+    } catch (e) {
+      error("Error while writing tags", e);
+      await this.performWriteTagsWithRetry(shardId, tags, lastModified, retryNumber + 1);
+    }
   }
 
   // Cache API
@@ -151,8 +250,13 @@ class ShardedD1TagCache implements NextModeTagCache {
   }
 
   async getCacheKey(shardId: string, tags: string[]) {
+    // We need to remove the last random part from the shardId
+    const shardIdWithoutRandom = shardId.replace(/-\d+$/, "");
     return new Request(
-      new URL(`shard/${shardId}?tags=${encodeURIComponent(tags.join(";"))}`, "http://local.cache")
+      new URL(
+        `shard/${shardIdWithoutRandom}?tags=${encodeURIComponent(tags.join(";"))}`,
+        "http://local.cache"
+      )
     );
   }
 
@@ -183,11 +287,16 @@ class ShardedD1TagCache implements NextModeTagCache {
   }
 
   async deleteRegionalCache(shardId: string, tags: string[]) {
-    if (!this.opts.regionalCache) return;
-    const cache = await this.getCacheInstance();
-    if (!cache) return;
-    const key = await this.getCacheKey(shardId, tags);
-    await cache.delete(key);
+    // We never want to crash because of the cache
+    try {
+      if (!this.opts.regionalCache) return;
+      const cache = await this.getCacheInstance();
+      if (!cache) return;
+      const key = await this.getCacheKey(shardId, tags);
+      await cache.delete(key);
+    } catch (e) {
+      debug("Error while deleting from regional cache", e);
+    }
   }
 }
 
