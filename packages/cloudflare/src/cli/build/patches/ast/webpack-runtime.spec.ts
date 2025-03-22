@@ -1,6 +1,6 @@
+import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import { describe, expect, test } from "vitest";
 
-import { patchCode } from "./util.js";
 import { buildMultipleChunksRule, singleChunkRule } from "./webpack-runtime.js";
 
 describe("webpack runtime", () => {

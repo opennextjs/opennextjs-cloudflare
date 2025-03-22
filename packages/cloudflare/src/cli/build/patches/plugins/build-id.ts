@@ -2,20 +2,22 @@
  * Inline `getBuildId` as it relies on `readFileSync` that is not supported by workerd.
  */
 
+import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
+import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
-import { patchCode } from "../ast/util.js";
-import type { ContentUpdater } from "./content-updater.js";
-
-export function inlineBuildId(updater: ContentUpdater) {
-  return updater.updateContent(
-    "inline-build-id",
+export function inlineBuildId(updater: ContentUpdater): Plugin {
+  return updater.updateContent("inline-build-id", [
     {
-      filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/next-server\.js$`, { escape: false }),
-      contentFilter: /getBuildId\(/,
+      field: {
+        filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/next-server\.js$`, {
+          escape: false,
+        }),
+        contentFilter: /getBuildId\(/,
+        callback: ({ contents }) => patchCode(contents, rule),
+      },
     },
-    async ({ contents }) => patchCode(contents, rule)
-  );
+  ]);
 }
 
 export const rule = `

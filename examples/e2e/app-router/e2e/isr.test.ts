@@ -61,3 +61,40 @@ test("headers", async ({ page }) => {
     await page.reload();
   }
 });
+
+test("Incremental Static Regeneration with data cache", async ({ page }) => {
+  test.setTimeout(45000);
+  await page.goto("/isr-data-cache");
+
+  // Before doing anything else, we need to ensure that there was at least one revalidation, otherwise the first test will fail
+  // That's because the unstable_cache is not properly populated  (build time generated key are different than runtime)
+  let tempTime = await page.getByTestId("time").textContent();
+  do {
+    await page.waitForTimeout(1000);
+    tempTime = await page.getByTestId("time").textContent();
+    await page.reload();
+  } while (tempTime === (await page.getByTestId("time").textContent()));
+
+  const originalFetchedDate = await page.getByTestId("fetched-date").textContent();
+  const originalCachedDate = await page.getByTestId("cached-date").textContent();
+  const originalTime = await page.getByTestId("time").textContent();
+  await page.reload();
+
+  let finalTime = originalTime;
+  let finalCachedDate = originalCachedDate;
+  let finalFetchedDate = originalFetchedDate;
+
+  // Wait 10 + 1 seconds for ISR to regenerate time
+  await page.waitForTimeout(11000);
+  do {
+    await page.waitForTimeout(2000);
+    finalTime = await page.getByTestId("time").textContent();
+    finalCachedDate = await page.getByTestId("cached-date").textContent();
+    finalFetchedDate = await page.getByTestId("fetched-date").textContent();
+    await page.reload();
+  } while (originalTime === finalTime);
+
+  expect(originalTime).not.toEqual(finalTime);
+  expect(originalCachedDate).toEqual(finalCachedDate);
+  expect(originalFetchedDate).toEqual(finalFetchedDate);
+});

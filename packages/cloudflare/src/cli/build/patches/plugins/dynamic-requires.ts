@@ -2,12 +2,11 @@ import { readFile } from "node:fs/promises";
 import { join, posix, sep } from "node:path";
 
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
+import { patchCode, type RuleConfig } from "@opennextjs/aws/build/patch/astCodePatcher.js";
+import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
-import type { Plugin } from "esbuild";
 
 import { normalizePath } from "../../utils/normalize-path.js";
-import { patchCode, type RuleConfig } from "../ast/util.js";
-import type { ContentUpdater } from "./content-updater.js";
 
 async function getPagesManifests(serverDir: string): Promise<string[]> {
   try {
@@ -44,24 +43,26 @@ function getRequires(idVariable: string, files: string[], serverDir: string) {
 }
 
 export function inlineDynamicRequires(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
-  updater.updateContent(
-    "inline-node-module-loader",
+  updater.updateContent("inline-node-module-loader", [
     {
-      filter: getCrossPlatformPathRegex(String.raw`/module-loader/node-module-loader\.js$`, {
-        escape: false,
-      }),
-      contentFilter: /class NodeModuleLoader {/,
+      field: {
+        filter: getCrossPlatformPathRegex(String.raw`/module-loader/node-module-loader\.js$`, {
+          escape: false,
+        }),
+        contentFilter: /class NodeModuleLoader {/,
+        callback: async ({ contents }) => patchCode(contents, await getNodeModuleLoaderRule(buildOpts)),
+      },
     },
-    async ({ contents }) => patchCode(contents, await getNodeModuleLoaderRule(buildOpts))
-  );
-  updater.updateContent(
-    "inline-require-page",
+  ]);
+  updater.updateContent("inline-require-page", [
     {
-      filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/require\.js$`, { escape: false }),
-      contentFilter: /function requirePage\(/,
+      field: {
+        filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/require\.js$`, { escape: false }),
+        contentFilter: /function requirePage\(/,
+        callback: async ({ contents }) => patchCode(contents, await getRequirePageRule(buildOpts)),
+      },
     },
-    async ({ contents }) => patchCode(contents, await getRequirePageRule(buildOpts))
-  );
+  ]);
   return { name: "inline-dynamic-requires", setup() {} };
 }
 

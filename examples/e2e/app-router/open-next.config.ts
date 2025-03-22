@@ -5,6 +5,6 @@ import doQueue from "@opennextjs/cloudflare/durable-queue";
 
 export default defineCloudflareConfig({
   incrementalCache: kvIncrementalCache,
-  tagCache: shardedTagCache({ numberOfShards: 12, regionalCache: true }),
+  tagCache: shardedTagCache({ numberOfShards: 12 }),
   queue: doQueue,
 });

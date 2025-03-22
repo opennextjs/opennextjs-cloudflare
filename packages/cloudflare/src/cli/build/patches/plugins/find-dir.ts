@@ -6,20 +6,20 @@ import { existsSync } from "node:fs";
 import { join, posix, sep } from "node:path";
 
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
+import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
+import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
-import { patchCode } from "../ast/util.js";
-import type { ContentUpdater } from "./content-updater.js";
-
-export function inlineFindDir(updater: ContentUpdater, buildOpts: BuildOptions) {
-  return updater.updateContent(
-    "inline-find-dir",
+export function inlineFindDir(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
+  return updater.updateContent("inline-find-dir", [
     {
-      filter: getCrossPlatformPathRegex(String.raw`/next/dist/lib/find-pages-dir\.js$`, { escape: false }),
-      contentFilter: /function findDir\(/,
+      field: {
+        filter: getCrossPlatformPathRegex(String.raw`/next/dist/lib/find-pages-dir\.js$`, { escape: false }),
+        contentFilter: /function findDir\(/,
+        callback: async ({ contents }) => patchCode(contents, await getRule(buildOpts)),
+      },
     },
-    async ({ contents }) => patchCode(contents, await getRule(buildOpts))
-  );
+  ]);
 }
 
 async function getRule(buildOpts: BuildOptions) {
