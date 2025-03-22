@@ -66,6 +66,15 @@ test("Incremental Static Regeneration with data cache", async ({ page }) => {
   test.setTimeout(45000);
   await page.goto("/isr-data-cache");
 
+  // Before doing anything else, we need to ensure that there was at least one revalidation, otherwise the first test will fail
+  // That's because the unstable_cache is not properly populated  (build time generated key are different than runtime)
+  let tempTime = await page.getByTestId("time").textContent();
+  do {
+    await page.waitForTimeout(1000);
+    tempTime = await page.getByTestId("time").textContent();
+    await page.reload();
+  } while (tempTime === (await page.getByTestId("time").textContent()));
+
   const originalFetchedDate = await page.getByTestId("fetched-date").textContent();
   const originalCachedDate = await page.getByTestId("cached-date").textContent();
   const originalTime = await page.getByTestId("time").textContent();
