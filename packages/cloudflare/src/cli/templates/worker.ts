@@ -32,6 +32,20 @@ export default {
 
       populateProcessEnv(url, env.NEXTJS_ENV);
 
+      // Serve images in development.
+      if (url.pathname.startsWith("/cdn-cgi/image/")) {
+        const m = url.pathname.match(/\/cdn-cgi\/image\/.+?\/(?<url>.+)$/);
+        if (m === null) {
+          return new Response("Not Found!", { status: 404 });
+        }
+        const imageUrl = m.groups!.url!;
+        if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+          return fetch(imageUrl, { cf: { cacheEverything: true } });
+        }
+        return env.ASSETS.fetch(new URL(`/${imageUrl}`, url));
+      }
+
+      // Fallback for the Next default image loader.
       if (url.pathname === "/_next/image") {
         const imageUrl = url.searchParams.get("url") ?? "";
         return imageUrl.startsWith("/")
