@@ -72,7 +72,7 @@
   },
   "dependencies": {
     "@dotenvx/dotenvx": "catalog:",
-    "@opennextjs/aws": "https://pkg.pr.new/@opennextjs/aws@790",
+    "@opennextjs/aws": "^3.5.3",
     "enquirer": "^2.4.1",
     "glob": "catalog:"
   },
