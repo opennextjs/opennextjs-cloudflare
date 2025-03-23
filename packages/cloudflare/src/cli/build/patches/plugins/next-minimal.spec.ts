@@ -1,6 +1,6 @@
+import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import { describe, expect, test } from "vitest";
 
-import { patchCode } from "../ast/util";
 import { abortControllerRule } from "./next-minimal";
 
 const appPageRuntimeProdJs = `let p = new AbortController;

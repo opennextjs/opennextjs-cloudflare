@@ -4,16 +4,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
-import { build } from "esbuild";
+import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
+import { build, type Plugin } from "esbuild";
 
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
 import * as patches from "./patches/index.js";
 import { inlineBuildId } from "./patches/plugins/build-id.js";
-import { ContentUpdater } from "./patches/plugins/content-updater.js";
 import { inlineDynamicRequires } from "./patches/plugins/dynamic-requires.js";
 import { inlineEvalManifest } from "./patches/plugins/eval-manifest.js";
-import { patchFetchCacheSetMissingWaitUntil } from "./patches/plugins/fetch-cache-wait-until.js";
 import { inlineFindDir } from "./patches/plugins/find-dir.js";
 import { patchInstrumentation } from "./patches/plugins/instrumentation.js";
 import { inlineLoadManifest } from "./patches/plugins/load-manifest.js";
@@ -68,7 +67,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
   const openNextServer = path.join(outputPath, packagePath, `index.mjs`);
   const openNextServerBundle = path.join(outputPath, packagePath, `handler.mjs`);
 
-  const updater = new ContentUpdater();
+  const updater = new ContentUpdater(buildOpts);
 
   const result = await build({
     entryPoints: [openNextServer],
@@ -95,16 +94,15 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       fixRequire(updater),
       handleOptionalDependencies(optionalDependencies),
       patchInstrumentation(updater, buildOpts),
-      patchFetchCacheSetMissingWaitUntil(updater),
       inlineEvalManifest(updater, buildOpts),
       inlineFindDir(updater, buildOpts),
       inlineLoadManifest(updater, buildOpts),
       inlineBuildId(updater),
       patchDepdDeprecations(updater),
       patchNextMinimal(updater),
-      // Apply updater updaters, must be the last plugin
+      // Apply updater updates, must be the last plugin
       updater.plugin,
-    ],
+    ] as Plugin[],
     external: ["./middleware/handler.mjs"],
     alias: {
       // Note: it looks like node-fetch is actually not necessary for us, so we could replace it with an empty shim
@@ -119,7 +117,6 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       // Note: we apply an empty shim to next/dist/compiled/edge-runtime since (amongst others) it generated the following `eval`:
       //   eval(getModuleCode)(module, module.exports, throwingRequire, params.context, ...Object.values(params.scopedContext));
       //   which comes from https://github.com/vercel/edge-runtime/blob/6e96b55f/packages/primitives/src/primitives/load.js#L57-L63
-      // QUESTION: Why did I encountered this but mhart didn't?
       "next/dist/compiled/edge-runtime": path.join(
         buildOpts.outputDir,
         "cloudflare-templates/shims/empty.js"
@@ -219,13 +216,6 @@ export async function updateWorkerBundledCode(
     [
       "'require(this.middlewareManifestPath)'",
       (code) => patches.inlineMiddlewareManifestRequire(code, buildOpts),
-    ],
-    [
-      "`patchAsyncStorage` call",
-      (code) =>
-        code
-          // TODO: implement for cf (possibly in @opennextjs/aws)
-          .replace("patchAsyncStorage();", "//patchAsyncStorage();"),
     ],
     [
       "`require.resolve` call",

@@ -1,5 +1,5 @@
-import { patchCode } from "../ast/util.js";
-import type { ContentUpdater } from "./content-updater.js";
+import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
+import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
 
 /**
  * Some dependencies of Next.js use depd to deprecate some of their functions, depd uses `eval` to generate
@@ -7,12 +7,16 @@ import type { ContentUpdater } from "./content-updater.js";
  * are never called, this function fixes that by patching the depd `wrapfunction` function so that it still
  * retains the same type of behavior but without using `eval`
  */
-export function patchDepdDeprecations(updater: ContentUpdater) {
-  return updater.updateContent(
-    "patch-depd-deprecations",
-    { filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/, contentFilter: /argument fn must be a function/ },
-    ({ contents }) => patchCode(contents, rule)
-  );
+export function patchDepdDeprecations(updater: ContentUpdater): Plugin {
+  return updater.updateContent("patch-depd-deprecations", [
+    {
+      field: {
+        filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/,
+        contentFilter: /argument fn must be a function/,
+        callback: ({ contents }) => patchCode(contents, rule),
+      },
+    },
+  ]);
 }
 
 export const rule = `

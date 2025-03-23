@@ -1,6 +1,4 @@
-import { SgNode } from "@ast-grep/napi";
-
-import { applyRule } from "./util.js";
+import { applyRule, SgNode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 
 export const vercelOgImportRule = `
 rule:

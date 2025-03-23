@@ -1,6 +1,6 @@
+import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import { describe, expect, test } from "vitest";
 
-import { patchCode } from "../ast/util.js";
 import { getNext14Rule, getNext15Rule } from "./instrumentation.js";
 
 describe("LoadInstrumentationModule (Next15)", () => {

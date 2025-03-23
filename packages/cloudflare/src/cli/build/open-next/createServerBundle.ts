@@ -10,18 +10,38 @@ import { copyTracedFiles } from "@opennextjs/aws/build/copyTracedFiles.js";
 import { generateEdgeBundle } from "@opennextjs/aws/build/edge/createEdgeBundle.js";
 import * as buildHelper from "@opennextjs/aws/build/helper.js";
 import { installDependencies } from "@opennextjs/aws/build/installDeps.js";
+import type { CodePatcher } from "@opennextjs/aws/build/patch/codePatcher.js";
+import { applyCodePatches } from "@opennextjs/aws/build/patch/codePatcher.js";
+import {
+  patchFetchCacheForISR,
+  patchUnstableCacheForISR,
+} from "@opennextjs/aws/build/patch/patchFetchCacheISR.js";
+import { patchFetchCacheSetMissingWaitUntil } from "@opennextjs/aws/build/patch/patchFetchCacheWaitUntil.js";
 import logger from "@opennextjs/aws/logger.js";
 import { minifyAll } from "@opennextjs/aws/minimize-js.js";
+import type { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
 import { openNextEdgePlugins } from "@opennextjs/aws/plugins/edge.js";
 import { openNextExternalMiddlewarePlugin } from "@opennextjs/aws/plugins/externalMiddleware.js";
 import { openNextReplacementPlugin } from "@opennextjs/aws/plugins/replacement.js";
 import { openNextResolvePlugin } from "@opennextjs/aws/plugins/resolve.js";
 import type { FunctionOptions, SplittedFunctionOptions } from "@opennextjs/aws/types/open-next.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
+import type { Plugin } from "esbuild";
 
 import { normalizePath } from "../utils/index.js";
 
-export async function createServerBundle(options: buildHelper.BuildOptions) {
+interface CodeCustomization {
+  // These patches are meant to apply on user and next generated code
+  additionalCodePatches?: CodePatcher[];
+  // These plugins are meant to apply during the esbuild bundling process.
+  // This will only apply to OpenNext code.
+  additionalPlugins?: (contentUpdater: ContentUpdater) => Plugin[];
+}
+
+export async function createServerBundle(
+  options: buildHelper.BuildOptions,
+  codeCustomization?: CodeCustomization
+) {
   const { config } = options;
   const foundRoutes = new Set<string>();
   // Get all functions to build
@@ -39,7 +59,7 @@ export async function createServerBundle(options: buildHelper.BuildOptions) {
     if (fnOptions.runtime === "edge") {
       await generateEdgeBundle(name, options, fnOptions);
     } else {
-      await generateBundle(name, options, fnOptions);
+      await generateBundle(name, options, fnOptions, codeCustomization);
     }
   });
 
@@ -102,7 +122,8 @@ export async function createServerBundle(options: buildHelper.BuildOptions) {
 async function generateBundle(
   name: string,
   options: buildHelper.BuildOptions,
-  fnOptions: SplittedFunctionOptions
+  fnOptions: SplittedFunctionOptions,
+  codeCustomization?: CodeCustomization
 ) {
   const { appPath, appBuildOutputPath, config, outputDir, monorepoRoot } = options;
   logger.info(`Building server function: ${name}...`);
@@ -151,7 +172,7 @@ async function generateBundle(
   buildHelper.copyEnvFile(appBuildOutputPath, packagePath, outputPath);
 
   // Copy all necessary traced files
-  await copyTracedFiles({
+  const { tracedFiles, manifests } = await copyTracedFiles({
     buildOutputPath: appBuildOutputPath,
     packagePath,
     outputDir: outputPath,
@@ -159,19 +180,29 @@ async function generateBundle(
     bundledNextServer: isBundled,
   });
 
+  const additionalCodePatches = codeCustomization?.additionalCodePatches ?? [];
+
+  await applyCodePatches(options, tracedFiles, manifests, [
+    patchFetchCacheSetMissingWaitUntil,
+    patchFetchCacheForISR,
+    patchUnstableCacheForISR,
+    ...additionalCodePatches,
+  ]);
+
   // Build Lambda code
   // note: bundle in OpenNext package b/c the adapter relies on the
   //       "serverless-http" package which is not a dependency in user's
   //       Next.js app.
 
   const disableNextPrebundledReact =
-    buildHelper.compareSemver(options.nextVersion, "13.5.1") >= 0 ||
-    buildHelper.compareSemver(options.nextVersion, "13.4.1") <= 0;
+    buildHelper.compareSemver(options.nextVersion, ">=", "13.5.1") ||
+    buildHelper.compareSemver(options.nextVersion, "<=", "13.4.1");
 
   const overrides = fnOptions.override ?? {};
 
-  const isBefore13413 = buildHelper.compareSemver(options.nextVersion, "13.4.13") <= 0;
-  const isAfter141 = buildHelper.compareSemver(options.nextVersion, "14.1") >= 0;
+  const isBefore13413 = buildHelper.compareSemver(options.nextVersion, "<=", "13.4.13");
+  const isAfter141 = buildHelper.compareSemver(options.nextVersion, ">=", "14.1");
+  const isAfter142 = buildHelper.compareSemver(options.nextVersion, ">=", "14.2");
 
   const disableRouting = isBefore13413 || config.middleware?.external;
 
@@ -182,6 +213,7 @@ async function generateBundle(
       deletes: [
         ...(disableNextPrebundledReact ? ["applyNextjsPrebundledReact"] : []),
         ...(disableRouting ? ["withRouting"] : []),
+        ...(isAfter142 ? ["patchAsyncStorage"] : []),
       ],
     }),
     openNextReplacementPlugin({

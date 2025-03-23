@@ -71,12 +71,10 @@
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@ast-grep/napi": "^0.36.1",
     "@dotenvx/dotenvx": "catalog:",
-    "@opennextjs/aws": "https://pkg.pr.new/@opennextjs/aws@778",
+    "@opennextjs/aws": "^3.5.3",
     "enquirer": "^2.4.1",
-    "glob": "catalog:",
-    "yaml": "^2.7.0"
+    "glob": "catalog:"
   },
   "peerDependencies": {
     "wrangler": "catalog:"
