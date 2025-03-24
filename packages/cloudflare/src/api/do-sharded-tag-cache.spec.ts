@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import doShardedTagCache, { DEFAULT_HARD_REPLICAS, DEFAULT_SOFT_REPLICAS } from "./do-sharded-tag-cache";
+import doShardedTagCache, {
+  DEFAULT_HARD_REPLICAS,
+  DEFAULT_SOFT_REPLICAS,
+  TagCacheDOId,
+} from "./do-sharded-tag-cache";
 
 const hasBeenRevalidatedMock = vi.fn();
 const writeTagsMock = vi.fn();
@@ -29,15 +33,15 @@ describe("DOShardedTagCache", () => {
     it("should generate a shardId", () => {
       const cache = doShardedTagCache();
       const expectedResult = new Map();
-      expectedResult.set("tag-hard;shard-1;replica-1", ["tag1"]);
-      expectedResult.set("tag-hard;shard-2;replica-1", ["tag2"]);
+      expectedResult.set("tag-hard;shard-1;replica-1", expect.objectContaining({ tags: ["tag1"] }));
+      expectedResult.set("tag-hard;shard-2;replica-1", expect.objectContaining({ tags: ["tag2"] }));
       expect(cache.generateShards({ tags: ["tag1", "tag2"] })).toEqual(expectedResult);
     });
 
     it("should group tags by shard", () => {
       const cache = doShardedTagCache();
       const expectedResult = new Map();
-      expectedResult.set("tag-hard;shard-1;replica-1", ["tag1", "tag6"]);
+      expectedResult.set("tag-hard;shard-1;replica-1", expect.objectContaining({ tags: ["tag1", "tag6"] }));
       expect(cache.generateShards({ tags: ["tag1", "tag6"] })).toEqual(expectedResult);
     });
 
@@ -51,8 +55,8 @@ describe("DOShardedTagCache", () => {
     it("should split hard and soft tags", () => {
       const cache = doShardedTagCache();
       const expectedResult = new Map();
-      expectedResult.set("tag-hard;shard-1;replica-1", ["tag1"]);
-      expectedResult.set("tag-soft;shard-3;replica-1", ["_N_T_/tag1"]);
+      expectedResult.set("tag-hard;shard-1;replica-1", expect.objectContaining({ tags: ["tag1"] }));
+      expectedResult.set("tag-soft;shard-3;replica-1", expect.objectContaining({ tags: ["_N_T_/tag1"] }));
       expect(cache.generateShards({ tags: ["tag1", "_N_T_/tag1"] })).toEqual(expectedResult);
     });
 
@@ -60,12 +64,12 @@ describe("DOShardedTagCache", () => {
       it("should generate all shards if generateAllShards is true", () => {
         const cache = doShardedTagCache({ numberOfShards: 4, enableShardReplication: true });
         const expectedResult = new Map();
-        expectedResult.set("tag-hard;shard-1;replica-1", ["tag1"]);
-        expectedResult.set("tag-hard;shard-1;replica-2", ["tag1"]);
-        expectedResult.set("tag-soft;shard-3;replica-1", ["_N_T_/tag1"]);
-        expectedResult.set("tag-soft;shard-3;replica-2", ["_N_T_/tag1"]);
-        expectedResult.set("tag-soft;shard-3;replica-3", ["_N_T_/tag1"]);
-        expectedResult.set("tag-soft;shard-3;replica-4", ["_N_T_/tag1"]);
+        expectedResult.set("tag-hard;shard-1;replica-1", expect.objectContaining({ tags: ["tag1"] }));
+        expectedResult.set("tag-hard;shard-1;replica-2", expect.objectContaining({ tags: ["tag1"] }));
+        expectedResult.set("tag-soft;shard-3;replica-1", expect.objectContaining({ tags: ["_N_T_/tag1"] }));
+        expectedResult.set("tag-soft;shard-3;replica-2", expect.objectContaining({ tags: ["_N_T_/tag1"] }));
+        expectedResult.set("tag-soft;shard-3;replica-3", expect.objectContaining({ tags: ["_N_T_/tag1"] }));
+        expectedResult.set("tag-soft;shard-3;replica-4", expect.objectContaining({ tags: ["_N_T_/tag1"] }));
         expect(cache.generateShards({ tags: ["tag1", "_N_T_/tag1"], generateAllShards: true })).toEqual(
           expectedResult
         );
@@ -226,7 +230,11 @@ describe("DOShardedTagCache", () => {
       cache.deleteRegionalCache = vi.fn();
       await cache.writeTags(["tag1"]);
       expect(cache.deleteRegionalCache).toHaveBeenCalled();
-      expect(cache.deleteRegionalCache).toHaveBeenCalledWith("tag-hard;shard-1;replica-1", ["tag1"]);
+      expect(cache.deleteRegionalCache).toHaveBeenCalledWith(
+        expect.objectContaining({ key: "tag-hard;shard-1;replica-1" }),
+        ["tag1"]
+      );
+      // expect(cache.deleteRegionalCache).toHaveBeenCalledWith("tag-hard;shard-1;replica-1", ["tag1"]);
     });
   });
 
@@ -253,7 +261,13 @@ describe("DOShardedTagCache", () => {
   describe("getFromRegionalCache", () => {
     it("should return undefined if regional cache is disabled", async () => {
       const cache = doShardedTagCache();
-      expect(await cache.getFromRegionalCache("shard-1", ["tag1"])).toBeUndefined();
+      const doId = new TagCacheDOId({
+        tag: "tag1",
+        numberOfReplicas: 1,
+        numberOfShards: 4,
+        shardType: "hard",
+      });
+      expect(await cache.getFromRegionalCache(doId, ["tag1"])).toBeUndefined();
     });
 
     it("should call .match on the cache", async () => {
@@ -264,7 +278,13 @@ describe("DOShardedTagCache", () => {
         }),
       };
       const cache = doShardedTagCache({ numberOfShards: 4, regionalCache: true });
-      expect(await cache.getFromRegionalCache("shard-1", ["tag1"])).toBe("response");
+      const doId = new TagCacheDOId({
+        tag: "tag1",
+        numberOfReplicas: 1,
+        numberOfShards: 4,
+        shardType: "hard",
+      });
+      expect(await cache.getFromRegionalCache(doId, ["tag1"])).toBe("response");
       // @ts-expect-error - Defined on cloudfare context
       globalThis.caches = undefined;
     });
@@ -273,11 +293,18 @@ describe("DOShardedTagCache", () => {
   describe("getCacheKey", () => {
     it("should return the cache key without the random part", async () => {
       const cache = doShardedTagCache();
-      const reqKey = await cache.getCacheKey("shard-soft-1-1", ["_N_T_/tag1"]);
-      expect(reqKey.url).toBe("http://local.cache/shard/shard-soft-1?tags=_N_T_%2Ftag1");
+      const doId1 = new TagCacheDOId({ tag: "", numberOfReplicas: 1, numberOfShards: 4, shardType: "hard" });
+      const reqKey = await cache.getCacheKey(doId1, ["_N_T_/tag1"]);
+      expect(reqKey.url).toBe("http://local.cache/shard/tag-hard;shard-0?tags=_N_T_%2Ftag1");
 
-      const reqKey2 = await cache.getCacheKey("shard-hard-1-18", ["tag1"]);
-      expect(reqKey2.url).toBe("http://local.cache/shard/shard-hard-1?tags=tag1");
+      const doId2 = new TagCacheDOId({
+        tag: "tag1",
+        numberOfReplicas: 1,
+        numberOfShards: 4,
+        shardType: "hard",
+      });
+      const reqKey2 = await cache.getCacheKey(doId2, ["tag1"]);
+      expect(reqKey2.url).toBe("http://local.cache/shard/tag-hard;shard-1?tags=tag1");
     });
   });
 
@@ -290,10 +317,16 @@ describe("DOShardedTagCache", () => {
         throw new Error("error");
       });
       const spiedFn = vi.spyOn(cache, "performWriteTagsWithRetry");
-      await cache.performWriteTagsWithRetry("shard", ["tag1"], Date.now());
+      const doId = new TagCacheDOId({
+        tag: "tag1",
+        numberOfReplicas: 1,
+        numberOfShards: 4,
+        shardType: "hard",
+      });
+      await cache.performWriteTagsWithRetry(doId, ["tag1"], Date.now());
       expect(writeTagsMock).toHaveBeenCalledTimes(2);
       expect(spiedFn).toHaveBeenCalledTimes(2);
-      expect(spiedFn).toHaveBeenCalledWith("shard", ["tag1"], 1000, 1);
+      expect(spiedFn).toHaveBeenCalledWith(doId, ["tag1"], 1000, 1);
       expect(sendDLQMock).not.toHaveBeenCalled();
 
       vi.useRealTimers();
@@ -307,12 +340,17 @@ describe("DOShardedTagCache", () => {
         throw new Error("error");
       });
       const spiedFn = vi.spyOn(cache, "performWriteTagsWithRetry");
-      await cache.performWriteTagsWithRetry("shard", ["tag1"], Date.now(), 3);
+      await cache.performWriteTagsWithRetry(
+        new TagCacheDOId({ tag: "tag1", numberOfReplicas: 1, numberOfShards: 4, shardType: "hard" }),
+        ["tag1"],
+        Date.now(),
+        3
+      );
       expect(writeTagsMock).toHaveBeenCalledTimes(1);
       expect(spiedFn).toHaveBeenCalledTimes(1);
 
       expect(sendDLQMock).toHaveBeenCalledWith({
-        failingShardId: "shard",
+        failingShardId: "tag-hard;shard-1;replica-1",
         failingTags: ["tag1"],
         lastModified: 1000,
       });

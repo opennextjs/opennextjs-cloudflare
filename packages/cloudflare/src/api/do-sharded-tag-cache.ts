@@ -61,6 +61,31 @@ interface ShardedDOTagCacheOptions {
    */
   maxWriteRetries?: number;
 }
+
+interface TagCacheDOIdOptions {
+  tag: string;
+  numberOfShards: number;
+  numberOfReplicas: number;
+  shardType: "soft" | "hard";
+  replicaId?: number;
+}
+export class TagCacheDOId {
+  baseShardId: string;
+  tag: string;
+  constructor(public options: TagCacheDOIdOptions) {
+    const { tag, numberOfShards, shardType } = options;
+    this.tag = tag;
+    this.baseShardId = generateShardId(tag, numberOfShards, `tag-${shardType};shard`);
+  }
+
+  private generateRandomNumberBetween(min: number, max: number) {
+    return Math.floor(Math.random() * (max - min + 1) + min);
+  }
+
+  get key() {
+    return `${this.baseShardId};replica-${this.options.replicaId ?? this.generateRandomNumberBetween(1, this.options.numberOfReplicas)}`;
+  }
+}
 class ShardedDOTagCache implements NextModeTagCache {
   readonly mode = "nextMode" as const;
   readonly name = "sharded-d1-tag-cache";
@@ -75,20 +100,16 @@ class ShardedDOTagCache implements NextModeTagCache {
     this.maxWriteRetries = opts.maxWriteRetries ?? DEFAULT_WRITE_RETRIES;
   }
 
-  private getDurableObjectStub(shardId: string) {
+  private getDurableObjectStub(doId: TagCacheDOId) {
     const durableObject = getCloudflareContext().env.NEXT_CACHE_DO_SHARDED;
     if (!durableObject) throw new IgnorableError("No durable object binding for cache revalidation");
 
-    const id = durableObject.idFromName(shardId);
+    const id = durableObject.idFromName(doId.key);
     return durableObject.get(id);
   }
 
-  private generateRandomNumberBetween(min: number, max: number) {
-    return Math.floor(Math.random() * (max - min + 1) + min);
-  }
-
   /**
-   * Generates a list of shard ids for the shards and replicas  
+   * Generates a list of shard ids for the shards and replicas
    * @param tags The tags to generate shards for
    * @param shardType Whether to generate shards for soft or hard tags
    * @param generateAllShards Whether to generate all shards or only one
@@ -103,24 +124,27 @@ class ShardedDOTagCache implements NextModeTagCache {
     shardType: "soft" | "hard";
     generateAllShards: boolean;
   }) {
-    let doubleShardArray = [1];
+    let doubleShardArray: Array<number | undefined> = [1];
     const isSoft = shardType === "soft";
     const numReplicas = isSoft ? this.numSoftReplicas : this.numHardReplicas;
     if (this.opts.enableShardReplication) {
-      doubleShardArray = generateAllShards ? Array.from({ length: numReplicas }, (_, i) => i + 1) : [-1];
+      doubleShardArray = generateAllShards
+        ? Array.from({ length: numReplicas }, (_, i) => i + 1)
+        : [undefined];
     }
     return doubleShardArray
-      .map((shard) => {
+      .map((replicaId) => {
         return tags
           .filter((tag) => (isSoft ? tag.startsWith(SOFT_TAG_PREFIX) : !tag.startsWith(SOFT_TAG_PREFIX)))
           .map((tag) => {
-            const baseShardId = generateShardId(tag, this.opts.numberOfShards, `tag-${shardType};shard`);
-            const randomShardId = this.generateRandomNumberBetween(
-              1,
-              numReplicas
-            );
             return {
-              shardId: `${baseShardId};replica-${shard === -1 ? randomShardId : shard}`,
+              doId: new TagCacheDOId({
+                tag,
+                numberOfReplicas: numReplicas,
+                numberOfShards: this.opts.numberOfShards,
+                shardType,
+                replicaId,
+              }),
               tag,
             };
           });
@@ -142,11 +166,21 @@ class ShardedDOTagCache implements NextModeTagCache {
     // For each tag, we generate a message group id
     const messageGroupIds = [...softTags, ...hardTags];
     // We group the tags by shard
-    const tagsByDOId = new Map<string, string[]>();
-    for (const { shardId, tag } of messageGroupIds) {
-      const tags = tagsByDOId.get(shardId) ?? [];
+    const tagsByDOId = new Map<
+      string,
+      {
+        doId: TagCacheDOId;
+        tags: string[];
+      }
+    >();
+    for (const { doId, tag } of messageGroupIds) {
+      const doIdString = doId.key;
+      const tags = tagsByDOId.get(doIdString)?.tags ?? [];
       tags.push(tag);
-      tagsByDOId.set(shardId, tags);
+      tagsByDOId.set(doIdString, {
+        doId,
+        tags,
+      });
     }
     return tagsByDOId;
   }
@@ -183,20 +217,18 @@ class ShardedDOTagCache implements NextModeTagCache {
       const shards = this.generateShards({ tags });
       // We then create a new durable object for each shard
       const shardsResult = await Promise.all(
-        Array.from(shards.entries()).map(async ([shardId, shardedTags]) => {
-          const cachedValue = await this.getFromRegionalCache(shardId, shardedTags);
+        Array.from(shards.values()).map(async ({ doId, tags }) => {
+          const cachedValue = await this.getFromRegionalCache(doId, tags);
           if (cachedValue) {
             return (await cachedValue.text()) === "true";
           }
-          const stub = this.getDurableObjectStub(shardId);
-          const _hasBeenRevalidated = await stub.hasBeenRevalidated(shardedTags, lastModified);
+          const stub = this.getDurableObjectStub(doId);
+          const _hasBeenRevalidated = await stub.hasBeenRevalidated(tags, lastModified);
           //TODO: Do we want to cache the result if it has been revalidated ?
           // If we do so, we risk causing cache MISS even though it has been revalidated elsewhere
           // On the other hand revalidating a tag that is used in a lot of places will cause a lot of requests
           if (!_hasBeenRevalidated) {
-            getCloudflareContext().ctx.waitUntil(
-              this.putToRegionalCache(shardId, shardedTags, _hasBeenRevalidated)
-            );
+            getCloudflareContext().ctx.waitUntil(this.putToRegionalCache(doId, tags, _hasBeenRevalidated));
           }
           return _hasBeenRevalidated;
         })
@@ -221,32 +253,32 @@ class ShardedDOTagCache implements NextModeTagCache {
     const currentTime = Date.now();
     // We then create a new durable object for each shard
     await Promise.all(
-      Array.from(shards.entries()).map(async ([shardId, shardedTags]) => {
-        await this.performWriteTagsWithRetry(shardId, shardedTags, currentTime);
+      Array.from(shards.values()).map(async ({ doId, tags }) => {
+        await this.performWriteTagsWithRetry(doId, tags, currentTime);
       })
     );
   }
 
-  async performWriteTagsWithRetry(shardId: string, tags: string[], lastModified: number, retryNumber = 0) {
+  async performWriteTagsWithRetry(doId: TagCacheDOId, tags: string[], lastModified: number, retryNumber = 0) {
     try {
-      const stub = this.getDurableObjectStub(shardId);
+      const stub = this.getDurableObjectStub(doId);
       // We need to write the same revalidation time for all tags
       await stub.writeTags(tags, lastModified);
       // Depending on the shards and the tags, deleting from the regional cache will not work for every tag
-      await this.deleteRegionalCache(shardId, tags);
+      await this.deleteRegionalCache(doId, tags);
     } catch (e) {
       error("Error while writing tags", e);
       if (retryNumber >= this.maxWriteRetries) {
         error("Error while writing tags, too many retries");
         // Do we want to throw an error here ?
         await getCloudflareContext().env.NEXT_CACHE_DO_SHARDED_DLQ?.send({
-          failingShardId: shardId,
+          failingShardId: doId.key,
           failingTags: tags,
           lastModified,
         });
         return;
       }
-      await this.performWriteTagsWithRetry(shardId, tags, lastModified, retryNumber + 1);
+      await this.performWriteTagsWithRetry(doId, tags, lastModified, retryNumber + 1);
     }
   }
 
@@ -258,23 +290,18 @@ class ShardedDOTagCache implements NextModeTagCache {
     return this.localCache;
   }
 
-  async getCacheKey(shardId: string, tags: string[]) {
-    // We need to remove the last random part from the shardId
-    const shardIdWithoutRandom = shardId.replace(/-\d+$/, "");
+  async getCacheKey(doId: TagCacheDOId, tags: string[]) {
     return new Request(
-      new URL(
-        `shard/${shardIdWithoutRandom}?tags=${encodeURIComponent(tags.join(";"))}`,
-        "http://local.cache"
-      )
+      new URL(`shard/${doId.baseShardId}?tags=${encodeURIComponent(tags.join(";"))}`, "http://local.cache")
     );
   }
 
-  async getFromRegionalCache(shardId: string, tags: string[]) {
+  async getFromRegionalCache(doId: TagCacheDOId, tags: string[]) {
     try {
       if (!this.opts.regionalCache) return;
       const cache = await this.getCacheInstance();
       if (!cache) return;
-      const key = await this.getCacheKey(shardId, tags);
+      const key = await this.getCacheKey(doId, tags);
       return cache.match(key);
     } catch (e) {
       error("Error while fetching from regional cache", e);
@@ -282,11 +309,11 @@ class ShardedDOTagCache implements NextModeTagCache {
     }
   }
 
-  async putToRegionalCache(shardId: string, tags: string[], hasBeenRevalidated: boolean) {
+  async putToRegionalCache(doId: TagCacheDOId, tags: string[], hasBeenRevalidated: boolean) {
     if (!this.opts.regionalCache) return;
     const cache = await this.getCacheInstance();
     if (!cache) return;
-    const key = await this.getCacheKey(shardId, tags);
+    const key = await this.getCacheKey(doId, tags);
     await cache.put(
       key,
       new Response(`${hasBeenRevalidated}`, {
@@ -295,13 +322,13 @@ class ShardedDOTagCache implements NextModeTagCache {
     );
   }
 
-  async deleteRegionalCache(shardId: string, tags: string[]) {
+  async deleteRegionalCache(doId: TagCacheDOId, tags: string[]) {
     // We never want to crash because of the cache
     try {
       if (!this.opts.regionalCache) return;
       const cache = await this.getCacheInstance();
       if (!cache) return;
-      const key = await this.getCacheKey(shardId, tags);
+      const key = await this.getCacheKey(doId, tags);
       await cache.delete(key);
     } catch (e) {
       debug("Error while deleting from regional cache", e);
