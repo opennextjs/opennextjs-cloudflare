@@ -10,8 +10,8 @@ export default defineCloudflareConfig({
     numberOfShards: 12,
     enableShardReplication: true,
     shardReplicationOptions: {
-      softShards: 8,
-      hardShards: 2,
+      numberOfSoftReplicas: 8,
+      numberOfHardReplicas: 2,
     },
   }),
   queue: doQueue,

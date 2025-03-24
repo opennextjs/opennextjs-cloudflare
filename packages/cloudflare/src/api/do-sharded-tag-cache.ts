@@ -50,8 +50,8 @@ interface ShardedDOTagCacheOptions {
    * @default { softShards: 4, hardShards: 2 }
    */
   shardReplicationOptions?: {
-    softShards: number;
-    hardShards: number;
+    numberOfSoftReplicas: number;
+    numberOfHardReplicas: number;
   };
 
   /**
@@ -69,8 +69,8 @@ class ShardedDOTagCache implements NextModeTagCache {
   localCache?: Cache;
 
   constructor(private opts: ShardedDOTagCacheOptions = { numberOfShards: 4 }) {
-    this.maxSoftShards = opts.shardReplicationOptions?.softShards ?? DEFAULT_MAX_SOFT_SHARDS;
-    this.maxHardShards = opts.shardReplicationOptions?.hardShards ?? DEFAULT_MAX_HARD_SHARDS;
+    this.maxSoftShards = opts.shardReplicationOptions?.numberOfSoftReplicas ?? DEFAULT_MAX_SOFT_SHARDS;
+    this.maxHardShards = opts.shardReplicationOptions?.numberOfHardReplicas ?? DEFAULT_MAX_HARD_SHARDS;
     this.maxWriteRetries = opts.maxWriteRetries ?? DEFAULT_MAX_WRITE_RETRIES;
   }
 
