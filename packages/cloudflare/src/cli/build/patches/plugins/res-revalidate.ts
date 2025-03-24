@@ -1,7 +1,6 @@
+import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
+import type {CodePatcher} from "@opennextjs/aws/build/patch/codePatcher.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
-
-import { patchCode } from "../ast/util.js";
-import { ContentUpdater } from "./content-updater.js";
 
 export const rule = `
 rule:
@@ -59,15 +58,18 @@ rule:
 fix: await (await import("@opennextjs/cloudflare")).getCloudflareContext().env.NEXT_CACHE_REVALIDATION_WORKER.fetch(\`\${$REQ.headers.host.includes("localhost") ? "http":"https" }://\${$REQ.headers.host}$URL_PATH\`,{method:'HEAD', headers:$HEADERS})
 `;
 
-export function patchResRevalidate(updater: ContentUpdater) {
-  return updater.updateContent(
-    "patch-res-revalidate",
+export const patchResRevalidate : CodePatcher = {
+  name: "patch-res-revalidate",
+  patches: [
     {
-      filter: getCrossPlatformPathRegex(String.raw`(pages-api\.runtime\.prod\.js|api-resolver\.js)$`, {
-        escape: false,
-      }),
-      contentFilter: /\.trustHostHeader/,
+      versions: ">=14.2.0",
+      field: {
+        pathFilter: getCrossPlatformPathRegex(String.raw`(pages-api\.runtime\.prod\.js|api-resolver\.js)$`, {
+          escape: false,
+        }),
+        contentFilter: /\.trustHostHeader/,
+        patchCode: async ({ code }) => patchCode(code, rule),
+      },
     },
-    ({ contents }) => patchCode(contents, rule)
-  );
+  ],
 }

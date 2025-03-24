@@ -28,6 +28,7 @@ import type { FunctionOptions, SplittedFunctionOptions } from "@opennextjs/aws/t
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import type { Plugin } from "esbuild";
 
+import { patchResRevalidate } from "../patches/plugins/res-revalidate.js";
 import { normalizePath } from "../utils/index.js";
 
 interface CodeCustomization {
@@ -186,6 +187,8 @@ async function generateBundle(
     patchFetchCacheSetMissingWaitUntil,
     patchFetchCacheForISR,
     patchUnstableCacheForISR,
+    // Cloudflare specific patches
+    patchResRevalidate,
     ...additionalCodePatches,
   ]);
 
