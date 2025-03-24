@@ -63,19 +63,19 @@ interface ShardedDOTagCacheOptions {
 }
 
 interface TagCacheDOIdOptions {
-  tag: string;
-  numberOfShards: number;
+  baseShardId: string;
   numberOfReplicas: number;
   shardType: "soft" | "hard";
   replicaId?: number;
 }
 export class TagCacheDOId {
   baseShardId: string;
-  tag: string;
+  replicaId: number;
   constructor(public options: TagCacheDOIdOptions) {
-    const { tag, numberOfShards, shardType } = options;
-    this.tag = tag;
-    this.baseShardId = generateShardId(tag, numberOfShards, `tag-${shardType};shard`);
+    const { baseShardId, shardType } = options;
+    this.baseShardId = `tag-${shardType};${baseShardId}`;
+    this.replicaId =
+      this.options.replicaId ?? this.generateRandomNumberBetween(1, this.options.numberOfReplicas);
   }
 
   private generateRandomNumberBetween(min: number, max: number) {
@@ -83,12 +83,12 @@ export class TagCacheDOId {
   }
 
   get key() {
-    return `${this.baseShardId};replica-${this.options.replicaId ?? this.generateRandomNumberBetween(1, this.options.numberOfReplicas)}`;
+    return `${this.baseShardId};replica-${this.replicaId}`;
   }
 }
 class ShardedDOTagCache implements NextModeTagCache {
   readonly mode = "nextMode" as const;
-  readonly name = "sharded-d1-tag-cache";
+  readonly name = "sharded-do-tag-cache";
   readonly numSoftReplicas: number;
   readonly numHardReplicas: number;
   readonly maxWriteRetries: number;
@@ -139,9 +139,8 @@ class ShardedDOTagCache implements NextModeTagCache {
           .map((tag) => {
             return {
               doId: new TagCacheDOId({
-                tag,
+                baseShardId: generateShardId(tag, this.opts.numberOfShards, "shard"),
                 numberOfReplicas: numReplicas,
-                numberOfShards: this.opts.numberOfShards,
                 shardType,
                 replicaId,
               }),
