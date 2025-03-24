@@ -1,3 +1,8 @@
+/**
+ * This patch will replace code used for `res.revalidate` in page router
+ * Without the patch it uses `fetch` to make a call to itself, which doesn't work once deployed in cloudflare workers
+ * This patch will replace this fetch by a call to `NEXT_CACHE_REVALIDATION_WORKER` service binding
+ */
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { CodePatcher } from "@opennextjs/aws/build/patch/codePatcher.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
