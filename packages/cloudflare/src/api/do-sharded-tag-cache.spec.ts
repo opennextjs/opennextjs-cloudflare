@@ -31,20 +31,20 @@ describe("DOShardedTagCache", () => {
       const expectedResult = new Map();
       expectedResult.set("shard-hard-1-1", ["tag1"]);
       expectedResult.set("shard-hard-2-1", ["tag2"]);
-      expect(cache.generateShards(["tag1", "tag2"])).toEqual(expectedResult);
+      expect(cache.generateShards({ tags: ["tag1", "tag2"] })).toEqual(expectedResult);
     });
 
     it("should group tags by shard", () => {
       const cache = doShardedTagCache();
       const expectedResult = new Map();
       expectedResult.set("shard-hard-1-1", ["tag1", "tag6"]);
-      expect(cache.generateShards(["tag1", "tag6"])).toEqual(expectedResult);
+      expect(cache.generateShards({ tags: ["tag1", "tag6"] })).toEqual(expectedResult);
     });
 
     it("should generate the same shardId for the same tag", () => {
       const cache = doShardedTagCache();
-      const firstResult = cache.generateShards(["tag1"]);
-      const secondResult = cache.generateShards(["tag1", "tag3", "tag4"]);
+      const firstResult = cache.generateShards({ tags: ["tag1"] });
+      const secondResult = cache.generateShards({ tags: ["tag1", "tag3", "tag4"] });
       expect(firstResult.get("shard-1")).toEqual(secondResult.get("shard-1"));
     });
 
@@ -53,7 +53,7 @@ describe("DOShardedTagCache", () => {
       const expectedResult = new Map();
       expectedResult.set("shard-hard-1-1", ["tag1"]);
       expectedResult.set("shard-soft-3-1", ["_N_T_/tag1"]);
-      expect(cache.generateShards(["tag1", "_N_T_/tag1"])).toEqual(expectedResult);
+      expect(cache.generateShards({ tags: ["tag1", "_N_T_/tag1"] })).toEqual(expectedResult);
     });
 
     describe("with double sharding", () => {
@@ -66,12 +66,14 @@ describe("DOShardedTagCache", () => {
         expectedResult.set("shard-soft-3-2", ["_N_T_/tag1"]);
         expectedResult.set("shard-soft-3-3", ["_N_T_/tag1"]);
         expectedResult.set("shard-soft-3-4", ["_N_T_/tag1"]);
-        expect(cache.generateShards(["tag1", "_N_T_/tag1"], true)).toEqual(expectedResult);
+        expect(cache.generateShards({ tags: ["tag1", "_N_T_/tag1"], generateAllShards: true })).toEqual(
+          expectedResult
+        );
       });
 
       it("should generate only one shard if generateAllShards is false", () => {
         const cache = doShardedTagCache({ numberOfShards: 4, enableDoubleSharding: true });
-        const shardedMap = cache.generateShards(["tag1", "_N_T_/tag1"], false);
+        const shardedMap = cache.generateShards({ tags: ["tag1", "_N_T_/tag1"], generateAllShards: false });
         expect(shardedMap.size).toBe(2);
         const shardIds = Array.from(shardedMap.keys());
         // We can't test against a specific shard id because the last part is random
@@ -301,9 +303,12 @@ describe("DOShardedTagCache", () => {
       vi.useFakeTimers();
       vi.setSystemTime(1000);
       const cache = doShardedTagCache();
+      writeTagsMock.mockImplementationOnce(() => {
+        throw new Error("error");
+      });
       const spiedFn = vi.spyOn(cache, "performWriteTagsWithRetry");
       await cache.performWriteTagsWithRetry("shard", ["tag1"], Date.now(), 3);
-      expect(writeTagsMock).not.toHaveBeenCalled();
+      expect(writeTagsMock).toHaveBeenCalledTimes(1);
       expect(spiedFn).toHaveBeenCalledTimes(1);
 
       expect(sendDLQMock).toHaveBeenCalledWith({

@@ -93,7 +93,15 @@ class ShardedD1TagCache implements NextModeTagCache {
    * @param generateAllShards Whether to generate all shards or only one
    * @returns An array of shardId and tag
    */
-  private generateShardArray(tags: string[], shardType: "soft" | "hard", generateAllShards = false) {
+  private generateShardArray({
+    tags,
+    shardType,
+    generateAllShards = false,
+  }: {
+    tags: string[];
+    shardType: "soft" | "hard";
+    generateAllShards: boolean;
+  }) {
     let doubleShardArray = [1];
     const isSoft = shardType === "soft";
     if (this.opts.enableDoubleSharding) {
@@ -124,12 +132,12 @@ class ShardedD1TagCache implements NextModeTagCache {
    * @param tags
    * @returns A map of shardId to tags
    */
-  generateShards(tags: string[], generateAllShards = false) {
+  generateShards({ tags, generateAllShards = false }: { tags: string[]; generateAllShards?: boolean }) {
     // Here we'll start by splitting soft tags from hard tags
     // This will greatly increase the cache hit rate for the soft tag (which are the most likely to cause issue because of load)
-    const softTags = this.generateShardArray(tags, "soft", generateAllShards);
+    const softTags = this.generateShardArray({ tags, shardType: "soft", generateAllShards });
 
-    const hardTags = this.generateShardArray(tags, "hard", generateAllShards);
+    const hardTags = this.generateShardArray({ tags, shardType: "hard", generateAllShards });
     // For each tag, we generate a message group id
     const messageGroupIds = [...softTags, ...hardTags];
     // We group the tags by shard
@@ -171,7 +179,7 @@ class ShardedD1TagCache implements NextModeTagCache {
     const { isDisabled } = await this.getConfig();
     if (isDisabled) return false;
     try {
-      const shards = this.generateShards(tags);
+      const shards = this.generateShards({ tags });
       // We then create a new durable object for each shard
       const shardsResult = await Promise.all(
         Array.from(shards.entries()).map(async ([shardId, shardedTags]) => {
@@ -208,7 +216,7 @@ class ShardedD1TagCache implements NextModeTagCache {
   async writeTags(tags: string[]): Promise<void> {
     const { isDisabled } = await this.getConfig();
     if (isDisabled) return;
-    const shards = this.generateShards(tags, true);
+    const shards = this.generateShards({ tags, generateAllShards: true });
     const currentTime = Date.now();
     // We then create a new durable object for each shard
     await Promise.all(
@@ -219,16 +227,6 @@ class ShardedD1TagCache implements NextModeTagCache {
   }
 
   async performWriteTagsWithRetry(shardId: string, tags: string[], lastModified: number, retryNumber = 0) {
-    if (retryNumber >= this.maxWriteRetries) {
-      error("Error while writing tags, too many retries");
-      // Do we want to throw an error here ?
-      await getCloudflareContext().env.NEXT_CACHE_D1_SHARDED_DLQ?.send({
-        failingShardId: shardId,
-        failingTags: tags,
-        lastModified,
-      });
-      return;
-    }
     try {
       const stub = this.getDurableObjectStub(shardId);
       // We need to write the same revalidation time for all tags
@@ -237,6 +235,16 @@ class ShardedD1TagCache implements NextModeTagCache {
       await this.deleteRegionalCache(shardId, tags);
     } catch (e) {
       error("Error while writing tags", e);
+      if (retryNumber >= this.maxWriteRetries) {
+        error("Error while writing tags, too many retries");
+        // Do we want to throw an error here ?
+        await getCloudflareContext().env.NEXT_CACHE_D1_SHARDED_DLQ?.send({
+          failingShardId: shardId,
+          failingTags: tags,
+          lastModified,
+        });
+        return;
+      }
       await this.performWriteTagsWithRetry(shardId, tags, lastModified, retryNumber + 1);
     }
   }
