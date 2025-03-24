@@ -22,9 +22,11 @@ declare global {
     // Durable Object namespace to use for the durable object queue handler
     NEXT_CACHE_REVALIDATION_DURABLE_OBJECT?: DurableObjectNamespace<DurableObjectQueueHandler>;
     // Durables object namespace to use for the sharded tag cache
-    NEXT_CACHE_D1_SHARDED?: DurableObjectNamespace<DOShardedTagCache>;
-    // Dead letter queue for the D1 sharded tag cache
-    NEXT_CACHE_D1_SHARDED_DLQ?: Queue;
+    NEXT_CACHE_DO_SHARDED?: DurableObjectNamespace<DOShardedTagCache>;
+    // Queue of failed tag write
+    // It could be used for monitoring or to reprocess failed writes
+    // Entirely optional
+    NEXT_CACHE_DO_SHARDED_DLQ?: Queue;
 
     // Asset binding
     ASSETS?: Fetcher;

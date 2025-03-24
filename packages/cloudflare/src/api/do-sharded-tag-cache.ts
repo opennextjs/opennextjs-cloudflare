@@ -7,9 +7,10 @@ import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 import { getCloudflareContext } from "./cloudflare-context";
 
 const SOFT_TAG_PREFIX = "_N_T_/";
-export const DEFAULT_MAX_SOFT_SHARDS = 4;
-export const DEFAULT_MAX_HARD_SHARDS = 2;
-export const DEFAULT_MAX_WRITE_RETRIES = 3;
+export const DEFAULT_SOFT_REPLICAS = 4;
+export const DEFAULT_HARD_REPLICAS = 2;
+export const DEFAULT_WRITE_RETRIES = 3;
+export const DEFAULT_NUM_SHARDS = 4;
 
 interface ShardedDOTagCacheOptions {
   /**
@@ -36,17 +37,17 @@ interface ShardedDOTagCacheOptions {
 
   /**
    * Whether to enable shard replication
-   * Shard replication will duplicate each shards into N replica to spread the load even more
-   * For example with N being 2 on read, tag `tag1` could be read from 2 different durable object instance
+   * Shard replication will duplicate each shards into N replicas to spread the load even more
+   * For example with N being 2, tag `tag1` could be read from 2 different durable object instance
    * On read you only need to read from one of the shards, but on write you need to write to all shards
    * @default false
    */
   enableShardReplication?: boolean;
 
   /**
-   * The number of replica that will be used for shard replication
-   * Soft shards replica are more often accessed than hard shards replica, so it is recommended to have more soft shards than hard shards
-   * Soft shards are for internal next tags used for `revalidatePath` (i.e. `_N_T_/layout`, `_N_T_/page1`), hard shards are the one you define in your app
+   * The number of replicas that will be used for shard replication
+   * Soft shard replicas are more often accessed than hard shard replicas, so it is recommended to have more soft replicas than hard replicas
+   * Soft replicas are for internal next tags used for `revalidatePath` (i.e. `_N_T_/layout`, `_N_T_/page1`), hard replicas are the tags defined in your app
    * @default { softShards: 4, hardShards: 2 }
    */
   shardReplicationOptions?: {
@@ -63,19 +64,19 @@ interface ShardedDOTagCacheOptions {
 class ShardedDOTagCache implements NextModeTagCache {
   readonly mode = "nextMode" as const;
   readonly name = "sharded-d1-tag-cache";
-  readonly maxSoftShards: number;
-  readonly maxHardShards: number;
+  readonly numSoftReplicas: number;
+  readonly numHardReplicas: number;
   readonly maxWriteRetries: number;
   localCache?: Cache;
 
-  constructor(private opts: ShardedDOTagCacheOptions = { numberOfShards: 4 }) {
-    this.maxSoftShards = opts.shardReplicationOptions?.numberOfSoftReplicas ?? DEFAULT_MAX_SOFT_SHARDS;
-    this.maxHardShards = opts.shardReplicationOptions?.numberOfHardReplicas ?? DEFAULT_MAX_HARD_SHARDS;
-    this.maxWriteRetries = opts.maxWriteRetries ?? DEFAULT_MAX_WRITE_RETRIES;
+  constructor(private opts: ShardedDOTagCacheOptions = { numberOfShards: DEFAULT_NUM_SHARDS }) {
+    this.numSoftReplicas = opts.shardReplicationOptions?.numberOfSoftReplicas ?? DEFAULT_SOFT_REPLICAS;
+    this.numHardReplicas = opts.shardReplicationOptions?.numberOfHardReplicas ?? DEFAULT_HARD_REPLICAS;
+    this.maxWriteRetries = opts.maxWriteRetries ?? DEFAULT_WRITE_RETRIES;
   }
 
   private getDurableObjectStub(shardId: string) {
-    const durableObject = getCloudflareContext().env.NEXT_CACHE_D1_SHARDED;
+    const durableObject = getCloudflareContext().env.NEXT_CACHE_DO_SHARDED;
     if (!durableObject) throw new IgnorableError("No durable object binding for cache revalidation");
 
     const id = durableObject.idFromName(shardId);
@@ -87,13 +88,13 @@ class ShardedDOTagCache implements NextModeTagCache {
   }
 
   /**
-   * This function generates an array for the double sharding
+   * Generates a list of shard ids for the shards and replicas  
    * @param tags The tags to generate shards for
    * @param shardType Whether to generate shards for soft or hard tags
    * @param generateAllShards Whether to generate all shards or only one
    * @returns An array of shardId and tag
    */
-  private generateShardArray({
+  private generateDOIdArray({
     tags,
     shardType,
     generateAllShards = false,
@@ -104,9 +105,9 @@ class ShardedDOTagCache implements NextModeTagCache {
   }) {
     let doubleShardArray = [1];
     const isSoft = shardType === "soft";
+    const numReplicas = isSoft ? this.numSoftReplicas : this.numHardReplicas;
     if (this.opts.enableShardReplication) {
-      const shards = isSoft ? this.maxSoftShards : this.maxHardShards;
-      doubleShardArray = generateAllShards ? Array.from({ length: shards }, (_, i) => i + 1) : [-1];
+      doubleShardArray = generateAllShards ? Array.from({ length: numReplicas }, (_, i) => i + 1) : [-1];
     }
     return doubleShardArray
       .map((shard) => {
@@ -116,7 +117,7 @@ class ShardedDOTagCache implements NextModeTagCache {
             const baseShardId = generateShardId(tag, this.opts.numberOfShards, `tag-${shardType};shard`);
             const randomShardId = this.generateRandomNumberBetween(
               1,
-              isSoft ? this.maxSoftShards : this.maxHardShards
+              numReplicas
             );
             return {
               shardId: `${baseShardId};replica-${shard === -1 ? randomShardId : shard}`,
@@ -135,24 +136,24 @@ class ShardedDOTagCache implements NextModeTagCache {
   generateShards({ tags, generateAllShards = false }: { tags: string[]; generateAllShards?: boolean }) {
     // Here we'll start by splitting soft tags from hard tags
     // This will greatly increase the cache hit rate for the soft tag (which are the most likely to cause issue because of load)
-    const softTags = this.generateShardArray({ tags, shardType: "soft", generateAllShards });
+    const softTags = this.generateDOIdArray({ tags, shardType: "soft", generateAllShards });
 
-    const hardTags = this.generateShardArray({ tags, shardType: "hard", generateAllShards });
+    const hardTags = this.generateDOIdArray({ tags, shardType: "hard", generateAllShards });
     // For each tag, we generate a message group id
     const messageGroupIds = [...softTags, ...hardTags];
     // We group the tags by shard
-    const shards = new Map<string, string[]>();
+    const tagsByDOId = new Map<string, string[]>();
     for (const { shardId, tag } of messageGroupIds) {
-      const tags = shards.get(shardId) ?? [];
+      const tags = tagsByDOId.get(shardId) ?? [];
       tags.push(tag);
-      shards.set(shardId, tags);
+      tagsByDOId.set(shardId, tags);
     }
-    return shards;
+    return tagsByDOId;
   }
 
   private async getConfig() {
     const cfEnv = getCloudflareContext().env;
-    const db = cfEnv.NEXT_CACHE_D1_SHARDED;
+    const db = cfEnv.NEXT_CACHE_DO_SHARDED;
 
     if (!db) debug("No Durable object found");
     const isDisabled = !!(globalThis as unknown as { openNextConfig: OpenNextConfig }).openNextConfig
@@ -238,7 +239,7 @@ class ShardedDOTagCache implements NextModeTagCache {
       if (retryNumber >= this.maxWriteRetries) {
         error("Error while writing tags, too many retries");
         // Do we want to throw an error here ?
-        await getCloudflareContext().env.NEXT_CACHE_D1_SHARDED_DLQ?.send({
+        await getCloudflareContext().env.NEXT_CACHE_DO_SHARDED_DLQ?.send({
           failingShardId: shardId,
           failingTags: tags,
           lastModified,
@@ -252,7 +253,7 @@ class ShardedDOTagCache implements NextModeTagCache {
   // Cache API
   async getCacheInstance() {
     if (!this.localCache && this.opts.regionalCache) {
-      this.localCache = await caches.open("sharded-d1-tag-cache");
+      this.localCache = await caches.open("sharded-do-tag-cache");
     }
     return this.localCache;
   }

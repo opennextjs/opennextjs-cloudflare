@@ -2,4 +2,4 @@
 "@opennextjs/cloudflare": patch
 ---
 
-Add double sharding for the Durable Object Tag Cache
+Add sharding replication for the Durable Object Tag Cache

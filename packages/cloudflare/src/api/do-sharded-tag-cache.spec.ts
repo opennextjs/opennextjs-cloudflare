@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import doShardedTagCache, { DEFAULT_MAX_HARD_SHARDS, DEFAULT_MAX_SOFT_SHARDS } from "./do-sharded-tag-cache";
+import doShardedTagCache, { DEFAULT_HARD_REPLICAS, DEFAULT_SOFT_REPLICAS } from "./do-sharded-tag-cache";
 
 const hasBeenRevalidatedMock = vi.fn();
 const writeTagsMock = vi.fn();
@@ -13,8 +13,8 @@ const sendDLQMock = vi.fn();
 vi.mock("./cloudflare-context", () => ({
   getCloudflareContext: () => ({
     env: {
-      NEXT_CACHE_D1_SHARDED: { idFromName: idFromNameMock, get: getMock },
-      NEXT_CACHE_D1_SHARDED_DLQ: {
+      NEXT_CACHE_DO_SHARDED: { idFromName: idFromNameMock, get: getMock },
+      NEXT_CACHE_DO_SHARDED_DLQ: {
         send: sendDLQMock,
       },
     },
@@ -83,11 +83,11 @@ describe("DOShardedTagCache", () => {
         // We still need to check if the last part is between the correct boundaries
         const shardId = shardIds[0]?.substring(shardIds[0].lastIndexOf("-") + 1) ?? "";
         expect(parseInt(shardId)).toBeGreaterThanOrEqual(1);
-        expect(parseInt(shardId)).toBeLessThanOrEqual(DEFAULT_MAX_SOFT_SHARDS);
+        expect(parseInt(shardId)).toBeLessThanOrEqual(DEFAULT_SOFT_REPLICAS);
 
         const shardId2 = shardIds[1]?.substring(shardIds[1].lastIndexOf("-") + 1) ?? "";
         expect(parseInt(shardId2)).toBeGreaterThanOrEqual(1);
-        expect(parseInt(shardId2)).toBeLessThanOrEqual(DEFAULT_MAX_HARD_SHARDS);
+        expect(parseInt(shardId2)).toBeLessThanOrEqual(DEFAULT_HARD_REPLICAS);
       });
     });
   });
