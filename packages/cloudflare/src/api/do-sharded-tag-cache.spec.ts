@@ -58,7 +58,7 @@ describe("DOShardedTagCache", () => {
 
     describe("with double sharding", () => {
       it("should generate all shards if generateAllShards is true", () => {
-        const cache = doShardedTagCache({ numberOfShards: 4, enableDoubleSharding: true });
+        const cache = doShardedTagCache({ numberOfShards: 4, enableShardReplication: true });
         const expectedResult = new Map();
         expectedResult.set("shard-hard-1-1", ["tag1"]);
         expectedResult.set("shard-hard-1-2", ["tag1"]);
@@ -72,7 +72,7 @@ describe("DOShardedTagCache", () => {
       });
 
       it("should generate only one shard if generateAllShards is false", () => {
-        const cache = doShardedTagCache({ numberOfShards: 4, enableDoubleSharding: true });
+        const cache = doShardedTagCache({ numberOfShards: 4, enableShardReplication: true });
         const shardedMap = cache.generateShards({ tags: ["tag1", "_N_T_/tag1"], generateAllShards: false });
         expect(shardedMap.size).toBe(2);
         const shardIds = Array.from(shardedMap.keys());
@@ -213,7 +213,7 @@ describe("DOShardedTagCache", () => {
     });
 
     it('should write to all the double sharded shards if "generateAllShards" is true', async () => {
-      const cache = doShardedTagCache({ numberOfShards: 4, enableDoubleSharding: true });
+      const cache = doShardedTagCache({ numberOfShards: 4, enableShardReplication: true });
       await cache.writeTags(["tag1", "_N_T_/tag1"]);
       expect(idFromNameMock).toHaveBeenCalledTimes(6);
       expect(writeTagsMock).toHaveBeenCalledTimes(6);

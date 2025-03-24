@@ -35,21 +35,21 @@ interface ShardedD1TagCacheOptions {
   regionalCacheTtlSec?: number;
 
   /**
-   * Whether to enable double sharding
-   * Double sharding will split each shards into N shards to spread the load even more
-   * For example with N being 2, tag `tag1` could be send to shard `shard-hard-1-1` and `shard-hard-1-2`
-   * The first part will always stay the same for a given tag, the second part will be randomly generated between 1 and N
+   * Whether to enable shard replication
+   * Shard replication will duplicate each shards into N replica to spread the load even more
+   * For example with N being 2 on read, tag `tag1` could be read from 2 different durable object instance
    * On read you only need to read from one of the shards, but on write you need to write to all shards
    * @default false
    */
-  enableDoubleSharding?: boolean;
+  enableShardReplication?: boolean;
 
   /**
-   * The number of shards that will be used for double sharding
-   * Soft shards are more often accessed than hard shards, so it is recommended to have more soft shards than hard shards
+   * The number of replica that will be used for shard replication
+   * Soft shards replica are more often accessed than hard shards replica, so it is recommended to have more soft shards than hard shards
+   * Soft shards are for internal next tags used for `revalidatePath` (i.e. `_N_T_/layout`, `_N_T_/page1`), hard shards are the one you define in your app
    * @default { softShards: 4, hardShards: 2 }
    */
-  doubleShardingOpts?: {
+  shardReplicationOptions?: {
     softShards: number;
     hardShards: number;
   };
@@ -69,8 +69,8 @@ class ShardedD1TagCache implements NextModeTagCache {
   localCache?: Cache;
 
   constructor(private opts: ShardedD1TagCacheOptions = { numberOfShards: 4 }) {
-    this.maxSoftShards = opts.doubleShardingOpts?.softShards ?? DEFAULT_MAX_SOFT_SHARDS;
-    this.maxHardShards = opts.doubleShardingOpts?.hardShards ?? DEFAULT_MAX_HARD_SHARDS;
+    this.maxSoftShards = opts.shardReplicationOptions?.softShards ?? DEFAULT_MAX_SOFT_SHARDS;
+    this.maxHardShards = opts.shardReplicationOptions?.hardShards ?? DEFAULT_MAX_HARD_SHARDS;
     this.maxWriteRetries = opts.maxWriteRetries ?? DEFAULT_MAX_WRITE_RETRIES;
   }
 
@@ -104,7 +104,7 @@ class ShardedD1TagCache implements NextModeTagCache {
   }) {
     let doubleShardArray = [1];
     const isSoft = shardType === "soft";
-    if (this.opts.enableDoubleSharding) {
+    if (this.opts.enableShardReplication) {
       const shards = isSoft ? this.maxSoftShards : this.maxHardShards;
       doubleShardArray = generateAllShards ? Array.from({ length: shards }, (_, i) => i + 1) : [-1];
     }
