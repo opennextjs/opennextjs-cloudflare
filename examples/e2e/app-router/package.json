@@ -9,8 +9,7 @@
     "start": "next start --port 3001",
     "lint": "next lint",
     "clean": "rm -rf .turbo node_modules .next .open-next",
-    "d1:clean": "wrangler d1 execute NEXT_CACHE_D1 --command \"DROP TABLE IF EXISTS tags; DROP TABLE IF EXISTS revalidations\"",
-    "build:worker": "pnpm d1:clean && pnpm opennextjs-cloudflare build",
+    "build:worker": "pnpm opennextjs-cloudflare build",
     "preview:worker": "pnpm opennextjs-cloudflare preview",
     "preview": "pnpm build:worker && pnpm preview:worker",
     "e2e": "playwright test -c e2e/playwright.config.ts"
