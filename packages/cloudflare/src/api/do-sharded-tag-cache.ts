@@ -11,7 +11,7 @@ export const DEFAULT_MAX_SOFT_SHARDS = 4;
 export const DEFAULT_MAX_HARD_SHARDS = 2;
 export const DEFAULT_MAX_WRITE_RETRIES = 3;
 
-interface ShardedD1TagCacheOptions {
+interface ShardedDOTagCacheOptions {
   /**
    * The number of shards that will be used.
    * 1 shards means 1 durable object instance.
@@ -60,7 +60,7 @@ interface ShardedD1TagCacheOptions {
    */
   maxWriteRetries?: number;
 }
-class ShardedD1TagCache implements NextModeTagCache {
+class ShardedDOTagCache implements NextModeTagCache {
   readonly mode = "nextMode" as const;
   readonly name = "sharded-d1-tag-cache";
   readonly maxSoftShards: number;
@@ -68,7 +68,7 @@ class ShardedD1TagCache implements NextModeTagCache {
   readonly maxWriteRetries: number;
   localCache?: Cache;
 
-  constructor(private opts: ShardedD1TagCacheOptions = { numberOfShards: 4 }) {
+  constructor(private opts: ShardedDOTagCacheOptions = { numberOfShards: 4 }) {
     this.maxSoftShards = opts.shardReplicationOptions?.softShards ?? DEFAULT_MAX_SOFT_SHARDS;
     this.maxHardShards = opts.shardReplicationOptions?.hardShards ?? DEFAULT_MAX_HARD_SHARDS;
     this.maxWriteRetries = opts.maxWriteRetries ?? DEFAULT_MAX_WRITE_RETRIES;
@@ -113,13 +113,13 @@ class ShardedD1TagCache implements NextModeTagCache {
         return tags
           .filter((tag) => (isSoft ? tag.startsWith(SOFT_TAG_PREFIX) : !tag.startsWith(SOFT_TAG_PREFIX)))
           .map((tag) => {
-            const baseShardId = generateShardId(tag, this.opts.numberOfShards, `shard-${shardType}`);
+            const baseShardId = generateShardId(tag, this.opts.numberOfShards, `tag-${shardType};shard`);
             const randomShardId = this.generateRandomNumberBetween(
               1,
               isSoft ? this.maxSoftShards : this.maxHardShards
             );
             return {
-              shardId: `${baseShardId}-${shard === -1 ? randomShardId : shard}`,
+              shardId: `${baseShardId};replica-${shard === -1 ? randomShardId : shard}`,
               tag,
             };
           });
@@ -308,4 +308,4 @@ class ShardedD1TagCache implements NextModeTagCache {
   }
 }
 
-export default (opts?: ShardedD1TagCacheOptions) => new ShardedD1TagCache(opts);
+export default (opts?: ShardedDOTagCacheOptions) => new ShardedDOTagCache(opts);

@@ -29,15 +29,15 @@ describe("DOShardedTagCache", () => {
     it("should generate a shardId", () => {
       const cache = doShardedTagCache();
       const expectedResult = new Map();
-      expectedResult.set("shard-hard-1-1", ["tag1"]);
-      expectedResult.set("shard-hard-2-1", ["tag2"]);
+      expectedResult.set("tag-hard;shard-1;replica-1", ["tag1"]);
+      expectedResult.set("tag-hard;shard-2;replica-1", ["tag2"]);
       expect(cache.generateShards({ tags: ["tag1", "tag2"] })).toEqual(expectedResult);
     });
 
     it("should group tags by shard", () => {
       const cache = doShardedTagCache();
       const expectedResult = new Map();
-      expectedResult.set("shard-hard-1-1", ["tag1", "tag6"]);
+      expectedResult.set("tag-hard;shard-1;replica-1", ["tag1", "tag6"]);
       expect(cache.generateShards({ tags: ["tag1", "tag6"] })).toEqual(expectedResult);
     });
 
@@ -51,21 +51,21 @@ describe("DOShardedTagCache", () => {
     it("should split hard and soft tags", () => {
       const cache = doShardedTagCache();
       const expectedResult = new Map();
-      expectedResult.set("shard-hard-1-1", ["tag1"]);
-      expectedResult.set("shard-soft-3-1", ["_N_T_/tag1"]);
+      expectedResult.set("tag-hard;shard-1;replica-1", ["tag1"]);
+      expectedResult.set("tag-soft;shard-3;replica-1", ["_N_T_/tag1"]);
       expect(cache.generateShards({ tags: ["tag1", "_N_T_/tag1"] })).toEqual(expectedResult);
     });
 
-    describe("with double sharding", () => {
+    describe("with shard replication", () => {
       it("should generate all shards if generateAllShards is true", () => {
         const cache = doShardedTagCache({ numberOfShards: 4, enableShardReplication: true });
         const expectedResult = new Map();
-        expectedResult.set("shard-hard-1-1", ["tag1"]);
-        expectedResult.set("shard-hard-1-2", ["tag1"]);
-        expectedResult.set("shard-soft-3-1", ["_N_T_/tag1"]);
-        expectedResult.set("shard-soft-3-2", ["_N_T_/tag1"]);
-        expectedResult.set("shard-soft-3-3", ["_N_T_/tag1"]);
-        expectedResult.set("shard-soft-3-4", ["_N_T_/tag1"]);
+        expectedResult.set("tag-hard;shard-1;replica-1", ["tag1"]);
+        expectedResult.set("tag-hard;shard-1;replica-2", ["tag1"]);
+        expectedResult.set("tag-soft;shard-3;replica-1", ["_N_T_/tag1"]);
+        expectedResult.set("tag-soft;shard-3;replica-2", ["_N_T_/tag1"]);
+        expectedResult.set("tag-soft;shard-3;replica-3", ["_N_T_/tag1"]);
+        expectedResult.set("tag-soft;shard-3;replica-4", ["_N_T_/tag1"]);
         expect(cache.generateShards({ tags: ["tag1", "_N_T_/tag1"], generateAllShards: true })).toEqual(
           expectedResult
         );
@@ -77,8 +77,8 @@ describe("DOShardedTagCache", () => {
         expect(shardedMap.size).toBe(2);
         const shardIds = Array.from(shardedMap.keys());
         // We can't test against a specific shard id because the last part is random
-        expect(shardIds[0]).toMatch(/shard-soft-3-\d/);
-        expect(shardIds[1]).toMatch(/shard-hard-1-\d/);
+        expect(shardIds[0]).toMatch(/tag-soft;shard-3;replica-\d/);
+        expect(shardIds[1]).toMatch(/tag-hard;shard-1;replica-\d/);
 
         // We still need to check if the last part is between the correct boundaries
         const shardId = shardIds[0]?.substring(shardIds[0].lastIndexOf("-") + 1) ?? "";
@@ -226,7 +226,7 @@ describe("DOShardedTagCache", () => {
       cache.deleteRegionalCache = vi.fn();
       await cache.writeTags(["tag1"]);
       expect(cache.deleteRegionalCache).toHaveBeenCalled();
-      expect(cache.deleteRegionalCache).toHaveBeenCalledWith("shard-hard-1-1", ["tag1"]);
+      expect(cache.deleteRegionalCache).toHaveBeenCalledWith("tag-hard;shard-1;replica-1", ["tag1"]);
     });
   });
 
