@@ -1,73 +1,47 @@
 import { BaseOverride, LazyLoadedOverride, OpenNextConfig } from "@opennextjs/aws/types/open-next";
 import type { IncrementalCache, Queue, TagCache } from "@opennextjs/aws/types/overrides";
 
-export type CloudflareConfigOptions = {
+export type Override<T extends BaseOverride> = "dummy" | T | LazyLoadedOverride<T>;
+
+/**
+ * Cloudflare specific overrides.
+ *
+ * See the [Caching documentation](https://opennext.js.org/cloudflare/caching))
+ */
+export type CloudflareOverrides = {
   /**
-   * The incremental cache implementation to use, for more details see the [Caching documentation](https://opennext.js.org/cloudflare/caching))
-   *
-   * `@opennextjs/cloudflare` offers a kv incremental cache implementation ready
-   * to use which can be imported from `"@opennextjs/cloudflare/kv-cache"`
-   *
-   * @example
-   *   import { defineCloudflareConfig } from "@opennextjs/cloudflare";
-   *   import kvIncrementalCache from "@opennextjs/cloudflare/kv-cache";
-   *
-   *   export default defineCloudflareConfig({
-   *     incrementalCache: kvIncrementalCache,
-   *   });
+   * Sets the incremental cache implementation.
    */
-  incrementalCache?: "dummy" | IncrementalCache | (() => IncrementalCache | Promise<IncrementalCache>);
+  incrementalCache?: Override<IncrementalCache>;
 
   /**
-   * The tag cache implementation to use, for more details see the [Caching documentation](https://opennext.js.org/cloudflare/caching))
-   *
-   * `@opennextjs/cloudflare` offers a d1 tag cache implementation ready
-   * to use which can be imported from `"@opennextjs/cloudflare/d1-tag-cache"`
-   *
-   * @example
-   *   import { defineCloudflareConfig } from "@opennextjs/cloudflare";
-   *   import d1TagCache from "@opennextjs/cloudflare/d1-tag-cache";
-   *
-   *   export default defineCloudflareConfig({
-   *     tagCache: d1TagCache,
-   *   });
+   * Sets the tag cache implementation.
    */
-  tagCache?: "dummy" | TagCache | (() => TagCache | Promise<TagCache>);
+  tagCache?: Override<TagCache>;
 
   /**
-   * The revalidation queue implementation to use, for more details see the [Caching documentation](https://opennext.js.org/cloudflare/caching))
-   *
-   * `@opennextjs/cloudflare` offers an in memory queue implementation ready
-   * to use which can be imported from `"@opennextjs/cloudflare/memory-queue"`
-   *
-   * @example
-   *   import { defineCloudflareConfig } from "@opennextjs/cloudflare";
-   *   import memoryQueue from "@opennextjs/cloudflare/memory-queue";
-   *
-   *   export default defineCloudflareConfig({
-   *     queue: memoryQueue,
-   *   });
+   * Sets the revalidation queue implementation
    */
-  queue?: "dummy" | "direct" | Queue | (() => Queue | Promise<Queue>);
+  queue?: "direct" | Override<Queue>;
 };
 
 /**
  * Defines the OpenNext configuration that targets the Cloudflare adapter
  *
- * @param options options that enabled you to configure the application's behavior
+ * @param config options that enabled you to configure the application's behavior
  * @returns the OpenNext configuration object
  */
-export function defineCloudflareConfig(options: CloudflareConfigOptions = {}): OpenNextConfig {
-  const { incrementalCache, tagCache, queue } = options;
+export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNextConfig {
+  const { incrementalCache, tagCache, queue } = config;
 
   return {
     default: {
       override: {
         wrapper: "cloudflare-node",
         converter: "edge",
-        incrementalCache: resolveOverride(incrementalCache),
-        tagCache: resolveOverride(tagCache),
-        queue: resolveOverride(queue),
+        incrementalCache: resolveIncrementalCache(incrementalCache),
+        tagCache: resolveTagCache(tagCache),
+        queue: resolveQueue(queue),
       },
     },
 
@@ -82,22 +56,26 @@ export function defineCloudflareConfig(options: CloudflareConfigOptions = {}): O
   };
 }
 
-type DummyOrLazyLoadedOverride<T extends BaseOverride> = "dummy" | LazyLoadedOverride<T>;
-
-type ResolveOverrideReturn<T extends IncrementalCache | TagCache | Queue> = T extends Queue
-  ? "direct" | DummyOrLazyLoadedOverride<T>
-  : DummyOrLazyLoadedOverride<T>;
-
-function resolveOverride<T extends IncrementalCache | TagCache | Queue>(
-  value: undefined | "dummy" | "direct" | T | (() => T | Promise<T>)
-): ResolveOverrideReturn<T> {
-  if (!value || value === "dummy") {
-    return "dummy" as ResolveOverrideReturn<T>;
+function resolveIncrementalCache(value: CloudflareOverrides["incrementalCache"] = "dummy") {
+  if (typeof value === "string") {
+    return value;
   }
 
-  if (value === "direct") {
-    return "direct" as ResolveOverrideReturn<T>;
+  return typeof value === "function" ? value : () => value;
+}
+
+function resolveTagCache(value: CloudflareOverrides["tagCache"] = "dummy") {
+  if (typeof value === "string") {
+    return value;
   }
 
-  return (typeof value === "function" ? value : () => value) as ResolveOverrideReturn<T>;
+  return typeof value === "function" ? value : () => value;
+}
+
+function resolveQueue(value: CloudflareOverrides["queue"] = "dummy") {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return typeof value === "function" ? value : () => value;
 }
