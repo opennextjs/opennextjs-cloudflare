@@ -12,7 +12,9 @@ export async function getStaticProps() {
 export default function Page({ time }: InferGetStaticPropsType<typeof getStaticProps>) {
   return (
     <div>
-      <div className="flex">Time: {time}</div>
+      <div className="flex" data-testid="time">
+        Time: {time}
+      </div>
       <Link href="/">Home</Link>
     </div>
   );
