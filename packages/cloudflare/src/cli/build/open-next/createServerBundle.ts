@@ -234,6 +234,7 @@ async function generateBundle(
       overrides,
     }),
 
+    // `openNextExternalMiddlewarePlugin` should only be used with an external middleware
     ...(config.middleware?.external
       ? [openNextExternalMiddlewarePlugin(path.join(options.openNextDistDir, "core/edgeFunctionHandler.js"))]
       : []),
