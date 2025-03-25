@@ -45,7 +45,7 @@ export class D1NextModeTagCache implements NextModeTagCache {
 
   private getConfig() {
     const cfEnv = getCloudflareContext().env;
-    const db = cfEnv.NEXT_CACHE_D1;
+    const db = cfEnv.NEXT_TAG_CACHE_D1;
 
     if (!db) debug("No D1 database found");
 

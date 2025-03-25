@@ -54,7 +54,7 @@ const createDurableObjectQueue = ({
       ),
       connect: vi.fn(),
     },
-    REVALIDATION_DO_DISABLE_SQLITE: disableSQLite ? "true" : undefined,
+    NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE: disableSQLite ? "true" : undefined,
   });
 };
 

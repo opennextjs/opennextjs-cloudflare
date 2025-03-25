@@ -12,9 +12,9 @@
     "e2e": {
       "d1_databases": [
         {
-          "binding": "NEXT_CACHE_D1",
-          "database_id": "NEXT_CACHE_D1",
-          "database_name": "NEXT_CACHE_D1"
+          "binding": "NEXT_TAG_CACHE_D1",
+          "database_id": "NEXT_TAG_CACHE_D1",
+          "database_name": "NEXT_TAG_CACHE_D1"
         }
       ],
       "services": [
@@ -25,9 +25,9 @@
       ],
       "r2_buckets": [
         {
-          "binding": "NEXT_CACHE_R2_BUCKET",
-          "bucket_name": "NEXT_CACHE_R2_BUCKET",
-          "preview_bucket_name": "NEXT_CACHE_R2_BUCKET"
+          "binding": "NEXT_INC_CACHE_R2_BUCKET",
+          "bucket_name": "NEXT_INC_CACHE_R2_BUCKET",
+          "preview_bucket_name": "NEXT_INC_CACHE_R2_BUCKET"
         }
       ]
     },

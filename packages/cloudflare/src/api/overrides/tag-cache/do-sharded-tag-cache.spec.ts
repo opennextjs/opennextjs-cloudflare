@@ -17,8 +17,8 @@ const sendDLQMock = vi.fn();
 vi.mock("../../cloudflare-context", () => ({
   getCloudflareContext: () => ({
     env: {
-      NEXT_CACHE_DO_SHARDED: { idFromName: idFromNameMock, get: getMock },
-      NEXT_CACHE_DO_SHARDED_DLQ: {
+      NEXT_TAG_CACHE_DO_SHARDED: { idFromName: idFromNameMock, get: getMock },
+      NEXT_TAG_CACHE_DO_SHARDED_DLQ: {
         send: sendDLQMock,
       },
     },

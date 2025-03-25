@@ -102,7 +102,7 @@ class ShardedDOTagCache implements NextModeTagCache {
   }
 
   private getDurableObjectStub(doId: TagCacheDOId) {
-    const durableObject = getCloudflareContext().env.NEXT_CACHE_DO_SHARDED;
+    const durableObject = getCloudflareContext().env.NEXT_TAG_CACHE_DO_SHARDED;
     if (!durableObject) throw new IgnorableError("No durable object binding for cache revalidation");
 
     const id = durableObject.idFromName(doId.key);
@@ -189,7 +189,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 
   private async getConfig() {
     const cfEnv = getCloudflareContext().env;
-    const db = cfEnv.NEXT_CACHE_DO_SHARDED;
+    const db = cfEnv.NEXT_TAG_CACHE_DO_SHARDED;
 
     if (!db) debug("No Durable object found");
     const isDisabled = !!(globalThis as unknown as { openNextConfig: OpenNextConfig }).openNextConfig
@@ -269,7 +269,7 @@ class ShardedDOTagCache implements NextModeTagCache {
       if (retryNumber >= this.maxWriteRetries) {
         error("Error while writing tags, too many retries");
         // Do we want to throw an error here ?
-        await getCloudflareContext().env.NEXT_CACHE_DO_SHARDED_DLQ?.send({
+        await getCloudflareContext().env.NEXT_TAG_CACHE_DO_SHARDED_DLQ?.send({
           failingShardId: doId.key,
           failingTags: tags,
           lastModified,

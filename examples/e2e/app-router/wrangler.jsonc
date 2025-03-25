@@ -11,11 +11,11 @@
   "durable_objects": {
     "bindings": [
       {
-        "name": "NEXT_CACHE_DO_REVALIDATION",
+        "name": "NEXT_CACHE_DO_QUEUE",
         "class_name": "DurableObjectQueueHandler"
       },
       {
-        "name": "NEXT_CACHE_DO_SHARDED",
+        "name": "NEXT_TAG_CACHE_DO_SHARDED",
         "class_name": "DOShardedTagCache"
       }
     ]
@@ -28,7 +28,7 @@
   ],
   "kv_namespaces": [
     {
-      "binding": "NEXT_CACHE_KV",
+      "binding": "NEXT_INC_CACHE_KV",
       "id": "<BINDING_ID>"
     }
   ],

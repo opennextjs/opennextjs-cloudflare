@@ -5,10 +5,10 @@ import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 import { getCloudflareContext } from "../../cloudflare-context.js";
 
 /**
- * An instance of the Incremental Cache that uses an R2 bucket (`NEXT_CACHE_R2_BUCKET`) as it's
+ * An instance of the Incremental Cache that uses an R2 bucket (`NEXT_INC_CACHE_R2_BUCKET`) as it's
  * underlying data store.
  *
- * The directory that the cache entries are stored in can be configured with the `NEXT_CACHE_R2_PREFIX`
+ * The directory that the cache entries are stored in can be configured with the `NEXT_INC_CACHE_R2_PREFIX`
  * environment variable, and defaults to `incremental-cache`.
  *
  * The cache uses an instance of the Cache API (`incremental-cache`) to store a local version of the
@@ -21,7 +21,7 @@ class R2IncrementalCache implements IncrementalCache {
     key: string,
     isFetch?: IsFetch
   ): Promise<WithLastModified<CacheValue<IsFetch>> | null> {
-    const r2 = getCloudflareContext().env.NEXT_CACHE_R2_BUCKET;
+    const r2 = getCloudflareContext().env.NEXT_INC_CACHE_R2_BUCKET;
     if (!r2) throw new IgnorableError("No R2 bucket");
 
     debug(`Get ${key}`);
@@ -45,7 +45,7 @@ class R2IncrementalCache implements IncrementalCache {
     value: CacheValue<IsFetch>,
     isFetch?: IsFetch
   ): Promise<void> {
-    const r2 = getCloudflareContext().env.NEXT_CACHE_R2_BUCKET;
+    const r2 = getCloudflareContext().env.NEXT_INC_CACHE_R2_BUCKET;
     if (!r2) throw new IgnorableError("No R2 bucket");
 
     debug(`Set ${key}`);
@@ -58,7 +58,7 @@ class R2IncrementalCache implements IncrementalCache {
   }
 
   async delete(key: string): Promise<void> {
-    const r2 = getCloudflareContext().env.NEXT_CACHE_R2_BUCKET;
+    const r2 = getCloudflareContext().env.NEXT_INC_CACHE_R2_BUCKET;
     if (!r2) throw new IgnorableError("No R2 bucket");
 
     debug(`Delete ${key}`);
@@ -71,7 +71,7 @@ class R2IncrementalCache implements IncrementalCache {
   }
 
   protected getR2Key(key: string, isFetch?: boolean): string {
-    const directory = getCloudflareContext().env.NEXT_CACHE_R2_PREFIX ?? "incremental-cache";
+    const directory = getCloudflareContext().env.NEXT_INC_CACHE_R2_PREFIX ?? "incremental-cache";
 
     return `${directory}/${process.env.NEXT_BUILD_ID ?? "no-build-id"}/${key}.${isFetch ? "fetch" : "cache"}`;
   }

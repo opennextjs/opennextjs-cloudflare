@@ -22,7 +22,7 @@ class Cache implements IncrementalCache {
     isFetch?: IsFetch
   ): Promise<WithLastModified<CacheValue<IsFetch>> | null> {
     const cfEnv = getCloudflareContext().env;
-    const kv = cfEnv.NEXT_CACHE_KV;
+    const kv = cfEnv.NEXT_INC_CACHE_KV;
     const assets = cfEnv.ASSETS;
 
     if (!(kv || assets)) {
@@ -92,7 +92,7 @@ class Cache implements IncrementalCache {
     value: CacheValue<IsFetch>,
     isFetch?: IsFetch
   ): Promise<void> {
-    const kv = getCloudflareContext().env.NEXT_CACHE_KV;
+    const kv = getCloudflareContext().env.NEXT_INC_CACHE_KV;
 
     if (!kv) {
       throw new IgnorableError(`No KVNamespace`);
@@ -120,7 +120,7 @@ class Cache implements IncrementalCache {
   }
 
   async delete(key: string): Promise<void> {
-    const kv = getCloudflareContext().env.NEXT_CACHE_KV;
+    const kv = getCloudflareContext().env.NEXT_INC_CACHE_KV;
 
     if (!kv) {
       throw new IgnorableError(`No KVNamespace`);

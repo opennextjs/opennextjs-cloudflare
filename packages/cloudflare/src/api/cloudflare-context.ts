@@ -16,37 +16,38 @@ declare global {
     WORKER_SELF_REFERENCE?: Service;
 
     // KV used for the incremental cache
-    NEXT_CACHE_KV?: KVNamespace;
+    NEXT_INC_CACHE_KV?: KVNamespace;
 
     // R2 bucket used for the incremental cache
-    NEXT_CACHE_R2_BUCKET?: R2Bucket;
+    NEXT_INC_CACHE_R2_BUCKET?: R2Bucket;
     // Prefix used for the R2 incremental cache bucket
-    NEXT_CACHE_R2_PREFIX?: string;
+    NEXT_INC_CACHE_R2_PREFIX?: string;
 
     // D1 db used for the tag cache
-    NEXT_CACHE_D1?: D1Database;
+    NEXT_TAG_CACHE_D1?: D1Database;
 
-    // Durable Object namespace to use for the durable object queue handler
-    NEXT_CACHE_DO_REVALIDATION?: DurableObjectNamespace<DurableObjectQueueHandler>;
     // Durables object namespace to use for the sharded tag cache
-    NEXT_CACHE_DO_SHARDED?: DurableObjectNamespace<DOShardedTagCache>;
+    NEXT_TAG_CACHE_DO_SHARDED?: DurableObjectNamespace<DOShardedTagCache>;
     // Queue of failed tag write
     // Optional, could be used to monitor or reprocess failed writes
-    NEXT_CACHE_DO_SHARDED_DLQ?: Queue;
+    NEXT_TAG_CACHE_DO_SHARDED_DLQ?: Queue;
 
-    // Below are the potential environment variables that can be set by the user to configure the durable object queue handler
+    // Durable Object namespace to use for the durable object queue
+    NEXT_CACHE_DO_QUEUE?: DurableObjectNamespace<DurableObjectQueueHandler>;
+
+    // Below are the environment variables to configure the durable object queue
     // The max number of revalidations that can be processed by the durable worker at the same time
-    MAX_REVALIDATION_BY_DURABLE_OBJECT?: string;
+    NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION?: string;
     // The max time in milliseconds that a revalidation can take before being considered as failed
-    REVALIDATION_TIMEOUT_MS?: string;
+    NEXT_CACHE_DO_QUEUE_REVALIDATION_TIMEOUT_MS?: string;
     // The amount of time after which a revalidation will be attempted again if it failed
     // If it fails again it will exponentially back off until it reaches the max retry interval
-    REVALIDATION_RETRY_INTERVAL_MS?: string;
+    NEXT_CACHE_DO_QUEUE_RETRY_INTERVAL_MS?: string;
     // The maximum number of attempts that can be made to revalidate a path
-    MAX_REVALIDATION_ATTEMPTS?: string;
+    NEXT_CACHE_DO_QUEUE_MAX_NUM_REVALIDATIONS?: string;
     // Disable SQLite for the durable object queue handler
     // This can be safely used if you don't use an eventually consistent incremental cache (i.e. R2 without the regional cache for example)
-    REVALIDATION_DO_DISABLE_SQLITE?: string;
+    NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE?: string;
   }
 }
 
