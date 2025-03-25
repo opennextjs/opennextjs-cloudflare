@@ -2,4 +2,4 @@
 "@opennextjs/cloudflare": patch
 ---
 
-Switch to bundle middleware
+Switch to bundled middleware
