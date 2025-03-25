@@ -39,18 +39,10 @@ export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNe
       override: {
         wrapper: "cloudflare-node",
         converter: "edge",
+        proxyExternalRequest: "fetch",
         incrementalCache: resolveIncrementalCache(incrementalCache),
         tagCache: resolveTagCache(tagCache),
         queue: resolveQueue(queue),
-      },
-    },
-
-    middleware: {
-      external: true,
-      override: {
-        wrapper: "cloudflare-edge",
-        converter: "edge",
-        proxyExternalRequest: "fetch",
       },
     },
   };

@@ -234,7 +234,9 @@ async function generateBundle(
       overrides,
     }),
 
-    openNextExternalMiddlewarePlugin(path.join(options.openNextDistDir, "core/edgeFunctionHandler.js")),
+    ...(config.middleware?.external
+      ? [openNextExternalMiddlewarePlugin(path.join(options.openNextDistDir, "core/edgeFunctionHandler.js"))]
+      : []),
 
     openNextEdgePlugins({
       nextDir: path.join(options.appBuildOutputPath, ".next"),
@@ -247,6 +249,7 @@ async function generateBundle(
     {
       entryPoints: [path.join(options.openNextDistDir, "adapters", "server-adapter.js")],
       outfile: path.join(outputPath, packagePath, `index.${outfileExt}`),
+      external: ["./middleware.mjs"],
       banner: {
         js: [
           `globalThis.monorepoPackagePath = "${normalizePath(packagePath)}";`,

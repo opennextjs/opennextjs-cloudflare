@@ -5,6 +5,13 @@ import { DOShardedTagCache } from "./durable-objects/sharded-tag-cache";
 
 declare global {
   interface CloudflareEnv {
+    // Asset binding
+    ASSETS?: Fetcher;
+
+    // Environment to use when loading Next `.env` files
+    // Default to "production"
+    NEXTJS_ENV?: string;
+
     // KV used for the incremental cache
     NEXT_CACHE_WORKERS_KV?: KVNamespace;
     // D1 db used for the tag cache
@@ -23,9 +30,6 @@ declare global {
     NEXT_CACHE_REVALIDATION_DURABLE_OBJECT?: DurableObjectNamespace<DurableObjectQueueHandler>;
     // Durables object namespace to use for the sharded tag cache
     NEXT_CACHE_D1_SHARDED?: DurableObjectNamespace<DOShardedTagCache>;
-
-    // Asset binding
-    ASSETS?: Fetcher;
 
     // Below are the potential environment variables that can be set by the user to configure the durable object queue handler
     // The max number of revalidations that can be processed by the durable worker at the same time

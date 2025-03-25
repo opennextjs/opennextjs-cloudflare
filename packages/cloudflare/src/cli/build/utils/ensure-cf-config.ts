@@ -10,6 +10,7 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
   const requirements = {
     dftUseCloudflareWrapper: config.default?.override?.wrapper === "cloudflare-node",
     dftUseEdgeConverter: config.default?.override?.converter === "edge",
+    dftUseFetchProxy: config.default?.override?.proxyExternalRequest === "fetch",
     dftMaybeUseCache:
       config.default?.override?.incrementalCache === "dummy" ||
       typeof config.default?.override?.incrementalCache === "function",
@@ -20,10 +21,7 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
       config.default?.override?.queue === "dummy" ||
       config.default?.override?.queue === "direct" ||
       typeof config.default?.override?.queue === "function",
-    mwIsMiddlewareExternal: config.middleware?.external == true,
-    mwUseCloudflareWrapper: config.middleware?.override?.wrapper === "cloudflare-edge",
-    mwUseEdgeConverter: config.middleware?.override?.converter === "edge",
-    mwUseFetchProxy: config.middleware?.override?.proxyExternalRequest === "fetch",
+    mwIsMiddlewareIntegrated: config.middleware === undefined,
   };
 
   if (config.default?.override?.queue === "direct") {
@@ -38,18 +36,10 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
             override: {
               wrapper: "cloudflare-node",
               converter: "edge",
+              proxyExternalRequest: "fetch",
               incrementalCache: "dummy" | function,
               tagCache: "dummy",
               queue: "dummy" | "direct" | function,
-            },
-          },
-
-          middleware: {
-            external: true,
-            override: {
-              wrapper: "cloudflare-edge",
-              converter: "edge",
-              proxyExternalRequest: "fetch",
             },
           },
         }\n\n`.replace(/^ {8}/gm, "")

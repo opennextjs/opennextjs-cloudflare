@@ -26,7 +26,9 @@ async function runCommand(args: Arguments) {
   const openNextDistDir = path.dirname(require.resolve("@opennextjs/aws/index.js"));
 
   await createOpenNextConfigIfNotExistent(baseDir);
-  const { config, buildDir } = await compileOpenNextConfig(baseDir);
+  const { config, buildDir } = await compileOpenNextConfig(baseDir, undefined, {
+    compileEdge: true,
+  });
 
   ensureCloudflareConfig(config);
 
