@@ -50,7 +50,7 @@ interface ShardedDOTagCacheOptions {
    * The number of replicas that will be used for shard replication
    * Soft shard replicas are more often accessed than hard shard replicas, so it is recommended to have more soft replicas than hard replicas
    * Soft replicas are for internal next tags used for `revalidatePath` (i.e. `_N_T_/layout`, `_N_T_/page1`), hard replicas are the tags defined in your app
-   * @default { numberOfSoftShards: 4, numberOfHardShards: 2 }
+   * @default { numberOfSoftReplicas: 4, numberOfHardReplicas: 2 }
    */
   shardReplicationOptions?: {
     numberOfSoftReplicas: number;
