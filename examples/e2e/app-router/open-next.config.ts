@@ -14,5 +14,5 @@ export default defineCloudflareConfig({
       numberOfHardReplicas: 2,
     },
   }),
-  queue: doQueue({ enableRegionalCache: true, regionalCacheTtlSec: 5 }),
+  queue: queueCache(doQueue),
 });
