@@ -51,6 +51,12 @@
     "url": "https://github.com/opennextjs/opennextjs-cloudflare/issues"
   },
   "homepage": "https://github.com/opennextjs/opennextjs-cloudflare",
+  "dependencies": {
+    "@dotenvx/dotenvx": "catalog:",
+    "@opennextjs/aws": "https://pkg.pr.new/@opennextjs/aws@798",
+    "enquirer": "^2.4.1",
+    "glob": "catalog:"
+  },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
     "@eslint/js": "catalog:",
@@ -69,12 +75,6 @@
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",
     "vitest": "catalog:"
-  },
-  "dependencies": {
-    "@dotenvx/dotenvx": "catalog:",
-    "@opennextjs/aws": "^3.5.3",
-    "enquirer": "^2.4.1",
-    "glob": "catalog:"
   },
   "peerDependencies": {
     "wrangler": "catalog:"
