@@ -51,6 +51,8 @@ class QueueCache implements Queue {
       }
     } catch (e) {
       error("Error sending message to queue", e);
+    } finally {
+      this.clearLocalCache();
     }
   }
 
@@ -81,7 +83,12 @@ class QueueCache implements Queue {
 
   private async isInCache(msg: QueueMessage) {
     if (this.localCache.has(this.getCacheUrlString(msg))) {
-      return true;
+      const insertedAt = this.localCache.get(this.getCacheUrlString(msg))!;
+      if (Date.now() - insertedAt < this.regionalCacheTtlSec * 1000) {
+        return true;
+      }
+      this.localCache.delete(this.getCacheUrlString(msg));
+      return false;
     }
     const cacheKey = this.getCacheKey(msg);
     const cache = await this.getCache();
