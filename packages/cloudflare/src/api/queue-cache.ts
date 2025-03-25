@@ -1,15 +1,7 @@
+import { error } from "@opennextjs/aws/adapters/logger.js";
 import type { Queue, QueueMessage } from "@opennextjs/aws/types/overrides";
 
 interface QueueCachingOptions {
-  /**
-   * Enables a regional cache for the queue.
-   * When enabled, the first request to the queue is cached for `regionalCacheTtlSec` seconds.
-   * Subsequent similar requests during this period will bypass processing and use the cached result.
-   * **Note:** Ensure the `MAX_REVALIDATE_CONCURRENCY` environment variable is appropriately increased before enabling this feature.
-   * In case of an error, cache revalidation may be delayed by up to `regionalCacheTtlSec` seconds.
-   * @default false
-   */
-  enableRegionalCache?: boolean;
   /**
    * The TTL for the regional cache in seconds.
    * @default 5
@@ -29,23 +21,22 @@ const DEFAULT_QUEUE_CACHE_TTL_SEC = 5;
 
 class QueueCache implements Queue {
   readonly name;
-  readonly enableRegionalCache: boolean;
   readonly regionalCacheTtlSec: number;
   readonly waitForQueueAck: boolean;
   cache: Cache | undefined;
+  localCache: Map<string, number> = new Map();
 
   constructor(
     private originalQueue: Queue,
     options: QueueCachingOptions
   ) {
     this.name = `cached-${originalQueue.name}`;
-    this.enableRegionalCache = options.enableRegionalCache ?? false;
     this.regionalCacheTtlSec = options.regionalCacheTtlSec ?? DEFAULT_QUEUE_CACHE_TTL_SEC;
     this.waitForQueueAck = options.waitForQueueAck ?? false;
   }
 
   async send(msg: QueueMessage) {
-    if (this.enableRegionalCache) {
+    try {
       const isCached = await this.isInCache(msg);
       if (isCached) {
         return;
@@ -53,11 +44,13 @@ class QueueCache implements Queue {
       if (!this.waitForQueueAck) {
         await this.putToCache(msg);
       }
-    }
 
-    await this.originalQueue.send(msg);
-    if (this.waitForQueueAck) {
-      await this.putToCache(msg);
+      await this.originalQueue.send(msg);
+      if (this.waitForQueueAck) {
+        await this.putToCache(msg);
+      }
+    } catch (e) {
+      error("Error sending message to queue", e);
     }
   }
 
@@ -68,13 +61,16 @@ class QueueCache implements Queue {
     return this.cache;
   }
 
+  private getCacheUrlString(msg: QueueMessage) {
+    return `queue/${msg.MessageGroupId}/${msg.MessageDeduplicationId}`;
+  }
+
   private getCacheKey(msg: QueueMessage) {
-    return new Request(
-      new URL(`queue/${msg.MessageGroupId}/${msg.MessageDeduplicationId}`, "http://local.cache")
-    );
+    return new Request(new URL(this.getCacheUrlString(msg), "http://local.cache"));
   }
 
   private async putToCache(msg: QueueMessage) {
+    this.localCache.set(this.getCacheUrlString(msg), Date.now());
     const cacheKey = this.getCacheKey(msg);
     const cache = await this.getCache();
     await cache.put(
@@ -84,9 +80,27 @@ class QueueCache implements Queue {
   }
 
   private async isInCache(msg: QueueMessage) {
+    if (this.localCache.has(this.getCacheUrlString(msg))) {
+      return true;
+    }
     const cacheKey = this.getCacheKey(msg);
     const cache = await this.getCache();
-    return await cache.match(cacheKey);
+    const cachedResponse = await cache.match(cacheKey);
+    if (cachedResponse) {
+      return true;
+    }
+  }
+
+  /**
+   * Remove any value older than the TTL from the local cache
+   */
+  private clearLocalCache() {
+    const now = Date.now();
+    for (const [key, value] of this.localCache.entries()) {
+      if (now - value > this.regionalCacheTtlSec * 1000) {
+        this.localCache.delete(key);
+      }
+    }
   }
 }
 
