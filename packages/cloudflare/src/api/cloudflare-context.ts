@@ -25,12 +25,6 @@ declare global {
 
     // D1 db used for the tag cache
     NEXT_CACHE_D1?: D1Database;
-    // D1 table to use for the tag cache for the tag/path mapping
-    // Optional, default to "tags"
-    NEXT_CACHE_D1_TAGS_TABLE?: string;
-    // D1 table to use for the tag cache for storing the tag and their associated revalidation times
-    // Optional, default to "revalidations"
-    NEXT_CACHE_D1_REVALIDATIONS_TABLE?: string;
 
     // Durable Object namespace to use for the durable object queue handler
     NEXT_CACHE_DO_REVALIDATION?: DurableObjectNamespace<DurableObjectQueueHandler>;

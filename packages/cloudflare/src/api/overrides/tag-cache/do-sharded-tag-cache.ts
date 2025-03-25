@@ -195,14 +195,12 @@ class ShardedDOTagCache implements NextModeTagCache {
     const isDisabled = !!(globalThis as unknown as { openNextConfig: OpenNextConfig }).openNextConfig
       .dangerous?.disableTagCache;
 
-    if (!db || isDisabled) {
-      return { isDisabled: true as const };
-    }
-
-    return {
-      isDisabled: false as const,
-      db,
-    };
+    return !db || isDisabled
+      ? { isDisabled: true as const }
+      : {
+          isDisabled: false as const,
+          db,
+        };
   }
 
   /**
