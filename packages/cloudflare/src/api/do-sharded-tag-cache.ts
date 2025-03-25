@@ -21,7 +21,7 @@ interface ShardedDOTagCacheOptions {
    * For example, a request involving 5 tags may access between 1 and 5 shards, with the upper limit being the lesser of the number of tags or the number of shards
    * @default 4
    */
-  numberOfShards: number;
+  baseShardSize: number;
   /**
    * Whether to enable a regional cache on a per-shard basis
    * Because of the way tags are implemented in Next.js, some shards will have more requests than others. For these cases, it is recommended to enable the regional cache.
@@ -38,6 +38,8 @@ interface ShardedDOTagCacheOptions {
   /**
    * Whether to enable shard replication
    * Shard replication will duplicate each shards into N replicas to spread the load even more
+   * All replicas of the a shard contain the same value - write are sent to all of the replicas.
+   * This allows most frequent read operations to be sent to only one replica to spread the load.
    * For example with N being 2, tag `tag1` could be read from 2 different durable object instance
    * On read you only need to read from one of the shards, but on write you need to write to all shards
    * @default false
@@ -48,7 +50,7 @@ interface ShardedDOTagCacheOptions {
    * The number of replicas that will be used for shard replication
    * Soft shard replicas are more often accessed than hard shard replicas, so it is recommended to have more soft replicas than hard replicas
    * Soft replicas are for internal next tags used for `revalidatePath` (i.e. `_N_T_/layout`, `_N_T_/page1`), hard replicas are the tags defined in your app
-   * @default { softShards: 4, hardShards: 2 }
+   * @default { numberOfSoftShards: 4, numberOfHardShards: 2 }
    */
   shardReplicationOptions?: {
     numberOfSoftReplicas: number;
@@ -69,13 +71,12 @@ interface TagCacheDOIdOptions {
   replicaId?: number;
 }
 export class TagCacheDOId {
-  baseShardId: string;
+  shardId: string;
   replicaId: number;
   constructor(public options: TagCacheDOIdOptions) {
-    const { baseShardId, shardType } = options;
-    this.baseShardId = `tag-${shardType};${baseShardId}`;
-    this.replicaId =
-      this.options.replicaId ?? this.generateRandomNumberBetween(1, this.options.numberOfReplicas);
+    const { baseShardId, shardType, numberOfReplicas, replicaId } = options;
+    this.shardId = `tag-${shardType};${baseShardId}`;
+    this.replicaId = replicaId ?? this.generateRandomNumberBetween(1, numberOfReplicas);
   }
 
   private generateRandomNumberBetween(min: number, max: number) {
@@ -83,7 +84,7 @@ export class TagCacheDOId {
   }
 
   get key() {
-    return `${this.baseShardId};replica-${this.replicaId}`;
+    return `${this.shardId};replica-${this.replicaId}`;
   }
 }
 class ShardedDOTagCache implements NextModeTagCache {
@@ -94,7 +95,7 @@ class ShardedDOTagCache implements NextModeTagCache {
   readonly maxWriteRetries: number;
   localCache?: Cache;
 
-  constructor(private opts: ShardedDOTagCacheOptions = { numberOfShards: DEFAULT_NUM_SHARDS }) {
+  constructor(private opts: ShardedDOTagCacheOptions = { baseShardSize: DEFAULT_NUM_SHARDS }) {
     this.numSoftReplicas = opts.shardReplicationOptions?.numberOfSoftReplicas ?? DEFAULT_SOFT_REPLICAS;
     this.numHardReplicas = opts.shardReplicationOptions?.numberOfHardReplicas ?? DEFAULT_HARD_REPLICAS;
     this.maxWriteRetries = opts.maxWriteRetries ?? DEFAULT_WRITE_RETRIES;
@@ -109,62 +110,62 @@ class ShardedDOTagCache implements NextModeTagCache {
   }
 
   /**
-   * Generates a list of shard ids for the shards and replicas
+   * Generates a list of DO ids for the shards and replicas
    * @param tags The tags to generate shards for
    * @param shardType Whether to generate shards for soft or hard tags
    * @param generateAllShards Whether to generate all shards or only one
-   * @returns An array of shardId and tag
+   * @returns An array of TagCacheDOId and tag
    */
   private generateDOIdArray({
     tags,
     shardType,
-    generateAllShards = false,
+    generateAllReplicas = false,
   }: {
     tags: string[];
     shardType: "soft" | "hard";
-    generateAllShards: boolean;
+    generateAllReplicas: boolean;
   }) {
-    let doubleShardArray: Array<number | undefined> = [1];
+    let replicaIndexes: Array<number | undefined> = [1];
     const isSoft = shardType === "soft";
-    const numReplicas = isSoft ? this.numSoftReplicas : this.numHardReplicas;
+    let numReplicas = 1;
     if (this.opts.enableShardReplication) {
-      doubleShardArray = generateAllShards
+      numReplicas = isSoft ? this.numSoftReplicas : this.numHardReplicas;
+      replicaIndexes = generateAllReplicas
         ? Array.from({ length: numReplicas }, (_, i) => i + 1)
         : [undefined];
     }
-    return doubleShardArray
-      .map((replicaId) => {
-        return tags
-          .filter((tag) => (isSoft ? tag.startsWith(SOFT_TAG_PREFIX) : !tag.startsWith(SOFT_TAG_PREFIX)))
-          .map((tag) => {
-            return {
-              doId: new TagCacheDOId({
-                baseShardId: generateShardId(tag, this.opts.numberOfShards, "shard"),
-                numberOfReplicas: numReplicas,
-                shardType,
-                replicaId,
-              }),
-              tag,
-            };
-          });
-      })
-      .flat();
+    return replicaIndexes.flatMap((replicaId) => {
+      return tags
+        .filter((tag) => (isSoft ? tag.startsWith(SOFT_TAG_PREFIX) : !tag.startsWith(SOFT_TAG_PREFIX)))
+        .map((tag) => {
+          return {
+            doId: new TagCacheDOId({
+              baseShardId: generateShardId(tag, this.opts.baseShardSize, "shard"),
+              numberOfReplicas: numReplicas,
+              shardType,
+              replicaId,
+            }),
+            tag,
+          };
+        });
+    });
   }
 
   /**
    * Same tags are guaranteed to be in the same shard
    * @param tags
-   * @returns A map of shardId to tags
+   * @returns An array of DO ids and tags
    */
-  generateShards({ tags, generateAllShards = false }: { tags: string[]; generateAllShards?: boolean }) {
+  groupTagsByDO({ tags, generateAllReplicas = false }: { tags: string[]; generateAllReplicas?: boolean }) {
     // Here we'll start by splitting soft tags from hard tags
     // This will greatly increase the cache hit rate for the soft tag (which are the most likely to cause issue because of load)
-    const softTags = this.generateDOIdArray({ tags, shardType: "soft", generateAllShards });
+    const softTags = this.generateDOIdArray({ tags, shardType: "soft", generateAllReplicas });
 
-    const hardTags = this.generateDOIdArray({ tags, shardType: "hard", generateAllShards });
-    // For each tag, we generate a message group id
-    const messageGroupIds = [...softTags, ...hardTags];
-    // We group the tags by shard
+    const hardTags = this.generateDOIdArray({ tags, shardType: "hard", generateAllReplicas });
+
+    const tagIdCollection = [...softTags, ...hardTags];
+
+    // We then group the tags by DO id
     const tagsByDOId = new Map<
       string,
       {
@@ -172,16 +173,18 @@ class ShardedDOTagCache implements NextModeTagCache {
         tags: string[];
       }
     >();
-    for (const { doId, tag } of messageGroupIds) {
+    for (const { doId, tag } of tagIdCollection) {
       const doIdString = doId.key;
-      const tags = tagsByDOId.get(doIdString)?.tags ?? [];
-      tags.push(tag);
+      const tagsArray = tagsByDOId.get(doIdString)?.tags ?? [];
+      tagsArray.push(tag);
       tagsByDOId.set(doIdString, {
+        // We override the doId here, but it should be the same for all tags
         doId,
-        tags,
+        tags: tagsArray,
       });
     }
-    return tagsByDOId;
+    const result = Array.from(tagsByDOId.values());
+    return result;
   }
 
   private async getConfig() {
@@ -213,10 +216,9 @@ class ShardedDOTagCache implements NextModeTagCache {
     const { isDisabled } = await this.getConfig();
     if (isDisabled) return false;
     try {
-      const shards = this.generateShards({ tags });
-      // We then create a new durable object for each shard
-      const shardsResult = await Promise.all(
-        Array.from(shards.values()).map(async ({ doId, tags }) => {
+      const shardedTagGroups = this.groupTagsByDO({ tags });
+      const shardedTagRevalidationOutcomes = await Promise.all(
+        shardedTagGroups.map(async ({ doId, tags }) => {
           const cachedValue = await this.getFromRegionalCache(doId, tags);
           if (cachedValue) {
             return (await cachedValue.text()) === "true";
@@ -232,7 +234,7 @@ class ShardedDOTagCache implements NextModeTagCache {
           return _hasBeenRevalidated;
         })
       );
-      return shardsResult.some((result) => result);
+      return shardedTagRevalidationOutcomes.some((result) => result);
     } catch (e) {
       error("Error while checking revalidation", e);
       return false;
@@ -248,11 +250,11 @@ class ShardedDOTagCache implements NextModeTagCache {
   async writeTags(tags: string[]): Promise<void> {
     const { isDisabled } = await this.getConfig();
     if (isDisabled) return;
-    const shards = this.generateShards({ tags, generateAllShards: true });
+    const shardedTagGroups = this.groupTagsByDO({ tags, generateAllReplicas: true });
+    // We want to use the same revalidation time for all tags
     const currentTime = Date.now();
-    // We then create a new durable object for each shard
     await Promise.all(
-      Array.from(shards.values()).map(async ({ doId, tags }) => {
+      shardedTagGroups.map(async ({ doId, tags }) => {
         await this.performWriteTagsWithRetry(doId, tags, currentTime);
       })
     );
@@ -261,7 +263,6 @@ class ShardedDOTagCache implements NextModeTagCache {
   async performWriteTagsWithRetry(doId: TagCacheDOId, tags: string[], lastModified: number, retryNumber = 0) {
     try {
       const stub = this.getDurableObjectStub(doId);
-      // We need to write the same revalidation time for all tags
       await stub.writeTags(tags, lastModified);
       // Depending on the shards and the tags, deleting from the regional cache will not work for every tag
       await this.deleteRegionalCache(doId, tags);
@@ -291,7 +292,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 
   async getCacheKey(doId: TagCacheDOId, tags: string[]) {
     return new Request(
-      new URL(`shard/${doId.baseShardId}?tags=${encodeURIComponent(tags.join(";"))}`, "http://local.cache")
+      new URL(`shard/${doId.shardId}?tags=${encodeURIComponent(tags.join(";"))}`, "http://local.cache")
     );
   }
 
