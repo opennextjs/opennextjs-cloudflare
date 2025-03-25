@@ -1,7 +1,7 @@
 /**
  * This patch will replace code used for `res.revalidate` in page router
  * Without the patch it uses `fetch` to make a call to itself, which doesn't work once deployed in cloudflare workers
- * This patch will replace this fetch by a call to `NEXT_CACHE_REVALIDATION_WORKER` service binding
+ * This patch will replace this fetch by a call to `WORKER_SELF_REFERENCE` service binding
  */
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { CodePatcher } from "@opennextjs/aws/build/patch/codePatcher.js";
@@ -16,16 +16,16 @@ rule:
     has:
       kind: parenthesized_expression
       has: { kind: property_identifier , stopBy: end, regex: trustHostHeader}
-  has: 
+  has:
     kind: call_expression
     all:
       - has: {kind: identifier, pattern: fetch}
       - has:
           kind: arguments
-          all: 
+          all:
             - has:
                 kind: object
-                all: 
+                all:
                   - has:
                       kind: pair
                       all:
@@ -50,7 +50,7 @@ rule:
                             kind: property_identifier
                             regex: headers
                             stopBy: end
-                        - has: 
+                        - has:
                             kind: property_identifier
                             regex: host
                             stopBy: end
@@ -59,8 +59,8 @@ rule:
                       pattern: $URL_PATH
                       has:
                         kind: identifier
-                      
-fix: await (await import("@opennextjs/cloudflare")).getCloudflareContext().env.NEXT_CACHE_REVALIDATION_WORKER.fetch(\`\${$REQ.headers.host.includes("localhost") ? "http":"https" }://\${$REQ.headers.host}$URL_PATH\`,{method:'HEAD', headers:$HEADERS})
+
+fix: await (await import("@opennextjs/cloudflare")).getCloudflareContext().env.WORKER_SELF_REFERENCE.fetch(\`\${$REQ.headers.host.includes("localhost") ? "http":"https" }://\${$REQ.headers.host}$URL_PATH\`,{method:'HEAD', headers:$HEADERS})
 `;
 
 export const patchResRevalidate: CodePatcher = {

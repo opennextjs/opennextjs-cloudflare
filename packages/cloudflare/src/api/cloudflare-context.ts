@@ -13,7 +13,7 @@ declare global {
     NEXTJS_ENV?: string;
 
     // Service binding for the worker itself to be able to call itself from within the worker
-    NEXT_CACHE_REVALIDATION_WORKER?: Service;
+    WORKER_SELF_REFERENCE?: Service;
 
     // KV used for the incremental cache
     NEXT_CACHE_KV?: KVNamespace;

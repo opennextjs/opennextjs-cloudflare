@@ -37,7 +37,7 @@ const createDurableObjectQueue = ({
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return new DurableObjectQueueHandler(mockState as any, {
-    NEXT_CACHE_REVALIDATION_WORKER: {
+    WORKER_SELF_REFERENCE: {
       fetch: vi.fn().mockReturnValue(
         new Promise<Response>((res) =>
           setTimeout(

@@ -29,7 +29,7 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
 
   routeInFailedState = new Map<string, FailedState>();
 
-  service: NonNullable<CloudflareEnv["NEXT_CACHE_REVALIDATION_WORKER"]>;
+  service: NonNullable<CloudflareEnv["WORKER_SELF_REFERENCE"]>;
 
   // Configurable params
   readonly maxRevalidations: number;
@@ -40,7 +40,7 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
 
   constructor(ctx: DurableObjectState, env: CloudflareEnv) {
     super(ctx, env);
-    this.service = env.NEXT_CACHE_REVALIDATION_WORKER!;
+    this.service = env.WORKER_SELF_REFERENCE!;
     // If there is no service binding, we throw an error because we can't revalidate without it
     if (!this.service) throw new IgnorableError("No service binding for cache revalidation worker");
     this.sql = ctx.storage.sql;

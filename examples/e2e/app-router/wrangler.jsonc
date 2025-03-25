@@ -34,7 +34,7 @@
   ],
   "services": [
     {
-      "binding": "NEXT_CACHE_REVALIDATION_WORKER",
+      "binding": "WORKER_SELF_REFERENCE",
       "service": "app-router"
     }
   ]

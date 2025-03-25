@@ -8,7 +8,7 @@ vi.mock("./.next/prerender-manifest.json", () => Promise.resolve({ preview: { pr
 const mockServiceWorkerFetch = vi.fn();
 vi.mock("../../cloudflare-context", () => ({
   getCloudflareContext: () => ({
-    env: { NEXT_CACHE_REVALIDATION_WORKER: { fetch: mockServiceWorkerFetch } },
+    env: { WORKER_SELF_REFERENCE: { fetch: mockServiceWorkerFetch } },
   }),
 }));
 
