@@ -24,12 +24,12 @@ export class DOShardedTagCache extends DurableObject<CloudflareEnv> {
     return result.cnt > 0;
   }
 
-  async writeTags(tags: string[]): Promise<void> {
+  async writeTags(tags: string[], lastModified: number): Promise<void> {
     tags.forEach((tag) => {
       this.sql.exec(
         `INSERT OR REPLACE INTO revalidations (tag, revalidatedAt) VALUES (?, ?)`,
         tag,
-        Date.now()
+        lastModified
       );
     });
   }
