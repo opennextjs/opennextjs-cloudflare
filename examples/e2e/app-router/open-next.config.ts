@@ -11,6 +11,7 @@ export default defineCloudflareConfig({
     shardReplication: {
       numberOfSoftReplicas: 8,
       numberOfHardReplicas: 2,
+      enableRegionalReplication: true,
     },
   }),
   queue: doQueue,

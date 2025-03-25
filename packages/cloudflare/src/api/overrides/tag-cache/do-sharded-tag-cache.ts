@@ -12,6 +12,9 @@ export const DEFAULT_NUM_SHARDS = 4;
 export const NAME = "do-sharded-tag-cache";
 
 const SOFT_TAG_PREFIX = "_N_T_/";
+export const DEFAULT_REGION = "enam" as const;
+export const AVAILABLE_REGIONS = ["enam", "weur", "apac", "sam", "afr", "oc"] as const;
+type AllowedDurableObjectRegion = (typeof AVAILABLE_REGIONS)[number];
 
 interface ShardedDOTagCacheOptions {
   /**
@@ -63,6 +66,21 @@ interface ShardedDOTagCacheOptions {
   shardReplication?: {
     numberOfSoftReplicas: number;
     numberOfHardReplicas: number;
+
+    /**
+     * Whether to enable regional replication
+     * Regional replication will duplicate each shards and their associated replicas into every regions
+     * This will reduce the latency for the read operations
+     * On write, the write will be sent to all the shards and all the replicas in all the regions
+     * @default false
+     */
+    enableRegionalReplication?: boolean;
+
+    /**
+     * Default region to use for the regional replication when the region cannot be determined
+     * @default "enam"
+     */
+    defaultRegion?: AllowedDurableObjectRegion;
   };
 
   /**
@@ -78,15 +96,18 @@ interface DOIdOptions {
   numberOfReplicas: number;
   shardType: "soft" | "hard";
   replicaId?: number;
+  region?: DurableObjectLocationHint;
 }
 
 export class DOId {
   shardId: string;
   replicaId: number;
+  region?: DurableObjectLocationHint;
   constructor(public options: DOIdOptions) {
-    const { baseShardId, shardType, numberOfReplicas, replicaId } = options;
+    const { baseShardId, shardType, numberOfReplicas, replicaId, region } = options;
     this.shardId = `tag-${shardType};${baseShardId}`;
     this.replicaId = replicaId ?? this.generateRandomNumberBetween(1, numberOfReplicas);
+    this.region = region;
   }
 
   private generateRandomNumberBetween(min: number, max: number) {
@@ -94,7 +115,7 @@ export class DOId {
   }
 
   get key() {
-    return `${this.shardId};replica-${this.replicaId}`;
+    return `${this.shardId};replica-${this.replicaId}${this.region ? `;region-${this.region}` : ""}`;
   }
 }
 
@@ -109,12 +130,16 @@ class ShardedDOTagCache implements NextModeTagCache {
   readonly numSoftReplicas: number;
   readonly numHardReplicas: number;
   readonly maxWriteRetries: number;
+  readonly enableRegionalReplication: boolean;
+  readonly defaultRegion: AllowedDurableObjectRegion;
   localCache?: Cache;
 
   constructor(private opts: ShardedDOTagCacheOptions = { baseShardSize: DEFAULT_NUM_SHARDS }) {
     this.numSoftReplicas = opts.shardReplication?.numberOfSoftReplicas ?? 1;
     this.numHardReplicas = opts.shardReplication?.numberOfHardReplicas ?? 1;
     this.maxWriteRetries = opts.maxWriteRetries ?? DEFAULT_WRITE_RETRIES;
+    this.enableRegionalReplication = opts.shardReplication?.enableRegionalReplication ?? false;
+    this.defaultRegion = opts.shardReplication?.defaultRegion ?? DEFAULT_REGION;
   }
 
   private getDurableObjectStub(doId: DOId) {
@@ -122,7 +147,11 @@ class ShardedDOTagCache implements NextModeTagCache {
     if (!durableObject) throw new IgnorableError("No durable object binding for cache revalidation");
 
     const id = durableObject.idFromName(doId.key);
-    return durableObject.get(id);
+    debug("[shardedTagCache] - Accessing Durable Object : ", {
+      key: doId.key,
+      region: doId.region,
+    });
+    return durableObject.get(id, { locationHint: doId.region });
   }
 
   /**
@@ -143,10 +172,14 @@ class ShardedDOTagCache implements NextModeTagCache {
   }) {
     let replicaIndexes: Array<number | undefined> = [1];
     const isSoft = shardType === "soft";
-    const numReplicas = isSoft ? this.numSoftReplicas : this.numHardReplicas;
-    replicaIndexes = generateAllReplicas ? Array.from({ length: numReplicas }, (_, i) => i + 1) : [undefined];
-
-    return replicaIndexes.flatMap((replicaId) => {
+    let numReplicas = 1;
+    if (this.opts.shardReplication) {
+      numReplicas = isSoft ? this.numSoftReplicas : this.numHardReplicas;
+      replicaIndexes = generateAllReplicas
+        ? Array.from({ length: numReplicas }, (_, i) => i + 1)
+        : [undefined];
+    }
+    const regionalReplicas = replicaIndexes.flatMap((replicaId) => {
       return tags
         .filter((tag) => (isSoft ? tag.startsWith(SOFT_TAG_PREFIX) : !tag.startsWith(SOFT_TAG_PREFIX)))
         .map((tag) => {
@@ -161,6 +194,51 @@ class ShardedDOTagCache implements NextModeTagCache {
           };
         });
     });
+    if (!this.enableRegionalReplication) return regionalReplicas;
+
+    // If we have regional replication enabled, we need to further duplicate the shards in all the regions
+    const regionalReplicasInAllRegions = generateAllReplicas
+      ? regionalReplicas.flatMap(({ doId, tag }) => {
+          return AVAILABLE_REGIONS.map((region) => {
+            return {
+              doId: new DOId({
+                baseShardId: doId.options.baseShardId,
+                numberOfReplicas: numReplicas,
+                shardType,
+                replicaId: doId.replicaId,
+                region,
+              }),
+              tag,
+            };
+          });
+        })
+      : regionalReplicas.map(({ doId, tag }) => {
+          doId.region = this.getClosestRegion();
+          return { doId, tag };
+        });
+    return regionalReplicasInAllRegions;
+  }
+
+  getClosestRegion() {
+    const continent = getCloudflareContext().cf?.continent;
+    if (!continent) return this.defaultRegion;
+    debug("[shardedTagCache] - Continent : ", continent);
+    switch (continent) {
+      case "AF":
+        return "afr";
+      case "AS":
+        return "apac";
+      case "EU":
+        return "weur";
+      case "NA":
+        return "enam";
+      case "OC":
+        return "oc";
+      case "SA":
+        return "sam";
+      default:
+        return this.defaultRegion;
+    }
   }
 
   /**
