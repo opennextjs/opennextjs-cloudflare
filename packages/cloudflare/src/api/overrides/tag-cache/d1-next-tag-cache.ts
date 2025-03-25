@@ -3,8 +3,8 @@ import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 import type { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
 import { RecoverableError } from "@opennextjs/aws/utils/error.js";
 
-import { getCloudflareContext } from "./cloudflare-context.js";
-import { DEFAULT_NEXT_CACHE_D1_REVALIDATIONS_TABLE } from "./constants.js";
+import { getCloudflareContext } from "../../cloudflare-context.js";
+import { DEFAULT_NEXT_CACHE_D1_REVALIDATIONS_TABLE } from "./internal.js";
 
 export class D1NextModeTagCache implements NextModeTagCache {
   readonly mode = "nextMode" as const;

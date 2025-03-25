@@ -4,7 +4,7 @@ import type { OpenNextConfig } from "@opennextjs/aws/types/open-next";
 import type { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
-import { getCloudflareContext } from "./cloudflare-context";
+import { getCloudflareContext } from "../../cloudflare-context";
 
 const SOFT_TAG_PREFIX = "_N_T_/";
 export const DEFAULT_SOFT_REPLICAS = 4;
@@ -89,7 +89,7 @@ export class TagCacheDOId {
 }
 class ShardedDOTagCache implements NextModeTagCache {
   readonly mode = "nextMode" as const;
-  readonly name = "sharded-do-tag-cache";
+  readonly name = "do-sharded-tag-cache";
   readonly numSoftReplicas: number;
   readonly numHardReplicas: number;
   readonly maxWriteRetries: number;

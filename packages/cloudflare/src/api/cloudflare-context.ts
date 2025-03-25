@@ -12,27 +12,32 @@ declare global {
     // Default to "production"
     NEXTJS_ENV?: string;
 
-    // KV used for the incremental cache
-    NEXT_CACHE_WORKERS_KV?: KVNamespace;
-    // D1 db used for the tag cache
-    NEXT_CACHE_D1?: D1Database;
-    // D1 table to use for the tag cache for the tag/path mapping
-    NEXT_CACHE_D1_TAGS_TABLE?: string;
-    // D1 table to use for the tag cache for storing the tag and their associated revalidation times
-    NEXT_CACHE_D1_REVALIDATIONS_TABLE?: string;
     // Service binding for the worker itself to be able to call itself from within the worker
     NEXT_CACHE_REVALIDATION_WORKER?: Service;
+
+    // KV used for the incremental cache
+    NEXT_CACHE_KV?: KVNamespace;
+
     // R2 bucket used for the incremental cache
     NEXT_CACHE_R2_BUCKET?: R2Bucket;
     // Prefix used for the R2 incremental cache bucket
     NEXT_CACHE_R2_PREFIX?: string;
+
+    // D1 db used for the tag cache
+    NEXT_CACHE_D1?: D1Database;
+    // D1 table to use for the tag cache for the tag/path mapping
+    // Optional, default to "tags"
+    NEXT_CACHE_D1_TAGS_TABLE?: string;
+    // D1 table to use for the tag cache for storing the tag and their associated revalidation times
+    // Optional, default to "revalidations"
+    NEXT_CACHE_D1_REVALIDATIONS_TABLE?: string;
+
     // Durable Object namespace to use for the durable object queue handler
-    NEXT_CACHE_REVALIDATION_DURABLE_OBJECT?: DurableObjectNamespace<DurableObjectQueueHandler>;
+    NEXT_CACHE_DO_REVALIDATION?: DurableObjectNamespace<DurableObjectQueueHandler>;
     // Durables object namespace to use for the sharded tag cache
     NEXT_CACHE_DO_SHARDED?: DurableObjectNamespace<DOShardedTagCache>;
     // Queue of failed tag write
-    // It could be used for monitoring or to reprocess failed writes
-    // Entirely optional
+    // Optional, could be used to monitor or reprocess failed writes
     NEXT_CACHE_DO_SHARDED_DLQ?: Queue;
 
     // Below are the potential environment variables that can be set by the user to configure the durable object queue handler

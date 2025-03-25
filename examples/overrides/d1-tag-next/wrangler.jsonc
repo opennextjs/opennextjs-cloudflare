@@ -13,7 +13,7 @@
   },
   "kv_namespaces": [
     {
-      "binding": "NEXT_CACHE_WORKERS_KV",
+      "binding": "NEXT_CACHE_KV",
       "id": "<BINDING_ID>"
     }
   ],

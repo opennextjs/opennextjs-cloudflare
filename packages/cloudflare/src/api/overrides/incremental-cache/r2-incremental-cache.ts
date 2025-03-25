@@ -2,7 +2,7 @@ import { debug, error } from "@opennextjs/aws/adapters/logger.js";
 import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
-import { getCloudflareContext } from "./cloudflare-context.js";
+import { getCloudflareContext } from "../../cloudflare-context.js";
 
 /**
  * An instance of the Incremental Cache that uses an R2 bucket (`NEXT_CACHE_R2_BUCKET`) as it's

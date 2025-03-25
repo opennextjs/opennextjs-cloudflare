@@ -11,7 +11,7 @@
   "durable_objects": {
     "bindings": [
       {
-        "name": "NEXT_CACHE_REVALIDATION_DURABLE_OBJECT",
+        "name": "NEXT_CACHE_DO_REVALIDATION",
         "class_name": "DurableObjectQueueHandler"
       },
       {
@@ -28,7 +28,7 @@
   ],
   "kv_namespaces": [
     {
-      "binding": "NEXT_CACHE_WORKERS_KV",
+      "binding": "NEXT_CACHE_KV",
       "id": "<BINDING_ID>"
     }
   ],
