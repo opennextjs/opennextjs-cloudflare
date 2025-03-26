@@ -16,7 +16,7 @@ export function runWrangler(options: BuildOptions, args: string[], wranglerOpts:
   const result = spawnSync(
     options.packager,
     [
-      "exec",
+      options.packager === "bun" ? "x" : "exec",
       "wrangler",
       ...args,
       wranglerOpts.environment && `--env ${wranglerOpts.environment}`,
