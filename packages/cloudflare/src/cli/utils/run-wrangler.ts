@@ -12,6 +12,16 @@ type WranglerOptions = {
   logging?: "all" | "error";
 };
 
+/**
+ * Prepends CLI flags with `--` so that certain package managers can pass args through to wrangler
+ * properly.
+ *
+ * npm and yarn require `--` to be used, while pnpm and bun require that it is not used.
+ *
+ * @param options Build options.
+ * @param args CLI args.
+ * @returns Arguments with a passthrough flag injected when needed.
+ */
 function injectPassthroughFlagForArgs(options: BuildOptions, args: string[]) {
   if (options.packager !== "npm" && options.packager !== "yarn") {
     return args;
