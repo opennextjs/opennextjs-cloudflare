@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 0.6.1
+
+### Patch Changes
+
+- [#503](https://github.com/opennextjs/opennextjs-cloudflare/pull/503) [`ba35663`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ba35663c36e22de76926b3edfba77a89d86c798e) Thanks [@james-elicx](https://github.com/james-elicx)! - fix: bun failing to spawn wrangler
+
 ## 0.6.0
 
 ### Minor Changes
