@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 0.6.2
+
+### Patch Changes
+
+- [#505](https://github.com/opennextjs/opennextjs-cloudflare/pull/505) [`ce7516d`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ce7516db9067f3f04f94bf2e59725b38efd6cf66) Thanks [@james-elicx](https://github.com/james-elicx)! - fix: npm failing to pass args to wrangler
+
 ## 0.6.1
 
 ### Patch Changes
