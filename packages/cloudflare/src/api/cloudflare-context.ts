@@ -35,7 +35,7 @@ declare global {
     // Durable Object namespace to use for the durable object queue
     NEXT_CACHE_DO_QUEUE?: DurableObjectNamespace<DurableObjectQueueHandler>;
 
-    // Below are the environment variables to configure the durable object queue
+    // Below are the optional environment variables to configure the durable object queue
     // The max number of revalidations that can be processed by the durable worker at the same time
     NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION?: string;
     // The max time in milliseconds that a revalidation can take before being considered as failed
