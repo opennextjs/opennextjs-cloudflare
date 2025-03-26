@@ -18,7 +18,7 @@ import { getCloudflareContext } from "../../cloudflare-context.js";
  * **Tag revalidations table**
  *
  * Revalidation times for tags are stored in a `revalidations` table that contains two columns; `tags`,
- * and `revalidatedAt`..
+ * and `revalidatedAt`.
  */
 class D1TagCache implements OriginalTagCache {
   public readonly name = "d1-tag-cache";
