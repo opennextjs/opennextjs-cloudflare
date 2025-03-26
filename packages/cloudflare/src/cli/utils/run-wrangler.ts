@@ -12,17 +12,45 @@ type WranglerOptions = {
   logging?: "all" | "error";
 };
 
+/**
+ * Prepends CLI flags with `--` so that certain package managers can pass args through to wrangler
+ * properly.
+ *
+ * npm and yarn require `--` to be used, while pnpm and bun require that it is not used.
+ *
+ * @param options Build options.
+ * @param args CLI args.
+ * @returns Arguments with a passthrough flag injected when needed.
+ */
+function injectPassthroughFlagForArgs(options: BuildOptions, args: string[]) {
+  if (options.packager !== "npm" && options.packager !== "yarn") {
+    return args;
+  }
+
+  const flagInArgsIndex = args.findIndex((v) => v.startsWith("--"));
+  if (flagInArgsIndex !== -1) {
+    args.splice(flagInArgsIndex, 0, "--");
+  }
+
+  return args;
+}
+
 export function runWrangler(options: BuildOptions, args: string[], wranglerOpts: WranglerOptions = {}) {
   const result = spawnSync(
     options.packager,
     [
       options.packager === "bun" ? "x" : "exec",
       "wrangler",
-      ...args,
-      wranglerOpts.environment && `--env ${wranglerOpts.environment}`,
-      wranglerOpts.target === "remote" && !wranglerOpts.excludeRemoteFlag && "--remote",
-      wranglerOpts.target === "local" && "--local",
-    ].filter((v): v is string => !!v),
+      ...injectPassthroughFlagForArgs(
+        options,
+        [
+          ...args,
+          wranglerOpts.environment && `--env ${wranglerOpts.environment}`,
+          wranglerOpts.target === "remote" && !wranglerOpts.excludeRemoteFlag && "--remote",
+          wranglerOpts.target === "local" && "--local",
+        ].filter((v): v is string => !!v)
+      ),
+    ],
     {
       shell: true,
       stdio: wranglerOpts.logging === "error" ? ["ignore", "ignore", "inherit"] : "inherit",
