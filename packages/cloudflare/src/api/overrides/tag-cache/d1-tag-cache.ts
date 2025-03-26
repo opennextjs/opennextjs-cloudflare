@@ -3,38 +3,35 @@ import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 import type { OriginalTagCache } from "@opennextjs/aws/types/overrides.js";
 import { RecoverableError } from "@opennextjs/aws/utils/error.js";
 
-import { getCloudflareContext } from "./cloudflare-context.js";
-import { DEFAULT_NEXT_CACHE_D1_REVALIDATIONS_TABLE } from "./constants.js";
+import { getCloudflareContext } from "../../cloudflare-context.js";
 
 /**
- * An instance of the Tag Cache that uses a D1 binding (`NEXT_CACHE_D1`) as it's underlying data store.
+ * An instance of the Tag Cache that uses a D1 binding (`NEXT_TAG_CACHE_D1`) as it's underlying data store.
  *
  * **Tag/path mappings table**
  *
  * Information about the relation between tags and paths is stored in a `tags` table that contains
- * two columns; `tag`, and `path`. The table name can be configured with `NEXT_CACHE_D1_TAGS_TABLE`
- * environment variable.
+ * two columns; `tag`, and `path`.
  *
  * This table should be populated using an SQL file that is generated during the build process.
  *
  * **Tag revalidations table**
  *
  * Revalidation times for tags are stored in a `revalidations` table that contains two columns; `tags`,
- * and `revalidatedAt`. The table name can be configured with `NEXT_CACHE_D1_REVALIDATIONS_TABLE`
- * environment variable.
+ * and `revalidatedAt`.
  */
 class D1TagCache implements OriginalTagCache {
   public readonly name = "d1-tag-cache";
 
   public async getByPath(rawPath: string): Promise<string[]> {
-    const { isDisabled, db, tables } = this.getConfig();
+    const { isDisabled, db } = this.getConfig();
     if (isDisabled) return [];
 
     const path = this.getCacheKey(rawPath);
 
     try {
       const { success, results } = await db
-        .prepare(`SELECT tag FROM ${JSON.stringify(tables.tags)} WHERE path = ?`)
+        .prepare(`SELECT tag FROM tags WHERE path = ?`)
         .bind(path)
         .all<{ tag: string }>();
 
@@ -51,14 +48,14 @@ class D1TagCache implements OriginalTagCache {
   }
 
   public async getByTag(rawTag: string): Promise<string[]> {
-    const { isDisabled, db, tables } = this.getConfig();
+    const { isDisabled, db } = this.getConfig();
     if (isDisabled) return [];
 
     const tag = this.getCacheKey(rawTag);
 
     try {
       const { success, results } = await db
-        .prepare(`SELECT path FROM ${JSON.stringify(tables.tags)} WHERE tag = ?`)
+        .prepare(`SELECT path FROM tags WHERE tag = ?`)
         .bind(tag)
         .all<{ path: string }>();
 
@@ -75,15 +72,15 @@ class D1TagCache implements OriginalTagCache {
   }
 
   public async getLastModified(path: string, lastModified?: number): Promise<number> {
-    const { isDisabled, db, tables } = this.getConfig();
+    const { isDisabled, db } = this.getConfig();
     if (isDisabled) return lastModified ?? Date.now();
 
     try {
       const { success, results } = await db
         .prepare(
-          `SELECT ${JSON.stringify(tables.revalidations)}.tag FROM ${JSON.stringify(tables.revalidations)}
-            INNER JOIN ${JSON.stringify(tables.tags)} ON ${JSON.stringify(tables.revalidations)}.tag = ${JSON.stringify(tables.tags)}.tag
-            WHERE ${JSON.stringify(tables.tags)}.path = ? AND ${JSON.stringify(tables.revalidations)}.revalidatedAt > ?;`
+          `SELECT revalidations.tag FROM revalidations
+            INNER JOIN tags ON revalidations.tag = tags.tag
+            WHERE tags.path = ? AND revalidations.revalidatedAt > ?;`
         )
         .bind(this.getCacheKey(path), lastModified ?? 0)
         .all<{ tag: string }>();
@@ -99,7 +96,7 @@ class D1TagCache implements OriginalTagCache {
   }
 
   public async writeTags(tags: { tag: string; path: string; revalidatedAt?: number }[]): Promise<void> {
-    const { isDisabled, db, tables } = this.getConfig();
+    const { isDisabled, db } = this.getConfig();
     if (isDisabled || tags.length === 0) return;
 
     try {
@@ -110,7 +107,7 @@ class D1TagCache implements OriginalTagCache {
             if (revalidatedAt === 1) {
               // new tag/path mapping from set
               return db
-                .prepare(`INSERT INTO ${JSON.stringify(tables.tags)} (tag, path) VALUES (?, ?)`)
+                .prepare(`INSERT INTO tags (tag, path) VALUES (?, ?)`)
                 .bind(this.getCacheKey(tag), this.getCacheKey(path));
             }
 
@@ -118,9 +115,7 @@ class D1TagCache implements OriginalTagCache {
               // tag was revalidated
               uniqueTags.add(tag);
               return db
-                .prepare(
-                  `INSERT INTO ${JSON.stringify(tables.revalidations)} (tag, revalidatedAt) VALUES (?, ?)`
-                )
+                .prepare(`INSERT INTO revalidations (tag, revalidatedAt) VALUES (?, ?)`)
                 .bind(this.getCacheKey(tag), revalidatedAt ?? Date.now());
             }
           })
@@ -139,25 +134,19 @@ class D1TagCache implements OriginalTagCache {
 
   private getConfig() {
     const cfEnv = getCloudflareContext().env;
-    const db = cfEnv.NEXT_CACHE_D1;
+    const db = cfEnv.NEXT_TAG_CACHE_D1;
 
     if (!db) debug("No D1 database found");
 
     const isDisabled = !!(globalThis as unknown as { openNextConfig: OpenNextConfig }).openNextConfig
       .dangerous?.disableTagCache;
 
-    if (!db || isDisabled) {
-      return { isDisabled: true as const };
-    }
-
-    return {
-      isDisabled: false as const,
-      db,
-      tables: {
-        tags: cfEnv.NEXT_CACHE_D1_TAGS_TABLE ?? "tags",
-        revalidations: cfEnv.NEXT_CACHE_D1_REVALIDATIONS_TABLE ?? DEFAULT_NEXT_CACHE_D1_REVALIDATIONS_TABLE,
-      },
-    };
+    return !db || isDisabled
+      ? { isDisabled: true as const }
+      : {
+          isDisabled: false as const,
+          db,
+        };
   }
 
   protected removeBuildId(key: string) {

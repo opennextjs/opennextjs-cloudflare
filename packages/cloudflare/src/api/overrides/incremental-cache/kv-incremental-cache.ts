@@ -1,7 +1,7 @@
 import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/types/overrides";
 import { IgnorableError, RecoverableError } from "@opennextjs/aws/utils/error.js";
 
-import { getCloudflareContext } from "./cloudflare-context.js";
+import { getCloudflareContext } from "../../cloudflare-context.js";
 
 export const CACHE_ASSET_DIR = "cdn-cgi/_next_cache";
 
@@ -11,7 +11,7 @@ export const STATUS_DELETED = 1;
  * Open Next cache based on cloudflare KV and Assets.
  *
  * Note: The class is instantiated outside of the request context.
- * The cloudflare context and process.env are not initialzed yet
+ * The cloudflare context and process.env are not initialized yet
  * when the constructor is called.
  */
 class Cache implements IncrementalCache {
@@ -22,7 +22,7 @@ class Cache implements IncrementalCache {
     isFetch?: IsFetch
   ): Promise<WithLastModified<CacheValue<IsFetch>> | null> {
     const cfEnv = getCloudflareContext().env;
-    const kv = cfEnv.NEXT_CACHE_WORKERS_KV;
+    const kv = cfEnv.NEXT_INC_CACHE_KV;
     const assets = cfEnv.ASSETS;
 
     if (!(kv || assets)) {
@@ -92,7 +92,7 @@ class Cache implements IncrementalCache {
     value: CacheValue<IsFetch>,
     isFetch?: IsFetch
   ): Promise<void> {
-    const kv = getCloudflareContext().env.NEXT_CACHE_WORKERS_KV;
+    const kv = getCloudflareContext().env.NEXT_INC_CACHE_KV;
 
     if (!kv) {
       throw new IgnorableError(`No KVNamespace`);
@@ -120,7 +120,7 @@ class Cache implements IncrementalCache {
   }
 
   async delete(key: string): Promise<void> {
-    const kv = getCloudflareContext().env.NEXT_CACHE_WORKERS_KV;
+    const kv = getCloudflareContext().env.NEXT_INC_CACHE_KV;
 
     if (!kv) {
       throw new IgnorableError(`No KVNamespace`);

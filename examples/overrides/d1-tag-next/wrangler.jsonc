@@ -13,15 +13,15 @@
   },
   "kv_namespaces": [
     {
-      "binding": "NEXT_CACHE_WORKERS_KV",
+      "binding": "NEXT_INC_CACHE_KV",
       "id": "<BINDING_ID>"
     }
   ],
   "d1_databases": [
     {
-      "binding": "NEXT_CACHE_D1",
-      "database_id": "NEXT_CACHE_D1",
-      "database_name": "NEXT_CACHE_D1"
+      "binding": "NEXT_TAG_CACHE_D1",
+      "database_id": "NEXT_TAG_CACHE_D1",
+      "database_name": "NEXT_TAG_CACHE_D1"
     }
   ]
 }

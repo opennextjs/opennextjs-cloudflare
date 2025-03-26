@@ -1,8 +1,8 @@
 import { debug, error } from "@opennextjs/aws/adapters/logger.js";
 import { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/types/overrides.js";
 
-import { getCloudflareContext } from "./cloudflare-context.js";
-import { IncrementalCacheEntry } from "./internal/incremental-cache.js";
+import { getCloudflareContext } from "../../cloudflare-context.js";
+import { IncrementalCacheEntry } from "./internal.js";
 
 const ONE_MINUTE_IN_SECONDS = 60;
 const THIRTY_MINUTES_IN_SECONDS = ONE_MINUTE_IN_SECONDS * 30;

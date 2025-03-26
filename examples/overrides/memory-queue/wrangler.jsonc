@@ -10,13 +10,13 @@
   },
   "kv_namespaces": [
     {
-      "binding": "NEXT_CACHE_WORKERS_KV",
+      "binding": "NEXT_INC_CACHE_KV",
       "id": "<BINDING_ID>"
     }
   ],
   "services": [
     {
-      "binding": "NEXT_CACHE_REVALIDATION_WORKER",
+      "binding": "WORKER_SELF_REFERENCE",
       "service": "memory-queue"
     }
   ]

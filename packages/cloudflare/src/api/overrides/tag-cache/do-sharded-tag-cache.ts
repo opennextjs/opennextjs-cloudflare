@@ -4,7 +4,7 @@ import type { OpenNextConfig } from "@opennextjs/aws/types/open-next";
 import type { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
-import { getCloudflareContext } from "./cloudflare-context";
+import { getCloudflareContext } from "../../cloudflare-context";
 
 const SOFT_TAG_PREFIX = "_N_T_/";
 export const DEFAULT_SOFT_REPLICAS = 4;
@@ -89,7 +89,7 @@ export class TagCacheDOId {
 }
 class ShardedDOTagCache implements NextModeTagCache {
   readonly mode = "nextMode" as const;
-  readonly name = "sharded-do-tag-cache";
+  readonly name = "do-sharded-tag-cache";
   readonly numSoftReplicas: number;
   readonly numHardReplicas: number;
   readonly maxWriteRetries: number;
@@ -102,7 +102,7 @@ class ShardedDOTagCache implements NextModeTagCache {
   }
 
   private getDurableObjectStub(doId: TagCacheDOId) {
-    const durableObject = getCloudflareContext().env.NEXT_CACHE_DO_SHARDED;
+    const durableObject = getCloudflareContext().env.NEXT_TAG_CACHE_DO_SHARDED;
     if (!durableObject) throw new IgnorableError("No durable object binding for cache revalidation");
 
     const id = durableObject.idFromName(doId.key);
@@ -189,20 +189,18 @@ class ShardedDOTagCache implements NextModeTagCache {
 
   private async getConfig() {
     const cfEnv = getCloudflareContext().env;
-    const db = cfEnv.NEXT_CACHE_DO_SHARDED;
+    const db = cfEnv.NEXT_TAG_CACHE_DO_SHARDED;
 
     if (!db) debug("No Durable object found");
     const isDisabled = !!(globalThis as unknown as { openNextConfig: OpenNextConfig }).openNextConfig
       .dangerous?.disableTagCache;
 
-    if (!db || isDisabled) {
-      return { isDisabled: true as const };
-    }
-
-    return {
-      isDisabled: false as const,
-      db,
-    };
+    return !db || isDisabled
+      ? { isDisabled: true as const }
+      : {
+          isDisabled: false as const,
+          db,
+        };
   }
 
   /**
@@ -271,7 +269,7 @@ class ShardedDOTagCache implements NextModeTagCache {
       if (retryNumber >= this.maxWriteRetries) {
         error("Error while writing tags, too many retries");
         // Do we want to throw an error here ?
-        await getCloudflareContext().env.NEXT_CACHE_DO_SHARDED_DLQ?.send({
+        await getCloudflareContext().env.NEXT_TAG_CACHE_DO_SHARDED_DLQ?.send({
           failingShardId: doId.key,
           failingTags: tags,
           lastModified,

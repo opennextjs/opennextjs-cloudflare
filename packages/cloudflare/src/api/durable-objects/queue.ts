@@ -8,10 +8,10 @@ import {
 } from "@opennextjs/aws/utils/error.js";
 import { DurableObject } from "cloudflare:workers";
 
-const DEFAULT_MAX_REVALIDATION_BY_DURABLE_OBJECT = 5;
+const DEFAULT_MAX_REVALIDATION = 5;
 const DEFAULT_REVALIDATION_TIMEOUT_MS = 10_000;
-const DEFAULT_REVALIDATION_RETRY_INTERVAL_MS = 2_000;
-const DEFAULT_MAX_REVALIDATION_ATTEMPTS = 6;
+const DEFAULT_RETRY_INTERVAL_MS = 2_000;
+const DEFAULT_MAX_NUM_REVALIDATIONS = 6;
 
 interface FailedState {
   msg: QueueMessage;
@@ -29,7 +29,7 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
 
   routeInFailedState = new Map<string, FailedState>();
 
-  service: NonNullable<CloudflareEnv["NEXT_CACHE_REVALIDATION_WORKER"]>;
+  service: NonNullable<CloudflareEnv["WORKER_SELF_REFERENCE"]>;
 
   // Configurable params
   readonly maxRevalidations: number;
@@ -40,28 +40,28 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
 
   constructor(ctx: DurableObjectState, env: CloudflareEnv) {
     super(ctx, env);
-    this.service = env.NEXT_CACHE_REVALIDATION_WORKER!;
+    this.service = env.WORKER_SELF_REFERENCE!;
     // If there is no service binding, we throw an error because we can't revalidate without it
     if (!this.service) throw new IgnorableError("No service binding for cache revalidation worker");
     this.sql = ctx.storage.sql;
 
-    this.maxRevalidations = env.MAX_REVALIDATION_BY_DURABLE_OBJECT
-      ? parseInt(env.MAX_REVALIDATION_BY_DURABLE_OBJECT)
-      : DEFAULT_MAX_REVALIDATION_BY_DURABLE_OBJECT;
+    this.maxRevalidations = env.NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION
+      ? parseInt(env.NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION)
+      : DEFAULT_MAX_REVALIDATION;
 
-    this.revalidationTimeout = env.REVALIDATION_TIMEOUT_MS
-      ? parseInt(env.REVALIDATION_TIMEOUT_MS)
+    this.revalidationTimeout = env.NEXT_CACHE_DO_QUEUE_REVALIDATION_TIMEOUT_MS
+      ? parseInt(env.NEXT_CACHE_DO_QUEUE_REVALIDATION_TIMEOUT_MS)
       : DEFAULT_REVALIDATION_TIMEOUT_MS;
 
-    this.revalidationRetryInterval = env.REVALIDATION_RETRY_INTERVAL_MS
-      ? parseInt(env.REVALIDATION_RETRY_INTERVAL_MS)
-      : DEFAULT_REVALIDATION_RETRY_INTERVAL_MS;
+    this.revalidationRetryInterval = env.NEXT_CACHE_DO_QUEUE_RETRY_INTERVAL_MS
+      ? parseInt(env.NEXT_CACHE_DO_QUEUE_RETRY_INTERVAL_MS)
+      : DEFAULT_RETRY_INTERVAL_MS;
 
-    this.maxRevalidationAttempts = env.MAX_REVALIDATION_ATTEMPTS
-      ? parseInt(env.MAX_REVALIDATION_ATTEMPTS)
-      : DEFAULT_MAX_REVALIDATION_ATTEMPTS;
+    this.maxRevalidationAttempts = env.NEXT_CACHE_DO_QUEUE_MAX_NUM_REVALIDATIONS
+      ? parseInt(env.NEXT_CACHE_DO_QUEUE_MAX_NUM_REVALIDATIONS)
+      : DEFAULT_MAX_NUM_REVALIDATIONS;
 
-    this.disableSQLite = env.REVALIDATION_DO_DISABLE_SQLITE === "true";
+    this.disableSQLite = env.NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE === "true";
 
     // We restore the state
     ctx.blockConcurrencyWhile(async () => {

@@ -10,9 +10,9 @@ import logger from "@opennextjs/aws/logger.js";
 import { Arguments, getArgs } from "./args.js";
 import { build } from "./build/build.js";
 import { createOpenNextConfigIfNotExistent, ensureCloudflareConfig } from "./build/utils/index.js";
-import { deploy } from "./deploy/deploy.js";
-import { populateCache } from "./populate-cache/populate-cache.js";
-import { preview } from "./preview/preview.js";
+import { deploy } from "./commands/deploy.js";
+import { populateCache } from "./commands/populate-cache.js";
+import { preview } from "./commands/preview.js";
 
 const nextAppDir = process.cwd();
 

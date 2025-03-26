@@ -64,8 +64,8 @@ export async function populateCache(
         const assets = getCacheAssetPaths(options);
         assets.forEach(({ fsPath, destPath }) => {
           const fullDestPath = path.join(
-            "NEXT_CACHE_R2_BUCKET",
-            process.env.NEXT_CACHE_R2_PREFIX ?? "incremental-cache",
+            "NEXT_INC_CACHE_R2_BUCKET",
+            process.env.NEXT_INC_CACHE_R2_PREFIX ?? "incremental-cache",
             destPath
           );
 
@@ -90,14 +90,13 @@ export async function populateCache(
     switch (name) {
       case "d1-next-mode-tag-cache": {
         logger.info("\nCreating D1 table if necessary...");
-        const revalidationsTable = process.env.NEXT_CACHE_D1_REVALIDATIONS_TABLE || "revalidations";
 
         runWrangler(
           options,
           [
             "d1 execute",
-            "NEXT_CACHE_D1",
-            `--command "CREATE TABLE IF NOT EXISTS ${JSON.stringify(revalidationsTable)} (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);"`,
+            "NEXT_TAG_CACHE_D1",
+            `--command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);"`,
           ],
           { ...populateCacheOptions, logging: "error" }
         );
@@ -112,7 +111,7 @@ export async function populateCache(
           options,
           [
             "d1 execute",
-            "NEXT_CACHE_D1",
+            "NEXT_TAG_CACHE_D1",
             `--file ${JSON.stringify(path.join(options.outputDir, "cloudflare/cache-assets-manifest.sql"))}`,
           ],
           { ...populateCacheOptions, logging: "error" }

@@ -14,11 +14,11 @@ const getMock = vi
   .mockReturnValue({ hasBeenRevalidated: hasBeenRevalidatedMock, writeTags: writeTagsMock });
 const waitUntilMock = vi.fn().mockImplementation(async (fn) => fn());
 const sendDLQMock = vi.fn();
-vi.mock("./cloudflare-context", () => ({
+vi.mock("../../cloudflare-context", () => ({
   getCloudflareContext: () => ({
     env: {
-      NEXT_CACHE_DO_SHARDED: { idFromName: idFromNameMock, get: getMock },
-      NEXT_CACHE_DO_SHARDED_DLQ: {
+      NEXT_TAG_CACHE_DO_SHARDED: { idFromName: idFromNameMock, get: getMock },
+      NEXT_TAG_CACHE_DO_SHARDED_DLQ: {
         send: sendDLQMock,
       },
     },
@@ -83,7 +83,6 @@ describe("DOShardedTagCache", () => {
           { doId: expect.objectContaining({ shardId: "tag-hard;shard-1" }), tags: ["tag1"] },
         ];
         const result = cache.groupTagsByDO({ tags: ["tag1", "_N_T_/tag1"], generateAllReplicas: true });
-        console.log(result);
         expect(result).toEqual(expectedResult);
       });
 

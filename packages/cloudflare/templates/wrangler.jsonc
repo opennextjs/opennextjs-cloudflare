@@ -9,10 +9,10 @@
     "binding": "ASSETS"
   },
   "kv_namespaces": [
-    // Create a KV binding with the binding name "NEXT_CACHE_WORKERS_KV"
+    // Create a KV binding with the binding name "NEXT_INC_CACHE_KV"
     // to enable the KV based caching:
     // {
-    //   "binding": "NEXT_CACHE_WORKERS_KV",
+    //   "binding": "NEXT_INC_CACHE_KV",
     //   "id": "<BINDING_ID>"
     // }
   ]

@@ -2,7 +2,7 @@ import { debug, error } from "@opennextjs/aws/adapters/logger.js";
 import type { Queue, QueueMessage } from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
-import { getCloudflareContext } from "./cloudflare-context";
+import { getCloudflareContext } from "../../cloudflare-context";
 
 export const DEFAULT_REVALIDATION_TIMEOUT_MS = 10_000;
 
@@ -11,7 +11,7 @@ export const DEFAULT_REVALIDATION_TIMEOUT_MS = 10_000;
  *
  * It offers basic support for in-memory de-duping per isolate.
  *
- * A service binding called `NEXT_CACHE_REVALIDATION_WORKER` that points to your worker is required.
+ * A service binding called `WORKER_SELF_REFERENCE` that points to your worker is required.
  */
 export class MemoryQueue implements Queue {
   readonly name = "memory-queue";
@@ -21,7 +21,7 @@ export class MemoryQueue implements Queue {
   constructor(private opts = { revalidationTimeoutMs: DEFAULT_REVALIDATION_TIMEOUT_MS }) {}
 
   async send({ MessageBody: { host, url }, MessageDeduplicationId }: QueueMessage): Promise<void> {
-    const service = getCloudflareContext().env.NEXT_CACHE_REVALIDATION_WORKER;
+    const service = getCloudflareContext().env.WORKER_SELF_REFERENCE;
     if (!service) throw new IgnorableError("No service binding for cache revalidation worker");
 
     if (this.revalidatedPaths.has(MessageDeduplicationId)) return;

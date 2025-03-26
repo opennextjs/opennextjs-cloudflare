@@ -11,11 +11,11 @@
   "durable_objects": {
     "bindings": [
       {
-        "name": "NEXT_CACHE_REVALIDATION_DURABLE_OBJECT",
+        "name": "NEXT_CACHE_DO_QUEUE",
         "class_name": "DurableObjectQueueHandler"
       },
       {
-        "name": "NEXT_CACHE_DO_SHARDED",
+        "name": "NEXT_TAG_CACHE_DO_SHARDED",
         "class_name": "DOShardedTagCache"
       }
     ]
@@ -28,13 +28,13 @@
   ],
   "kv_namespaces": [
     {
-      "binding": "NEXT_CACHE_WORKERS_KV",
+      "binding": "NEXT_INC_CACHE_KV",
       "id": "<BINDING_ID>"
     }
   ],
   "services": [
     {
-      "binding": "NEXT_CACHE_REVALIDATION_WORKER",
+      "binding": "WORKER_SELF_REFERENCE",
       "service": "app-router"
     }
   ]

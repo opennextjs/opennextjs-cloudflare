@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import * as buildHelper from "@opennextjs/aws/build/helper.js";
 
-import { CACHE_ASSET_DIR } from "../../../api/kv-cache.js";
+import { CACHE_ASSET_DIR } from "../../../api/overrides/incremental-cache/kv-incremental-cache.js";
 
 export function copyCacheAssets(options: buildHelper.BuildOptions) {
   const { outputDir } = options;

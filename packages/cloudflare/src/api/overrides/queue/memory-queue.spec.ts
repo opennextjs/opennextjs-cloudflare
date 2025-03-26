@@ -6,9 +6,9 @@ import cache, { DEFAULT_REVALIDATION_TIMEOUT_MS } from "./memory-queue.js";
 vi.mock("./.next/prerender-manifest.json", () => Promise.resolve({ preview: { previewModeId: "id" } }));
 
 const mockServiceWorkerFetch = vi.fn();
-vi.mock("./cloudflare-context", () => ({
+vi.mock("../../cloudflare-context", () => ({
   getCloudflareContext: () => ({
-    env: { NEXT_CACHE_REVALIDATION_WORKER: { fetch: mockServiceWorkerFetch } },
+    env: { WORKER_SELF_REFERENCE: { fetch: mockServiceWorkerFetch } },
   }),
 }));
 
