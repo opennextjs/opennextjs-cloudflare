@@ -12,17 +12,35 @@ type WranglerOptions = {
   logging?: "all" | "error";
 };
 
+function injectPassthroughFlagForArgs(options: BuildOptions, args: string[]) {
+  if (options.packager !== "npm" && options.packager !== "yarn") {
+    return args;
+  }
+
+  const flagInArgsIndex = args.findIndex((v) => v.startsWith("--"));
+  if (flagInArgsIndex !== -1) {
+    return [...args.slice(0, flagInArgsIndex), "--", ...args.slice(flagInArgsIndex)];
+  }
+
+  return args;
+}
+
 export function runWrangler(options: BuildOptions, args: string[], wranglerOpts: WranglerOptions = {}) {
   const result = spawnSync(
     options.packager,
     [
       options.packager === "bun" ? "x" : "exec",
       "wrangler",
-      ...args,
-      wranglerOpts.environment && `--env ${wranglerOpts.environment}`,
-      wranglerOpts.target === "remote" && !wranglerOpts.excludeRemoteFlag && "--remote",
-      wranglerOpts.target === "local" && "--local",
-    ].filter((v): v is string => !!v),
+      ...injectPassthroughFlagForArgs(
+        options,
+        [
+          ...args,
+          wranglerOpts.environment && `--env ${wranglerOpts.environment}`,
+          wranglerOpts.target === "remote" && !wranglerOpts.excludeRemoteFlag && "--remote",
+          wranglerOpts.target === "local" && "--local",
+        ].filter((v): v is string => !!v)
+      ),
+    ],
     {
       shell: true,
       stdio: wranglerOpts.logging === "error" ? ["ignore", "ignore", "inherit"] : "inherit",
