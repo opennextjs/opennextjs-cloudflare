@@ -1,5 +1,76 @@
 # @opennextjs/cloudflare
 
+## 0.6.0
+
+### Minor Changes
+
+- [#499](https://github.com/opennextjs/opennextjs-cloudflare/pull/499) [`5037f57`](https://github.com/opennextjs/opennextjs-cloudflare/commit/5037f57208304055cc844e99708bbe7fc3c08c96) Thanks [@vicb](https://github.com/vicb)! - Refactor the codebase for consistency
+
+  BREAKING CHANGE
+
+  Overrides:
+
+  Overrides now live in `@opennextjs/cloudflare/overrides` and some files have been renamed.
+
+  - Incremental cache overrides: `@opennextjs/cloudflare/overrides/incremental-cache/...`
+  - Tag cache overrides: `@opennextjs/cloudflare/overrides/tag-cache/...`
+  - Queue overrides: `@opennextjs/cloudflare/overrides/queue/...`
+
+  For example the KV incremental cache override can be imported as `@opennextjs/cloudflare/overrides/incremental-cache/kv-incremental-cache`.
+
+  Environment variables and bindings name changes:
+
+  - `NEXT_CACHE_WORKERS_KV` -> `NEXT_INC_CACHE_KV`
+  - `NEXT_CACHE_R2_...` -> `NEXT_INC_CACHE_R2_...`
+  - `NEXT_CACHE_D1` -> `NEXT_TAG_CACHE_D1`
+  - `NEXT_CACHE_DO_...` -> `NEXT_TAG_CACHE_DO_...`
+  - `NEXT_CACHE_DO_REVALIDATION` -> `NEXT_CACHE_DO_QUEUE`
+  - `NEXT_CACHE_REVALIDATION_WORKER` -> `WORKER_SELF_REFERENCE`
+
+  Other:
+
+  `NEXT_CACHE_D1_TAGS_TABLE` and `NEXT_CACHE_D1_REVALIDATIONS_TABLE` have been dropped.
+  The tables have a fixed names `tags` and `revalidations`.
+
+- [#479](https://github.com/opennextjs/opennextjs-cloudflare/pull/479) [`0c93e8b`](https://github.com/opennextjs/opennextjs-cloudflare/commit/0c93e8b3e22960553c6537b6e83b84cbd8724423) Thanks [@james-elicx](https://github.com/james-elicx)! - feat: commands for cli actions
+
+  The OpenNext Cloudflare CLI now uses the following commands;
+
+  - `build`: build the application
+  - `populateCache`: populate either the local or remote cache
+  - `preview`: populate the local cache and start a dev server
+  - `deploy`: populate the remote cache and deploy to production
+
+- [#490](https://github.com/opennextjs/opennextjs-cloudflare/pull/490) [`00f6071`](https://github.com/opennextjs/opennextjs-cloudflare/commit/00f60716227a883d9c3138e3797aaba9bd8fed33) Thanks [@vicb](https://github.com/vicb)! - Drop the deprecated kvCache in favor of kv-cache
+
+### Patch Changes
+
+- [#487](https://github.com/opennextjs/opennextjs-cloudflare/pull/487) [`0702d2e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/0702d2ea8b6480d358f750060e510b466bdf8fd5) Thanks [@james-elicx](https://github.com/james-elicx)! - feat: support passing the wrangler environment when populating the cache
+
+- [#480](https://github.com/opennextjs/opennextjs-cloudflare/pull/480) [`e0ec01d`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e0ec01d50d3ae9f15294735f8fd28d84d29140ca) Thanks [@conico974](https://github.com/conico974)! - fix deduplication for memory queue and add some log
+
+- [#481](https://github.com/opennextjs/opennextjs-cloudflare/pull/481) [`9b0db4d`](https://github.com/opennextjs/opennextjs-cloudflare/commit/9b0db4dcc4e84cac8f17043dbcd79b2ed7b91983) Thanks [@conico974](https://github.com/conico974)! - fix `res.revalidate` not working in page router api route
+
+- [#484](https://github.com/opennextjs/opennextjs-cloudflare/pull/484) [`6ce5643`](https://github.com/opennextjs/opennextjs-cloudflare/commit/6ce5643c1c37c98b36b2b594616907f8d35ee405) Thanks [@conico974](https://github.com/conico974)! - Add sharding replication for the Durable Object Tag Cache
+
+- [#470](https://github.com/opennextjs/opennextjs-cloudflare/pull/470) [`2650043`](https://github.com/opennextjs/opennextjs-cloudflare/commit/26500437cd9e6cabf44f6308a124ca0687754bf8) Thanks [@conico974](https://github.com/conico974)! - feat: add a sharded SQLite Durable object implementation for the tag cache
+
+- [#485](https://github.com/opennextjs/opennextjs-cloudflare/pull/485) [`ced7d46`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ced7d4639209fd45f34c5109de89a0671b5d1874) Thanks [@conico974](https://github.com/conico974)! - add an option for disabling sqlite on the durable object queue
+
+- [#460](https://github.com/opennextjs/opennextjs-cloudflare/pull/460) [`60171f5`](https://github.com/opennextjs/opennextjs-cloudflare/commit/60171f58a2817acb2ecef4ea67a3a60ab522bc0d) Thanks [@conico974](https://github.com/conico974)! - feat: durable object de-duping revalidation queue
+
+- [#497](https://github.com/opennextjs/opennextjs-cloudflare/pull/497) [`958f322`](https://github.com/opennextjs/opennextjs-cloudflare/commit/958f3223781753810baca287e49533ae12364d5e) Thanks [@vicb](https://github.com/vicb)! - Switch to bundled middleware
+
+- [#436](https://github.com/opennextjs/opennextjs-cloudflare/pull/436) [`86c0139`](https://github.com/opennextjs/opennextjs-cloudflare/commit/86c0139535350f5806c27a665f6ec8fcfb96e398) Thanks [@james-elicx](https://github.com/james-elicx)! - feat: auto-populating d1 cache data
+
+- [#464](https://github.com/opennextjs/opennextjs-cloudflare/pull/464) [`acfc7f3`](https://github.com/opennextjs/opennextjs-cloudflare/commit/acfc7f35a387b84607674e93d8ef66db4e634669) Thanks [@conico974](https://github.com/conico974)! - Implement next mode for d1 tag cache that will reduce write
+
+- [#486](https://github.com/opennextjs/opennextjs-cloudflare/pull/486) [`25a8f4c`](https://github.com/opennextjs/opennextjs-cloudflare/commit/25a8f4c82c71cbf0c3dedd79d9a4f52e012bc95e) Thanks [@conico974](https://github.com/conico974)! - auto create table for D1NextModeTagCache
+
+- [#443](https://github.com/opennextjs/opennextjs-cloudflare/pull/443) [`54508ff`](https://github.com/opennextjs/opennextjs-cloudflare/commit/54508ffc613cc12d27e014c472632a59db7d7833) Thanks [@james-elicx](https://github.com/james-elicx)! - feat: r2 adapter for the incremental cache
+
+- [#491](https://github.com/opennextjs/opennextjs-cloudflare/pull/491) [`e9dc621`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e9dc621bec7f7d532ee2855e4ef2b7155662c910) Thanks [@vicb](https://github.com/vicb)! - Serve `/cdn-cgi/image/...` images in dev
+
 ## 0.5.12
 
 ### Patch Changes
