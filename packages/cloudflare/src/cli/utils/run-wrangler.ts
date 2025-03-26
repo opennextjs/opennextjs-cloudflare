@@ -29,7 +29,7 @@ function injectPassthroughFlagForArgs(options: BuildOptions, args: string[]) {
 
   const flagInArgsIndex = args.findIndex((v) => v.startsWith("--"));
   if (flagInArgsIndex !== -1) {
-    return [...args.slice(0, flagInArgsIndex), "--", ...args.slice(flagInArgsIndex)];
+    args.splice(flagInArgsIndex, 0, '--');
   }
 
   return args;
