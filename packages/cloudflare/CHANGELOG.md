@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 0.6.3
+
+### Patch Changes
+
+- [#509](https://github.com/opennextjs/opennextjs-cloudflare/pull/509) [`42e2b5c`](https://github.com/opennextjs/opennextjs-cloudflare/commit/42e2b5c2eb4dda7ce9e46a2c6acb99799ce4228f) Thanks [@ItsWendell](https://github.com/ItsWendell)! - fix: nextjs handler not detected in worker
+
 ## 0.6.2
 
 ### Patch Changes
