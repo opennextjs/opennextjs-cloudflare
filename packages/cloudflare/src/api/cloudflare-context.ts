@@ -286,7 +286,7 @@ async function patchWranglerConfig() {
   //First thing here, we try to load the `wrangler.jsonc` file
   let existingWranglerConfig: Record<string, unknown> | null = null;
   const originalWranglerConfigPath = `${process.cwd()}/wrangler.jsonc`;
-  const patchedWranglerConfigPath = `${process.cwd()}/.open-next/wrangler.jsonc`;
+  const patchedWranglerConfigPath = `${process.cwd()}/.open-next/dev-wrangler.jsonc`;
   try {
     // We can't use `node:fs/promises` here in next 14 it seems
     // eslint-disable-next-line unicorn/prefer-node-protocol
@@ -297,13 +297,25 @@ async function patchWranglerConfig() {
       console.error("If you use one of the DO overrides, you need to have a wrangler.jsonc file");
       return undefined;
     }
-    delete existingWranglerConfig["durable_objects"];
+    if ("durable_objects" in existingWranglerConfig) {
+      delete existingWranglerConfig["durable_objects"];
+    } else {
+      // If the durable_objects key is not present, we don't need to patch the wrangler config
+      return undefined;
+    }
 
-    // We need to ensure that the `.open-next` directory exists
+    // We need to create the .open-next folder if it doesn't exist
     await fs.mkdir(`${process.cwd()}/.open-next`, { recursive: true });
+    // We copy the .dev.vars file to .open-next/.dev.vars
+    try {
+      await fs.cp(`${process.cwd()}/.dev.vars`, `${process.cwd()}/.open-next/.dev.vars`);
+    } catch {
+      // There is no .dev.vars file
+    }
     await fs.writeFile(patchedWranglerConfigPath, JSON.stringify(existingWranglerConfig));
   } catch {
     console.error("If you use one of the DO overrides, you need to have a wrangler.jsonc file");
+    return undefined;
   }
   return existingWranglerConfig ? patchedWranglerConfigPath : undefined;
 }
