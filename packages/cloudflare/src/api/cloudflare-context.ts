@@ -282,6 +282,30 @@ async function monkeyPatchVmModuleEdgeContext(cloudflareContext: CloudflareConte
   };
 }
 
+async function patchWranglerConfig() {
+  //First thing here, we try to load the `wrangler.jsonc` file
+  let existingWranglerConfig: Record<string, unknown> | null = null;
+  const originalWranglerConfigPath = `${process.cwd()}/wrangler.jsonc`;
+  const patchedWranglerConfigPath = `${process.cwd()}/.open-next/wrangler.jsonc`;
+  try {
+    const fs = await import("node:fs/promises");
+    //@ts-ignore
+    existingWranglerConfig = JSON.parse(await fs.readFile(originalWranglerConfigPath, "utf-8"));
+    if (!existingWranglerConfig) {
+      console.error("If you use one of the DO overrides, you need to have a wrangler.jsonc file");
+      return undefined;
+    }
+    delete existingWranglerConfig["durable_objects"];
+
+    // We need to ensure that the `.open-next` directory exists
+    await fs.mkdir(`${process.cwd()}/.open-next`, { recursive: true });
+    await fs.writeFile(patchedWranglerConfigPath, JSON.stringify(existingWranglerConfig));
+  } catch {
+    console.error("If you use one of the DO overrides, you need to have a wrangler.jsonc file");
+  }
+  return existingWranglerConfig ? patchedWranglerConfigPath : undefined;
+}
+
 /**
  * Gets a cloudflare context object from wrangler
  *
@@ -291,11 +315,13 @@ async function getCloudflareContextFromWrangler<
   CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
   Context = ExecutionContext,
 >(): Promise<CloudflareContext<CfProperties, Context>> {
+  const configPath = await patchWranglerConfig();
   // Note: we never want wrangler to be bundled in the Next.js app, that's why the import below looks like it does
   const { getPlatformProxy } = await import(/* webpackIgnore: true */ `${"__wrangler".replaceAll("_", "")}`);
   const { env, cf, ctx } = await getPlatformProxy({
     // This allows the selection of a wrangler environment while running in next dev mode
     environment: process.env.NEXT_DEV_WRANGLER_ENV,
+    configPath,
   });
   return {
     env,
