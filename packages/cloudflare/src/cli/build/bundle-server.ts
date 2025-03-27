@@ -194,7 +194,7 @@ globalThis.__BUILD_TIMESTAMP_MS__ = ${Date.now()};
   if (isMonorepo) {
     fs.writeFileSync(
       path.join(outputPath, "handler.mjs"),
-      `export * from "./${normalizePath(packagePath)}/handler.mjs";`
+      `export { handler } from "./${normalizePath(packagePath)}/handler.mjs";`
     );
   }
 
