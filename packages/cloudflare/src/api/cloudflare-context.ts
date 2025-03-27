@@ -288,7 +288,9 @@ async function patchWranglerConfig() {
   const originalWranglerConfigPath = `${process.cwd()}/wrangler.jsonc`;
   const patchedWranglerConfigPath = `${process.cwd()}/.open-next/wrangler.jsonc`;
   try {
-    const fs = await import("node:fs/promises");
+    // We can't use `node:fs/promises` here in next 14 it seems
+    // eslint-disable-next-line unicorn/prefer-node-protocol
+    const fs = await import("fs/promises");
     //@ts-ignore
     existingWranglerConfig = JSON.parse(await fs.readFile(originalWranglerConfigPath, "utf-8"));
     if (!existingWranglerConfig) {
