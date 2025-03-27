@@ -14,4 +14,4 @@ initOpenNextCloudflareForDev({
 });
 ```
 
-You can find the type with the available options [here](https://github.com/cloudflare/workers-sdk/blob/main/packages/wrangler/src/api/integrations/platform/index.ts#L32) in the Wrangler source code. Please note that the `environment` field is not customizable as it's used internally by OpenNext.js. If you have a use case where overriding `environment` is necessary, please let us know by opening a [feature request](https://github.com/cloudflare/workers-sdk/issues).
+You can find the configuration type with it's available options [here](https://github.com/cloudflare/workers-sdk/blob/main/packages/wrangler/src/api/integrations/platform/index.ts#L32) in the Wrangler source code.
