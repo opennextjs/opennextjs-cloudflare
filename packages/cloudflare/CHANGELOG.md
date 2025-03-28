@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 0.6.5
+
+### Patch Changes
+
+- [#514](https://github.com/opennextjs/opennextjs-cloudflare/pull/514) [`3165593`](https://github.com/opennextjs/opennextjs-cloudflare/commit/3165593eb9b47bf07aff2fc1561c6481e6b8715a) Thanks [@vicb](https://github.com/vicb)! - fix(middleware): enable wasm in bundled middleware
+
+- [#515](https://github.com/opennextjs/opennextjs-cloudflare/pull/515) [`cef5e03`](https://github.com/opennextjs/opennextjs-cloudflare/commit/cef5e03177a1b8e31436394669efa35d3978bef5) Thanks [@vicb](https://github.com/vicb)! - perf: optimize SQL queries
+
 ## 0.6.4
 
 ### Patch Changes
