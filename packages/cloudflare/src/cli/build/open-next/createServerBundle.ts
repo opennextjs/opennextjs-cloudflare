@@ -244,7 +244,7 @@ async function generateBundle(
 
     openNextEdgePlugins({
       nextDir: path.join(options.appBuildOutputPath, ".next"),
-      isInCloudfare: true,
+      isInCloudflare: true,
     }),
   ];
 
