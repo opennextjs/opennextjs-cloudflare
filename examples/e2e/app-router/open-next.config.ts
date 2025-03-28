@@ -5,13 +5,14 @@ import doQueue from "@opennextjs/cloudflare/overrides/queue/do-queue";
 
 export default defineCloudflareConfig({
   incrementalCache: kvIncrementalCache,
-  // With such a configuration, we could have up to 12 * (8 + 2) = 120 Durable Objects instances
+  // With such a configuration, we could have up to 6(all regions) * (2 * 2 * (8 + 2)) = 240 Durable Objects instances
   tagCache: shardedTagCache({
-    baseShardSize: 12,
+    baseShardSize: 2,
     enableShardReplication: true,
     shardReplicationOptions: {
       numberOfSoftReplicas: 8,
       numberOfHardReplicas: 2,
+      enableRegionalReplication: true,
     },
   }),
   queue: doQueue,
