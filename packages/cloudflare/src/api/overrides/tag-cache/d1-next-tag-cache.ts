@@ -15,13 +15,12 @@ export class D1NextModeTagCache implements NextModeTagCache {
     try {
       const result = await db
         .prepare(
-          `SELECT COUNT(*) as cnt FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")}) AND revalidatedAt > ? LIMIT 1`
+          `SELECT 1 FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")}) AND revalidatedAt > ? LIMIT 1`
         )
         .bind(...tags.map((tag) => this.getCacheKey(tag)), lastModified ?? Date.now())
-        .first<{ cnt: number }>();
-      if (!result) throw new RecoverableError(`D1 select failed for ${tags}`);
+        .raw();
 
-      return result.cnt > 0;
+      return result.length > 0;
     } catch (e) {
       error(e);
       // By default we don't want to crash here, so we return false
