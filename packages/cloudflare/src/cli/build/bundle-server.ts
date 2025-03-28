@@ -103,7 +103,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       // Apply updater updates, must be the last plugin
       updater.plugin,
     ] as Plugin[],
-    external: ["./middleware/handler.mjs"],
+    external: ["./middleware/handler.mjs", "*.wasm"],
     alias: {
       // Note: it looks like node-fetch is actually not necessary for us, so we could replace it with an empty shim
       //       but just to be safe we replace it with a module that re-exports the native fetch

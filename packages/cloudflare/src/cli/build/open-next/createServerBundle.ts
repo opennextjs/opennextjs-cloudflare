@@ -4,10 +4,11 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { loadMiddlewareManifest } from "@opennextjs/aws/adapters/config/util.js";
 import { bundleNextServer } from "@opennextjs/aws/build/bundleNextServer.js";
 import { compileCache } from "@opennextjs/aws/build/compileCache.js";
 import { copyTracedFiles } from "@opennextjs/aws/build/copyTracedFiles.js";
-import { generateEdgeBundle } from "@opennextjs/aws/build/edge/createEdgeBundle.js";
+import { copyMiddlewareResources, generateEdgeBundle } from "@opennextjs/aws/build/edge/createEdgeBundle.js";
 import * as buildHelper from "@opennextjs/aws/build/helper.js";
 import { installDependencies } from "@opennextjs/aws/build/installDeps.js";
 import type { CodePatcher } from "@opennextjs/aws/build/patch/codePatcher.js";
@@ -138,13 +139,11 @@ async function generateBundle(
   //       `.next/standalone/package/path` (ie. `.next`, `server.js`).
   //       We need to output the handler file inside the package path.
   const packagePath = buildHelper.getPackagePath(options);
-  fs.mkdirSync(path.join(outputPath, packagePath), { recursive: true });
+  const outPackagePath = path.join(outputPath, packagePath);
+  fs.mkdirSync(outPackagePath, { recursive: true });
 
   const ext = fnOptions.runtime === "deno" ? "mjs" : "cjs";
-  fs.copyFileSync(
-    path.join(options.buildDir, `cache.${ext}`),
-    path.join(outputPath, packagePath, "cache.cjs")
-  );
+  fs.copyFileSync(path.join(options.buildDir, `cache.${ext}`), path.join(outPackagePath, "cache.cjs"));
 
   if (fnOptions.runtime === "deno") {
     addDenoJson(outputPath, packagePath);
@@ -153,7 +152,7 @@ async function generateBundle(
   // Bundle next server if necessary
   const isBundled = fnOptions.experimentalBundledNextServer ?? false;
   if (isBundled) {
-    await bundleNextServer(path.join(outputPath, packagePath), appPath, {
+    await bundleNextServer(outPackagePath, appPath, {
       minify: options.minify,
     });
   }
@@ -162,12 +161,16 @@ async function generateBundle(
   if (!config.middleware?.external) {
     fs.copyFileSync(
       path.join(options.buildDir, "middleware.mjs"),
-      path.join(outputPath, packagePath, "middleware.mjs")
+      path.join(outPackagePath, "middleware.mjs")
     );
+
+    const middlewareManifest = loadMiddlewareManifest(path.join(options.appBuildOutputPath, ".next"));
+
+    copyMiddlewareResources(options, middlewareManifest.middleware["/"], outPackagePath);
   }
 
   // Copy open-next.config.mjs
-  buildHelper.copyOpenNextConfig(options.buildDir, path.join(outputPath, packagePath), true);
+  buildHelper.copyOpenNextConfig(options.buildDir, outPackagePath, true);
 
   // Copy env files
   buildHelper.copyEnvFile(appBuildOutputPath, packagePath, outputPath);
@@ -241,7 +244,7 @@ async function generateBundle(
 
     openNextEdgePlugins({
       nextDir: path.join(options.appBuildOutputPath, ".next"),
-      isInCloudfare: true,
+      isInCloudflare: true,
     }),
   ];
 
@@ -322,7 +325,7 @@ function addMonorepoEntrypoint(outputPath: string, packagePath: string) {
 
   fs.writeFileSync(
     path.join(outputPath, "index.mjs"),
-    `export * from "./${normalizePath(packagePath)}/index.mjs";`
+    `export { handler } from "./${normalizePath(packagePath)}/index.mjs";`
   );
 }
 
