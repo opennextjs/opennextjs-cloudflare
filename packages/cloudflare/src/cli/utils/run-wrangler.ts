@@ -1,6 +1,9 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
+import { compareSemver } from "@opennextjs/aws/build/helper.js";
 import logger from "@opennextjs/aws/logger.js";
 
 export type WranglerTarget = "local" | "remote";
@@ -13,17 +16,34 @@ type WranglerOptions = {
 };
 
 /**
+ * Checks the package.json `packageManager` field to determine whether yarn modern is used.
+ *
+ * @param options Build options.
+ * @returns Whether yarn modern is used.
+ */
+function isYarnModern(options: BuildOptions) {
+  const packageJson: { packageManager?: string } = JSON.parse(
+    readFileSync(path.join(options.monorepoRoot, "package.json"), "utf-8")
+  );
+
+  if (!packageJson.packageManager?.startsWith("yarn")) return false;
+
+  const [, version] = packageJson.packageManager.split("@");
+  return version ? compareSemver(version, ">=", "4.0.0") : false;
+}
+
+/**
  * Prepends CLI flags with `--` so that certain package managers can pass args through to wrangler
  * properly.
  *
- * npm and yarn require `--` to be used, while pnpm and bun require that it is not used.
+ * npm and yarn classic require `--` to be used, while pnpm and bun require that it is not used.
  *
  * @param options Build options.
  * @param args CLI args.
  * @returns Arguments with a passthrough flag injected when needed.
  */
 function injectPassthroughFlagForArgs(options: BuildOptions, args: string[]) {
-  if (options.packager !== "npm" && options.packager !== "yarn") {
+  if (options.packager !== "npm" && (options.packager !== "yarn" || isYarnModern(options))) {
     return args;
   }
 
