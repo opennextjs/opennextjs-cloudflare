@@ -12,16 +12,15 @@ export class DOShardedTagCache extends DurableObject<CloudflareEnv> {
   }
 
   async hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean> {
-    const result = this.sql
-      .exec<{
-        cnt: number;
-      }>(
-        `SELECT COUNT(*) as cnt FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")}) AND revalidatedAt > ?`,
-        ...tags,
-        lastModified ?? Date.now()
-      )
-      .one();
-    return result.cnt > 0;
+    return (
+      this.sql
+        .exec(
+          `SELECT 1 FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")}) AND revalidatedAt > ? LIMIT 1`,
+          ...tags,
+          lastModified ?? Date.now()
+        )
+        .toArray().length > 0
+    );
   }
 
   async writeTags(tags: string[], lastModified: number): Promise<void> {
