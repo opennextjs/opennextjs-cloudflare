@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 0.6.4
+
+### Patch Changes
+
+- [#512](https://github.com/opennextjs/opennextjs-cloudflare/pull/512) [`96efdc1`](https://github.com/opennextjs/opennextjs-cloudflare/commit/96efdc1191cbee3582d84af7293ee0aa83e36f09) Thanks [@james-elicx](https://github.com/james-elicx)! - fix: yarn v4 not passing args to wrangler correctly
+
 ## 0.6.3
 
 ### Patch Changes
