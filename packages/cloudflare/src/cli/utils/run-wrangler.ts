@@ -28,10 +28,7 @@ function isYarnModern(options: BuildOptions) {
 
   if (!packageJson.packageManager?.startsWith("yarn")) return false;
 
-  const [, version] = packageJson.packageManager.split("@");
-  if (!version) return false;
-
-  return compareSemver(version, ">=", "4.0.0");
+  return version ? compareSemver(version, ">=", "4.0.0") : false;
 }
 
 /**
