@@ -1,5 +1,7 @@
 import type { Context, RunningCodeOptions } from "node:vm";
 
+import type { GetPlatformProxyOptions } from "wrangler";
+
 import type { DurableObjectQueueHandler } from "./durable-objects/queue";
 import { DOShardedTagCache } from "./durable-objects/sharded-tag-cache";
 
@@ -206,12 +208,20 @@ async function getCloudflareContextAsync<
  * with the open-next Cloudflare adapter
  *
  * Note: this function should only be called inside the Next.js config file, and although async it doesn't need to be `await`ed
+ * @param options options on how the function should operate and if/where to persist the platform data
  */
-export async function initOpenNextCloudflareForDev() {
+export async function initOpenNextCloudflareForDev(options?: GetPlatformProxyOptions) {
   const shouldInitializationRun = shouldContextInitializationRun();
   if (!shouldInitializationRun) return;
 
-  const context = await getCloudflareContextFromWrangler();
+  if (options?.environment && process.env.NEXT_DEV_WRANGLER_ENV) {
+    console.warn(
+      `'initOpenNextCloudflareForDev' has been called with an environment option while NEXT_DEV_WRANGLER_ENV is set.` +
+        ` NEXT_DEV_WRANGLER_ENV will be ignored and the environment will be set to: '${options.environment}'`
+    );
+  }
+
+  const context = await getCloudflareContextFromWrangler(options);
 
   addCloudflareContextToNodejsGlobal(context);
 
@@ -290,12 +300,16 @@ async function monkeyPatchVmModuleEdgeContext(cloudflareContext: CloudflareConte
 async function getCloudflareContextFromWrangler<
   CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
   Context = ExecutionContext,
->(): Promise<CloudflareContext<CfProperties, Context>> {
+>(options?: GetPlatformProxyOptions): Promise<CloudflareContext<CfProperties, Context>> {
   // Note: we never want wrangler to be bundled in the Next.js app, that's why the import below looks like it does
   const { getPlatformProxy } = await import(/* webpackIgnore: true */ `${"__wrangler".replaceAll("_", "")}`);
+
+  // This allows the selection of a wrangler environment while running in next dev mode
+  const environment = options?.environment ?? process.env.NEXT_DEV_WRANGLER_ENV;
+
   const { env, cf, ctx } = await getPlatformProxy({
-    // This allows the selection of a wrangler environment while running in next dev mode
-    environment: process.env.NEXT_DEV_WRANGLER_ENV,
+    ...options,
+    environment,
   });
   return {
     env,
