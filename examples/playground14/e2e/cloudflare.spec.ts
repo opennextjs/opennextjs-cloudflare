@@ -13,4 +13,9 @@ test.describe("playground/cloudflare", () => {
     const { nextConfig } = await res.json();
     expect(nextConfig.output).toEqual("standalone");
   });
+
+  test("Environment variable defined on process.env are not overridden by .env files", async ({ page }) => {
+    const res = await page.request.get("/api/env");
+    await expect(res.json()).resolves.toEqual(expect.objectContaining({ PROCESS_ENV_VAR: "process.env" }));
+  });
 });
