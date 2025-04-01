@@ -94,11 +94,15 @@ rule:
       regex: ^NodeModuleLoader$
 fix: |
   async load($ID) {
-    try {
+    ${
+      buildOpts.debug
+        ? `   try {
       ${getRequires("$ID", files, serverDir)}
     } catch (e) {
-      ${buildOpts.debug ? "console.error('Exception in NodeModuleLoader', e);" : ""}
+      console.error('Exception in NodeModuleLoader', e);
       throw e;
+    }`
+        : getRequires("$ID", files, serverDir)
     }
   }`;
 }

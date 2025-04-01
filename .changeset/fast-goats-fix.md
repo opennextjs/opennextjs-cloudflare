@@ -2,4 +2,4 @@
 "@opennextjs/cloudflare": patch
 ---
 
-Log excpetions in requirePage when OPEN_NEXT_DEBUG=1
+Log exceptions in `requirePage` and `NodeModuleLoader` when `OPEN_NEXT_DEBUG=1`
