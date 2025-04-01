@@ -1,10 +1,17 @@
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import { ContentUpdater, type Plugin } from "@opennextjs/aws/plugins/content-updater.js";
 
+// Remove an instantiation of `AbortController` from the runtime.
+//
+//  Solves https://github.com/cloudflare/workerd/issues/3657:
+// - The `AbortController` is meant for the client side, but ends in the server code somehow.
+//   That's why we can get ride of it. See https://github.com/vercel/next.js/pull/73975/files.
+// - Top level instantiation of `AbortController` are not supported by workerd as of March, 2025.
+//   See https://github.com/cloudflare/workerd/issues/3657
+// - As Next code is not more executed at top level, we do not need to apply this patch
+//   See https://github.com/opennextjs/opennextjs-cloudflare/pull/497
+//
 // We try to be as specific as possible to avoid patching the wrong thing here
-// It seems that there is a bug in the worker runtime. When the AbortController is created outside of the request context it throws an error (not sure if it's expected or not) except in this case. https://github.com/cloudflare/workerd/issues/3657
-// It fails while requiring the `app-page.runtime.prod.js` file, but instead of throwing an error, it just return an empty object for the `require('app-page.runtime.prod.js')` call which makes every request to an app router page fail.
-// If it's a bug in workerd and it's not expected to throw an error, we can remove this patch.
 export const abortControllerRule = `
 rule:
   all:
@@ -69,19 +76,7 @@ fix:
 `;
 
 export function patchNextMinimal(updater: ContentUpdater): Plugin {
-  updater.updateContent("patch-abortController-next15.2", [
-    {
-      field: {
-        filter: /app-page(-experimental)?\.runtime\.prod\.js$/,
-        contentFilter: /new AbortController/,
-        callback: ({ contents }) => {
-          return patchCode(contents, abortControllerRule);
-        },
-      },
-    },
-  ]);
-
-  updater.updateContent("patch-next-minimal", [
+  return updater.updateContent("patch-next-minimal", [
     {
       field: {
         filter: /next-server\.(js)$/,
@@ -92,9 +87,4 @@ export function patchNextMinimal(updater: ContentUpdater): Plugin {
       },
     },
   ]);
-
-  return {
-    name: "patch-abortController",
-    setup() {},
-  };
 }
