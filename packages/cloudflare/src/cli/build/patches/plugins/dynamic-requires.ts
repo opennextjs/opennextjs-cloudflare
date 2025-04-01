@@ -94,7 +94,12 @@ rule:
       regex: ^NodeModuleLoader$
 fix: |
   async load($ID) {
-    ${getRequires("$ID", files, serverDir)}
+    try {
+      ${getRequires("$ID", files, serverDir)}
+    } catch (e) {
+      ${buildOpts.debug ? "console.error('Exception in NodeModuleLoader', e);" : ""}
+      throw e;
+    }
   }`;
 }
 
@@ -139,7 +144,7 @@ function requirePage($PAGE, $DIST_DIR, $IS_APP_PATH) {
     buildOpts.debug
       ? `
   catch (e) {
-    console.error(e);
+    console.error("Exception in requirePage", e);
     throw e;
   }`
       : ``
