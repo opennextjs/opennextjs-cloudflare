@@ -135,7 +135,16 @@ function requirePage($PAGE, $DIST_DIR, $IS_APP_PATH) {
     process.env.__NEXT_PRIVATE_RUNTIME_TYPE = $IS_APP_PATH ? 'app' : 'pages';
   try {
     ${getRequires("pagePath", jsFiles, serverDir)}
-  } finally {
+  } ${
+    buildOpts.debug
+      ? `
+  catch (e) {
+    console.error(e);
+    throw e;
+  }`
+      : ``
+  }
+  finally {
     process.env.__NEXT_PRIVATE_RUNTIME_TYPE = '';
   }
 }`,
