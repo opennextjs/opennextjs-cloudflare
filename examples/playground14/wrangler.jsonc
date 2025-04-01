@@ -15,6 +15,7 @@
     }
   ],
   "vars": {
-    "hello": "Hello World from the cloudflare context!"
+    "hello": "Hello World from the cloudflare context!",
+    "PROCESS_ENV_VAR": "process.env"
   }
 }

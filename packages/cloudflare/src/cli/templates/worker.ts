@@ -86,7 +86,7 @@ function populateProcessEnv(url: URL, env: CloudflareEnv) {
   const mode = env.NEXTJS_ENV ?? "production";
   if (nextEnvVars[mode]) {
     for (const key in nextEnvVars[mode]) {
-      process.env[key] = nextEnvVars[mode][key];
+      process.env[key] ??= nextEnvVars[mode][key];
     }
   }
 
