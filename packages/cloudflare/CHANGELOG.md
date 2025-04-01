@@ -1,5 +1,29 @@
 # @opennextjs/cloudflare
 
+## 0.6.6
+
+### Patch Changes
+
+- [#520](https://github.com/opennextjs/opennextjs-cloudflare/pull/520) [`3bd200a`](https://github.com/opennextjs/opennextjs-cloudflare/commit/3bd200a3ef9a85856a7004395aa7b27b6069b8ee) Thanks [@vicb](https://github.com/vicb)! - Define `process.version` and `process.versions.node`
+
+- [#522](https://github.com/opennextjs/opennextjs-cloudflare/pull/522) [`79fadc4`](https://github.com/opennextjs/opennextjs-cloudflare/commit/79fadc49d303052165c70800b785fd488fad4c41) Thanks [@vicb](https://github.com/vicb)! - Log exceptions in `requirePage` and `NodeModuleLoader` when `OPEN_NEXT_DEBUG=1`
+
+- [#523](https://github.com/opennextjs/opennextjs-cloudflare/pull/523) [`19dedc7`](https://github.com/opennextjs/opennextjs-cloudflare/commit/19dedc75bfa805802cee0f0e727e6c5355c5c747) Thanks [@vicb](https://github.com/vicb)! - fix: process.env has a higher loading priority than .env files
+
+- [#469](https://github.com/opennextjs/opennextjs-cloudflare/pull/469) [`aef8e51`](https://github.com/opennextjs/opennextjs-cloudflare/commit/aef8e517eba94fe5ece23427c410c0cad15b5917) Thanks [@Juuldamen](https://github.com/Juuldamen)! - Adds support for passing options to `initOpenNextCloudflareForDev()`. This allows you to configure how your Cloudflare bindings will behave during [local development](https://opennext.js.org/cloudflare/get-started#11-develop-locally).
+
+  For example, the below configuration will persist the local state of bindings to a custom directory. Which can be useful if you want to share the state between different apps that reuse the same bindings in a monorepo.
+
+  ```ts
+  initOpenNextCloudflareForDev({
+    persist: {
+      path: "../../.wrangler/state/v3/custom-dir",
+    },
+  });
+  ```
+
+  You can find the configuration type with it's available options [here](https://github.com/cloudflare/workers-sdk/blob/main/packages/wrangler/src/api/integrations/platform/index.ts#L32) in the Wrangler source code.
+
 ## 0.6.5
 
 ### Patch Changes
