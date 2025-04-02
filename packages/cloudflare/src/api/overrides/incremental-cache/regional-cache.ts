@@ -159,7 +159,7 @@ class RegionalCache implements IncrementalCache {
  * The regional cache uses the Cache API.
  *
  * **WARNING:**
- * If an entry is revalidated in one region, it will trigger an additional revalidation if
+ * If an entry is revalidated on demand in one region (using either `revalidateTag`, `revalidatePath` or `res.revalidate` ), it will trigger an additional revalidation if
  * a request is made to another region that has an entry stored in its regional cache.
  *
  * @param cache Incremental cache instance.
