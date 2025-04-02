@@ -7,58 +7,64 @@ import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 import { getCloudflareContext } from "../../cloudflare-context";
 
 const SOFT_TAG_PREFIX = "_N_T_/";
-export const DEFAULT_SOFT_REPLICAS = 4;
-export const DEFAULT_HARD_REPLICAS = 2;
 export const DEFAULT_WRITE_RETRIES = 3;
 export const DEFAULT_NUM_SHARDS = 4;
 
 interface ShardedDOTagCacheOptions {
   /**
    * The number of shards that will be used.
+   *
    * 1 shards means 1 durable object instance.
-   * Soft (internal next tags used for `revalidatePath`) and hard tags (the one you define in your app) will be split in different shards.
+   * Soft (internal next tags used for `revalidatePath`) and hard tags (the one you define in your app)
+   * will be split in different shards.
+   *
    * The number of requests made to Durable Objects will scale linearly with the number of shards.
-   * For example, a request involving 5 tags may access between 1 and 5 shards, with the upper limit being the lesser of the number of tags or the number of shards
+   * For example, a request involving 5 tags may access between 1 and 5 shards, with the upper limit being
+   * the lesser of the number of tags or the number of shards
+   *
    * @default 4
    */
   baseShardSize: number;
+
   /**
    * Whether to enable a regional cache on a per-shard basis
    * Because of the way tags are implemented in Next.js, some shards will have more requests than others. For these cases, it is recommended to enable the regional cache.
+   *
    * @default false
    */
   regionalCache?: boolean;
+
   /**
    * The TTL for the regional cache in seconds
    * Increasing this value will reduce the number of requests to the Durable Object, but it could make `revalidateTags`/`revalidatePath` call being longer to take effect
+   *
    * @default 5
    */
   regionalCacheTtlSec?: number;
 
   /**
-   * Whether to enable shard replication
-   * Shard replication will duplicate each shards into N replicas to spread the load even more
-   * All replicas of the a shard contain the same value - write are sent to all of the replicas.
-   * This allows most frequent read operations to be sent to only one replica to spread the load.
-   * For example with N being 2, tag `tag1` could be read from 2 different durable object instance
-   * On read you only need to read from one of the shards, but on write you need to write to all shards
-   * @default false
+   * Enable shard replication to handle higher load.
+   *
+   * By default shards are not replicated (`numberOfSoftReplicas = 1` or `numberOfHardReplicas = 1`).
+   *
+   * Setting the number of replicas to a number greater than 1 will replicate the shards.
+   * Write operations always apply to all of the shards.
+   * However read operations read from a single shard to spread the load.
+   *
+   * Soft replicas are for internal next tags used for `revalidatePath` (i.e. `_N_T_/layout`, `_N_T_/page1`).
+   * Hard replicas are the tags defined in your app.
+   *
+   * Soft replicas are accessed more often  than hard replicas, so it is recommended to have more soft replicas
+   * than hard replicas (2x is a good rule of thumb)
    */
-  enableShardReplication?: boolean;
-
-  /**
-   * The number of replicas that will be used for shard replication
-   * Soft shard replicas are more often accessed than hard shard replicas, so it is recommended to have more soft replicas than hard replicas
-   * Soft replicas are for internal next tags used for `revalidatePath` (i.e. `_N_T_/layout`, `_N_T_/page1`), hard replicas are the tags defined in your app
-   * @default { numberOfSoftReplicas: 4, numberOfHardReplicas: 2 }
-   */
-  shardReplicationOptions?: {
+  shardReplication?: {
     numberOfSoftReplicas: number;
     numberOfHardReplicas: number;
   };
 
   /**
    * The number of retries to perform when writing tags
+   *
    * @default 3
    */
   maxWriteRetries?: number;
@@ -96,8 +102,8 @@ class ShardedDOTagCache implements NextModeTagCache {
   localCache?: Cache;
 
   constructor(private opts: ShardedDOTagCacheOptions = { baseShardSize: DEFAULT_NUM_SHARDS }) {
-    this.numSoftReplicas = opts.shardReplicationOptions?.numberOfSoftReplicas ?? DEFAULT_SOFT_REPLICAS;
-    this.numHardReplicas = opts.shardReplicationOptions?.numberOfHardReplicas ?? DEFAULT_HARD_REPLICAS;
+    this.numSoftReplicas = opts.shardReplication?.numberOfSoftReplicas ?? 1;
+    this.numHardReplicas = opts.shardReplication?.numberOfHardReplicas ?? 1;
     this.maxWriteRetries = opts.maxWriteRetries ?? DEFAULT_WRITE_RETRIES;
   }
 
@@ -127,13 +133,9 @@ class ShardedDOTagCache implements NextModeTagCache {
   }) {
     let replicaIndexes: Array<number | undefined> = [1];
     const isSoft = shardType === "soft";
-    let numReplicas = 1;
-    if (this.opts.enableShardReplication) {
-      numReplicas = isSoft ? this.numSoftReplicas : this.numHardReplicas;
-      replicaIndexes = generateAllReplicas
-        ? Array.from({ length: numReplicas }, (_, i) => i + 1)
-        : [undefined];
-    }
+    const numReplicas = isSoft ? this.numSoftReplicas : this.numHardReplicas;
+    replicaIndexes = generateAllReplicas ? Array.from({ length: numReplicas }, (_, i) => i + 1) : [undefined];
+
     return replicaIndexes.flatMap((replicaId) => {
       return tags
         .filter((tag) => (isSoft ? tag.startsWith(SOFT_TAG_PREFIX) : !tag.startsWith(SOFT_TAG_PREFIX)))

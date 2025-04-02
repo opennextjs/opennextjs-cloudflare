@@ -8,8 +8,7 @@ export default defineCloudflareConfig({
   // With such a configuration, we could have up to 12 * (8 + 2) = 120 Durable Objects instances
   tagCache: shardedTagCache({
     baseShardSize: 12,
-    enableShardReplication: true,
-    shardReplicationOptions: {
+    shardReplication: {
       numberOfSoftReplicas: 8,
       numberOfHardReplicas: 2,
     },

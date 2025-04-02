@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { DurableObjectQueueHandler } from "./queue";
+import { DOQueueHandler } from "./queue";
 
 vi.mock("cloudflare:workers", () => ({
   DurableObject: class {
@@ -36,7 +36,7 @@ const createDurableObjectQueue = ({
     },
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return new DurableObjectQueueHandler(mockState as any, {
+  return new DOQueueHandler(mockState as any, {
     WORKER_SELF_REFERENCE: {
       fetch: vi.fn().mockReturnValue(
         new Promise<Response>((res) =>
@@ -198,7 +198,7 @@ describe("DurableObjectQueue", () => {
   });
 
   describe("addAlarm", () => {
-    const getStorage = (queue: DurableObjectQueueHandler): DurableObjectStorage => {
+    const getStorage = (queue: DOQueueHandler): DurableObjectStorage => {
       // @ts-expect-error - ctx is a protected field
       return queue.ctx.storage;
     };

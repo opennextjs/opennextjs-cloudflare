@@ -2,7 +2,7 @@ import type { Context, RunningCodeOptions } from "node:vm";
 
 import type { GetPlatformProxyOptions } from "wrangler";
 
-import type { DurableObjectQueueHandler } from "./durable-objects/queue";
+import type { DOQueueHandler } from "./durable-objects/queue";
 import { DOShardedTagCache } from "./durable-objects/sharded-tag-cache";
 
 declare global {
@@ -35,7 +35,7 @@ declare global {
     NEXT_TAG_CACHE_DO_SHARDED_DLQ?: Queue;
 
     // Durable Object namespace to use for the durable object queue
-    NEXT_CACHE_DO_QUEUE?: DurableObjectNamespace<DurableObjectQueueHandler>;
+    NEXT_CACHE_DO_QUEUE?: DurableObjectNamespace<DOQueueHandler>;
 
     // Below are the optional environment variables to configure the durable object queue
     // The max number of revalidations that can be processed by the durable worker at the same time
@@ -46,7 +46,7 @@ declare global {
     // If it fails again it will exponentially back off until it reaches the max retry interval
     NEXT_CACHE_DO_QUEUE_RETRY_INTERVAL_MS?: string;
     // The maximum number of attempts that can be made to revalidate a path
-    NEXT_CACHE_DO_QUEUE_MAX_NUM_REVALIDATIONS?: string;
+    NEXT_CACHE_DO_QUEUE_MAX_RETRIES?: string;
     // Disable SQLite for the durable object queue handler
     // This can be safely used if you don't use an eventually consistent incremental cache (i.e. R2 without the regional cache for example)
     NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE?: string;

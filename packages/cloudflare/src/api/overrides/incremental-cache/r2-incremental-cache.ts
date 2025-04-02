@@ -12,7 +12,7 @@ import { getCloudflareContext } from "../../cloudflare-context.js";
  * environment variable, and defaults to `incremental-cache`.
  */
 class R2IncrementalCache implements IncrementalCache {
-  readonly name = "r2-incremental-cache";
+  readonly name = "cf-r2-incremental-cache";
 
   async get<IsFetch extends boolean = false>(
     key: string,
