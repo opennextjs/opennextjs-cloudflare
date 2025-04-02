@@ -5,9 +5,11 @@ import { RecoverableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
 
+export const NAME = "d1-next-mode-tag-cache";
+
 export class D1NextModeTagCache implements NextModeTagCache {
   readonly mode = "nextMode" as const;
-  readonly name = "d1-next-mode-tag-cache";
+  readonly name = NAME;
 
   async hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean> {
     const { isDisabled, db } = this.getConfig();

@@ -6,9 +6,11 @@ import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "../../cloudflare-context";
 
-const SOFT_TAG_PREFIX = "_N_T_/";
 export const DEFAULT_WRITE_RETRIES = 3;
 export const DEFAULT_NUM_SHARDS = 4;
+export const NAME = "do-sharded-tag-cache";
+
+const SOFT_TAG_PREFIX = "_N_T_/";
 
 interface ShardedDOTagCacheOptions {
   /**
@@ -95,7 +97,7 @@ export class TagCacheDOId {
 }
 class ShardedDOTagCache implements NextModeTagCache {
   readonly mode = "nextMode" as const;
-  readonly name = "do-sharded-tag-cache";
+  readonly name = NAME;
   readonly numSoftReplicas: number;
   readonly numHardReplicas: number;
   readonly maxWriteRetries: number;

@@ -3,7 +3,7 @@ import { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
 import { IncrementalCacheEntry } from "./internal.js";
-import { CACHE_NAME as KV_CACHE_NAME } from "./kv-incremental-cache.js";
+import { NAME as KV_CACHE_NAME } from "./kv-incremental-cache.js";
 
 const ONE_MINUTE_IN_SECONDS = 60;
 const THIRTY_MINUTES_IN_SECONDS = ONE_MINUTE_IN_SECONDS * 30;
