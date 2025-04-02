@@ -26,10 +26,10 @@
       "new_sqlite_classes": ["DOQueueHandler", "DOShardedTagCache"]
     }
   ],
-  "kv_namespaces": [
+  "r2_buckets": [
     {
-      "binding": "NEXT_INC_CACHE_KV",
-      "id": "<BINDING_ID>"
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "<BUCKET_NAME>"
     }
   ],
   "services": [
