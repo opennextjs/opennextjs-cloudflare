@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import shardedDOTagCache, { TagCacheDOId } from "./do-sharded-tag-cache";
+import shardedDOTagCache, { DOId } from "./do-sharded-tag-cache";
 
 const hasBeenRevalidatedMock = vi.fn();
 const writeTagsMock = vi.fn();
@@ -279,7 +279,7 @@ describe("DOShardedTagCache", () => {
   describe("getFromRegionalCache", () => {
     it("should return undefined if regional cache is disabled", async () => {
       const cache = shardedDOTagCache();
-      const doId = new TagCacheDOId({
+      const doId = new DOId({
         baseShardId: "shard-1",
         numberOfReplicas: 1,
         shardType: "hard",
@@ -295,7 +295,7 @@ describe("DOShardedTagCache", () => {
         }),
       };
       const cache = shardedDOTagCache({ baseShardSize: 4, regionalCache: true });
-      const doId = new TagCacheDOId({
+      const doId = new DOId({
         baseShardId: "shard-1",
         numberOfReplicas: 1,
         shardType: "hard",
@@ -309,11 +309,11 @@ describe("DOShardedTagCache", () => {
   describe("getCacheKey", () => {
     it("should return the cache key without the random part", async () => {
       const cache = shardedDOTagCache();
-      const doId1 = new TagCacheDOId({ baseShardId: "shard-0", numberOfReplicas: 1, shardType: "hard" });
+      const doId1 = new DOId({ baseShardId: "shard-0", numberOfReplicas: 1, shardType: "hard" });
       const reqKey = await cache.getCacheKey(doId1, ["_N_T_/tag1"]);
       expect(reqKey.url).toBe("http://local.cache/shard/tag-hard;shard-0?tags=_N_T_%2Ftag1");
 
-      const doId2 = new TagCacheDOId({
+      const doId2 = new DOId({
         baseShardId: "shard-1",
         numberOfReplicas: 1,
         shardType: "hard",
@@ -332,7 +332,7 @@ describe("DOShardedTagCache", () => {
         throw new Error("error");
       });
       const spiedFn = vi.spyOn(cache, "performWriteTagsWithRetry");
-      const doId = new TagCacheDOId({
+      const doId = new DOId({
         baseShardId: "shard-1",
         numberOfReplicas: 1,
         shardType: "hard",
@@ -355,7 +355,7 @@ describe("DOShardedTagCache", () => {
       });
       const spiedFn = vi.spyOn(cache, "performWriteTagsWithRetry");
       await cache.performWriteTagsWithRetry(
-        new TagCacheDOId({ baseShardId: "shard-1", numberOfReplicas: 1, shardType: "hard" }),
+        new DOId({ baseShardId: "shard-1", numberOfReplicas: 1, shardType: "hard" }),
         ["tag1"],
         Date.now(),
         3
