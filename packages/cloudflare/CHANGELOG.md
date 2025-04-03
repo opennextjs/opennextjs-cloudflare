@@ -6,6 +6,8 @@
 
 - [#526](https://github.com/opennextjs/opennextjs-cloudflare/pull/526) [`8b40268`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8b40268a328f43ee7dfc8fc68bcf14badc0650ca) Thanks [@vicb](https://github.com/vicb)! - Prepare for release 1.0.0-beta.0
 
+  Bump `@opennextjs/aws` to 3.5.4
+
   BREAKING CHANGES
 
   - `DurableObjectQueueHandler` renamed to `DOQueueHandler`
