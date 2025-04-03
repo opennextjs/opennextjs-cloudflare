@@ -12,6 +12,8 @@ import type {
 import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides.js";
 import { globSync } from "glob";
 
+import { NAME as R2_CACHE_NAME } from "../../api/overrides/incremental-cache/r2-incremental-cache.js";
+import { NAME as D1_TAG_NAME } from "../../api/overrides/tag-cache/d1-next-tag-cache.js";
 import type { WranglerTarget } from "../utils/run-wrangler.js";
 import { runWrangler } from "../utils/run-wrangler.js";
 
@@ -58,7 +60,7 @@ export async function populateCache(
   if (!config.dangerous?.disableIncrementalCache && incrementalCache) {
     const name = await resolveCacheName(incrementalCache);
     switch (name) {
-      case "r2-incremental-cache": {
+      case R2_CACHE_NAME: {
         logger.info("\nPopulating R2 incremental cache...");
 
         const assets = getCacheAssetPaths(options);
@@ -88,7 +90,7 @@ export async function populateCache(
   if (!config.dangerous?.disableTagCache && !config.dangerous?.disableIncrementalCache && tagCache) {
     const name = await resolveCacheName(tagCache);
     switch (name) {
-      case "d1-next-mode-tag-cache": {
+      case D1_TAG_NAME: {
         logger.info("\nCreating D1 table if necessary...");
 
         runWrangler(
@@ -102,21 +104,6 @@ export async function populateCache(
         );
 
         logger.info("\nSuccessfully created D1 table");
-        break;
-      }
-      case "d1-tag-cache": {
-        logger.info("\nPopulating D1 tag cache...");
-
-        runWrangler(
-          options,
-          [
-            "d1 execute",
-            "NEXT_TAG_CACHE_D1",
-            `--file ${JSON.stringify(path.join(options.outputDir, "cloudflare/cache-assets-manifest.sql"))}`,
-          ],
-          { ...populateCacheOptions, logging: "error" }
-        );
-        logger.info("Successfully populated cache");
         break;
       }
       default:

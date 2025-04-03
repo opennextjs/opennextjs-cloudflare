@@ -7,6 +7,8 @@ export const CACHE_ASSET_DIR = "cdn-cgi/_next_cache";
 
 export const STATUS_DELETED = 1;
 
+export const NAME = "cf-kv-incremental-cache";
+
 /**
  * Open Next cache based on cloudflare KV and Assets.
  *
@@ -14,8 +16,8 @@ export const STATUS_DELETED = 1;
  * The cloudflare context and process.env are not initialized yet
  * when the constructor is called.
  */
-class Cache implements IncrementalCache {
-  readonly name = "cloudflare-kv";
+class KVIncrementalCache implements IncrementalCache {
+  readonly name = NAME;
 
   async get<IsFetch extends boolean = false>(
     key: string,
@@ -158,4 +160,4 @@ class Cache implements IncrementalCache {
   }
 }
 
-export default new Cache();
+export default new KVIncrementalCache();

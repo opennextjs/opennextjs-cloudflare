@@ -4,6 +4,8 @@ import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
 
+export const NAME = "cf-r2-incremental-cache";
+
 /**
  * An instance of the Incremental Cache that uses an R2 bucket (`NEXT_INC_CACHE_R2_BUCKET`) as it's
  * underlying data store.
@@ -12,7 +14,7 @@ import { getCloudflareContext } from "../../cloudflare-context.js";
  * environment variable, and defaults to `incremental-cache`.
  */
 class R2IncrementalCache implements IncrementalCache {
-  readonly name = "r2-incremental-cache";
+  readonly name = NAME;
 
   async get<IsFetch extends boolean = false>(
     key: string,

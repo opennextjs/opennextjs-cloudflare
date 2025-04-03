@@ -1,5 +1,22 @@
 # @opennextjs/cloudflare
 
+## 1.0.0-beta.0
+
+### Minor Changes
+
+- [#526](https://github.com/opennextjs/opennextjs-cloudflare/pull/526) [`8b40268`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8b40268a328f43ee7dfc8fc68bcf14badc0650ca) Thanks [@vicb](https://github.com/vicb)! - Prepare for release 1.0.0-beta.0
+
+  Bump `@opennextjs/aws` to 3.5.4
+
+  BREAKING CHANGES
+
+  - `DurableObjectQueueHandler` renamed to `DOQueueHandler`
+  - `NEXT_CACHE_DO_QUEUE_MAX_NUM_REVALIDATIONS` renamed to `NEXT_CACHE_DO_QUEUE_MAX_RETRIES`
+  - `D1TagCache` has been removed, use `D1NextModeTagCache` instead.
+  - The `enableShardReplication` and `shardReplicationOptions` options passed to `ShardedDOTagCache`
+    have been folded into `shardReplication`. A value for `shardReplication` must be specified to enable
+    replications. The value must be an object with the number of soft and hard replicas.
+
 ## 0.6.6
 
 ### Patch Changes

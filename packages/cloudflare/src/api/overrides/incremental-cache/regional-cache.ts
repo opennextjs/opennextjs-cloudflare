@@ -3,6 +3,7 @@ import { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
 import { IncrementalCacheEntry } from "./internal.js";
+import { NAME as KV_CACHE_NAME } from "./kv-incremental-cache.js";
 
 const ONE_MINUTE_IN_SECONDS = 60;
 const THIRTY_MINUTES_IN_SECONDS = ONE_MINUTE_IN_SECONDS * 30;
@@ -12,18 +13,23 @@ type Options = {
    * The mode to use for the regional cache.
    *
    * - `short-lived`: Re-use a cache entry for up to a minute after it has been retrieved.
-   * - `long-lived`: Re-use a fetch cache entry until it is revalidated (per-region), or an ISR/SSG entry for up to 30 minutes.
+   * - `long-lived`: Re-use a fetch cache entry until it is revalidated (per-region),
+   *                 or an ISR/SSG entry for up to 30 minutes.
    */
   mode: "short-lived" | "long-lived";
+
   /**
    * Whether the regional cache entry should be updated in the background or not when it experiences
    * a cache hit.
    *
-   * Defaults to `false` for the `short-lived` mode, and `true` for the `long-lived` mode.
+   * @default `false` for the `short-lived` mode, and `true` for the `long-lived` mode.
    */
   shouldLazilyUpdateOnCacheHit?: boolean;
 };
 
+/**
+ * Wrapper adding a regional cache on an `IncrementalCache` implementation
+ */
 class RegionalCache implements IncrementalCache {
   public name: string;
 
@@ -33,8 +39,10 @@ class RegionalCache implements IncrementalCache {
     private store: IncrementalCache,
     private opts: Options
   ) {
+    if (this.store.name === KV_CACHE_NAME) {
+      throw new Error("The KV incremental cache does not need a regional cache.");
+    }
     this.name = this.store.name;
-
     this.opts.shouldLazilyUpdateOnCacheHit ??= this.opts.mode === "long-lived";
   }
 
@@ -150,17 +158,19 @@ class RegionalCache implements IncrementalCache {
  *
  * The regional cache uses the Cache API.
  *
- * **WARNING:** If an entry is revalidated in one region, it will trigger an additional revalidation if
+ * **WARNING:**
+ * If an entry is revalidated on demand in one region (using either `revalidateTag`, `revalidatePath` or `res.revalidate` ), it will trigger an additional revalidation if
  * a request is made to another region that has an entry stored in its regional cache.
  *
- * @param cache - Incremental cache instance.
- * @param opts.mode - The mode to use for the regional cache.
- * - `short-lived`: Re-use a cache entry for up to a minute after it has been retrieved.
- * - `long-lived`: Re-use a fetch cache entry until it is revalidated (per-region), or an ISR/SSG entry for up to 30 minutes.
- * @param opts.shouldLazilyUpdateOnCacheHit - Whether the regional cache entry should be updated in
- * the background or not when it experiences a cache hit.
+ * @param cache Incremental cache instance.
+ * @param opts.mode The mode to use for the regional cache.
+ *                  - `short-lived`: Re-use a cache entry for up to a minute after it has been retrieved.
+ *                  - `long-lived`: Re-use a fetch cache entry until it is revalidated (per-region),
+ *                                  or an ISR/SSG entry for up to 30 minutes.
+ * @param opts.shouldLazilyUpdateOnCacheHit Whether the regional cache entry should be updated in
+ *                                          the background or not when it experiences a cache hit.
  *
- * Defaults to `false` for the `short-lived` mode, and `true` for the `long-lived` mode.
+ * @default `false` for the `short-lived` mode, and `true` for the `long-lived` mode.
  */
 export function withRegionalCache(cache: IncrementalCache, opts: Options) {
   return new RegionalCache(cache, opts);

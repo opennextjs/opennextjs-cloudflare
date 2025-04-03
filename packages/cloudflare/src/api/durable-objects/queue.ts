@@ -11,7 +11,7 @@ import { DurableObject } from "cloudflare:workers";
 const DEFAULT_MAX_REVALIDATION = 5;
 const DEFAULT_REVALIDATION_TIMEOUT_MS = 10_000;
 const DEFAULT_RETRY_INTERVAL_MS = 2_000;
-const DEFAULT_MAX_NUM_REVALIDATIONS = 6;
+const DEFAULT_MAX_RETRIES = 6;
 
 interface FailedState {
   msg: QueueMessage;
@@ -19,7 +19,7 @@ interface FailedState {
   nextAlarmMs: number;
 }
 
-export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
+export class DOQueueHandler extends DurableObject<CloudflareEnv> {
   // Ongoing revalidations are deduped by the deduplication id
   // Since this is running in waitUntil, we expect the durable object state to persist this during the duration of the revalidation
   // TODO: handle incremental cache with only eventual consistency (i.e. KV or R2/D1 with the optional cache layer on top)
@@ -35,7 +35,7 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
   readonly maxRevalidations: number;
   readonly revalidationTimeout: number;
   readonly revalidationRetryInterval: number;
-  readonly maxRevalidationAttempts: number;
+  readonly maxRetries: number;
   readonly disableSQLite: boolean;
 
   constructor(ctx: DurableObjectState, env: CloudflareEnv) {
@@ -57,9 +57,9 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
       ? parseInt(env.NEXT_CACHE_DO_QUEUE_RETRY_INTERVAL_MS)
       : DEFAULT_RETRY_INTERVAL_MS;
 
-    this.maxRevalidationAttempts = env.NEXT_CACHE_DO_QUEUE_MAX_NUM_REVALIDATIONS
-      ? parseInt(env.NEXT_CACHE_DO_QUEUE_MAX_NUM_REVALIDATIONS)
-      : DEFAULT_MAX_NUM_REVALIDATIONS;
+    this.maxRetries = env.NEXT_CACHE_DO_QUEUE_MAX_RETRIES
+      ? parseInt(env.NEXT_CACHE_DO_QUEUE_MAX_RETRIES)
+      : DEFAULT_MAX_RETRIES;
 
     this.disableSQLite = env.NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE === "true";
 
@@ -199,10 +199,9 @@ export class DurableObjectQueueHandler extends DurableObject<CloudflareEnv> {
     let updatedFailedState: FailedState;
 
     if (existingFailedState) {
-      if (existingFailedState.retryCount >= this.maxRevalidationAttempts) {
-        // We give up after 6 retries and log the error
+      if (existingFailedState.retryCount >= this.maxRetries) {
         error(
-          `The revalidation for ${msg.MessageBody.host}${msg.MessageBody.url} has failed after 6 retries. It will not be tried again, but subsequent ISR requests will retry.`
+          `The revalidation for ${msg.MessageBody.host}${msg.MessageBody.url} has failed after ${this.maxRetries} retries. It will not be tried again, but subsequent ISR requests will retry.`
         );
         this.routeInFailedState.delete(msg.MessageDeduplicationId);
         return;

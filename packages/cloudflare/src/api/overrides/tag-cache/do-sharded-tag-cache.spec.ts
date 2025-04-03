@@ -1,10 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import doShardedTagCache, {
-  DEFAULT_HARD_REPLICAS,
-  DEFAULT_SOFT_REPLICAS,
-  TagCacheDOId,
-} from "./do-sharded-tag-cache";
+import shardedDOTagCache, { DOId } from "./do-sharded-tag-cache";
 
 const hasBeenRevalidatedMock = vi.fn();
 const writeTagsMock = vi.fn();
@@ -31,7 +27,7 @@ describe("DOShardedTagCache", () => {
 
   describe("generateShardId", () => {
     it("should generate a shardId", () => {
-      const cache = doShardedTagCache();
+      const cache = shardedDOTagCache();
       const expectedResult = [
         { doId: expect.objectContaining({ shardId: "tag-hard;shard-1" }), tags: ["tag1"] },
         { doId: expect.objectContaining({ shardId: "tag-hard;shard-2" }), tags: ["tag2"] },
@@ -43,7 +39,7 @@ describe("DOShardedTagCache", () => {
     });
 
     it("should group tags by shard", () => {
-      const cache = doShardedTagCache();
+      const cache = shardedDOTagCache();
       const expectedResult = [
         { doId: expect.objectContaining({ shardId: "tag-hard;shard-1" }), tags: ["tag1", "tag6"] },
       ];
@@ -53,14 +49,14 @@ describe("DOShardedTagCache", () => {
     });
 
     it("should generate the same shardId for the same tag", () => {
-      const cache = doShardedTagCache();
+      const cache = shardedDOTagCache();
       const firstResult = cache.groupTagsByDO({ tags: ["tag1"] });
       const secondResult = cache.groupTagsByDO({ tags: ["tag1", "tag3", "tag4"] });
       expect(firstResult[0]).toEqual(secondResult[0]);
     });
 
     it("should split hard and soft tags", () => {
-      const cache = doShardedTagCache();
+      const cache = shardedDOTagCache();
       const expectedResult = [
         { doId: expect.objectContaining({ shardId: "tag-soft;shard-3" }), tags: ["_N_T_/tag1"] },
         { doId: expect.objectContaining({ shardId: "tag-hard;shard-1", replicaId: 1 }), tags: ["tag1"] },
@@ -73,7 +69,10 @@ describe("DOShardedTagCache", () => {
 
     describe("with shard replication", () => {
       it("should generate all doIds if generateAllReplicas is true", () => {
-        const cache = doShardedTagCache({ baseShardSize: 4, enableShardReplication: true });
+        const cache = shardedDOTagCache({
+          baseShardSize: 4,
+          shardReplication: { numberOfSoftReplicas: 4, numberOfHardReplicas: 2 },
+        });
         const expectedResult = [
           { doId: expect.objectContaining({ shardId: "tag-soft;shard-3" }), tags: ["_N_T_/tag1"] },
           { doId: expect.objectContaining({ shardId: "tag-soft;shard-3" }), tags: ["_N_T_/tag1"] },
@@ -87,7 +86,10 @@ describe("DOShardedTagCache", () => {
       });
 
       it("should generate only one doIds by tag type if generateAllReplicas is false", () => {
-        const cache = doShardedTagCache({ baseShardSize: 4, enableShardReplication: true });
+        const cache = shardedDOTagCache({
+          baseShardSize: 4,
+          shardReplication: { numberOfSoftReplicas: 4, numberOfHardReplicas: 2 },
+        });
         const shardedTagCollection = cache.groupTagsByDO({
           tags: ["tag1", "_N_T_/tag1"],
           generateAllReplicas: false,
@@ -101,10 +103,10 @@ describe("DOShardedTagCache", () => {
 
         // We still need to check if the last part is between the correct boundaries
         expect(firstDOId?.replicaId).toBeGreaterThanOrEqual(1);
-        expect(firstDOId?.replicaId).toBeLessThanOrEqual(DEFAULT_SOFT_REPLICAS);
+        expect(firstDOId?.replicaId).toBeLessThanOrEqual(4);
 
         expect(secondDOId?.replicaId).toBeGreaterThanOrEqual(1);
-        expect(secondDOId?.replicaId).toBeLessThanOrEqual(DEFAULT_HARD_REPLICAS);
+        expect(secondDOId?.replicaId).toBeLessThanOrEqual(2);
       });
     });
   });
@@ -119,14 +121,14 @@ describe("DOShardedTagCache", () => {
       globalThis.openNextConfig = {
         dangerous: { disableTagCache: true },
       };
-      const cache = doShardedTagCache();
+      const cache = shardedDOTagCache();
       const result = await cache.hasBeenRevalidated(["tag1"]);
       expect(result).toBe(false);
       expect(idFromNameMock).not.toHaveBeenCalled();
     });
 
     it("should return false if stub return false", async () => {
-      const cache = doShardedTagCache();
+      const cache = shardedDOTagCache();
       cache.getFromRegionalCache = vi.fn();
       hasBeenRevalidatedMock.mockImplementationOnce(() => false);
       const result = await cache.hasBeenRevalidated(["tag1"], 123456);
@@ -137,7 +139,7 @@ describe("DOShardedTagCache", () => {
     });
 
     it("should return true if stub return true", async () => {
-      const cache = doShardedTagCache();
+      const cache = shardedDOTagCache();
       cache.getFromRegionalCache = vi.fn();
       hasBeenRevalidatedMock.mockImplementationOnce(() => true);
       const result = await cache.hasBeenRevalidated(["tag1"], 123456);
@@ -148,7 +150,7 @@ describe("DOShardedTagCache", () => {
     });
 
     it("should return false if it throws", async () => {
-      const cache = doShardedTagCache();
+      const cache = shardedDOTagCache();
       cache.getFromRegionalCache = vi.fn();
       hasBeenRevalidatedMock.mockImplementationOnce(() => {
         throw new Error("error");
@@ -161,7 +163,7 @@ describe("DOShardedTagCache", () => {
     });
 
     it("Should return from the cache if it was found there", async () => {
-      const cache = doShardedTagCache();
+      const cache = shardedDOTagCache();
       cache.getFromRegionalCache = vi.fn().mockReturnValueOnce(new Response("true"));
       const result = await cache.hasBeenRevalidated(["tag1"], 123456);
       expect(result).toBe(true);
@@ -170,7 +172,7 @@ describe("DOShardedTagCache", () => {
     });
 
     it("should try to put the result in the cache if it was not revalidated", async () => {
-      const cache = doShardedTagCache();
+      const cache = shardedDOTagCache();
       cache.getFromRegionalCache = vi.fn();
       cache.putToRegionalCache = vi.fn();
       hasBeenRevalidatedMock.mockImplementationOnce(() => false);
@@ -182,7 +184,7 @@ describe("DOShardedTagCache", () => {
     });
 
     it("should call all the durable object instance", async () => {
-      const cache = doShardedTagCache();
+      const cache = shardedDOTagCache();
       cache.getFromRegionalCache = vi.fn();
       const result = await cache.hasBeenRevalidated(["tag1", "tag2"], 123456);
       expect(result).toBe(false);
@@ -206,14 +208,14 @@ describe("DOShardedTagCache", () => {
       globalThis.openNextConfig = {
         dangerous: { disableTagCache: true },
       };
-      const cache = doShardedTagCache();
+      const cache = shardedDOTagCache();
       await cache.writeTags(["tag1"]);
       expect(idFromNameMock).not.toHaveBeenCalled();
       expect(writeTagsMock).not.toHaveBeenCalled();
     });
 
     it("should write the tags to the cache", async () => {
-      const cache = doShardedTagCache();
+      const cache = shardedDOTagCache();
       await cache.writeTags(["tag1"]);
       expect(idFromNameMock).toHaveBeenCalled();
       expect(writeTagsMock).toHaveBeenCalled();
@@ -221,7 +223,7 @@ describe("DOShardedTagCache", () => {
     });
 
     it("should write the tags to the cache for multiple shards", async () => {
-      const cache = doShardedTagCache();
+      const cache = shardedDOTagCache();
       await cache.writeTags(["tag1", "tag2"]);
       expect(idFromNameMock).toHaveBeenCalledTimes(2);
       expect(writeTagsMock).toHaveBeenCalledTimes(2);
@@ -230,7 +232,10 @@ describe("DOShardedTagCache", () => {
     });
 
     it('should write to all the replicated shards if "generateAllReplicas" is true', async () => {
-      const cache = doShardedTagCache({ baseShardSize: 4, enableShardReplication: true });
+      const cache = shardedDOTagCache({
+        baseShardSize: 4,
+        shardReplication: { numberOfSoftReplicas: 4, numberOfHardReplicas: 2 },
+      });
       await cache.writeTags(["tag1", "_N_T_/tag1"]);
       expect(idFromNameMock).toHaveBeenCalledTimes(6);
       expect(writeTagsMock).toHaveBeenCalledTimes(6);
@@ -239,7 +244,7 @@ describe("DOShardedTagCache", () => {
     });
 
     it("should call deleteRegionalCache", async () => {
-      const cache = doShardedTagCache();
+      const cache = shardedDOTagCache();
       cache.deleteRegionalCache = vi.fn();
       await cache.writeTags(["tag1"]);
       expect(cache.deleteRegionalCache).toHaveBeenCalled();
@@ -253,7 +258,7 @@ describe("DOShardedTagCache", () => {
 
   describe("getCacheInstance", () => {
     it("should return undefined by default", async () => {
-      const cache = doShardedTagCache();
+      const cache = shardedDOTagCache();
       expect(await cache.getCacheInstance()).toBeUndefined();
     });
 
@@ -262,7 +267,7 @@ describe("DOShardedTagCache", () => {
       globalThis.caches = {
         open: vi.fn().mockResolvedValue("cache"),
       };
-      const cache = doShardedTagCache({ baseShardSize: 4, regionalCache: true });
+      const cache = shardedDOTagCache({ baseShardSize: 4, regionalCache: true });
       expect(cache.localCache).toBeUndefined();
       expect(await cache.getCacheInstance()).toBe("cache");
       expect(cache.localCache).toBe("cache");
@@ -273,8 +278,8 @@ describe("DOShardedTagCache", () => {
 
   describe("getFromRegionalCache", () => {
     it("should return undefined if regional cache is disabled", async () => {
-      const cache = doShardedTagCache();
-      const doId = new TagCacheDOId({
+      const cache = shardedDOTagCache();
+      const doId = new DOId({
         baseShardId: "shard-1",
         numberOfReplicas: 1,
         shardType: "hard",
@@ -289,8 +294,8 @@ describe("DOShardedTagCache", () => {
           match: vi.fn().mockResolvedValue("response"),
         }),
       };
-      const cache = doShardedTagCache({ baseShardSize: 4, regionalCache: true });
-      const doId = new TagCacheDOId({
+      const cache = shardedDOTagCache({ baseShardSize: 4, regionalCache: true });
+      const doId = new DOId({
         baseShardId: "shard-1",
         numberOfReplicas: 1,
         shardType: "hard",
@@ -303,12 +308,12 @@ describe("DOShardedTagCache", () => {
 
   describe("getCacheKey", () => {
     it("should return the cache key without the random part", async () => {
-      const cache = doShardedTagCache();
-      const doId1 = new TagCacheDOId({ baseShardId: "shard-0", numberOfReplicas: 1, shardType: "hard" });
+      const cache = shardedDOTagCache();
+      const doId1 = new DOId({ baseShardId: "shard-0", numberOfReplicas: 1, shardType: "hard" });
       const reqKey = await cache.getCacheKey(doId1, ["_N_T_/tag1"]);
       expect(reqKey.url).toBe("http://local.cache/shard/tag-hard;shard-0?tags=_N_T_%2Ftag1");
 
-      const doId2 = new TagCacheDOId({
+      const doId2 = new DOId({
         baseShardId: "shard-1",
         numberOfReplicas: 1,
         shardType: "hard",
@@ -322,12 +327,12 @@ describe("DOShardedTagCache", () => {
     it("should retry if it fails", async () => {
       vi.useFakeTimers();
       vi.setSystemTime(1000);
-      const cache = doShardedTagCache();
+      const cache = shardedDOTagCache();
       writeTagsMock.mockImplementationOnce(() => {
         throw new Error("error");
       });
       const spiedFn = vi.spyOn(cache, "performWriteTagsWithRetry");
-      const doId = new TagCacheDOId({
+      const doId = new DOId({
         baseShardId: "shard-1",
         numberOfReplicas: 1,
         shardType: "hard",
@@ -344,13 +349,13 @@ describe("DOShardedTagCache", () => {
     it("should stop retrying after 3 times", async () => {
       vi.useFakeTimers();
       vi.setSystemTime(1000);
-      const cache = doShardedTagCache();
+      const cache = shardedDOTagCache();
       writeTagsMock.mockImplementationOnce(() => {
         throw new Error("error");
       });
       const spiedFn = vi.spyOn(cache, "performWriteTagsWithRetry");
       await cache.performWriteTagsWithRetry(
-        new TagCacheDOId({ baseShardId: "shard-1", numberOfReplicas: 1, shardType: "hard" }),
+        new DOId({ baseShardId: "shard-1", numberOfReplicas: 1, shardType: "hard" }),
         ["tag1"],
         Date.now(),
         3
