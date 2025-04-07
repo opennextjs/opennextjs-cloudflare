@@ -74,6 +74,10 @@ export function runWrangler(options: BuildOptions, args: string[], wranglerOpts:
     {
       shell: true,
       stdio: wranglerOpts.logging === "error" ? ["ignore", "ignore", "inherit"] : "inherit",
+      env: {
+        ...process.env,
+        ...(wranglerOpts.logging === "error" ? { WRANGLER_LOG: "error" } : undefined),
+      },
     }
   );
 
