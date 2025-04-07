@@ -66,13 +66,9 @@ class KVIncrementalCache implements IncrementalCache {
           // Note: `Date.now()` returns the time of the last IO rather than the actual time.
           //       See https://developers.cloudflare.com/workers/reference/security-model/
           lastModified: Date.now(),
-        }),
-        {
-          // When available, we only cache for the max revalidate time
-          ...(value.revalidate && {
-            expirationTtl: value.revalidate,
-          }),
-        }
+        })
+        // TODO: Figure out how to best leverage KV's TTL.
+        // NOTE: Ideally, the cache should operate in an SWR-like manner.
       );
     } catch (e) {
       error("Failed to set to cache", e);
