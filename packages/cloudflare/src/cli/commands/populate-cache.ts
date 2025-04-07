@@ -11,6 +11,7 @@ import type {
 } from "@opennextjs/aws/types/open-next.js";
 import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides.js";
 import { globSync } from "glob";
+import { tqdm } from "ts-tqdm";
 import { unstable_readConfig } from "wrangler";
 
 import { NAME as R2_CACHE_NAME } from "../../api/overrides/incremental-cache/r2-incremental-cache.js";
@@ -81,7 +82,7 @@ export async function populateCache(
         logger.info("\nPopulating R2 incremental cache...");
 
         const assets = getCacheAssetPaths(options);
-        assets.forEach(({ fsPath, destPath }) => {
+        for (const { fsPath, destPath } of tqdm(assets)) {
           const fullDestPath = path.join(
             bucket,
             process.env.NEXT_INC_CACHE_R2_PREFIX ?? "incremental-cache",
@@ -95,7 +96,7 @@ export async function populateCache(
             // Incorrect type for the 'cacheExpiry' field on 'HttpMetadata': the provided value is not of type 'date'.
             { target: populateCacheOptions.target, excludeRemoteFlag: true, logging: "error" }
           );
-        });
+        }
         logger.info(`Successfully populated cache with ${assets.length} assets`);
         break;
       }

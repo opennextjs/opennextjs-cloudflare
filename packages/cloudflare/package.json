@@ -55,7 +55,8 @@
     "@dotenvx/dotenvx": "catalog:",
     "@opennextjs/aws": "3.5.4",
     "enquirer": "^2.4.1",
-    "glob": "catalog:"
+    "glob": "catalog:",
+    "ts-tqdm": "^0.8.6"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",

@@ -1005,6 +1005,9 @@ importers:
       glob:
         specifier: 'catalog:'
         version: 11.0.0
+      ts-tqdm:
+        specifier: ^0.8.6
+        version: 0.8.6
       wrangler:
         specifier: 'catalog:'
         version: 4.7.0(@cloudflare/workers-types@4.20250224.0)
@@ -9131,6 +9134,9 @@ packages:
 
   ts-toolbelt@6.15.5:
     resolution: {integrity: sha512-FZIXf1ksVyLcfr7M317jbB67XFJhOO1YqdTcuGaq9q5jLUoTikukZ+98TPjKiP2jC5CgmYdWWYs0s2nLSU0/1A==}
+
+  ts-tqdm@0.8.6:
+    resolution: {integrity: sha512-3X3M1PZcHtgQbnwizL+xU8CAgbYbeLHrrDwL9xxcZZrV5J+e7loJm1XrXozHjSkl44J0Zg0SgA8rXbh83kCkcQ==}
 
   tsconfig-paths@3.15.0:
     resolution: {integrity: sha512-2Ac2RgzDe/cn48GvOe3M+o82pEFewD3UPbyoUHHdKasHwJKjds4fLXWf/Ux5kATBKN20oaFGu+jbElp1pos0mg==}
@@ -20137,6 +20143,8 @@ snapshots:
     optional: true
 
   ts-toolbelt@6.15.5: {}
+
+  ts-tqdm@0.8.6: {}
 
   tsconfig-paths@3.15.0:
     dependencies:
