@@ -14,6 +14,7 @@ import { globSync } from "glob";
 import { tqdm } from "ts-tqdm";
 import { unstable_readConfig } from "wrangler";
 
+import { NAME as KV_CACHE_NAME } from "../../api/overrides/incremental-cache/kv-incremental-cache.js";
 import { NAME as R2_CACHE_NAME } from "../../api/overrides/incremental-cache/r2-incremental-cache.js";
 import { NAME as D1_TAG_NAME } from "../../api/overrides/tag-cache/d1-next-tag-cache.js";
 import type { WranglerTarget } from "../utils/run-wrangler.js";
@@ -95,6 +96,25 @@ export async function populateCache(
             // NOTE: R2 does not support the environment flag and results in the following error:
             // Incorrect type for the 'cacheExpiry' field on 'HttpMetadata': the provided value is not of type 'date'.
             { target: populateCacheOptions.target, excludeRemoteFlag: true, logging: "error" }
+          );
+        }
+        logger.info(`Successfully populated cache with ${assets.length} assets`);
+        break;
+      }
+      case KV_CACHE_NAME: {
+        logger.info("\nPopulating KV incremental cache...");
+
+        const assets = getCacheAssetPaths(options);
+        for (const { fsPath, destPath } of tqdm(assets)) {
+          runWrangler(
+            options,
+            [
+              "kv key put",
+              JSON.stringify(destPath),
+              "--binding NEXT_INC_CACHE_KV",
+              `--path ${JSON.stringify(fsPath)}`,
+            ],
+            { ...populateCacheOptions, logging: "error" }
           );
         }
         logger.info(`Successfully populated cache with ${assets.length} assets`);
