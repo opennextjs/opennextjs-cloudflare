@@ -185,7 +185,7 @@ export async function populateCache(
           mkdirSync(path.dirname(outputDestPath), { recursive: true });
           cpSync(fsPath, outputDestPath);
         }
-        logger.info(`Successfully populated static assets`);
+        logger.info(`Successfully populated static assets cache with ${assets.length} assets`);
         break;
       }
       default:

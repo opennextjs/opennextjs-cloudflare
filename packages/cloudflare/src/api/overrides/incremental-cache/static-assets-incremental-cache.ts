@@ -9,7 +9,7 @@ export const CACHE_DIR = "cdn-cgi/_next_cache";
 export const NAME = "cf-static-assets-incremental-cache";
 
 /**
- * This cache uses KV static assets and is not recommended. It should only be used for applications
+ * This cache uses Workers static assets and is not recommended. It should only be used for applications
  * that do NOT want revalidation and ONLY want to serve pre-rendered data.
  */
 class StaticAssetsIncrementalCache implements IncrementalCache {
