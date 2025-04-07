@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
@@ -24,6 +24,10 @@ import {
   NAME as R2_CACHE_NAME,
   PREFIX_ENV_NAME as R2_CACHE_PREFIX_ENV_NAME,
 } from "../../api/overrides/incremental-cache/r2-incremental-cache.js";
+import {
+  CACHE_DIR as STATIC_ASSETS_CACHE_DIR,
+  NAME as STATIC_ASSETS_CACHE_NAME,
+} from "../../api/overrides/incremental-cache/static-assets-incremental-cache.js";
 import {
   BINDING_NAME as D1_TAG_BINDING_NAME,
   NAME as D1_TAG_NAME,
@@ -172,6 +176,18 @@ export async function populateCache(
       case KV_CACHE_NAME:
         populateKVIncrementalCache(options, populateCacheOptions);
         break;
+      case STATIC_ASSETS_CACHE_NAME: {
+        logger.info("\nPopulating Workers static assets...");
+
+        const assets = getCacheAssetPaths(options);
+        for (const { fsPath, destPath } of tqdm(assets)) {
+          const outputDestPath = path.join(options.outputDir, "assets", STATIC_ASSETS_CACHE_DIR, destPath);
+          mkdirSync(path.dirname(outputDestPath), { recursive: true });
+          cpSync(fsPath, outputDestPath);
+        }
+        logger.info(`Successfully populated static assets`);
+        break;
+      }
       default:
         logger.info("Incremental cache does not need populating");
     }
