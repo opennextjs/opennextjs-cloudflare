@@ -72,7 +72,10 @@ class R2IncrementalCache implements IncrementalCache {
   protected getR2Key(key: string, isFetch?: boolean): string {
     const directory = getCloudflareContext().env.NEXT_INC_CACHE_R2_PREFIX ?? "incremental-cache";
 
-    return `${directory}/${process.env.NEXT_BUILD_ID ?? "no-build-id"}/${key}.${isFetch ? "fetch" : "cache"}`;
+    return `${directory}/${process.env.NEXT_BUILD_ID ?? "no-build-id"}/${key}.${isFetch ? "fetch" : "cache"}`.replace(
+      /\/+/g,
+      "/"
+    );
   }
 }
 

@@ -140,7 +140,7 @@ class KVIncrementalCache implements IncrementalCache {
   }
 
   protected getKVKey(key: string, isFetch?: boolean): string {
-    return `${this.getBuildId()}/${key}.${isFetch ? "fetch" : "cache"}`;
+    return `${this.getBuildId()}/${key}.${isFetch ? "fetch" : "cache"}`.replace(/\/+/g, "/");
   }
 
   protected getAssetUrl(key: string, isFetch?: boolean): string {
