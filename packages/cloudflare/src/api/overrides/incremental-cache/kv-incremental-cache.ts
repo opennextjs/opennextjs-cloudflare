@@ -27,9 +27,21 @@ class KVIncrementalCache implements IncrementalCache {
     debug(`Get ${key}`);
 
     try {
-      const entry = await kv.get<IncrementalCacheEntry<IsFetch>>(this.getKVKey(key, isFetch), "json");
+      const entry = await kv.get<IncrementalCacheEntry<IsFetch> | CacheValue<IsFetch>>(
+        this.getKVKey(key, isFetch),
+        "json"
+      );
 
-      return entry;
+      if (!entry || "lastModified" in entry) {
+        return entry;
+      }
+
+      // if there is no lastModified property, the file was stored during build-time cache population.
+      return {
+        value: entry,
+        // __BUILD_TIMESTAMP_MS__ is injected by ESBuild.
+        lastModified: (globalThis as { __BUILD_TIMESTAMP_MS__?: number }).__BUILD_TIMESTAMP_MS__,
+      };
     } catch (e) {
       error("Failed to get from cache", e);
       return null;
