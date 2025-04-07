@@ -1,5 +1,15 @@
 # @opennextjs/cloudflare
 
+## 1.0.0-beta.1
+
+### Changes
+
+- [#541](https://github.com/opennextjs/opennextjs-cloudflare/pull/541) [`ca7df8e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ca7df8eb30f4c0414c700bd905ebfed6346e64b1) Thanks [@vicb](https://github.com/vicb)! - bump `@opennextjs/aws` to 3.5.5
+
+- [#536](https://github.com/opennextjs/opennextjs-cloudflare/pull/536) [`8abea36`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8abea3634adc1079338c9759b9df57bc06604323) Thanks [@vicb](https://github.com/vicb)! - Fix R2 bucket population
+
+- [#540](https://github.com/opennextjs/opennextjs-cloudflare/pull/540) [`f46fcae`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f46fcaeab4382c4efb5f070e72f7c537bbd54a12) Thanks [@vicb](https://github.com/vicb)! - test: sync e2e with aws
+
 ## 1.0.0-beta.0
 
 ### Minor Changes
