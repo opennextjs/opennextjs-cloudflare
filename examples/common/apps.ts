@@ -6,7 +6,6 @@ const apps = [
   "playground14",
   "playground15",
   "vercel-blog-starter",
-  "vercel-commerce",
   "ssg-app",
   // e2e
   "app-pages-router",
