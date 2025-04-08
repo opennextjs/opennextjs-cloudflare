@@ -78,9 +78,7 @@ export function getCacheAssets(opts: BuildOptions): CacheAsset[] {
       const [buildId, ...keyParts] = relativePath.slice(0, -".cache".length).split("/");
 
       if (!relativePath.endsWith(".cache") || buildId === undefined || keyParts.length === 0) {
-        throw new Error(
-          `Invalid path for a Cache Asset file: ${[relativePath, relativePath.substring(0, -".cache".length), buildId, keyParts]}`
-        );
+        throw new Error(`Invalid path for a Cache Asset file: ${relativePath}`);
       }
 
       assets.push({
