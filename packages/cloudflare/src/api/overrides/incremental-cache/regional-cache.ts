@@ -19,7 +19,7 @@ type Options = {
   mode: "short-lived" | "long-lived";
 
   /**
-   * The default age to use for long-lived cache entries.
+   * The default TTL of long-lived cache entries.
    * When no revalidate is provided, the default age will be used.
    *
    * @default `THIRTY_MINUTES_IN_SECONDS`
