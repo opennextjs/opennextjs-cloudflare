@@ -1,14 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "main": ".open-next/worker.js",
-  "name": "ssg-app",
+  "name": "static-assets-incremental-cache",
   "compatibility_date": "2025-02-04",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
-  },
-  "vars": {
-    "APP_VERSION": "1.2.345"
   }
 }
