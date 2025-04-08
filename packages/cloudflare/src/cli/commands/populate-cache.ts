@@ -155,6 +155,18 @@ function populateD1TagCache(
   logger.info("\nSuccessfully created D1 table");
 }
 
+function populateStaticAssetsIncrementalCache(options: BuildOptions) {
+  logger.info("\nPopulating Workers static assets...");
+
+  const assets = getCacheAssetPaths(options);
+  for (const { fsPath, destPath } of tqdm(assets)) {
+    const outputDestPath = path.join(options.outputDir, "assets", STATIC_ASSETS_CACHE_DIR, destPath);
+    mkdirSync(path.dirname(outputDestPath), { recursive: true });
+    cpSync(fsPath, outputDestPath);
+  }
+  logger.info(`Successfully populated static assets cache with ${assets.length} assets`);
+}
+
 export async function populateCache(
   options: BuildOptions,
   config: OpenNextConfig,
@@ -176,18 +188,9 @@ export async function populateCache(
       case KV_CACHE_NAME:
         populateKVIncrementalCache(options, populateCacheOptions);
         break;
-      case STATIC_ASSETS_CACHE_NAME: {
-        logger.info("\nPopulating Workers static assets...");
-
-        const assets = getCacheAssetPaths(options);
-        for (const { fsPath, destPath } of tqdm(assets)) {
-          const outputDestPath = path.join(options.outputDir, "assets", STATIC_ASSETS_CACHE_DIR, destPath);
-          mkdirSync(path.dirname(outputDestPath), { recursive: true });
-          cpSync(fsPath, outputDestPath);
-        }
-        logger.info(`Successfully populated static assets cache with ${assets.length} assets`);
+      case STATIC_ASSETS_CACHE_NAME:
+        populateStaticAssetsIncrementalCache(options);
         break;
-      }
       default:
         logger.info("Incremental cache does not need populating");
     }

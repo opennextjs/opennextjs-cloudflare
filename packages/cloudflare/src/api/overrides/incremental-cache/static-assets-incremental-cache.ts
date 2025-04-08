@@ -3,6 +3,7 @@ import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
+import { debugCache, FALLBACK_BUILD_ID } from "../internal.js";
 
 export const CACHE_DIR = "cdn-cgi/_next_cache";
 
@@ -22,7 +23,7 @@ class StaticAssetsIncrementalCache implements IncrementalCache {
     const assets = getCloudflareContext().env.ASSETS;
     if (!assets) throw new IgnorableError("No Static Assets");
 
-    debug(`Get ${key}`);
+    debugCache(`Get ${key}`);
 
     try {
       const response = await assets.fetch(this.getAssetUrl(key, isFetch));
@@ -39,12 +40,16 @@ class StaticAssetsIncrementalCache implements IncrementalCache {
     }
   }
 
-  async set(): Promise<void> {}
+  async set(): Promise<void> {
+    error("Failed to set to read-only cache");
+  }
 
-  async delete(): Promise<void> {}
+  async delete(): Promise<void> {
+    error("Failed to delete from read-only cache");
+  }
 
   protected getAssetUrl(key: string, isFetch?: boolean): string {
-    const buildId = process.env.NEXT_BUILD_ID ?? "no-build-id";
+    const buildId = process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
     const name = `${CACHE_DIR}/${buildId}/${key}.${isFetch ? "fetch" : "cache"}`.replace(/\/+/g, "/");
     return `http://assets.local/${name}`;
   }
