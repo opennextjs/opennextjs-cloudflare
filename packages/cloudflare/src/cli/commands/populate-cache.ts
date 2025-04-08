@@ -59,6 +59,86 @@ function getCacheAssetPaths(opts: BuildOptions) {
     });
 }
 
+function populateR2IncrementalCache(
+  options: BuildOptions,
+  populateCacheOptions: { target: WranglerTarget; environment?: string }
+) {
+  const config = unstable_readConfig({ env: populateCacheOptions.environment });
+
+  const binding = (config.r2_buckets ?? []).find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
+
+  if (!binding) {
+    throw new Error(`No R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} found!`);
+  }
+
+  const bucket = binding.bucket_name;
+
+  if (!bucket) {
+    throw new Error(`R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} should have a 'bucket_name'`);
+  }
+
+  logger.info("\nPopulating R2 incremental cache...");
+
+  const assets = getCacheAssetPaths(options);
+  for (const { fsPath, destPath } of tqdm(assets)) {
+    const fullDestPath = path.join(
+      bucket,
+      process.env[R2_CACHE_PREFIX_ENV_NAME] ?? R2_CACHE_DEFAULT_PREFIX,
+      destPath
+    );
+
+    runWrangler(
+      options,
+      ["r2 object put", JSON.stringify(fullDestPath), `--file ${JSON.stringify(fsPath)}`],
+      // NOTE: R2 does not support the environment flag and results in the following error:
+      // Incorrect type for the 'cacheExpiry' field on 'HttpMetadata': the provided value is not of type 'date'.
+      { target: populateCacheOptions.target, excludeRemoteFlag: true, logging: "error" }
+    );
+  }
+  logger.info(`Successfully populated cache with ${assets.length} assets`);
+}
+
+function populateKVIncrementalCache(
+  options: BuildOptions,
+  populateCacheOptions: { target: WranglerTarget; environment?: string }
+) {
+  logger.info("\nPopulating KV incremental cache...");
+
+  const assets = getCacheAssetPaths(options);
+  for (const { fsPath, destPath } of tqdm(assets)) {
+    runWrangler(
+      options,
+      [
+        "kv key put",
+        JSON.stringify(destPath),
+        `--binding ${JSON.stringify(KV_CACHE_BINDING_NAME)}`,
+        `--path ${JSON.stringify(fsPath)}`,
+      ],
+      { ...populateCacheOptions, logging: "error" }
+    );
+  }
+  logger.info(`Successfully populated cache with ${assets.length} assets`);
+}
+
+function populateD1TagCache(
+  options: BuildOptions,
+  populateCacheOptions: { target: WranglerTarget; environment?: string }
+) {
+  logger.info("\nCreating D1 table if necessary...");
+
+  runWrangler(
+    options,
+    [
+      "d1 execute",
+      JSON.stringify(D1_TAG_BINDING_NAME),
+      `--command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);"`,
+    ],
+    { ...populateCacheOptions, logging: "error" }
+  );
+
+  logger.info("\nSuccessfully created D1 table");
+}
+
 export async function populateCache(
   options: BuildOptions,
   config: OpenNextConfig,
@@ -74,61 +154,10 @@ export async function populateCache(
   if (!config.dangerous?.disableIncrementalCache && incrementalCache) {
     const name = await resolveCacheName(incrementalCache);
     switch (name) {
-      case R2_CACHE_NAME: {
-        const config = unstable_readConfig({ env: populateCacheOptions.environment });
-
-        const binding = (config.r2_buckets ?? []).find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
-
-        if (!binding) {
-          throw new Error(`No R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} found!`);
-        }
-
-        const bucket = binding.bucket_name;
-
-        if (!bucket) {
-          throw new Error(`R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} should have a 'bucket_name'`);
-        }
-
-        logger.info("\nPopulating R2 incremental cache...");
-
-        const assets = getCacheAssetPaths(options);
-        for (const { fsPath, destPath } of tqdm(assets)) {
-          const fullDestPath = path.join(
-            bucket,
-            process.env[R2_CACHE_PREFIX_ENV_NAME] ?? R2_CACHE_DEFAULT_PREFIX,
-            destPath
-          );
-
-          runWrangler(
-            options,
-            ["r2 object put", JSON.stringify(fullDestPath), `--file ${JSON.stringify(fsPath)}`],
-            // NOTE: R2 does not support the environment flag and results in the following error:
-            // Incorrect type for the 'cacheExpiry' field on 'HttpMetadata': the provided value is not of type 'date'.
-            { target: populateCacheOptions.target, excludeRemoteFlag: true, logging: "error" }
-          );
-        }
-        logger.info(`Successfully populated cache with ${assets.length} assets`);
-        break;
-      }
-      case KV_CACHE_NAME: {
-        logger.info("\nPopulating KV incremental cache...");
-
-        const assets = getCacheAssetPaths(options);
-        for (const { fsPath, destPath } of tqdm(assets)) {
-          runWrangler(
-            options,
-            [
-              "kv key put",
-              JSON.stringify(destPath),
-              `--binding ${JSON.stringify(KV_CACHE_BINDING_NAME)}`,
-              `--path ${JSON.stringify(fsPath)}`,
-            ],
-            { ...populateCacheOptions, logging: "error" }
-          );
-        }
-        logger.info(`Successfully populated cache with ${assets.length} assets`);
-        break;
-      }
+      case R2_CACHE_NAME:
+        return populateR2IncrementalCache(options, populateCacheOptions);
+      case KV_CACHE_NAME:
+        return populateKVIncrementalCache(options, populateCacheOptions);
       default:
         logger.info("Incremental cache does not need populating");
     }
@@ -137,22 +166,8 @@ export async function populateCache(
   if (!config.dangerous?.disableTagCache && !config.dangerous?.disableIncrementalCache && tagCache) {
     const name = await resolveCacheName(tagCache);
     switch (name) {
-      case D1_TAG_NAME: {
-        logger.info("\nCreating D1 table if necessary...");
-
-        runWrangler(
-          options,
-          [
-            "d1 execute",
-            JSON.stringify(D1_TAG_BINDING_NAME),
-            `--command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);"`,
-          ],
-          { ...populateCacheOptions, logging: "error" }
-        );
-
-        logger.info("\nSuccessfully created D1 table");
-        break;
-      }
+      case D1_TAG_NAME:
+        return populateD1TagCache(options, populateCacheOptions);
       default:
         logger.info("Tag cache does not need populating");
     }
