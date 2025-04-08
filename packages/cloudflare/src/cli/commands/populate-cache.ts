@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { cpSync, existsSync } from "node:fs";
 import path from "node:path";
 
@@ -31,7 +30,6 @@ import {
   CACHE_DIR as STATIC_ASSETS_CACHE_DIR,
   NAME as STATIC_ASSETS_CACHE_NAME,
 } from "../../api/overrides/incremental-cache/static-assets-incremental-cache.js";
-import { CACHE_KEY_HASH } from "../../api/overrides/internal.js";
 import {
   BINDING_NAME as D1_TAG_BINDING_NAME,
   NAME as D1_TAG_NAME,
@@ -122,10 +120,7 @@ function populateR2IncrementalCache(
       directory: process.env[R2_CACHE_PREFIX_ENV_NAME] ?? R2_CACHE_DEFAULT_PREFIX,
       buildId,
       isFetch,
-      hash: createHash(CACHE_KEY_HASH),
     });
-
-    console.error({ cacheKey, key });
 
     runWrangler(
       options,
@@ -157,7 +152,6 @@ function populateKVIncrementalCache(
     const cacheKey = computeKVCacheKey(key, {
       buildId,
       isFetch,
-      hash: createHash(CACHE_KEY_HASH),
     });
 
     runWrangler(

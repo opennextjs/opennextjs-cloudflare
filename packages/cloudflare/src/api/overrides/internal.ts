@@ -11,8 +11,4 @@ export const debugCache = (name: string, ...args: unknown[]) => {
   }
 };
 
-// Hash the keys to limit their length.
-// KV has a limit of 512B, R2 has a limit of 1024B.
-export const CACHE_KEY_HASH = "sha256";
-
 export const FALLBACK_BUILD_ID = "no-build-id";
