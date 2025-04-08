@@ -80,13 +80,13 @@ export async function populateCache(
         const binding = (config.r2_buckets ?? []).find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
 
         if (!binding) {
-          throw new Error(`No R2 binding '${R2_CACHE_BINDING_NAME}' found!`);
+          throw new Error(`No R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} found!`);
         }
 
         const bucket = binding.bucket_name;
 
         if (!bucket) {
-          throw new Error(`R2 binding '${R2_CACHE_BINDING_NAME}' should have a 'bucket_name'`);
+          throw new Error(`R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} should have a 'bucket_name'`);
         }
 
         logger.info("\nPopulating R2 incremental cache...");
