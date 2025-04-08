@@ -35,7 +35,7 @@ class KVIncrementalCache implements IncrementalCache {
       );
 
       if (!entry) return null;
-      
+
       if ("lastModified" in entry) {
         return entry;
       }
