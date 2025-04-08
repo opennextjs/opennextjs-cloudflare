@@ -167,9 +167,11 @@ export async function populateCache(
     const name = await resolveCacheName(incrementalCache);
     switch (name) {
       case R2_CACHE_NAME:
-        return populateR2IncrementalCache(options, populateCacheOptions);
+        populateR2IncrementalCache(options, populateCacheOptions);
+        break;
       case KV_CACHE_NAME:
-        return populateKVIncrementalCache(options, populateCacheOptions);
+        populateKVIncrementalCache(options, populateCacheOptions);
+        break;
       default:
         logger.info("Incremental cache does not need populating");
     }
@@ -179,7 +181,8 @@ export async function populateCache(
     const name = await resolveCacheName(tagCache);
     switch (name) {
       case D1_TAG_NAME:
-        return populateD1TagCache(options, populateCacheOptions);
+        populateD1TagCache(options, populateCacheOptions);
+        break;
       default:
         logger.info("Tag cache does not need populating");
     }
