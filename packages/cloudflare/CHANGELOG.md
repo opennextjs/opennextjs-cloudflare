@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 1.0.0-beta.2
+
+### Changes
+
+- [#546](https://github.com/opennextjs/opennextjs-cloudflare/pull/546) [`9adc3a3`](https://github.com/opennextjs/opennextjs-cloudflare/commit/9adc3a3b6ca7d75d868523024491800fe25f3e06) Thanks [@james-elicx](https://github.com/james-elicx)! - feat: populate kv incremental cache
+
+- [#547](https://github.com/opennextjs/opennextjs-cloudflare/pull/547) [`25ade6f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/25ade6f7edf6a48336058c2c5e2fdf7ec0d9b7c6) Thanks [@james-elicx](https://github.com/james-elicx)! - feat: static assets incremental cache
+
 ## 1.0.0-beta.1
 
 ### Changes
