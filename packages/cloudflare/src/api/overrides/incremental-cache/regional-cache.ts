@@ -24,7 +24,7 @@ type Options = {
    *
    * @default `THIRTY_MINUTES_IN_SECONDS`
    */
-  defaultLongLivedAge?: number;
+  defaultLongLivedTtlSec?: number;
 
   /**
    * Whether the regional cache entry should be updated in the background or not when it experiences
@@ -153,7 +153,7 @@ class RegionalCache implements IncrementalCache {
     const age =
       this.opts.mode === "short-lived"
         ? ONE_MINUTE_IN_SECONDS
-        : entry.value.revalidate || this.opts.defaultLongLivedAge || THIRTY_MINUTES_IN_SECONDS;
+        : entry.value.revalidate || this.opts.defaultLongLivedTtlSec || THIRTY_MINUTES_IN_SECONDS;
 
     // We default to the entry key if no tags are found.
     // so that we can also revalidate page router based entry this way.
@@ -191,7 +191,7 @@ class RegionalCache implements IncrementalCache {
  *                                  or an ISR/SSG entry for up to 30 minutes.
  * @param opts.shouldLazilyUpdateOnCacheHit Whether the regional cache entry should be updated in
  *                                          the background or not when it experiences a cache hit.
- * @param opts.defaultLongLivedAge The default age to use for long-lived cache entries.
+ * @param opts.defaultLongLivedTtlSec The default age to use for long-lived cache entries.
  *                                  When no revalidate is provided, the default age will be used.
  *                                  @default `THIRTY_MINUTES_IN_SECONDS`
  *
