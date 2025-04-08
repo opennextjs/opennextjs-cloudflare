@@ -35,6 +35,12 @@ type Options = {
   shouldLazilyUpdateOnCacheHit?: boolean;
 };
 
+interface PutToCacheInput {
+  requestKey: Request;
+  entryKey: string;
+  entry: IncrementalCacheEntry<boolean>;
+}
+
 /**
  * Wrapper adding a regional cache on an `IncrementalCache` implementation
  */
@@ -60,10 +66,10 @@ class RegionalCache implements IncrementalCache {
   ): Promise<WithLastModified<CacheValue<IsFetch>> | null> {
     try {
       const cache = await this.getCacheInstance();
-      const localCacheKey = this.getCacheKey(key, isFetch);
+      const requestKey = this.getCacheKey(key, isFetch);
 
       // Check for a cached entry as this will be faster than the store response.
-      const cachedResponse = await cache.match(localCacheKey);
+      const cachedResponse = await cache.match(requestKey);
       if (cachedResponse) {
         debugCache("Get - cached response");
 
@@ -74,7 +80,7 @@ class RegionalCache implements IncrementalCache {
               const { value, lastModified } = rawEntry ?? {};
 
               if (value && typeof lastModified === "number") {
-                await this.putToCache(localCacheKey, key, { value, lastModified });
+                await this.putToCache({ requestKey, entryKey: key, entry: { value, lastModified } });
               }
             })
           );
@@ -88,7 +94,9 @@ class RegionalCache implements IncrementalCache {
       if (!value || typeof lastModified !== "number") return null;
 
       // Update the locale cache after retrieving from the store.
-      getCloudflareContext().ctx.waitUntil(this.putToCache(localCacheKey, key, { value, lastModified }));
+      getCloudflareContext().ctx.waitUntil(
+        this.putToCache({ requestKey, entryKey: key, entry: { value, lastModified } })
+      );
 
       return { value, lastModified };
     } catch (e) {
@@ -105,11 +113,15 @@ class RegionalCache implements IncrementalCache {
     try {
       await this.store.set(key, value, isFetch);
 
-      await this.putToCache(this.getCacheKey(key, isFetch), key, {
-        value,
-        // Note: `Date.now()` returns the time of the last IO rather than the actual time.
-        //       See https://developers.cloudflare.com/workers/reference/security-model/
-        lastModified: Date.now(),
+      await this.putToCache({
+        requestKey: this.getCacheKey(key, isFetch),
+        entryKey: key,
+        entry: {
+          value,
+          // Note: `Date.now()` returns the time of the last IO rather than the actual time.
+          //       See https://developers.cloudflare.com/workers/reference/security-model/
+          lastModified: Date.now(),
+        },
       });
     } catch (e) {
       error(`Failed to get from regional cache`, e);
@@ -143,11 +155,7 @@ class RegionalCache implements IncrementalCache {
     );
   }
 
-  protected async putToCache(
-    key: Request,
-    entryKey: string,
-    entry: IncrementalCacheEntry<boolean>
-  ): Promise<void> {
+  protected async putToCache({ requestKey, entryKey, entry }: PutToCacheInput): Promise<void> {
     const cache = await this.getCacheInstance();
 
     const age =
@@ -159,7 +167,7 @@ class RegionalCache implements IncrementalCache {
     // so that we can also revalidate page router based entry this way.
     const tags = getTagsFromCacheEntry(entry) ?? [entryKey];
     await cache.put(
-      key,
+      requestKey,
       new Response(JSON.stringify(entry), {
         headers: new Headers({
           "cache-control": `max-age=${age}`,
