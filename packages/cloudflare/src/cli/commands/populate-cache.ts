@@ -158,12 +158,13 @@ function populateD1TagCache(
 function populateStaticAssetsIncrementalCache(options: BuildOptions) {
   logger.info("\nPopulating Workers static assets...");
 
-  const assets = getCacheAssetPaths(options);
-  for (const { fsPath, destPath } of tqdm(assets)) {
-    const outputDestPath = path.join(options.outputDir, "assets", STATIC_ASSETS_CACHE_DIR, destPath);
-    cpSync(fsPath, outputDestPath, { recursive: true });
-  }
-  logger.info(`Successfully populated static assets cache with ${assets.length} assets`);
+  cpSync(
+    path.join(options.outputDir, "cache"),
+    path.join(options.outputDir, "assets", STATIC_ASSETS_CACHE_DIR),
+    { recursive: true }
+  );
+
+  logger.info(`Successfully populated static assets cache`);
 }
 
 export async function populateCache(

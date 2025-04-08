@@ -52,7 +52,9 @@ class StaticAssetsIncrementalCache implements IncrementalCache {
 
   protected getAssetUrl(key: string, isFetch?: boolean): string {
     const buildId = process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
-    const name = `${CACHE_DIR}/${buildId}/${key}.${isFetch ? "fetch" : "cache"}`.replace(/\/+/g, "/");
+    const name = (
+      isFetch ? `${CACHE_DIR}/${buildId}/__fetch/${key}` : `${CACHE_DIR}/${buildId}/${key}.cache`
+    ).replace(/\/+/g, "/");
     return `http://assets.local/${name}`;
   }
 }
