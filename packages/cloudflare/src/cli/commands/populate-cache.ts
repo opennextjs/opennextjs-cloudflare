@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync } from "node:fs";
+import { cpSync, existsSync } from "node:fs";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
