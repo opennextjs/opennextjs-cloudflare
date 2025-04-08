@@ -8,6 +8,12 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "kv_namespaces": [
+    {
+      "binding": "NEXT_INC_CACHE_KV",
+      "id": "<BINDING_ID>"
+    }
+  ],
   "vars": {
     "APP_VERSION": "1.2.345"
   }

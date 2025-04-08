@@ -13,7 +13,6 @@ import { bundleServer } from "./bundle-server.js";
 import { compileCacheAssetsManifestSqlFile } from "./open-next/compile-cache-assets-manifest.js";
 import { compileEnvFiles } from "./open-next/compile-env-files.js";
 import { compileDurableObjects } from "./open-next/compileDurableObjects.js";
-import { copyCacheAssets } from "./open-next/copyCacheAssets.js";
 import { createServerBundle } from "./open-next/createServerBundle.js";
 import { createWranglerConfigIfNotExistent } from "./utils/index.js";
 import { getVersion } from "./utils/version.js";
@@ -71,7 +70,6 @@ export async function build(
 
   if (config.dangerous?.disableIncrementalCache !== true) {
     const { useTagCache, metaFiles } = createCacheAssets(options);
-    copyCacheAssets(options);
 
     if (useTagCache) {
       compileCacheAssetsManifestSqlFile(options, metaFiles);

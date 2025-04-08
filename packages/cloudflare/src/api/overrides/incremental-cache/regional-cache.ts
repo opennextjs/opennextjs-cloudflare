@@ -1,8 +1,8 @@
-import { debug, error } from "@opennextjs/aws/adapters/logger.js";
+import { error } from "@opennextjs/aws/adapters/logger.js";
 import { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/types/overrides.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
-import { IncrementalCacheEntry } from "./internal.js";
+import { debugCache, FALLBACK_BUILD_ID, IncrementalCacheEntry } from "../internal.js";
 import { NAME as KV_CACHE_NAME } from "./kv-incremental-cache.js";
 
 const ONE_MINUTE_IN_SECONDS = 60;
@@ -57,7 +57,7 @@ class RegionalCache implements IncrementalCache {
       // Check for a cached entry as this will be faster than the store response.
       const cachedResponse = await cache.match(localCacheKey);
       if (cachedResponse) {
-        debug("Get - cached response");
+        debugCache("Get - cached response");
 
         // Re-fetch from the store and update the regional cache in the background
         if (this.opts.shouldLazilyUpdateOnCacheHit) {
@@ -129,7 +129,7 @@ class RegionalCache implements IncrementalCache {
   protected getCacheKey(key: string, isFetch?: boolean) {
     return new Request(
       new URL(
-        `${process.env.NEXT_BUILD_ID ?? "no-build-id"}/${key}.${isFetch ? "fetch" : "cache"}`,
+        `${process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID}/${key}.${isFetch ? "fetch" : "cache"}`,
         "http://cache.local"
       )
     );

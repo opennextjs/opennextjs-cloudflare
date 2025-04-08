@@ -1,11 +1,14 @@
-import { debug, error } from "@opennextjs/aws/adapters/logger.js";
+import { error } from "@opennextjs/aws/adapters/logger.js";
 import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 import type { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
 import { RecoverableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
+import { debugCache, FALLBACK_BUILD_ID } from "../internal.js";
 
 export const NAME = "d1-next-mode-tag-cache";
+
+export const BINDING_NAME = "NEXT_TAG_CACHE_D1";
 
 export class D1NextModeTagCache implements NextModeTagCache {
   readonly mode = "nextMode" as const;
@@ -45,10 +48,9 @@ export class D1NextModeTagCache implements NextModeTagCache {
   }
 
   private getConfig() {
-    const cfEnv = getCloudflareContext().env;
-    const db = cfEnv.NEXT_TAG_CACHE_D1;
+    const db = getCloudflareContext().env[BINDING_NAME];
 
-    if (!db) debug("No D1 database found");
+    if (!db) debugCache("No D1 database found");
 
     const isDisabled = !!(globalThis as unknown as { openNextConfig: OpenNextConfig }).openNextConfig
       .dangerous?.disableTagCache;
@@ -70,7 +72,7 @@ export class D1NextModeTagCache implements NextModeTagCache {
   }
 
   protected getBuildId() {
-    return process.env.NEXT_BUILD_ID ?? "no-build-id";
+    return process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
   }
 }
 
