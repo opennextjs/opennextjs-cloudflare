@@ -143,10 +143,18 @@ class RegionalCache implements IncrementalCache {
         ? ONE_MINUTE_IN_SECONDS
         : entry.value.revalidate || THIRTY_MINUTES_IN_SECONDS;
 
+    const tags = getTagsFromCacheEntry(entry);
     await cache.put(
       key,
       new Response(JSON.stringify(entry), {
-        headers: new Headers({ "cache-control": `max-age=${age}` }),
+        headers: new Headers({
+          "cache-control": `max-age=${age}`,
+          ...(tags.length > 0
+            ? {
+                "cache-tag": tags.join(","),
+              }
+            : {}),
+        }),
       })
     );
   }
@@ -174,4 +182,26 @@ class RegionalCache implements IncrementalCache {
  */
 export function withRegionalCache(cache: IncrementalCache, opts: Options) {
   return new RegionalCache(cache, opts);
+}
+
+/**
+ * Extract the list of tags from a cache entry.
+ */
+export function getTagsFromCacheEntry(entry: IncrementalCacheEntry<boolean>): string[] {
+  if ("tags" in entry.value && entry.value.tags) {
+    return entry.value.tags;
+  }
+
+  if (
+    "meta" in entry.value &&
+    entry.value.meta &&
+    "headers" in entry.value.meta &&
+    entry.value.meta.headers
+  ) {
+    const rawTags = entry.value.meta.headers["x-next-cache-tags"];
+    if (typeof rawTags === "string") {
+      return rawTags.split(",");
+    }
+  }
+  return [];
 }
