@@ -143,7 +143,11 @@ class RegionalCache implements IncrementalCache {
     );
   }
 
-  protected async putToCache(key: Request, entryKey: string, entry: IncrementalCacheEntry<boolean>): Promise<void> {
+  protected async putToCache(
+    key: Request,
+    entryKey: string,
+    entry: IncrementalCacheEntry<boolean>
+  ): Promise<void> {
     const cache = await this.getCacheInstance();
 
     const age =
