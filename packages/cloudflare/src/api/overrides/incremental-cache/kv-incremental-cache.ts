@@ -34,7 +34,9 @@ class KVIncrementalCache implements IncrementalCache {
         "json"
       );
 
-      if (!entry || "lastModified" in entry) {
+      if (!entry) return null;
+      
+       if ("lastModified" in entry) {
         return entry;
       }
 
