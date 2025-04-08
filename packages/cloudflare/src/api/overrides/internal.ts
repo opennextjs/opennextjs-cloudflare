@@ -4,3 +4,9 @@ export type IncrementalCacheEntry<IsFetch extends boolean> = {
   value: CacheValue<IsFetch>;
   lastModified: number;
 };
+
+export const debugCache = (name: string, ...args: unknown[]) => {
+  if (process.env.NEXT_PRIVATE_DEBUG_CACHE) {
+    console.log(`[${name}] `, ...args);
+  }
+};

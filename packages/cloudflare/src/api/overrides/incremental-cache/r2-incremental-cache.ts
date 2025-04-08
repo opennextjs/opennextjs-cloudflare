@@ -1,8 +1,9 @@
-import { debug, error } from "@opennextjs/aws/adapters/logger.js";
+import { error } from "@opennextjs/aws/adapters/logger.js";
 import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
+import { debugCache } from "../internal.js";
 
 export const NAME = "cf-r2-incremental-cache";
 
@@ -23,7 +24,7 @@ class R2IncrementalCache implements IncrementalCache {
     const r2 = getCloudflareContext().env.NEXT_INC_CACHE_R2_BUCKET;
     if (!r2) throw new IgnorableError("No R2 bucket");
 
-    debug(`Get ${key}`);
+    debugCache(`Get ${key}`);
 
     try {
       const r2Object = await r2.get(this.getR2Key(key, isFetch));
@@ -47,7 +48,7 @@ class R2IncrementalCache implements IncrementalCache {
     const r2 = getCloudflareContext().env.NEXT_INC_CACHE_R2_BUCKET;
     if (!r2) throw new IgnorableError("No R2 bucket");
 
-    debug(`Set ${key}`);
+    debugCache(`Set ${key}`);
 
     try {
       await r2.put(this.getR2Key(key, isFetch), JSON.stringify(value));
@@ -60,7 +61,7 @@ class R2IncrementalCache implements IncrementalCache {
     const r2 = getCloudflareContext().env.NEXT_INC_CACHE_R2_BUCKET;
     if (!r2) throw new IgnorableError("No R2 bucket");
 
-    debug(`Delete ${key}`);
+    debugCache(`Delete ${key}`);
 
     try {
       await r2.delete(this.getR2Key(key));

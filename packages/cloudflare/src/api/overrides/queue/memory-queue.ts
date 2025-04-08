@@ -1,8 +1,9 @@
-import { debug, error } from "@opennextjs/aws/adapters/logger.js";
+import { error } from "@opennextjs/aws/adapters/logger.js";
 import type { Queue, QueueMessage } from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "../../cloudflare-context";
+import { debugCache } from "../internal";
 
 export const DEFAULT_REVALIDATION_TIMEOUT_MS = 10_000;
 
@@ -48,7 +49,7 @@ export class MemoryQueue implements Queue {
       if (response.status !== 200 || response.headers.get("x-nextjs-cache") !== "REVALIDATED") {
         error(`Revalidation failed for ${url} with status ${response.status}`);
       }
-      debug(`Revalidation successful for ${url}`);
+      debugCache(`Revalidation successful for ${url}`);
     } catch (e) {
       error(e);
     } finally {

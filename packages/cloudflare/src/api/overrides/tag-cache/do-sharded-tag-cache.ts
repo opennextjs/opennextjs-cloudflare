@@ -1,10 +1,11 @@
-import { debug, error } from "@opennextjs/aws/adapters/logger.js";
+import { error } from "@opennextjs/aws/adapters/logger.js";
 import { generateShardId } from "@opennextjs/aws/core/routing/queue.js";
 import type { OpenNextConfig } from "@opennextjs/aws/types/open-next";
 import type { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "../../cloudflare-context";
+import { debugCache } from "../internal";
 
 export const DEFAULT_WRITE_RETRIES = 3;
 export const DEFAULT_NUM_SHARDS = 4;
@@ -196,7 +197,7 @@ class ShardedDOTagCache implements NextModeTagCache {
     const cfEnv = getCloudflareContext().env;
     const db = cfEnv.NEXT_TAG_CACHE_DO_SHARDED;
 
-    if (!db) debug("No Durable object found");
+    if (!db) debugCache("No Durable object found");
     const isDisabled = !!(globalThis as unknown as { openNextConfig: OpenNextConfig }).openNextConfig
       .dangerous?.disableTagCache;
 
@@ -334,7 +335,7 @@ class ShardedDOTagCache implements NextModeTagCache {
       const key = await this.getCacheKey(doId, tags);
       await cache.delete(key);
     } catch (e) {
-      debug("Error while deleting from regional cache", e);
+      debugCache("Error while deleting from regional cache", e);
     }
   }
 }

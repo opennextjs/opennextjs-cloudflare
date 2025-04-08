@@ -1,9 +1,9 @@
-import { debug, error } from "@opennextjs/aws/adapters/logger.js";
+import { error } from "@opennextjs/aws/adapters/logger.js";
 import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
-import { IncrementalCacheEntry } from "./internal.js";
+import { debugCache, IncrementalCacheEntry } from "../internal.js";
 
 export const NAME = "cf-kv-incremental-cache";
 
@@ -24,7 +24,7 @@ class KVIncrementalCache implements IncrementalCache {
     const kv = getCloudflareContext().env.NEXT_INC_CACHE_KV;
     if (!kv) throw new IgnorableError("No KV Namespace");
 
-    debug(`Get ${key}`);
+    debugCache(`Get ${key}`);
 
     try {
       const entry = await kv.get<IncrementalCacheEntry<IsFetch> | CacheValue<IsFetch>>(
@@ -56,7 +56,7 @@ class KVIncrementalCache implements IncrementalCache {
     const kv = getCloudflareContext().env.NEXT_INC_CACHE_KV;
     if (!kv) throw new IgnorableError("No KV Namespace");
 
-    debug(`Set ${key}`);
+    debugCache(`Set ${key}`);
 
     try {
       await kv.put(
@@ -79,7 +79,7 @@ class KVIncrementalCache implements IncrementalCache {
     const kv = getCloudflareContext().env.NEXT_INC_CACHE_KV;
     if (!kv) throw new IgnorableError("No KV Namespace");
 
-    debug(`Delete ${key}`);
+    debugCache(`Delete ${key}`);
 
     try {
       await kv.delete(this.getKVKey(key, /* isFetch= */ false));
