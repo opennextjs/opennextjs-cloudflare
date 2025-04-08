@@ -22,6 +22,7 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
       config.default?.override?.queue === "direct" ||
       typeof config.default?.override?.queue === "function",
     mwIsMiddlewareIntegrated: config.middleware === undefined,
+    hasCryptoExternal: config.edgeExternals?.includes("node:crypto"),
   };
 
   if (config.default?.override?.queue === "direct") {
@@ -42,6 +43,7 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
               queue: "dummy" | "direct" | function,
             },
           },
+          edgeExternals: ["node:crypto"],
         }\n\n`.replace(/^ {8}/gm, "")
     );
   }
