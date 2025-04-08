@@ -36,8 +36,8 @@ type Options = {
 };
 
 interface PutToCacheInput {
-  requestKey: Request;
-  entryKey: string;
+  key: string;
+  isFetch: boolean | undefined;
   entry: IncrementalCacheEntry<boolean>;
 }
 
@@ -80,7 +80,7 @@ class RegionalCache implements IncrementalCache {
               const { value, lastModified } = rawEntry ?? {};
 
               if (value && typeof lastModified === "number") {
-                await this.putToCache({ requestKey, entryKey: key, entry: { value, lastModified } });
+                await this.putToCache({ key, isFetch, entry: { value, lastModified } });
               }
             })
           );
@@ -94,9 +94,7 @@ class RegionalCache implements IncrementalCache {
       if (!value || typeof lastModified !== "number") return null;
 
       // Update the locale cache after retrieving from the store.
-      getCloudflareContext().ctx.waitUntil(
-        this.putToCache({ requestKey, entryKey: key, entry: { value, lastModified } })
-      );
+      getCloudflareContext().ctx.waitUntil(this.putToCache({ key, isFetch, entry: { value, lastModified } }));
 
       return { value, lastModified };
     } catch (e) {
@@ -114,8 +112,8 @@ class RegionalCache implements IncrementalCache {
       await this.store.set(key, value, isFetch);
 
       await this.putToCache({
-        requestKey: this.getCacheKey(key, isFetch),
-        entryKey: key,
+        key,
+        isFetch,
         entry: {
           value,
           // Note: `Date.now()` returns the time of the last IO rather than the actual time.
@@ -155,7 +153,8 @@ class RegionalCache implements IncrementalCache {
     );
   }
 
-  protected async putToCache({ requestKey, entryKey, entry }: PutToCacheInput): Promise<void> {
+  protected async putToCache({ key, isFetch, entry }: PutToCacheInput): Promise<void> {
+    const requestKey = this.getCacheKey(key, isFetch);
     const cache = await this.getCacheInstance();
 
     const age =
@@ -165,7 +164,7 @@ class RegionalCache implements IncrementalCache {
 
     // We default to the entry key if no tags are found.
     // so that we can also revalidate page router based entry this way.
-    const tags = getTagsFromCacheEntry(entry) ?? [entryKey];
+    const tags = getTagsFromCacheEntry(entry) ?? [key];
     await cache.put(
       requestKey,
       new Response(JSON.stringify(entry), {
@@ -212,7 +211,7 @@ export function withRegionalCache(cache: IncrementalCache, opts: Options) {
 /**
  * Extract the list of tags from a cache entry.
  */
-export function getTagsFromCacheEntry(entry: IncrementalCacheEntry<boolean>): string[] | undefined {
+function getTagsFromCacheEntry(entry: IncrementalCacheEntry<boolean>): string[] | undefined {
   if ("tags" in entry.value && entry.value.tags) {
     return entry.value.tags;
   }
