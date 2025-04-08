@@ -25,8 +25,8 @@ import {
   PREFIX_ENV_NAME as R2_CACHE_PREFIX_ENV_NAME,
 } from "../../api/overrides/incremental-cache/r2-incremental-cache.js";
 import {
-  NAME as D1_TAG_NAME,
   BINDING_NAME as D1_TAG_BINDING_NAME,
+  NAME as D1_TAG_NAME,
 } from "../../api/overrides/tag-cache/d1-next-tag-cache.js";
 import type { WranglerTarget } from "../utils/run-wrangler.js";
 import { runWrangler } from "../utils/run-wrangler.js";
