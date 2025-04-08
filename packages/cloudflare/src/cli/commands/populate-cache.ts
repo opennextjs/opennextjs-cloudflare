@@ -131,6 +131,13 @@ function populateD1TagCache(
 ) {
   logger.info("\nCreating D1 table if necessary...");
 
+  const config = unstable_readConfig({ env: populateCacheOptions.environment });
+
+  const binding = config.d1_databases.find(({ binding }) => binding === D1_TAG_BINDING_NAME);
+  if (!binding) {
+    throw new Error(`No D1 binding ${JSON.stringify(D1_TAG_BINDING_NAME)} found!`);
+  }
+
   runWrangler(
     options,
     [
