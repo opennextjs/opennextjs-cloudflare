@@ -66,7 +66,7 @@ class RegionalCache implements IncrementalCache {
               const { value, lastModified } = rawEntry ?? {};
 
               if (value && typeof lastModified === "number") {
-                await this.putToCache(localCacheKey, { value, lastModified });
+                await this.putToCache(localCacheKey, key, { value, lastModified });
               }
             })
           );
@@ -80,7 +80,7 @@ class RegionalCache implements IncrementalCache {
       if (!value || typeof lastModified !== "number") return null;
 
       // Update the locale cache after retrieving from the store.
-      getCloudflareContext().ctx.waitUntil(this.putToCache(localCacheKey, { value, lastModified }));
+      getCloudflareContext().ctx.waitUntil(this.putToCache(localCacheKey, key, { value, lastModified }));
 
       return { value, lastModified };
     } catch (e) {
@@ -97,7 +97,7 @@ class RegionalCache implements IncrementalCache {
     try {
       await this.store.set(key, value, isFetch);
 
-      await this.putToCache(this.getCacheKey(key, isFetch), {
+      await this.putToCache(this.getCacheKey(key, isFetch), key, {
         value,
         // Note: `Date.now()` returns the time of the last IO rather than the actual time.
         //       See https://developers.cloudflare.com/workers/reference/security-model/
@@ -135,7 +135,7 @@ class RegionalCache implements IncrementalCache {
     );
   }
 
-  protected async putToCache(key: Request, entry: IncrementalCacheEntry<boolean>): Promise<void> {
+  protected async putToCache(key: Request, entryKey: string, entry: IncrementalCacheEntry<boolean>): Promise<void> {
     const cache = await this.getCacheInstance();
 
     const age =
@@ -143,7 +143,9 @@ class RegionalCache implements IncrementalCache {
         ? ONE_MINUTE_IN_SECONDS
         : entry.value.revalidate || THIRTY_MINUTES_IN_SECONDS;
 
-    const tags = getTagsFromCacheEntry(entry);
+    // We default to the entry key if no tags are found.
+    // so that we can also revalidate page router based entry this way.
+    const tags = getTagsFromCacheEntry(entry) ?? [entryKey];
     await cache.put(
       key,
       new Response(JSON.stringify(entry), {
@@ -187,7 +189,7 @@ export function withRegionalCache(cache: IncrementalCache, opts: Options) {
 /**
  * Extract the list of tags from a cache entry.
  */
-export function getTagsFromCacheEntry(entry: IncrementalCacheEntry<boolean>): string[] {
+export function getTagsFromCacheEntry(entry: IncrementalCacheEntry<boolean>): string[] | undefined {
   if ("tags" in entry.value && entry.value.tags) {
     return entry.value.tags;
   }
@@ -203,5 +205,4 @@ export function getTagsFromCacheEntry(entry: IncrementalCacheEntry<boolean>): st
       return rawTags.split(",");
     }
   }
-  return [];
 }
