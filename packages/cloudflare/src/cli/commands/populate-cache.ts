@@ -161,8 +161,7 @@ function populateStaticAssetsIncrementalCache(options: BuildOptions) {
   const assets = getCacheAssetPaths(options);
   for (const { fsPath, destPath } of tqdm(assets)) {
     const outputDestPath = path.join(options.outputDir, "assets", STATIC_ASSETS_CACHE_DIR, destPath);
-    mkdirSync(path.dirname(outputDestPath), { recursive: true });
-    cpSync(fsPath, outputDestPath);
+    cpSync(fsPath, outputDestPath, { recursive: true });
   }
   logger.info(`Successfully populated static assets cache with ${assets.length} assets`);
 }
