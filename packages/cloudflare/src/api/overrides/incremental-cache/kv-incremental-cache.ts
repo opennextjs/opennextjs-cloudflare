@@ -3,9 +3,11 @@ import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
-import { debugCache, IncrementalCacheEntry } from "../internal.js";
+import { debugCache, FALLBACK_BUILD_ID, IncrementalCacheEntry } from "../internal.js";
 
 export const NAME = "cf-kv-incremental-cache";
+
+export const BINDING_NAME = "NEXT_INC_CACHE_KV";
 
 /**
  * Open Next cache based on Cloudflare KV.
@@ -21,7 +23,7 @@ class KVIncrementalCache implements IncrementalCache {
     key: string,
     isFetch?: IsFetch
   ): Promise<WithLastModified<CacheValue<IsFetch>> | null> {
-    const kv = getCloudflareContext().env.NEXT_INC_CACHE_KV;
+    const kv = getCloudflareContext().env[BINDING_NAME];
     if (!kv) throw new IgnorableError("No KV Namespace");
 
     debugCache(`Get ${key}`);
@@ -53,7 +55,7 @@ class KVIncrementalCache implements IncrementalCache {
     value: CacheValue<IsFetch>,
     isFetch?: IsFetch
   ): Promise<void> {
-    const kv = getCloudflareContext().env.NEXT_INC_CACHE_KV;
+    const kv = getCloudflareContext().env[BINDING_NAME];
     if (!kv) throw new IgnorableError("No KV Namespace");
 
     debugCache(`Set ${key}`);
@@ -76,7 +78,7 @@ class KVIncrementalCache implements IncrementalCache {
   }
 
   async delete(key: string): Promise<void> {
-    const kv = getCloudflareContext().env.NEXT_INC_CACHE_KV;
+    const kv = getCloudflareContext().env[BINDING_NAME];
     if (!kv) throw new IgnorableError("No KV Namespace");
 
     debugCache(`Delete ${key}`);
@@ -89,7 +91,7 @@ class KVIncrementalCache implements IncrementalCache {
   }
 
   protected getKVKey(key: string, isFetch?: boolean): string {
-    const buildId = process.env.NEXT_BUILD_ID ?? "no-build-id";
+    const buildId = process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
     return `${buildId}/${key}.${isFetch ? "fetch" : "cache"}`.replace(/\/+/g, "/");
   }
 }

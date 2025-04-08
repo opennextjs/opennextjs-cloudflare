@@ -3,9 +3,14 @@ import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
-import { debugCache } from "../internal.js";
+import { debugCache, FALLBACK_BUILD_ID } from "../internal.js";
 
 export const NAME = "cf-r2-incremental-cache";
+
+export const BINDING_NAME = "NEXT_INC_CACHE_R2_BUCKET";
+
+export const PREFIX_ENV_NAME = "NEXT_INC_CACHE_R2_PREFIX";
+export const DEFAULT_PREFIX = "incremental-cache";
 
 /**
  * An instance of the Incremental Cache that uses an R2 bucket (`NEXT_INC_CACHE_R2_BUCKET`) as it's
@@ -21,7 +26,7 @@ class R2IncrementalCache implements IncrementalCache {
     key: string,
     isFetch?: IsFetch
   ): Promise<WithLastModified<CacheValue<IsFetch>> | null> {
-    const r2 = getCloudflareContext().env.NEXT_INC_CACHE_R2_BUCKET;
+    const r2 = getCloudflareContext().env[BINDING_NAME];
     if (!r2) throw new IgnorableError("No R2 bucket");
 
     debugCache(`Get ${key}`);
@@ -45,7 +50,7 @@ class R2IncrementalCache implements IncrementalCache {
     value: CacheValue<IsFetch>,
     isFetch?: IsFetch
   ): Promise<void> {
-    const r2 = getCloudflareContext().env.NEXT_INC_CACHE_R2_BUCKET;
+    const r2 = getCloudflareContext().env[BINDING_NAME];
     if (!r2) throw new IgnorableError("No R2 bucket");
 
     debugCache(`Set ${key}`);
@@ -58,7 +63,7 @@ class R2IncrementalCache implements IncrementalCache {
   }
 
   async delete(key: string): Promise<void> {
-    const r2 = getCloudflareContext().env.NEXT_INC_CACHE_R2_BUCKET;
+    const r2 = getCloudflareContext().env[BINDING_NAME];
     if (!r2) throw new IgnorableError("No R2 bucket");
 
     debugCache(`Delete ${key}`);
@@ -71,9 +76,9 @@ class R2IncrementalCache implements IncrementalCache {
   }
 
   protected getR2Key(key: string, isFetch?: boolean): string {
-    const directory = getCloudflareContext().env.NEXT_INC_CACHE_R2_PREFIX ?? "incremental-cache";
+    const directory = getCloudflareContext().env[PREFIX_ENV_NAME] ?? DEFAULT_PREFIX;
 
-    return `${directory}/${process.env.NEXT_BUILD_ID ?? "no-build-id"}/${key}.${isFetch ? "fetch" : "cache"}`.replace(
+    return `${directory}/${process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID}/${key}.${isFetch ? "fetch" : "cache"}`.replace(
       /\/+/g,
       "/"
     );

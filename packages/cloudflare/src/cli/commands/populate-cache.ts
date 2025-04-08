@@ -14,9 +14,20 @@ import { globSync } from "glob";
 import { tqdm } from "ts-tqdm";
 import { unstable_readConfig } from "wrangler";
 
-import { NAME as KV_CACHE_NAME } from "../../api/overrides/incremental-cache/kv-incremental-cache.js";
-import { NAME as R2_CACHE_NAME } from "../../api/overrides/incremental-cache/r2-incremental-cache.js";
-import { NAME as D1_TAG_NAME } from "../../api/overrides/tag-cache/d1-next-tag-cache.js";
+import {
+  BINDING_NAME as KV_CACHE_BINDING_NAME,
+  NAME as KV_CACHE_NAME,
+} from "../../api/overrides/incremental-cache/kv-incremental-cache.js";
+import {
+  BINDING_NAME as R2_CACHE_BINDING_NAME,
+  DEFAULT_PREFIX as R2_CACHE_DEFAULT_PREFIX,
+  NAME as R2_CACHE_NAME,
+  PREFIX_ENV_NAME as R2_CACHE_PREFIX_ENV_NAME,
+} from "../../api/overrides/incremental-cache/r2-incremental-cache.js";
+import {
+  NAME as D1_TAG_NAME,
+  BINDING_NAME as D1_TAG_BINDING_NAME,
+} from "../../api/overrides/tag-cache/d1-next-tag-cache.js";
 import type { WranglerTarget } from "../utils/run-wrangler.js";
 import { runWrangler } from "../utils/run-wrangler.js";
 
@@ -66,18 +77,16 @@ export async function populateCache(
       case R2_CACHE_NAME: {
         const config = unstable_readConfig({ env: populateCacheOptions.environment });
 
-        const binding = (config.r2_buckets ?? []).find(
-          ({ binding }) => binding === "NEXT_INC_CACHE_R2_BUCKET"
-        );
+        const binding = (config.r2_buckets ?? []).find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
 
         if (!binding) {
-          throw new Error("No R2 binding 'NEXT_INC_CACHE_R2_BUCKET' found!");
+          throw new Error(`No R2 binding '${R2_CACHE_BINDING_NAME}' found!`);
         }
 
         const bucket = binding.bucket_name;
 
         if (!bucket) {
-          throw new Error("R2 binding 'NEXT_INC_CACHE_R2_BUCKET' should have a 'bucket_name'");
+          throw new Error(`R2 binding '${R2_CACHE_BINDING_NAME}' should have a 'bucket_name'`);
         }
 
         logger.info("\nPopulating R2 incremental cache...");
@@ -86,7 +95,7 @@ export async function populateCache(
         for (const { fsPath, destPath } of tqdm(assets)) {
           const fullDestPath = path.join(
             bucket,
-            process.env.NEXT_INC_CACHE_R2_PREFIX ?? "incremental-cache",
+            process.env[R2_CACHE_PREFIX_ENV_NAME] ?? R2_CACHE_DEFAULT_PREFIX,
             destPath
           );
 
@@ -111,7 +120,7 @@ export async function populateCache(
             [
               "kv key put",
               JSON.stringify(destPath),
-              "--binding NEXT_INC_CACHE_KV",
+              `--binding ${JSON.stringify(KV_CACHE_BINDING_NAME)}`,
               `--path ${JSON.stringify(fsPath)}`,
             ],
             { ...populateCacheOptions, logging: "error" }
@@ -135,7 +144,7 @@ export async function populateCache(
           options,
           [
             "d1 execute",
-            "NEXT_TAG_CACHE_D1",
+            JSON.stringify(D1_TAG_BINDING_NAME),
             `--command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);"`,
           ],
           { ...populateCacheOptions, logging: "error" }

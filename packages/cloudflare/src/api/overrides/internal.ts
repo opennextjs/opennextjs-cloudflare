@@ -10,3 +10,5 @@ export const debugCache = (name: string, ...args: unknown[]) => {
     console.log(`[${name}] `, ...args);
   }
 };
+
+export const FALLBACK_BUILD_ID = "no-build-id";
