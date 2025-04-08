@@ -63,21 +63,19 @@ function populateR2IncrementalCache(
   options: BuildOptions,
   populateCacheOptions: { target: WranglerTarget; environment?: string }
 ) {
+  logger.info("\nPopulating R2 incremental cache...");
+
   const config = unstable_readConfig({ env: populateCacheOptions.environment });
 
-  const binding = (config.r2_buckets ?? []).find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
-
+  const binding = config.r2_buckets.find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
   if (!binding) {
     throw new Error(`No R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} found!`);
   }
 
   const bucket = binding.bucket_name;
-
   if (!bucket) {
     throw new Error(`R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} should have a 'bucket_name'`);
   }
-
-  logger.info("\nPopulating R2 incremental cache...");
 
   const assets = getCacheAssetPaths(options);
   for (const { fsPath, destPath } of tqdm(assets)) {
@@ -103,6 +101,13 @@ function populateKVIncrementalCache(
   populateCacheOptions: { target: WranglerTarget; environment?: string }
 ) {
   logger.info("\nPopulating KV incremental cache...");
+
+  const config = unstable_readConfig({ env: populateCacheOptions.environment });
+
+  const binding = config.kv_namespaces.find(({ binding }) => binding === KV_CACHE_BINDING_NAME);
+  if (!binding) {
+    throw new Error(`No KV binding ${JSON.stringify(KV_CACHE_BINDING_NAME)} found!`);
+  }
 
   const assets = getCacheAssetPaths(options);
   for (const { fsPath, destPath } of tqdm(assets)) {
