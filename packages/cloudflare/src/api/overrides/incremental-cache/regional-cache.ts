@@ -66,10 +66,10 @@ class RegionalCache implements IncrementalCache {
   ): Promise<WithLastModified<CacheValue<IsFetch>> | null> {
     try {
       const cache = await this.getCacheInstance();
-      const requestKey = this.getCacheKey(key, isFetch);
+      const urlKey = this.getCacheKey(key, isFetch);
 
       // Check for a cached entry as this will be faster than the store response.
-      const cachedResponse = await cache.match(requestKey);
+      const cachedResponse = await cache.match(urlKey);
       if (cachedResponse) {
         debugCache("Get - cached response");
 
@@ -145,16 +145,17 @@ class RegionalCache implements IncrementalCache {
   }
 
   protected getCacheKey(key: string, isFetch?: boolean) {
-    return new Request(
-      new URL(
-        `${process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID}/${key}.${isFetch ? "fetch" : "cache"}`,
-        "http://cache.local"
-      )
+    return new URL(
+      `${process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID}/${key}.${isFetch ? "fetch" : "cache"}`.replace(
+        /\/+/g,
+        "/"
+      ),
+      "http://cache.local"
     );
   }
 
   protected async putToCache({ key, isFetch, entry }: PutToCacheInput): Promise<void> {
-    const requestKey = this.getCacheKey(key, isFetch);
+    const urlKey = this.getCacheKey(key, isFetch);
     const cache = await this.getCacheInstance();
 
     const age =
@@ -166,7 +167,7 @@ class RegionalCache implements IncrementalCache {
     // so that we can also revalidate page router based entry this way.
     const tags = getTagsFromCacheEntry(entry) ?? [key];
     await cache.put(
-      requestKey,
+      urlKey,
       new Response(JSON.stringify(entry), {
         headers: new Headers({
           "cache-control": `max-age=${age}`,
