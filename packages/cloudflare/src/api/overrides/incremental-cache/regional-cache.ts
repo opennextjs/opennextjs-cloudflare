@@ -66,7 +66,7 @@ class RegionalCache implements IncrementalCache {
   ): Promise<WithLastModified<CacheValue<IsFetch>> | null> {
     try {
       const cache = await this.getCacheInstance();
-      const urlKey = this.getCacheKey(key, isFetch);
+      const urlKey = this.getCacheUrlKey(key, isFetch);
 
       // Check for a cached entry as this will be faster than the store response.
       const cachedResponse = await cache.match(urlKey);
@@ -131,7 +131,7 @@ class RegionalCache implements IncrementalCache {
       await this.store.delete(key);
 
       const cache = await this.getCacheInstance();
-      await cache.delete(this.getCacheKey(key));
+      await cache.delete(this.getCacheUrlKey(key));
     } catch (e) {
       error("Failed to delete from regional cache", e);
     }
@@ -144,18 +144,15 @@ class RegionalCache implements IncrementalCache {
     return this.localCache;
   }
 
-  protected getCacheKey(key: string, isFetch?: boolean) {
-    return new URL(
-      `${process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID}/${key}.${isFetch ? "fetch" : "cache"}`.replace(
-        /\/+/g,
-        "/"
-      ),
-      "http://cache.local"
+  protected getCacheUrlKey(key: string, isFetch?: boolean) {
+    const buildId = process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
+    return (
+      "http://cache.local" + `/${buildId}/${key}`.replace(/\/+/g, "/") + `.${isFetch ? "fetch" : "cache"}`
     );
   }
 
   protected async putToCache({ key, isFetch, entry }: PutToCacheInput): Promise<void> {
-    const urlKey = this.getCacheKey(key, isFetch);
+    const urlKey = this.getCacheUrlKey(key, isFetch);
     const cache = await this.getCacheInstance();
 
     const age =
