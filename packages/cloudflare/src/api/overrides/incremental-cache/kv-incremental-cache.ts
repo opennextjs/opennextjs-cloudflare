@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { error } from "@opennextjs/aws/adapters/logger.js";
 import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
@@ -8,6 +10,17 @@ import { debugCache, FALLBACK_BUILD_ID, IncrementalCacheEntry } from "../interna
 export const NAME = "cf-kv-incremental-cache";
 
 export const BINDING_NAME = "NEXT_INC_CACHE_KV";
+
+export type KeyOptions = {
+  isFetch?: boolean;
+  buildId?: string;
+};
+
+export function computeCacheKey(key: string, options: KeyOptions) {
+  const { isFetch = false, buildId = FALLBACK_BUILD_ID } = options;
+  const hash = createHash("sha256").update(key).digest("hex");
+  return `${buildId}/${hash}.${isFetch ? "fetch" : "cache"}`.replace(/\/+/g, "/");
+}
 
 /**
  * Open Next cache based on Cloudflare KV.
@@ -93,8 +106,10 @@ class KVIncrementalCache implements IncrementalCache {
   }
 
   protected getKVKey(key: string, isFetch?: boolean): string {
-    const buildId = process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
-    return `${buildId}/${key}.${isFetch ? "fetch" : "cache"}`.replace(/\/+/g, "/");
+    return computeCacheKey(key, {
+      buildId: process.env.NEXT_BUILD_ID,
+      isFetch,
+    });
   }
 }
 

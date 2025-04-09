@@ -45,6 +45,8 @@ export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNe
         queue: resolveQueue(queue),
       },
     },
+    // node:crypto is used to compute cache keys
+    edgeExternals: ["node:crypto"],
   };
 }
 

@@ -16,11 +16,12 @@ import { unstable_readConfig } from "wrangler";
 
 import {
   BINDING_NAME as KV_CACHE_BINDING_NAME,
+  computeCacheKey as computeKVCacheKey,
   NAME as KV_CACHE_NAME,
 } from "../../api/overrides/incremental-cache/kv-incremental-cache.js";
 import {
   BINDING_NAME as R2_CACHE_BINDING_NAME,
-  DEFAULT_PREFIX as R2_CACHE_DEFAULT_PREFIX,
+  computeCacheKey as computeR2CacheKey,
   NAME as R2_CACHE_NAME,
   PREFIX_ENV_NAME as R2_CACHE_PREFIX_ENV_NAME,
 } from "../../api/overrides/incremental-cache/r2-incremental-cache.js";
@@ -45,22 +46,50 @@ async function resolveCacheName(
   return typeof value === "function" ? (await value()).name : value;
 }
 
-function getCacheAssetPaths(opts: BuildOptions) {
-  return globSync(path.join(opts.outputDir, "cache/**/*"), {
+export type CacheAsset = { isFetch: boolean; fullPath: string; key: string; buildId: string };
+
+export function getCacheAssets(opts: BuildOptions): CacheAsset[] {
+  const allFiles = globSync(path.join(opts.outputDir, "cache/**/*"), {
     withFileTypes: true,
     windowsPathsNoEscape: true,
-  })
-    .filter((f) => f.isFile())
-    .map((f) => {
-      const relativePath = path.relative(path.join(opts.outputDir, "cache"), f.fullpathPosix());
+  }).filter((f) => f.isFile());
 
-      return {
-        fsPath: f.fullpathPosix(),
-        destPath: relativePath.startsWith("__fetch")
-          ? `${relativePath.replace("__fetch/", "")}.fetch`
-          : relativePath,
-      };
-    });
+  const assets: CacheAsset[] = [];
+
+  for (const file of allFiles) {
+    const fullPath = file.fullpathPosix();
+    const relativePath = path.relative(path.join(opts.outputDir, "cache"), fullPath);
+
+    if (relativePath.startsWith("__fetch")) {
+      const [__fetch, buildId, ...keyParts] = relativePath.split("/");
+
+      if (__fetch !== "__fetch" || buildId === undefined || keyParts.length === 0) {
+        throw new Error(`Invalid path for a Cache Asset file: ${relativePath}`);
+      }
+
+      assets.push({
+        isFetch: true,
+        fullPath,
+        key: `/${keyParts.join("/")}`,
+        buildId,
+      });
+    } else {
+      const [buildId, ...keyParts] = relativePath.slice(0, -".cache".length).split("/");
+
+      if (!relativePath.endsWith(".cache") || buildId === undefined || keyParts.length === 0) {
+        throw new Error(`Invalid path for a Cache Asset file: ${relativePath}`);
+      }
+
+      assets.push({
+        isFetch: false,
+        fullPath,
+        key: `/${keyParts.join("/")}`,
+        buildId,
+      });
+    }
+  }
+
+  return assets;
 }
 
 function populateR2IncrementalCache(
@@ -81,17 +110,18 @@ function populateR2IncrementalCache(
     throw new Error(`R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} should have a 'bucket_name'`);
   }
 
-  const assets = getCacheAssetPaths(options);
-  for (const { fsPath, destPath } of tqdm(assets)) {
-    const fullDestPath = path.join(
-      bucket,
-      process.env[R2_CACHE_PREFIX_ENV_NAME] ?? R2_CACHE_DEFAULT_PREFIX,
-      destPath
-    );
+  const assets = getCacheAssets(options);
+
+  for (const { fullPath, key, buildId, isFetch } of tqdm(assets)) {
+    const cacheKey = computeR2CacheKey(key, {
+      directory: process.env[R2_CACHE_PREFIX_ENV_NAME],
+      buildId,
+      isFetch,
+    });
 
     runWrangler(
       options,
-      ["r2 object put", JSON.stringify(fullDestPath), `--file ${JSON.stringify(fsPath)}`],
+      ["r2 object put", JSON.stringify(path.join(bucket, cacheKey)), `--file ${JSON.stringify(fullPath)}`],
       // NOTE: R2 does not support the environment flag and results in the following error:
       // Incorrect type for the 'cacheExpiry' field on 'HttpMetadata': the provided value is not of type 'date'.
       { target: populateCacheOptions.target, excludeRemoteFlag: true, logging: "error" }
@@ -113,15 +143,21 @@ function populateKVIncrementalCache(
     throw new Error(`No KV binding ${JSON.stringify(KV_CACHE_BINDING_NAME)} found!`);
   }
 
-  const assets = getCacheAssetPaths(options);
-  for (const { fsPath, destPath } of tqdm(assets)) {
+  const assets = getCacheAssets(options);
+
+  for (const { fullPath, key, buildId, isFetch } of tqdm(assets)) {
+    const cacheKey = computeKVCacheKey(key, {
+      buildId,
+      isFetch,
+    });
+
     runWrangler(
       options,
       [
         "kv key put",
-        JSON.stringify(destPath),
+        JSON.stringify(cacheKey),
         `--binding ${JSON.stringify(KV_CACHE_BINDING_NAME)}`,
-        `--path ${JSON.stringify(fsPath)}`,
+        `--path ${JSON.stringify(fullPath)}`,
       ],
       { ...populateCacheOptions, logging: "error" }
     );
