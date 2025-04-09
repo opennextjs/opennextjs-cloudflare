@@ -22,7 +22,6 @@ import {
 import {
   BINDING_NAME as R2_CACHE_BINDING_NAME,
   computeCacheKey as computeR2CacheKey,
-  DEFAULT_PREFIX as R2_CACHE_DEFAULT_PREFIX,
   NAME as R2_CACHE_NAME,
   PREFIX_ENV_NAME as R2_CACHE_PREFIX_ENV_NAME,
 } from "../../api/overrides/incremental-cache/r2-incremental-cache.js";
@@ -115,7 +114,7 @@ function populateR2IncrementalCache(
 
   for (const { fullPath, key, buildId, isFetch } of tqdm(assets)) {
     const cacheKey = computeR2CacheKey(key, {
-      directory: process.env[R2_CACHE_PREFIX_ENV_NAME] ?? R2_CACHE_DEFAULT_PREFIX,
+      directory: process.env[R2_CACHE_PREFIX_ENV_NAME],
       buildId,
       isFetch,
     });

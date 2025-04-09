@@ -23,7 +23,7 @@ export type KeyOptions = {
 export function computeCacheKey(key: string, options: KeyOptions) {
   const { isFetch, directory, buildId } = options;
   const hash = createHash("sha256");
-  return `${directory}/${buildId}/${hash.update(key).digest("hex")}.${isFetch ? "fetch" : "cache"}`.replace(
+  return `${directory ?? DEFAULT_PREFIX}/${buildId ?? FALLBACK_BUILD_ID}/${hash.update(key).digest("hex")}.${isFetch ? "fetch" : "cache"}`.replace(
     /\/+/g,
     "/"
   );
@@ -94,8 +94,8 @@ class R2IncrementalCache implements IncrementalCache {
 
   protected getR2Key(key: string, isFetch?: boolean): string {
     return computeCacheKey(key, {
-      directory: getCloudflareContext().env[PREFIX_ENV_NAME] ?? DEFAULT_PREFIX,
-      buildId: process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID,
+      directory: getCloudflareContext().env[PREFIX_ENV_NAME],
+      buildId: process.env.NEXT_BUILD_ID,
       isFetch: Boolean(isFetch),
     });
   }

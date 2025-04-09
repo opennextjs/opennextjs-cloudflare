@@ -19,7 +19,10 @@ export type KeyOptions = {
 export function computeCacheKey(key: string, options: KeyOptions) {
   const { isFetch, buildId } = options;
   const hash = createHash("sha256");
-  return `${buildId}/${hash.update(key).digest("hex")}.${isFetch ? "fetch" : "cache"}`.replace(/\/+/g, "/");
+  return `${buildId ?? FALLBACK_BUILD_ID}/${hash.update(key).digest("hex")}.${isFetch ? "fetch" : "cache"}`.replace(
+    /\/+/g,
+    "/"
+  );
 }
 
 /**
@@ -107,7 +110,7 @@ class KVIncrementalCache implements IncrementalCache {
 
   protected getKVKey(key: string, isFetch?: boolean): string {
     return computeCacheKey(key, {
-      buildId: process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID,
+      buildId: process.env.NEXT_BUILD_ID,
       isFetch: Boolean(isFetch),
     });
   }
