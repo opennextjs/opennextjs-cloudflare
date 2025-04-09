@@ -15,15 +15,15 @@ export const PREFIX_ENV_NAME = "NEXT_INC_CACHE_R2_PREFIX";
 export const DEFAULT_PREFIX = "incremental-cache";
 
 export type KeyOptions = {
-  isFetch: boolean;
+  isFetch?: boolean;
   directory?: string;
   buildId?: string;
 };
 
 export function computeCacheKey(key: string, options: KeyOptions) {
-  const { isFetch, directory, buildId } = options;
+  const { isFetch = false, directory = DEFAULT_PREFIX, buildId = FALLBACK_BUILD_ID } = options;
   const hash = createHash("sha256");
-  return `${directory ?? DEFAULT_PREFIX}/${buildId ?? FALLBACK_BUILD_ID}/${hash.update(key).digest("hex")}.${isFetch ? "fetch" : "cache"}`.replace(
+  return `${directory}/${buildId}/${hash.update(key).digest("hex")}.${isFetch ? "fetch" : "cache"}`.replace(
     /\/+/g,
     "/"
   );
@@ -96,7 +96,7 @@ class R2IncrementalCache implements IncrementalCache {
     return computeCacheKey(key, {
       directory: getCloudflareContext().env[PREFIX_ENV_NAME],
       buildId: process.env.NEXT_BUILD_ID,
-      isFetch: Boolean(isFetch),
+      isFetch,
     });
   }
 }

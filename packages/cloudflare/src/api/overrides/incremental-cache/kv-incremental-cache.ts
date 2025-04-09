@@ -12,17 +12,14 @@ export const NAME = "cf-kv-incremental-cache";
 export const BINDING_NAME = "NEXT_INC_CACHE_KV";
 
 export type KeyOptions = {
-  isFetch: boolean;
+  isFetch?: boolean;
   buildId?: string;
 };
 
 export function computeCacheKey(key: string, options: KeyOptions) {
-  const { isFetch, buildId } = options;
+  const { isFetch = false, buildId = FALLBACK_BUILD_ID } = options;
   const hash = createHash("sha256");
-  return `${buildId ?? FALLBACK_BUILD_ID}/${hash.update(key).digest("hex")}.${isFetch ? "fetch" : "cache"}`.replace(
-    /\/+/g,
-    "/"
-  );
+  return `${buildId}/${hash.update(key).digest("hex")}.${isFetch ? "fetch" : "cache"}`.replace(/\/+/g, "/");
 }
 
 /**
@@ -111,7 +108,7 @@ class KVIncrementalCache implements IncrementalCache {
   protected getKVKey(key: string, isFetch?: boolean): string {
     return computeCacheKey(key, {
       buildId: process.env.NEXT_BUILD_ID,
-      isFetch: Boolean(isFetch),
+      isFetch,
     });
   }
 }
