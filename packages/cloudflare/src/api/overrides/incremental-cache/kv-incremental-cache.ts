@@ -18,8 +18,8 @@ export type KeyOptions = {
 
 export function computeCacheKey(key: string, options: KeyOptions) {
   const { isFetch = false, buildId = FALLBACK_BUILD_ID } = options;
-  const hash = createHash("sha256");
-  return `${buildId}/${hash.update(key).digest("hex")}.${isFetch ? "fetch" : "cache"}`.replace(/\/+/g, "/");
+  const hash = createHash("sha256").update(key).digest("hex");
+  return `${buildId}/${hash}.${isFetch ? "fetch" : "cache"}`.replace(/\/+/g, "/");
 }
 
 /**
