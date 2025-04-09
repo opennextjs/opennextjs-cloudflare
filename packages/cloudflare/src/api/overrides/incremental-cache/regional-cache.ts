@@ -19,6 +19,14 @@ type Options = {
   mode: "short-lived" | "long-lived";
 
   /**
+   * The default TTL of long-lived cache entries.
+   * When no revalidate is provided, the default age will be used.
+   *
+   * @default `THIRTY_MINUTES_IN_SECONDS`
+   */
+  defaultLongLivedTtlSec?: number;
+
+  /**
    * Whether the regional cache entry should be updated in the background or not when it experiences
    * a cache hit.
    *
@@ -26,6 +34,12 @@ type Options = {
    */
   shouldLazilyUpdateOnCacheHit?: boolean;
 };
+
+interface PutToCacheInput {
+  key: string;
+  isFetch: boolean | undefined;
+  entry: IncrementalCacheEntry<boolean>;
+}
 
 /**
  * Wrapper adding a regional cache on an `IncrementalCache` implementation
@@ -52,10 +66,10 @@ class RegionalCache implements IncrementalCache {
   ): Promise<WithLastModified<CacheValue<IsFetch>> | null> {
     try {
       const cache = await this.getCacheInstance();
-      const localCacheKey = this.getCacheKey(key, isFetch);
+      const urlKey = this.getCacheUrlKey(key, isFetch);
 
       // Check for a cached entry as this will be faster than the store response.
-      const cachedResponse = await cache.match(localCacheKey);
+      const cachedResponse = await cache.match(urlKey);
       if (cachedResponse) {
         debugCache("Get - cached response");
 
@@ -66,7 +80,7 @@ class RegionalCache implements IncrementalCache {
               const { value, lastModified } = rawEntry ?? {};
 
               if (value && typeof lastModified === "number") {
-                await this.putToCache(localCacheKey, { value, lastModified });
+                await this.putToCache({ key, isFetch, entry: { value, lastModified } });
               }
             })
           );
@@ -80,7 +94,7 @@ class RegionalCache implements IncrementalCache {
       if (!value || typeof lastModified !== "number") return null;
 
       // Update the locale cache after retrieving from the store.
-      getCloudflareContext().ctx.waitUntil(this.putToCache(localCacheKey, { value, lastModified }));
+      getCloudflareContext().ctx.waitUntil(this.putToCache({ key, isFetch, entry: { value, lastModified } }));
 
       return { value, lastModified };
     } catch (e) {
@@ -97,11 +111,15 @@ class RegionalCache implements IncrementalCache {
     try {
       await this.store.set(key, value, isFetch);
 
-      await this.putToCache(this.getCacheKey(key, isFetch), {
-        value,
-        // Note: `Date.now()` returns the time of the last IO rather than the actual time.
-        //       See https://developers.cloudflare.com/workers/reference/security-model/
-        lastModified: Date.now(),
+      await this.putToCache({
+        key,
+        isFetch,
+        entry: {
+          value,
+          // Note: `Date.now()` returns the time of the last IO rather than the actual time.
+          //       See https://developers.cloudflare.com/workers/reference/security-model/
+          lastModified: Date.now(),
+        },
       });
     } catch (e) {
       error(`Failed to get from regional cache`, e);
@@ -113,7 +131,7 @@ class RegionalCache implements IncrementalCache {
       await this.store.delete(key);
 
       const cache = await this.getCacheInstance();
-      await cache.delete(this.getCacheKey(key));
+      await cache.delete(this.getCacheUrlKey(key));
     } catch (e) {
       error("Failed to delete from regional cache", e);
     }
@@ -126,27 +144,36 @@ class RegionalCache implements IncrementalCache {
     return this.localCache;
   }
 
-  protected getCacheKey(key: string, isFetch?: boolean) {
-    return new Request(
-      new URL(
-        `${process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID}/${key}.${isFetch ? "fetch" : "cache"}`,
-        "http://cache.local"
-      )
+  protected getCacheUrlKey(key: string, isFetch?: boolean) {
+    const buildId = process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
+    return (
+      "http://cache.local" + `/${buildId}/${key}`.replace(/\/+/g, "/") + `.${isFetch ? "fetch" : "cache"}`
     );
   }
 
-  protected async putToCache(key: Request, entry: IncrementalCacheEntry<boolean>): Promise<void> {
+  protected async putToCache({ key, isFetch, entry }: PutToCacheInput): Promise<void> {
+    const urlKey = this.getCacheUrlKey(key, isFetch);
     const cache = await this.getCacheInstance();
 
     const age =
       this.opts.mode === "short-lived"
         ? ONE_MINUTE_IN_SECONDS
-        : entry.value.revalidate || THIRTY_MINUTES_IN_SECONDS;
+        : entry.value.revalidate || this.opts.defaultLongLivedTtlSec || THIRTY_MINUTES_IN_SECONDS;
 
+    // We default to the entry key if no tags are found.
+    // so that we can also revalidate page router based entry this way.
+    const tags = getTagsFromCacheEntry(entry) ?? [key];
     await cache.put(
-      key,
+      urlKey,
       new Response(JSON.stringify(entry), {
-        headers: new Headers({ "cache-control": `max-age=${age}` }),
+        headers: new Headers({
+          "cache-control": `max-age=${age}`,
+          ...(tags.length > 0
+            ? {
+                "cache-tag": tags.join(","),
+              }
+            : {}),
+        }),
       })
     );
   }
@@ -169,9 +196,33 @@ class RegionalCache implements IncrementalCache {
  *                                  or an ISR/SSG entry for up to 30 minutes.
  * @param opts.shouldLazilyUpdateOnCacheHit Whether the regional cache entry should be updated in
  *                                          the background or not when it experiences a cache hit.
+ * @param opts.defaultLongLivedTtlSec The default age to use for long-lived cache entries.
+ *                                  When no revalidate is provided, the default age will be used.
+ *                                  @default `THIRTY_MINUTES_IN_SECONDS`
  *
  * @default `false` for the `short-lived` mode, and `true` for the `long-lived` mode.
  */
 export function withRegionalCache(cache: IncrementalCache, opts: Options) {
   return new RegionalCache(cache, opts);
+}
+
+/**
+ * Extract the list of tags from a cache entry.
+ */
+function getTagsFromCacheEntry(entry: IncrementalCacheEntry<boolean>): string[] | undefined {
+  if ("tags" in entry.value && entry.value.tags) {
+    return entry.value.tags;
+  }
+
+  if (
+    "meta" in entry.value &&
+    entry.value.meta &&
+    "headers" in entry.value.meta &&
+    entry.value.meta.headers
+  ) {
+    const rawTags = entry.value.meta.headers["x-next-cache-tags"];
+    if (typeof rawTags === "string") {
+      return rawTags.split(",");
+    }
+  }
 }
