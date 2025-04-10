@@ -1,5 +1,17 @@
 # @opennextjs/cloudflare
 
+## 1.0.0
+
+### Patch Changes
+
+- [#563](https://github.com/opennextjs/opennextjs-cloudflare/pull/563) [`2ce6454`](https://github.com/opennextjs/opennextjs-cloudflare/commit/2ce64546165b5bbcc1718649bf91b599aa01594c) Thanks [@vicb](https://github.com/vicb)! - Extract the worker init code to a separate file
+
+- [#551](https://github.com/opennextjs/opennextjs-cloudflare/pull/551) [`8841641`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8841641fc740717489e59004de2b0e509ba16eca) Thanks [@SamyPesse](https://github.com/SamyPesse)! - Set `Cache-Tag` on the entries created by the regional cache, to be purged using the Cloudflare API or dashboard.
+
+- [#559](https://github.com/opennextjs/opennextjs-cloudflare/pull/559) [`b002d80`](https://github.com/opennextjs/opennextjs-cloudflare/commit/b002d801d6280b3596ab29d4ceac08a757ea4098) Thanks [@james-elicx](https://github.com/james-elicx)! - feat: `upload` command for worker versions'
+
+- [#564](https://github.com/opennextjs/opennextjs-cloudflare/pull/564) [`6343fb4`](https://github.com/opennextjs/opennextjs-cloudflare/commit/6343fb49c62cd939d5220ce9c63425a5239eb2aa) Thanks [@conico974](https://github.com/conico974)! - bump @opennextjs/aws to 3.5.6
+
 ## 1.0.0-beta.2
 
 ### Changes
