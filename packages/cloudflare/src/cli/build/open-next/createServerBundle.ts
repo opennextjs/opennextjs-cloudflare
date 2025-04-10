@@ -15,9 +15,9 @@ import type { CodePatcher } from "@opennextjs/aws/build/patch/codePatcher.js";
 import { applyCodePatches } from "@opennextjs/aws/build/patch/codePatcher.js";
 import {
   patchFetchCacheForISR,
+  patchFetchCacheSetMissingWaitUntil,
   patchUnstableCacheForISR,
-} from "@opennextjs/aws/build/patch/patchFetchCacheISR.js";
-import { patchFetchCacheSetMissingWaitUntil } from "@opennextjs/aws/build/patch/patchFetchCacheWaitUntil.js";
+} from "@opennextjs/aws/build/patch/patches/index.js";
 import logger from "@opennextjs/aws/logger.js";
 import { minifyAll } from "@opennextjs/aws/minimize-js.js";
 import type { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
