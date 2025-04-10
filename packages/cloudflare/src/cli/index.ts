@@ -13,6 +13,7 @@ import { createOpenNextConfigIfNotExistent, ensureCloudflareConfig } from "./bui
 import { deploy } from "./commands/deploy.js";
 import { populateCache } from "./commands/populate-cache.js";
 import { preview } from "./commands/preview.js";
+import { upload } from "./commands/upload.js";
 
 const nextAppDir = process.cwd();
 
@@ -43,6 +44,8 @@ async function runCommand(args: Arguments) {
       return preview(options, config, args);
     case "deploy":
       return deploy(options, config, args);
+    case "upload":
+      return upload(options, config, args);
     case "populateCache":
       return populateCache(options, config, args);
   }

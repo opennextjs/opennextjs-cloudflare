@@ -13,7 +13,7 @@ export type Arguments = (
       minify: boolean;
     }
   | {
-      command: "preview" | "deploy";
+      command: "preview" | "deploy" | "upload";
       passthroughArgs: string[];
     }
   | {
@@ -53,6 +53,7 @@ export function getArgs(): Arguments {
       };
     case "preview":
     case "deploy":
+    case "upload":
       return {
         command: positionals[0],
         outputDir,
@@ -69,7 +70,9 @@ export function getArgs(): Arguments {
         environment: getWranglerEnvironmentFlag(passthroughArgs),
       };
     default:
-      throw new Error("Error: invalid command, expected 'build' | 'preview' | 'deploy' | 'populateCache'");
+      throw new Error(
+        "Error: invalid command, expected 'build' | 'preview' | 'deploy' | 'upload' | 'populateCache'"
+      );
   }
 }
 
