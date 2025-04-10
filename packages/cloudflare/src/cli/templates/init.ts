@@ -59,9 +59,6 @@ function initRuntime() {
   // @ts-expect-error Node type does not match workerd
   Object.assign(process.versions, { node: "22.14.0", ...process.versions });
 
-  // Used by unbundled js files (which don't inherit the __dirname present in the define field)
-  // so we also need to set it on the global scope
-  // Note: this was hit in the next/dist/compiled/@opentelemetry/api module
   globalThis.__dirname ??= "";
   globalThis.__filename ??= "";
 
