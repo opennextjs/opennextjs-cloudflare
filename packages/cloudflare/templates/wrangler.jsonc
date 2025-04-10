@@ -8,12 +8,11 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
-  "kv_namespaces": [
-    // Create a KV binding with the binding name "NEXT_INC_CACHE_KV"
-    // to enable the KV based caching:
+  "r2_buckets": [
+    // Create a binding to use R2 incremental cache
     // {
-    //   "binding": "NEXT_INC_CACHE_KV",
-    //   "id": "<BINDING_ID>"
-    // }
+    //   "binding": "NEXT_INC_CACHE_R2_BUCKET",
+    //   "bucket_name": "<BUCKET_NAME>",
+    // },
   ]
 }
