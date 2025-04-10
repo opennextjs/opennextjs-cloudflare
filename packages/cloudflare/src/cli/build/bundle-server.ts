@@ -144,46 +144,6 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       "process.env.__NEXT_EXPERIMENTAL_REACT": `${needsExperimentalReact(nextConfig)}`,
     },
     platform: "node",
-    banner: {
-      js: `
-// Used by unbundled js files (which don't inherit the __dirname present in the define field)
-// so we also need to set it on the global scope
-// Note: this was hit in the next/dist/compiled/@opentelemetry/api module
-globalThis.__dirname ??= "";
-globalThis.__filename ??= "";
-
-// Do not crash on cache not supported
-// https://github.com/cloudflare/workerd/pull/2434
-// compatibility flag "cache_option_enabled" -> does not support "force-cache"
-const curFetch = globalThis.fetch;
-globalThis.fetch = (input, init) => {
-  if (init) {
-    delete init.cache;
-  }
-  return curFetch(input, init);
-};
-import __cf_stream from 'node:stream';
-fetch = globalThis.fetch;
-const CustomRequest = class extends globalThis.Request {
-  constructor(input, init) {
-    if (init) {
-      delete init.cache;
-      // https://github.com/cloudflare/workerd/issues/2746
-      // https://github.com/cloudflare/workerd/issues/3245
-      Object.defineProperty(init, "body", {
-        value: init.body instanceof __cf_stream.Readable ? ReadableStream.from(init.body) : init.body
-      });
-    }
-    super(input, init);
-  }
-};
-globalThis.Request = CustomRequest;
-Request = globalThis.Request;
-// Makes the edge converter returns either a Response or a Request.
-globalThis.__dangerous_ON_edge_converter_returns_request = true;
-globalThis.__BUILD_TIMESTAMP_MS__ = ${Date.now()};
-`,
-    },
   });
 
   fs.writeFileSync(openNextServerBundle + ".meta.json", JSON.stringify(result.metafile, null, 2));
