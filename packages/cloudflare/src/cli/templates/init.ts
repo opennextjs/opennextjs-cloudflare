@@ -94,8 +94,6 @@ function initRuntime() {
 
   Object.assign(globalThis, {
     Request: CustomRequest,
-    // This is only needed for an external middleware bundle
-    __dangerous_ON_edge_converter_returns_request: true,
     //@ts-expect-error Inline at build time by ESBuild
     __BUILD_TIMESTAMP_MS__: __BUILD_TIMESTAMP_MS__,
   });
