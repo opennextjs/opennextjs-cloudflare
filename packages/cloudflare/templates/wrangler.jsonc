@@ -9,10 +9,13 @@
     "binding": "ASSETS"
   },
   "r2_buckets": [
-    // Create a binding to use R2 incremental cache
-    // {
-    //   "binding": "NEXT_INC_CACHE_R2_BUCKET",
-    //   "bucket_name": "<BUCKET_NAME>",
-    // },
+    // Use R2 incremental cache
+    // See https://opennext.js.org/cloudflare/caching
+    {
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      // Create a bucket before deploying
+      // See https://developers.cloudflare.com/workers/wrangler/commands/#r2-bucket-create
+      "bucket_name": "<BUCKET_NAME>"
+    }
   ]
 }
