@@ -12,6 +12,7 @@ import type { ProjectOptions } from "../project-options.js";
 import { bundleServer } from "./bundle-server.js";
 import { compileCacheAssetsManifestSqlFile } from "./open-next/compile-cache-assets-manifest.js";
 import { compileEnvFiles } from "./open-next/compile-env-files.js";
+import { compileInit } from "./open-next/compile-init.js";
 import { compileDurableObjects } from "./open-next/compileDurableObjects.js";
 import { createServerBundle } from "./open-next/createServerBundle.js";
 import { createWranglerConfigIfNotExistent } from "./utils/index.js";
@@ -62,6 +63,9 @@ export async function build(
 
   // Compile .env files
   compileEnvFiles(options);
+
+  // Compile workerd init
+  compileInit(options);
 
   // Compile middleware
   await createMiddleware(options, { forceOnlyBuildOnce: true });
