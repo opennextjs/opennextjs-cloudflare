@@ -1,5 +1,5 @@
 //@ts-expect-error: Will be resolved by wrangler build
-import { runInCloudflareContext } from "./cloudflare/init.js";
+import { runWithCloudflareRequestContext } from "./cloudflare/init.js";
 
 //@ts-expect-error: Will be resolved by wrangler build
 export { DOQueueHandler } from "./.build/durable-objects/queue.js";
@@ -8,7 +8,7 @@ export { DOShardedTagCache } from "./.build/durable-objects/sharded-tag-cache.js
 
 export default {
   async fetch(request, env, ctx) {
-    return runInCloudflareContext(request, env, ctx, async () => {
+    return runWithCloudflareRequestContext(request, env, ctx, async () => {
       const url = new URL(request.url);
 
       // Serve images in development.

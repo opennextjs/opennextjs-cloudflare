@@ -23,7 +23,7 @@ Object.defineProperty(globalThis, Symbol.for("__cloudflare-context__"), {
 /**
  * Executes the handler with the Cloudflare context.
  */
-export async function runInCloudflareContext(
+export async function runWithCloudflareRequestContext(
   request: Request,
   env: CloudflareEnv,
   ctx: ExecutionContext,

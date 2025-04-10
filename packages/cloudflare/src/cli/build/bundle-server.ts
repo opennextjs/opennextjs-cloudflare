@@ -144,11 +144,6 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       "process.env.__NEXT_EXPERIMENTAL_REACT": `${needsExperimentalReact(nextConfig)}`,
     },
     platform: "node",
-    banner: {
-      js: `
-
-`,
-    },
   });
 
   fs.writeFileSync(openNextServerBundle + ".meta.json", JSON.stringify(result.metafile, null, 2));
