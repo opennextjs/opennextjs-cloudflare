@@ -94,6 +94,7 @@ function initRuntime() {
 
   Object.assign(globalThis, {
     Request: CustomRequest,
+    // This is only needed for an external middleware bundle
     __dangerous_ON_edge_converter_returns_request: true,
     //@ts-expect-error Inline at build time by ESBuild
     __BUILD_TIMESTAMP_MS__: __BUILD_TIMESTAMP_MS__,
@@ -121,6 +122,7 @@ function populateProcessEnv(url: URL, env: CloudflareEnv) {
   }
 
   // Set the default Origin for the origin resolver.
+  // This is only needed for an external middleware bundle
   process.env.OPEN_NEXT_ORIGIN = JSON.stringify({
     default: {
       host: url.hostname,
