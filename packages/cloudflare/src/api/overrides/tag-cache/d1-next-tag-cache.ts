@@ -36,7 +36,8 @@ export class D1NextModeTagCache implements NextModeTagCache {
 
   async writeTags(tags: string[]): Promise<void> {
     const { isDisabled, db } = this.getConfig();
-    if (isDisabled) return Promise.resolve();
+    // TODO: Remove `tags.length === 0` when https://github.com/opennextjs/opennextjs-aws/pull/828 is used
+    if (isDisabled || tags.length === 0) return Promise.resolve();
     const result = await db.batch(
       tags.map((tag) =>
         db
