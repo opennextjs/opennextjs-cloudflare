@@ -1,7 +1,6 @@
 import { error } from "@opennextjs/aws/adapters/logger.js";
 import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 import type { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
-import { RecoverableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
 import { debugCache, FALLBACK_BUILD_ID } from "../internal.js";
@@ -36,15 +35,16 @@ export class D1NextModeTagCache implements NextModeTagCache {
 
   async writeTags(tags: string[]): Promise<void> {
     const { isDisabled, db } = this.getConfig();
-    if (isDisabled) return Promise.resolve();
-    const result = await db.batch(
+    // TODO: Remove `tags.length === 0` when https://github.com/opennextjs/opennextjs-aws/pull/828 is used
+    if (isDisabled || tags.length === 0) return Promise.resolve();
+
+    await db.batch(
       tags.map((tag) =>
         db
           .prepare(`INSERT INTO revalidations (tag, revalidatedAt) VALUES (?, ?)`)
           .bind(this.getCacheKey(tag), Date.now())
       )
     );
-    if (!result) throw new RecoverableError(`D1 insert failed for ${tags}`);
   }
 
   private getConfig() {
