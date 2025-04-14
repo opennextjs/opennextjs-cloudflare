@@ -20,6 +20,7 @@ import {
   patchNextServer,
   patchUnstableCacheForISR,
 } from "@opennextjs/aws/build/patch/patches/index.js";
+// TODO: import from patches/index.js when https://github.com/opennextjs/opennextjs-aws/pull/827 is released
 import { patchBackgroundRevalidation } from "@opennextjs/aws/build/patch/patches/patchBackgroundRevalidation.js";
 import logger from "@opennextjs/aws/logger.js";
 import { minifyAll } from "@opennextjs/aws/minimize-js.js";

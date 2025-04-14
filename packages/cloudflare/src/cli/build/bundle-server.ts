@@ -176,6 +176,7 @@ export async function updateWorkerBundledCode(
     [
       "'require(this.middlewareManifestPath)'",
       (code) => patches.inlineMiddlewareManifestRequire(code, buildOpts),
+      { isOptional: true },
     ],
     [
       "`require.resolve` call",
