@@ -14,10 +14,13 @@ import { installDependencies } from "@opennextjs/aws/build/installDeps.js";
 import type { CodePatcher } from "@opennextjs/aws/build/patch/codePatcher.js";
 import { applyCodePatches } from "@opennextjs/aws/build/patch/codePatcher.js";
 import {
+  patchEnvVars,
   patchFetchCacheForISR,
   patchFetchCacheSetMissingWaitUntil,
+  patchNextServer,
   patchUnstableCacheForISR,
 } from "@opennextjs/aws/build/patch/patches/index.js";
+import { patchBackgroundRevalidation } from "@opennextjs/aws/build/patch/patches/patchBackgroundRevalidation.js";
 import logger from "@opennextjs/aws/logger.js";
 import { minifyAll } from "@opennextjs/aws/minimize-js.js";
 import type { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
@@ -190,6 +193,9 @@ async function generateBundle(
     patchFetchCacheSetMissingWaitUntil,
     patchFetchCacheForISR,
     patchUnstableCacheForISR,
+    patchNextServer,
+    patchEnvVars,
+    patchBackgroundRevalidation,
     // Cloudflare specific patches
     patchResRevalidate,
     ...additionalCodePatches,
@@ -220,6 +226,7 @@ async function generateBundle(
         ...(disableNextPrebundledReact ? ["applyNextjsPrebundledReact"] : []),
         ...(disableRouting ? ["withRouting"] : []),
         ...(isAfter142 ? ["patchAsyncStorage"] : []),
+        ...(isAfter141 ? ["appendPrefetch"] : []),
       ],
     }),
     openNextReplacementPlugin({
