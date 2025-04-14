@@ -63,10 +63,6 @@ export class D1NextModeTagCache implements NextModeTagCache {
         };
   }
 
-  protected removeBuildId(key: string) {
-    return key.replace(`${this.getBuildId()}/`, "");
-  }
-
   protected getCacheKey(key: string) {
     return `${this.getBuildId()}/${key}`.replaceAll("//", "/");
   }
