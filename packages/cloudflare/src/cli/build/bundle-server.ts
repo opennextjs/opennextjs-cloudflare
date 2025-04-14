@@ -16,7 +16,6 @@ import { inlineEvalManifest } from "./patches/plugins/eval-manifest.js";
 import { inlineFindDir } from "./patches/plugins/find-dir.js";
 import { patchInstrumentation } from "./patches/plugins/instrumentation.js";
 import { inlineLoadManifest } from "./patches/plugins/load-manifest.js";
-import { patchNextMinimal } from "./patches/plugins/next-minimal.js";
 import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
 import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations.js";
 import { fixRequire } from "./patches/plugins/require.js";
@@ -99,7 +98,6 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       inlineLoadManifest(updater, buildOpts),
       inlineBuildId(updater),
       patchDepdDeprecations(updater),
-      patchNextMinimal(updater),
       // Apply updater updates, must be the last plugin
       updater.plugin,
     ] as Plugin[],
