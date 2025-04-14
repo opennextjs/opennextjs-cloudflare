@@ -1,7 +1,8 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { BuildOptions } from "@opennextjs/aws/build/helper";
+import { loadConfig } from "@opennextjs/aws/adapters/config/util.js";
+import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { build } from "esbuild";
 
 /**
@@ -11,6 +12,9 @@ export async function compileInit(options: BuildOptions) {
   const currentDir = path.join(path.dirname(fileURLToPath(import.meta.url)));
   const templatesDir = path.join(currentDir, "../../templates");
   const initPath = path.join(templatesDir, "init.js");
+
+  const nextConfig = loadConfig(path.join(options.appBuildOutputPath, ".next"));
+  const basePath = nextConfig.basePath ?? "";
 
   await build({
     entryPoints: [initPath],
@@ -22,6 +26,7 @@ export async function compileInit(options: BuildOptions) {
     platform: "node",
     define: {
       __BUILD_TIMESTAMP_MS__: JSON.stringify(Date.now()),
+      __NEXT_BASE_PATH__: JSON.stringify(basePath),
     },
   });
 }

@@ -70,7 +70,7 @@ export async function build(
   // Compile middleware
   await createMiddleware(options, { forceOnlyBuildOnce: true });
 
-  createStaticAssets(options);
+  createStaticAssets(options, { useBasePath: true });
 
   if (config.dangerous?.disableIncrementalCache !== true) {
     const { useTagCache, metaFiles } = createCacheAssets(options);

@@ -16,7 +16,6 @@
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
     "@libsql/client": "^0.14.0",
-    "@opennextjs/aws": "^3.3.1",
     "@t3-oss/env-nextjs": "^0.11.1",
     "@tanstack/react-table": "^8.20.6",
     "better-sqlite3": "^11.7.0",

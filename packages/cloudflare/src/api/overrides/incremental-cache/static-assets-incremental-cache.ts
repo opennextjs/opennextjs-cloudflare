@@ -33,8 +33,7 @@ class StaticAssetsIncrementalCache implements IncrementalCache {
 
       return {
         value: await response.json(),
-        // __BUILD_TIMESTAMP_MS__ is injected by ESBuild.
-        lastModified: (globalThis as { __BUILD_TIMESTAMP_MS__?: number }).__BUILD_TIMESTAMP_MS__,
+        lastModified: globalThis.__BUILD_TIMESTAMP_MS__,
       };
     } catch (e) {
       error("Failed to get from cache", e);

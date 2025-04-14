@@ -53,7 +53,7 @@
   "homepage": "https://github.com/opennextjs/opennextjs-cloudflare",
   "dependencies": {
     "@dotenvx/dotenvx": "catalog:",
-    "@opennextjs/aws": "3.5.6",
+    "@opennextjs/aws": "3.5.7",
     "enquirer": "^2.4.1",
     "glob": "catalog:",
     "ts-tqdm": "^0.8.6"

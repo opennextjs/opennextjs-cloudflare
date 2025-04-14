@@ -25,10 +25,10 @@ export default {
       }
 
       // Fallback for the Next default image loader.
-      if (url.pathname === "/_next/image") {
+      if (url.pathname === `${globalThis.__NEXT_BASE_PATH__}/_next/image`) {
         const imageUrl = url.searchParams.get("url") ?? "";
         return imageUrl.startsWith("/")
-          ? env.ASSETS?.fetch(new URL(imageUrl, request.url))
+          ? env.ASSETS?.fetch(`http://assets.local${imageUrl}`)
           : fetch(imageUrl, { cf: { cacheEverything: true } });
       }
 

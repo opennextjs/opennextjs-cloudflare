@@ -56,8 +56,7 @@ class KVIncrementalCache implements IncrementalCache {
       // if there is no lastModified property, the file was stored during build-time cache population.
       return {
         value: entry,
-        // __BUILD_TIMESTAMP_MS__ is injected by ESBuild.
-        lastModified: (globalThis as { __BUILD_TIMESTAMP_MS__?: number }).__BUILD_TIMESTAMP_MS__,
+        lastModified: globalThis.__BUILD_TIMESTAMP_MS__,
       };
     } catch (e) {
       error("Failed to get from cache", e);
