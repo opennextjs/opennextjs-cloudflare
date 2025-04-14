@@ -89,11 +89,11 @@ catalogs:
       specifier: 20.17.6
       version: 20.17.6
     '@types/react':
-      specifier: 19.0.0
-      version: 19.0.0
+      specifier: 19.0.8
+      version: 19.0.8
     '@types/react-dom':
-      specifier: 19.0.0
-      version: 19.0.0
+      specifier: 19.0.3
+      version: 19.0.3
     autoprefixer:
       specifier: 10.4.15
       version: 10.4.15
@@ -104,10 +104,10 @@ catalogs:
       specifier: 8.4.27
       version: 8.4.27
     react:
-      specifier: 19.0.0
+      specifier: ^19.0.0
       version: 19.0.0
     react-dom:
-      specifier: 19.0.0
+      specifier: ^19.0.0
       version: 19.0.0
     tailwindcss:
       specifier: 3.3.3
@@ -448,10 +448,10 @@ importers:
         version: 20.17.6
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.0
+        version: 19.0.8
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.0
+        version: 19.0.3(@types/react@19.0.8)
       autoprefixer:
         specifier: catalog:e2e
         version: 10.4.15(postcss@8.4.27)
@@ -494,10 +494,10 @@ importers:
         version: 20.17.6
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.0
+        version: 19.0.8
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.0
+        version: 19.0.3(@types/react@19.0.8)
       autoprefixer:
         specifier: catalog:e2e
         version: 10.4.15(postcss@8.4.27)
@@ -540,10 +540,10 @@ importers:
         version: 20.17.6
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.0
+        version: 19.0.8
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.0
+        version: 19.0.3(@types/react@19.0.8)
       autoprefixer:
         specifier: catalog:e2e
         version: 10.4.15(postcss@8.4.27)
@@ -574,10 +574,10 @@ importers:
     devDependencies:
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.0
+        version: 19.0.8
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.0
+        version: 19.0.3(@types/react@19.0.8)
 
   examples/middleware:
     dependencies:
@@ -703,10 +703,10 @@ importers:
         version: 22.2.0
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.0
+        version: 19.0.8
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.0
+        version: 19.0.3(@types/react@19.0.8)
       typescript:
         specifier: 'catalog:'
         version: 5.7.3
@@ -737,10 +737,10 @@ importers:
         version: 22.2.0
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.0
+        version: 19.0.8
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.0
+        version: 19.0.3(@types/react@19.0.8)
       typescript:
         specifier: 'catalog:'
         version: 5.7.3
@@ -771,10 +771,10 @@ importers:
         version: 22.2.0
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.0
+        version: 19.0.8
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.0
+        version: 19.0.3(@types/react@19.0.8)
       typescript:
         specifier: 'catalog:'
         version: 5.7.3
@@ -805,10 +805,10 @@ importers:
         version: 22.2.0
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.0
+        version: 19.0.8
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.0
+        version: 19.0.3(@types/react@19.0.8)
       typescript:
         specifier: 'catalog:'
         version: 5.7.3
