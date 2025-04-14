@@ -91,8 +91,8 @@ function initRuntime() {
 
   Object.assign(globalThis, {
     Request: CustomRequest,
-    //@ts-expect-error Inline at build time by ESBuild
     __BUILD_TIMESTAMP_MS__: __BUILD_TIMESTAMP_MS__,
+    __NEXT_BASE_PATH__: __NEXT_BASE_PATH__,
   });
 }
 
@@ -126,3 +126,12 @@ function populateProcessEnv(url: URL, env: CloudflareEnv) {
     },
   });
 }
+
+/* eslint-disable no-var */
+declare global {
+  // Build timestamp
+  var __BUILD_TIMESTAMP_MS__: number;
+  // Next basePath
+  var __NEXT_BASE_PATH__: string;
+}
+/* eslint-enable no-var */
