@@ -1,3 +1,3 @@
 import { configurePlaywright } from "../../common/config-e2e";
 
-export default configurePlaywright("middleware", { isCI: !!process.env.CI, multipleBrowsers: true });
+export default configurePlaywright("middleware", { multipleBrowsers: true });
