@@ -1,5 +1,15 @@
 # @opennextjs/cloudflare
 
+## 1.0.0
+
+### Patch Changes
+
+- [#591](https://github.com/opennextjs/opennextjs-cloudflare/pull/591) [`0361672`](https://github.com/opennextjs/opennextjs-cloudflare/commit/03616723ee775c31fed9cb1a048e7b0a9bd1e63c) Thanks [@vicb](https://github.com/vicb)! - Add an example of creating a custom worker
+
+  Creating a custom worker enable adding DO, handlers (scheduled, queue, ...)
+
+  closes #207, #397, #589
+
 ## 1.0.0-beta.3
 
 ### Changes
