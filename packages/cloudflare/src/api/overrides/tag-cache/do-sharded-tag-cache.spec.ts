@@ -310,16 +310,18 @@ describe("DOShardedTagCache", () => {
     it("should return the cache key without the random part", async () => {
       const cache = shardedDOTagCache();
       const doId1 = new DOId({ baseShardId: "shard-0", numberOfReplicas: 1, shardType: "hard" });
-      const reqKey = await cache.getCacheKey(doId1, ["_N_T_/tag1"]);
-      expect(reqKey.url).toBe("http://local.cache/shard/tag-hard;shard-0?tags=_N_T_%2Ftag1");
+      expect(cache.getCacheUrlKey(doId1, ["_N_T_/tag1"])).toBe(
+        "http://local.cache/shard/tag-hard;shard-0?tags=_N_T_%2Ftag1"
+      );
 
       const doId2 = new DOId({
         baseShardId: "shard-1",
         numberOfReplicas: 1,
         shardType: "hard",
       });
-      const reqKey2 = await cache.getCacheKey(doId2, ["tag1"]);
-      expect(reqKey2.url).toBe("http://local.cache/shard/tag-hard;shard-1?tags=tag1");
+      expect(cache.getCacheUrlKey(doId2, ["tag1"])).toBe(
+        "http://local.cache/shard/tag-hard;shard-1?tags=tag1"
+      );
     });
   });
 
