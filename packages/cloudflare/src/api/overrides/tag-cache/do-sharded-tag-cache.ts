@@ -316,7 +316,14 @@ class ShardedDOTagCache implements NextModeTagCache {
     await cache.put(
       this.getCacheUrlKey(doId, tags),
       new Response(`${hasBeenRevalidated}`, {
-        headers: { "cache-control": `max-age=${this.opts.regionalCacheTtlSec ?? 5}` },
+        headers: {
+          "cache-control": `max-age=${this.opts.regionalCacheTtlSec ?? 5}`,
+          ...(tags.length > 0
+            ? {
+                "cache-tag": tags.join(","),
+              }
+            : {}),
+        },
       })
     );
   }
