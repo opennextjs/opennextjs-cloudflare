@@ -38,4 +38,4 @@ export default {
       return handler(request, env, ctx);
     });
   },
-} as ExportedHandler<CloudflareEnv>;
+} satisfies ExportedHandler<CloudflareEnv>;
