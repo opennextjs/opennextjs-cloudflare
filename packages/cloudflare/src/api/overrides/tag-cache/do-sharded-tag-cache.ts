@@ -294,10 +294,8 @@ class ShardedDOTagCache implements NextModeTagCache {
     return this.localCache;
   }
 
-  async getCacheKey(doId: DOId, tags: string[]) {
-    return new Request(
-      new URL(`shard/${doId.shardId}?tags=${encodeURIComponent(tags.join(";"))}`, "http://local.cache")
-    );
+  getCacheUrlKey(doId: DOId, tags: string[]): string {
+    return `http://local.cache/shard/${doId.shardId}?tags=${encodeURIComponent(tags.join(";"))}`;
   }
 
   async getFromRegionalCache(doId: DOId, tags: string[]) {
@@ -305,11 +303,9 @@ class ShardedDOTagCache implements NextModeTagCache {
       if (!this.opts.regionalCache) return;
       const cache = await this.getCacheInstance();
       if (!cache) return;
-      const key = await this.getCacheKey(doId, tags);
-      return cache.match(key);
+      return cache.match(this.getCacheUrlKey(doId, tags));
     } catch (e) {
       error("Error while fetching from regional cache", e);
-      return;
     }
   }
 
@@ -317,11 +313,17 @@ class ShardedDOTagCache implements NextModeTagCache {
     if (!this.opts.regionalCache) return;
     const cache = await this.getCacheInstance();
     if (!cache) return;
-    const key = await this.getCacheKey(doId, tags);
     await cache.put(
-      key,
+      this.getCacheUrlKey(doId, tags),
       new Response(`${hasBeenRevalidated}`, {
-        headers: { "cache-control": `max-age=${this.opts.regionalCacheTtlSec ?? 5}` },
+        headers: {
+          "cache-control": `max-age=${this.opts.regionalCacheTtlSec ?? 5}`,
+          ...(tags.length > 0
+            ? {
+                "cache-tag": tags.join(","),
+              }
+            : {}),
+        },
       })
     );
   }
@@ -332,8 +334,7 @@ class ShardedDOTagCache implements NextModeTagCache {
       if (!this.opts.regionalCache) return;
       const cache = await this.getCacheInstance();
       if (!cache) return;
-      const key = await this.getCacheKey(doId, tags);
-      await cache.delete(key);
+      await cache.delete(this.getCacheUrlKey(doId, tags));
     } catch (e) {
       debugCache("Error while deleting from regional cache", e);
     }
