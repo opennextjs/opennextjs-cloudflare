@@ -38,7 +38,7 @@ describe("hasBuildConditions", () => {
     const exports = {
       ".": "/path/to/index.js",
       "./server": {
-        worked: {
+        workerd: {
           default: "./server.edge.js",
         },
       },
