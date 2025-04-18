@@ -82,7 +82,7 @@ catalogs:
       specifier: ^2.1.1
       version: 2.1.1
     wrangler:
-      specifier: ^3.114.3 || ^4.7.0
+      specifier: ^4.7.0
       version: 4.7.0
   e2e:
     '@types/node':
