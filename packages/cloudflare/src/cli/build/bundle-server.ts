@@ -147,7 +147,9 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
     );
   }
 
-  console.log(`\x1b[35mWorker saved in \`${getOutputWorkerPath(buildOpts)}\` 🚀\n\x1b[0m`);
+  console.log(
+    `\x1b[35mWorker saved in \`${path.relative(buildOpts.appPath, getOutputWorkerPath(buildOpts))}\` 🚀\n\x1b[0m`
+  );
 }
 
 /**

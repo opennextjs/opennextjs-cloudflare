@@ -45,6 +45,9 @@ export async function copyWorkerdPackages(options: BuildOptions, nodePackages: M
         externalPackages.includes(match.groups.pkg) &&
         hasBuildCondition(exports, "workerd")
       ) {
+        logger.debug(
+          `Copying package using a workerd condition: ${path.relative(options.appPath, src)} -> ${path.relative(options.appPath, dst)}`
+        );
         fs.cp(src, dst, { recursive: true, force: true });
       }
     } catch {
