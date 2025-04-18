@@ -961,8 +961,8 @@ importers:
         specifier: 'catalog:'
         version: 1.31.0
       '@opennextjs/aws':
-        specifier: 3.5.7
-        version: 3.5.7
+        specifier: 3.5.8
+        version: 3.5.8
       enquirer:
         specifier: ^2.4.1
         version: 2.4.1
@@ -3710,8 +3710,8 @@ packages:
   '@octokit/types@13.6.1':
     resolution: {integrity: sha512-PHZE9Z+kWXb23Ndik8MKPirBPziOc0D2/3KH1P+6jK5nGWe96kadZuE4jev2/Jq7FvIfTlT2Ltg8Fv2x1v0a5g==}
 
-  '@opennextjs/aws@3.5.7':
-    resolution: {integrity: sha512-YjyHJrkIHI7YwQRCp8GjDOudu86oOc1RiwxvBBpPHrplsS18H4ZmkzGggAKhK6B4myGsJQ/q9kNP2TraoZiNzg==}
+  '@opennextjs/aws@3.5.8':
+    resolution: {integrity: sha512-Fn2FjljG76xWg6GOzMiKBoiDLfx635UJyFv6xt4lgmhJcTsTvj/lv5lGA7oTtwj/dbcEGoGdMHBaenBPcsS0/A==}
     hasBin: true
 
   '@opentelemetry/api@1.9.0':
@@ -12533,7 +12533,7 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 22.2.0
 
-  '@opennextjs/aws@3.5.7':
+  '@opennextjs/aws@3.5.8':
     dependencies:
       '@ast-grep/napi': 0.35.0
       '@aws-sdk/client-cloudfront': 3.398.0
@@ -13605,7 +13605,7 @@ snapshots:
 
   '@types/better-sqlite3@7.6.12':
     dependencies:
-      '@types/node': 20.17.6
+      '@types/node': 20.14.10
 
   '@types/body-parser@1.19.5':
     dependencies:
@@ -13701,7 +13701,7 @@ snapshots:
 
   '@types/react-dom@18.3.0':
     dependencies:
-      '@types/react': 18.3.3
+      '@types/react': 19.0.8
 
   '@types/react-dom@19.0.0':
     dependencies:
@@ -18195,13 +18195,6 @@ snapshots:
 
   possible-typed-array-names@1.0.0: {}
 
-  postcss-import@15.1.0(postcss@8.4.47):
-    dependencies:
-      postcss: 8.4.47
-      postcss-value-parser: 4.2.0
-      read-cache: 1.0.0
-      resolve: 1.22.8
-
   postcss-import@15.1.0(postcss@8.5.1):
     dependencies:
       postcss: 8.5.1
@@ -18209,31 +18202,10 @@ snapshots:
       read-cache: 1.0.0
       resolve: 1.22.8
 
-  postcss-js@4.0.1(postcss@8.4.47):
-    dependencies:
-      camelcase-css: 2.0.1
-      postcss: 8.4.47
-
   postcss-js@4.0.1(postcss@8.5.1):
     dependencies:
       camelcase-css: 2.0.1
       postcss: 8.5.1
-
-  postcss-load-config@4.0.2(postcss@8.4.47)(ts-node@10.9.1(@types/node@20.17.6)(typescript@5.7.3)):
-    dependencies:
-      lilconfig: 3.1.2
-      yaml: 2.7.0
-    optionalDependencies:
-      postcss: 8.4.47
-      ts-node: 10.9.1(@types/node@20.17.6)(typescript@5.7.3)
-
-  postcss-load-config@4.0.2(postcss@8.4.47)(ts-node@10.9.1(@types/node@22.2.0)(typescript@5.7.3)):
-    dependencies:
-      lilconfig: 3.1.2
-      yaml: 2.7.0
-    optionalDependencies:
-      postcss: 8.4.47
-      ts-node: 10.9.1(@types/node@22.2.0)(typescript@5.7.3)
 
   postcss-load-config@4.0.2(postcss@8.5.1)(ts-node@10.9.1(@types/node@20.14.10)(typescript@5.5.3)):
     dependencies:
@@ -18259,10 +18231,13 @@ snapshots:
       postcss: 8.5.1
       ts-node: 10.9.1(@types/node@22.12.0)(typescript@5.7.3)
 
-  postcss-nested@6.2.0(postcss@8.4.47):
+  postcss-load-config@4.0.2(postcss@8.5.1)(ts-node@10.9.1(@types/node@22.2.0)(typescript@5.7.3)):
     dependencies:
-      postcss: 8.4.47
-      postcss-selector-parser: 6.1.2
+      lilconfig: 3.1.2
+      yaml: 2.7.0
+    optionalDependencies:
+      postcss: 8.5.1
+      ts-node: 10.9.1(@types/node@22.2.0)(typescript@5.7.3)
 
   postcss-nested@6.2.0(postcss@8.5.1):
     dependencies:
@@ -19246,11 +19221,11 @@ snapshots:
       normalize-path: 3.0.0
       object-hash: 3.0.0
       picocolors: 1.0.1
-      postcss: 8.4.47
-      postcss-import: 15.1.0(postcss@8.4.47)
-      postcss-js: 4.0.1(postcss@8.4.47)
-      postcss-load-config: 4.0.2(postcss@8.4.47)(ts-node@10.9.1(@types/node@20.17.6)(typescript@5.7.3))
-      postcss-nested: 6.2.0(postcss@8.4.47)
+      postcss: 8.5.1
+      postcss-import: 15.1.0(postcss@8.5.1)
+      postcss-js: 4.0.1(postcss@8.5.1)
+      postcss-load-config: 4.0.2(postcss@8.5.1)(ts-node@10.9.1(@types/node@20.17.6)(typescript@5.7.3))
+      postcss-nested: 6.2.0(postcss@8.5.1)
       postcss-selector-parser: 6.1.2
       resolve: 1.22.8
       sucrase: 3.35.0
@@ -19273,11 +19248,11 @@ snapshots:
       normalize-path: 3.0.0
       object-hash: 3.0.0
       picocolors: 1.0.1
-      postcss: 8.4.47
-      postcss-import: 15.1.0(postcss@8.4.47)
-      postcss-js: 4.0.1(postcss@8.4.47)
-      postcss-load-config: 4.0.2(postcss@8.4.47)(ts-node@10.9.1(@types/node@22.2.0)(typescript@5.7.3))
-      postcss-nested: 6.2.0(postcss@8.4.47)
+      postcss: 8.5.1
+      postcss-import: 15.1.0(postcss@8.5.1)
+      postcss-js: 4.0.1(postcss@8.5.1)
+      postcss-load-config: 4.0.2(postcss@8.5.1)(ts-node@10.9.1(@types/node@22.2.0)(typescript@5.7.3))
+      postcss-nested: 6.2.0(postcss@8.5.1)
       postcss-selector-parser: 6.1.2
       resolve: 1.22.8
       sucrase: 3.35.0
