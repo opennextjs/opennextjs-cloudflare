@@ -1,0 +1,15 @@
+# Fork the repository into `jmbish04/nextjs-cloudflare-vercel-aichat`
+
+To fork the repository, follow these steps:
+
+1. Go to the GitHub repository page: https://github.com/opennextjs/opennextjs-cloudflare
+2. Click on the "Fork" button at the top right corner of the page.
+3. Select your GitHub account (`jmbish04`) as the destination for the fork.
+4. Click on the "Create fork" button.
+
+Once the repository is forked, you can clone it to your local machine and start making the necessary changes.
+
+```bash
+git clone https://github.com/jmbish04/nextjs-cloudflare-vercel-aichat.git
+cd nextjs-cloudflare-vercel-aichat
+```

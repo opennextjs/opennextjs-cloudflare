@@ -1,0 +1,22 @@
+{
+  "name": "vercel-ai-chat",
+  "version": "1.0.0",
+  "description": "Example of running vercel/ai-chat on Cloudflare Workers",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "vercel/ai-chat": "latest"
+  },
+  "devDependencies": {
+    "@opennextjs/cloudflare": "latest",
+    "wrangler": "latest"
+  }
+}

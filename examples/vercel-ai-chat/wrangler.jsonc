@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json.schemastore.org/wrangler",
+  "name": "vercel-ai-chat",
+  "main": "./.open-next/worker.js",
+  "compatibility_date": "2023-01-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "env": {
+    "production": {
+      "vars": {
+        "API_KEY": "your-production-api-key"
+      }
+    },
+    "development": {
+      "vars": {
+        "API_KEY": "your-development-api-key"
+      }
+    }
+  },
+  "kv_namespaces": [
+    {
+      "binding": "KV_NAMESPACE",
+      "id": "your-kv-namespace-id"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "R2_BUCKET",
+      "bucket_name": "your-r2-bucket-name"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "D1_DATABASE",
+      "database_name": "your-d1-database-name"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "CHAT_DO",
+        "class_name": "ChatDurableObject"
+      }
+    ]
+  }
+}

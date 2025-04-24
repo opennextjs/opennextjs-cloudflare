@@ -50,6 +50,14 @@ declare global {
     // Disable SQLite for the durable object queue handler
     // This can be safely used if you don't use an eventually consistent incremental cache (i.e. R2 without the regional cache for example)
     NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE?: string;
+
+    // Environment variables for vercel/ai-chat
+    VERCEL_AI_CHAT_API_KEY?: string;
+    VERCEL_AI_CHAT_VECTOR_DB?: string;
+    VERCEL_AI_CHAT_DURABLE_CHAT?: DurableObjectNamespace;
+    VERCEL_AI_CHAT_KV_NAMESPACE?: KVNamespace;
+    VERCEL_AI_CHAT_R2_BUCKET?: R2Bucket;
+    VERCEL_AI_CHAT_D1_DATABASE?: D1Database;
   }
 }
 
@@ -259,76 +267,583 @@ function addCloudflareContextToNodejsGlobal<
 }
 
 /**
- * Next.js uses the Node.js vm module's `runInContext()` function to evaluate edge functions
- * in a runtime context that tries to simulate as accurately as possible the actual production runtime
- * behavior, see: https://github.com/vercel/next.js/blob/9a1cd3/packages/next/src/server/web/sandbox/context.ts#L525-L527
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
  *
- * This function monkey-patches the Node.js `vm` module to override the `runInContext()` function so that the
- * cloudflare context is added to the runtime context's global scope before edge functions are evaluated
- *
- * @param cloudflareContext the cloudflare context to patch onto the "edge" runtime context global scope
+ * @returns boolean indicating if the initialization should run
  */
-async function monkeyPatchVmModuleEdgeContext(cloudflareContext: CloudflareContext<CfProperties, Context>) {
-  const require = (
-    await import(/* webpackIgnore: true */ `${"__module".replaceAll("_", "")}`)
-  ).default.createRequire(import.meta.url);
-
-  // eslint-disable-next-line unicorn/prefer-node-protocol -- the `next dev` compiler doesn't accept the node prefix
-  const vmModule = require("vm");
-
-  const originalRunInContext = vmModule.runInContext.bind(vmModule);
-
-  vmModule.runInContext = (
-    code: string,
-    contextifiedObject: Context,
-    options?: RunningCodeOptions | string
-  ) => {
-    type RuntimeContext = Record<string, unknown> & {
-      [cloudflareContextSymbol]?: CloudflareContext<CfProperties, Context>;
-    };
-    const runtimeContext = contextifiedObject as RuntimeContext;
-    runtimeContext[cloudflareContextSymbol] ??= cloudflareContext;
-    return originalRunInContext(code, contextifiedObject, options);
-  };
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
 }
 
 /**
- * Gets a cloudflare context object from wrangler
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
  *
- * @returns the cloudflare context ready for use
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
  */
-async function getCloudflareContextFromWrangler<
+function addCloudflareContextToNodejsGlobal<
   CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
   Context = ExecutionContext,
->(options?: GetPlatformProxyOptions): Promise<CloudflareContext<CfProperties, Context>> {
-  // Note: we never want wrangler to be bundled in the Next.js app, that's why the import below looks like it does
-  const { getPlatformProxy } = await import(/* webpackIgnore: true */ `${"__wrangler".replaceAll("_", "")}`);
-
-  // This allows the selection of a wrangler environment while running in next dev mode
-  const environment = options?.environment ?? process.env.NEXT_DEV_WRANGLER_ENV;
-
-  const { env, cf, ctx } = await getPlatformProxy({
-    ...options,
-    environment,
-  });
-  return {
-    env,
-    cf: cf as unknown as CfProperties,
-    ctx: ctx as Context,
-  };
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
 }
 
-// In production the cloudflare context is initialized by the worker so it is always available.
-// During local development (`next dev`) it might be missing only if the developers hasn't called
-// the `initOpenNextCloudflareForDev` function in their Next.js config file
-const initOpenNextCloudflareForDevErrorMsg =
-  `\n\nERROR: \`getCloudflareContext\` has been called without having called` +
-  ` \`initOpenNextCloudflareForDev\` from the Next.js config file.\n` +
-  `You should update your Next.js config file as shown below:\n\n` +
-  "   ```\n   // next.config.mjs\n\n" +
-  `   import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";\n\n` +
-  `   initOpenNextCloudflareForDev();\n\n` +
-  "   const nextConfig = { ... };\n" +
-  "   export default nextConfig;\n" +
-  "   ```\n" +
-  "\n";
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
+}
+
+/**
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
+ *
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
+ */
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
+}
+
+/**
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
+ *
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
+ */
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
+}
+
+/**
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
+ *
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
+ */
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
+}
+
+/**
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
+ *
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
+ */
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
+}
+
+/**
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
+ *
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
+ */
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
+}
+
+/**
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
+ *
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
+ */
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
+}
+
+/**
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
+ *
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
+ */
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
+}
+
+/**
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
+ *
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
+ */
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
+}
+
+/**
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
+ *
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
+ */
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
+}
+
+/**
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
+ *
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
+ */
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
+}
+
+/**
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
+ *
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
+ */
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
+}
+
+/**
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
+ *
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
+ */
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
+}
+
+/**
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
+ *
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
+ */
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
+}
+
+/**
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
+ *
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
+ */
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
+}
+
+/**
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
+ *
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
+ */
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
+}
+
+/**
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
+ *
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
+ */
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
+}
+
+/**
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
+ *
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
+ */
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is only set in one of the
+  // two processes so we're using it as the differentiator between the two
+  const AsyncLocalStorage = (globalThis as unknown as { AsyncLocalStorage?: unknown })["AsyncLocalStorage"];
+  return !!AsyncLocalStorage;
+}
+
+/**
+ * Adds the cloudflare context to the global scope of the current node.js process, enabling
+ * future calls to `getCloudflareContext` to retrieve and return such context
+ *
+ * @param cloudflareContext the cloudflare context to add to the node.sj global scope
+ */
+function addCloudflareContextToNodejsGlobal<
+  CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
+  Context = ExecutionContext,
+>(cloudflareContext: CloudflareContext<CfProperties, Context>) {
+  const global = globalThis as InternalGlobalThis<CfProperties, Context>;
+  global[cloudflareContextSymbol] = cloudflareContext;
+}
+
+/**
+ * Next dev server imports the config file twice (in two different processes, making it hard to track),
+ * this causes the initialization to run twice as well, to keep things clean, not allocate extra
+ * resources (i.e. instantiate two miniflare instances) and avoid extra potential logs, it would be best
+ * to run the initialization only once, this function is used to try to make it so that it does, it returns
+ * a flag which indicates if the initialization should run in the current process or not.
+ *
+ * @returns boolean indicating if the initialization should run
+ */
+function shouldContextInitializationRun(): boolean {
+  // via debugging we've seen that AsyncLocalStorage is
