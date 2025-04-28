@@ -18,20 +18,19 @@ interface WithFilterOptions {
  * Creates a new tag cache that filters tags based on the provided filter function.
  * This is usefult to remove tags that are not used by the app, this could reduce the number of request to the underlying tag cache.
  */
-export function withFilter({
-  originalTagCache,
-  filterFn,
-}: WithFilterOptions): NextModeTagCache {
+export function withFilter({ originalTagCache, filterFn }: WithFilterOptions): NextModeTagCache {
   return {
     name: `filtered-${originalTagCache.name}`,
     mode: "nextMode",
-    getPathsByTags: originalTagCache.getPathsByTags ? async (tags) => {
-      const filteredTags = tags.filter(filterFn);
-      if (filteredTags.length === 0) {
-        return [];
-      }
-      return originalTagCache.getPathsByTags!(filteredTags)
-    } : undefined,
+    getPathsByTags: originalTagCache.getPathsByTags
+      ? async (tags) => {
+          const filteredTags = tags.filter(filterFn);
+          if (filteredTags.length === 0) {
+            return [];
+          }
+          return originalTagCache.getPathsByTags!(filteredTags);
+        }
+      : undefined,
     hasBeenRevalidated: async (tags, lastModified) => {
       const filteredTags = tags.filter(filterFn);
       if (filteredTags.length === 0) {
@@ -45,7 +44,7 @@ export function withFilter({
         return;
       }
       return originalTagCache.writeTags(filteredTags);
-    }, 
+    },
   };
 }
 
