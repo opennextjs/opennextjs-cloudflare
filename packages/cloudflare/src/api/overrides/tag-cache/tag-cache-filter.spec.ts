@@ -20,7 +20,7 @@ describe("withFilter", () => {
 
   it("should filter out tags based on writeTags", async () => {
     const tagCache = withFilter({
-      originalTagCache: mockedTagCache,
+      tagCache: mockedTagCache,
       filterFn,
     });
 
@@ -32,7 +32,7 @@ describe("withFilter", () => {
 
   it("should not call writeTags if no tags are valid", async () => {
     const tagCache = withFilter({
-      originalTagCache: mockedTagCache,
+      tagCache: mockedTagCache,
       filterFn,
     });
     const tags = ["invalid_tag"];
@@ -42,7 +42,7 @@ describe("withFilter", () => {
 
   it("should filter out tags based on hasBeenRevalidated", async () => {
     const tagCache = withFilter({
-      originalTagCache: mockedTagCache,
+      tagCache: mockedTagCache,
       filterFn,
     });
 
@@ -55,7 +55,7 @@ describe("withFilter", () => {
 
   it("should not call hasBeenRevalidated if no tags are valid", async () => {
     const tagCache = withFilter({
-      originalTagCache: mockedTagCache,
+      tagCache: mockedTagCache,
       filterFn,
     });
     const tags = ["invalid_tag"];
@@ -66,7 +66,7 @@ describe("withFilter", () => {
 
   it("should filter out tags based on getPathsByTags", async () => {
     const tagCache = withFilter({
-      originalTagCache: mockedTagCache,
+      tagCache: mockedTagCache,
       filterFn,
     });
 
@@ -78,7 +78,7 @@ describe("withFilter", () => {
 
   it("should not call getPathsByTags if no tags are valid", async () => {
     const tagCache = withFilter({
-      originalTagCache: mockedTagCache,
+      tagCache: mockedTagCache,
       filterFn,
     });
     const tags = ["invalid_tag"];
@@ -88,7 +88,7 @@ describe("withFilter", () => {
 
   it("should return the correct name", () => {
     const tagCache = withFilter({
-      originalTagCache: mockedTagCache,
+      tagCache: mockedTagCache,
       filterFn,
     });
 
@@ -97,7 +97,7 @@ describe("withFilter", () => {
 
   it("should not create a function if getPathsByTags is not defined", async () => {
     const tagCache = withFilter({
-      originalTagCache: {
+      tagCache: {
         ...mockedTagCache,
         getPathsByTags: undefined,
       },
@@ -107,9 +107,9 @@ describe("withFilter", () => {
     expect(tagCache.getPathsByTags).toBeUndefined();
   });
 
-  it("should properly filter soft tags", () => {
+  it("should filter soft tags", () => {
     const tagCache = withFilter({
-      originalTagCache: mockedTagCache,
+      tagCache: mockedTagCache,
       filterFn: softTagFilter,
     });
 

@@ -5,30 +5,30 @@ interface WithFilterOptions {
    * The original tag cache.
    * Call to this will receive only the filtered tags.
    */
-  originalTagCache: NextModeTagCache;
+  tagCache: NextModeTagCache;
   /**
    * The function to filter tags.
    * @param tag The tag to filter.
-   * @returns true if the tag should be forwarde, false otherwise.
+   * @returns true if the tag should be forwarded, false otherwise.
    */
   filterFn: (tag: string) => boolean;
 }
 
 /**
  * Creates a new tag cache that filters tags based on the provided filter function.
- * This is usefult to remove tags that are not used by the app, this could reduce the number of request to the underlying tag cache.
+ * This is useful to remove tags that are not used by the app, this could reduce the number of requests to the underlying tag cache.
  */
-export function withFilter({ originalTagCache, filterFn }: WithFilterOptions): NextModeTagCache {
+export function withFilter({ tagCache, filterFn }: WithFilterOptions): NextModeTagCache {
   return {
-    name: `filtered-${originalTagCache.name}`,
+    name: `filtered-${tagCache.name}`,
     mode: "nextMode",
-    getPathsByTags: originalTagCache.getPathsByTags
+    getPathsByTags: tagCache.getPathsByTags
       ? async (tags) => {
           const filteredTags = tags.filter(filterFn);
           if (filteredTags.length === 0) {
             return [];
           }
-          return originalTagCache.getPathsByTags!(filteredTags);
+          return tagCache.getPathsByTags!(filteredTags);
         }
       : undefined,
     hasBeenRevalidated: async (tags, lastModified) => {
@@ -36,14 +36,14 @@ export function withFilter({ originalTagCache, filterFn }: WithFilterOptions): N
       if (filteredTags.length === 0) {
         return false;
       }
-      return originalTagCache.hasBeenRevalidated(filteredTags, lastModified);
+      return tagCache.hasBeenRevalidated(filteredTags, lastModified);
     },
     writeTags: async (tags) => {
       const filteredTags = tags.filter(filterFn);
       if (filteredTags.length === 0) {
         return;
       }
-      return originalTagCache.writeTags(filteredTags);
+      return tagCache.writeTags(filteredTags);
     },
   };
 }
