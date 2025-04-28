@@ -15,24 +15,22 @@ export function patchPagesRouterContext(buildOpts: BuildOptions) {
   return {
     name: "pages-router-context",
     setup: (build: PluginBuild) => {
+      // If we are after 15.3, we don't need to patch the context anymore
+      if (isAfter153) {
+        return;
+      }
       // We need to modify some imports (i.e. https://github.com/vercel/next.js/blob/48540b836642525b38a2cba40a92b4532c553a52/packages/next/src/server/require-hook.ts#L59-L68)
       build.onResolve(
         { filter: /.*shared-runtime/ },
-        async ({ path, resolveDir, ...options }): Promise<OnResolveResult> => {
-          // If we are after 15.3, we don't need to patch the context anymore
-          if (isAfter153) {
-            return {};
-          }
+        async ({ path, resolveDir, ...options }): Promise<OnResolveResult | undefined> => {
           const match = path.match(pathRegex);
           if (match && match.groups?.CONTEXT) {
             const newPath = `${basePath}${match.groups.CONTEXT}.js`;
-            const result = await build.resolve(newPath, {
+            return await build.resolve(newPath, {
               resolveDir,
               ...options,
             });
-            return result;
           }
-          return {};
         }
       );
     },
