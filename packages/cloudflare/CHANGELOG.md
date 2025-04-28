@@ -1,5 +1,21 @@
 # @opennextjs/cloudflare
 
+## 1.0.0-beta.4
+
+### Changes
+
+- [#595](https://github.com/opennextjs/opennextjs-cloudflare/pull/595) [`b0c14e1`](https://github.com/opennextjs/opennextjs-cloudflare/commit/b0c14e15ed886dd8f21489b89361feb05c244d23) Thanks [@vicb](https://github.com/vicb)! - drop support for wrangler v3
+
+- [#608](https://github.com/opennextjs/opennextjs-cloudflare/pull/608) [`055a61b`](https://github.com/opennextjs/opennextjs-cloudflare/commit/055a61b17c78ac87d0b66dee8e6416e334e01d98) Thanks [@conico974](https://github.com/conico974)! - Add a new `withFilter` tag cache to allow to filter the tags used
+
+- [#591](https://github.com/opennextjs/opennextjs-cloudflare/pull/591) [`0361672`](https://github.com/opennextjs/opennextjs-cloudflare/commit/03616723ee775c31fed9cb1a048e7b0a9bd1e63c) Thanks [@vicb](https://github.com/vicb)! - Add an example of creating a custom worker
+
+  Creating a custom worker enable adding DO, handlers (scheduled, queue, ...)
+
+  closes #207, #397, #589
+
+- [#607](https://github.com/opennextjs/opennextjs-cloudflare/pull/607) [`15f1160`](https://github.com/opennextjs/opennextjs-cloudflare/commit/15f11607d7cb5820e34164e887f18cef6d84a6b4) Thanks [@conico974](https://github.com/conico974)! - fix page router shared context to use the correct one
+
 ## 1.0.0-beta.3
 
 ### Changes
