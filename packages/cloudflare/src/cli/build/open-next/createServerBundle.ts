@@ -234,11 +234,7 @@ async function generateBundle(
   const isAfter141 = buildHelper.compareSemver(options.nextVersion, ">=", "14.1");
   const isAfter142 = buildHelper.compareSemver(options.nextVersion, ">=", "14.2");
 
-  const isAfter152 = buildHelper.compareSemver(
-    options.nextVersion,
-    ">=",
-    "15.2.0",
-  );
+  const isAfter152 = buildHelper.compareSemver(options.nextVersion, ">=", "15.2.0");
 
   const disableRouting = isBefore13413 || config.middleware?.external;
 
