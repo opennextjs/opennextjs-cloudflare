@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 
-export default function Layout({ children }:  Readonly<{
+export default function Layout({
+  children,
+}: Readonly<{
   // For some reason using ReactNode here causes a type error
   children: any;
 }>) {
