@@ -11,6 +11,7 @@ const apps = [
   "app-pages-router",
   "app-router",
   "pages-router",
+  "experimental",
   // overrides
   "d1-tag-next",
   "memory-queue",

@@ -1,0 +1,30 @@
+{
+  "name": "experimental",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack --port 3004",
+    "build": "next build",
+    "start": "next start --port 3004",
+    "lint": "next lint",
+    "clean": "rm -rf .turbo node_modules .next .open-next",
+    "build:worker": "pnpm opennextjs-cloudflare build",
+    "preview:worker": "pnpm opennextjs-cloudflare preview",
+    "preview": "pnpm build:worker && pnpm preview:worker",
+    "e2e": "playwright test -c e2e/playwright.config.ts"
+  },
+  "dependencies": {
+    "@opennextjs/cloudflare": "workspace:*",
+    "next": "15.4.0-canary.14",
+    "react": "catalog:e2e",
+    "react-dom": "catalog:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:e2e",
+    "@types/react": "catalog:e2e",
+    "@types/react-dom": "catalog:e2e",
+    "typescript": "catalog:default",
+    "wrangler": "catalog:"
+  }
+}
