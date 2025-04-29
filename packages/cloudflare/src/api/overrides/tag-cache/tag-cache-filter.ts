@@ -22,6 +22,13 @@ export function withFilter({ tagCache, filterFn }: WithFilterOptions): NextModeT
   return {
     name: `filtered-${tagCache.name}`,
     mode: "nextMode",
+    getLastRevalidated: async (tags) => {
+      const filteredTags = tags.filter(filterFn);
+      if (filteredTags.length === 0) {
+        return 0;
+      }
+      return tagCache.getLastRevalidated(filteredTags);
+    },
     getPathsByTags: tagCache.getPathsByTags
       ? async (tags) => {
           const filteredTags = tags.filter(filterFn);

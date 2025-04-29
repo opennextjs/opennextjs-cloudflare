@@ -1,4 +1,4 @@
-import { error } from "@opennextjs/aws/adapters/logger.js";
+import { debug, error } from "@opennextjs/aws/adapters/logger.js";
 import { generateShardId } from "@opennextjs/aws/core/routing/queue.js";
 import type { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
@@ -96,6 +96,12 @@ export class DOId {
   get key() {
     return `${this.shardId};replica-${this.replicaId}`;
   }
+}
+
+interface CacheTagKeyOptions {
+  doId: DOId;
+  tags: string[];
+  type: "boolean" | "number";
 }
 class ShardedDOTagCache implements NextModeTagCache {
   readonly mode = "nextMode" as const;
@@ -209,6 +215,40 @@ class ShardedDOTagCache implements NextModeTagCache {
         };
   }
 
+  async getLastRevalidated(tags: string[]): Promise<number> {
+    const { isDisabled } = await this.getConfig();
+    if (isDisabled) return 0;
+    try {
+      const shardedTagGroups = this.groupTagsByDO({ tags });
+      const shardedTagRevalidationOutcomes = await Promise.all(
+        shardedTagGroups.map(async ({ doId, tags }) => {
+          const cachedValue = await this.getFromRegionalCache({ doId, tags, type: "number" });
+          if (cachedValue) {
+            const cached = await cachedValue.text();
+            try {
+              return parseInt(cached, 10);
+            } catch (e) {
+              debug("Error while parsing cached value", e);
+              // If we can't parse the cached value, we should just ignore it and go to the durable object
+            }
+          }
+          const stub = this.getDurableObjectStub(doId);
+          const _lastRevalidated = await stub.getLastRevalidated(tags);
+          if (!_lastRevalidated) {
+            getCloudflareContext().ctx.waitUntil(
+              this.putToRegionalCache({ doId, tags, type: "number" }, _lastRevalidated)
+            );
+          }
+          return _lastRevalidated;
+        })
+      );
+      return Math.max(...shardedTagRevalidationOutcomes);
+    } catch (e) {
+      error("Error while checking revalidation", e);
+      return 0;
+    }
+  }
+
   /**
    * This function checks if the tags have been revalidated
    * It is never supposed to throw and in case of error, it will return false
@@ -223,7 +263,7 @@ class ShardedDOTagCache implements NextModeTagCache {
       const shardedTagGroups = this.groupTagsByDO({ tags });
       const shardedTagRevalidationOutcomes = await Promise.all(
         shardedTagGroups.map(async ({ doId, tags }) => {
-          const cachedValue = await this.getFromRegionalCache(doId, tags);
+          const cachedValue = await this.getFromRegionalCache({ doId, tags, type: "boolean" });
           if (cachedValue) {
             return (await cachedValue.text()) === "true";
           }
@@ -233,7 +273,9 @@ class ShardedDOTagCache implements NextModeTagCache {
           // If we do so, we risk causing cache MISS even though it has been revalidated elsewhere
           // On the other hand revalidating a tag that is used in a lot of places will cause a lot of requests
           if (!_hasBeenRevalidated) {
-            getCloudflareContext().ctx.waitUntil(this.putToRegionalCache(doId, tags, _hasBeenRevalidated));
+            getCloudflareContext().ctx.waitUntil(
+              this.putToRegionalCache({ doId, tags, type: "boolean" }, _hasBeenRevalidated)
+            );
           }
           return _hasBeenRevalidated;
         })
@@ -269,7 +311,11 @@ class ShardedDOTagCache implements NextModeTagCache {
       const stub = this.getDurableObjectStub(doId);
       await stub.writeTags(tags, lastModified);
       // Depending on the shards and the tags, deleting from the regional cache will not work for every tag
-      await this.deleteRegionalCache(doId, tags);
+      // We also need to delete both cache
+      await Promise.all([
+        this.deleteRegionalCache({ doId, tags, type: "boolean" }),
+        this.deleteRegionalCache({ doId, tags, type: "number" }),
+      ]);
     } catch (e) {
       error("Error while writing tags", e);
       if (retryNumber >= this.maxWriteRetries) {
@@ -294,28 +340,30 @@ class ShardedDOTagCache implements NextModeTagCache {
     return this.localCache;
   }
 
-  getCacheUrlKey(doId: DOId, tags: string[]): string {
-    return `http://local.cache/shard/${doId.shardId}?tags=${encodeURIComponent(tags.join(";"))}`;
+  getCacheUrlKey(opts: CacheTagKeyOptions): string {
+    const { doId, tags, type } = opts;
+    return `http://local.cache/shard/${doId.shardId}?type=${type}&tags=${encodeURIComponent(tags.join(";"))}`;
   }
 
-  async getFromRegionalCache(doId: DOId, tags: string[]) {
+  async getFromRegionalCache(opts: CacheTagKeyOptions) {
     try {
       if (!this.opts.regionalCache) return;
       const cache = await this.getCacheInstance();
       if (!cache) return;
-      return cache.match(this.getCacheUrlKey(doId, tags));
+      return cache.match(this.getCacheUrlKey(opts));
     } catch (e) {
       error("Error while fetching from regional cache", e);
     }
   }
 
-  async putToRegionalCache(doId: DOId, tags: string[], hasBeenRevalidated: boolean) {
+  async putToRegionalCache(optsKey: CacheTagKeyOptions, value: number | boolean) {
     if (!this.opts.regionalCache) return;
     const cache = await this.getCacheInstance();
     if (!cache) return;
+    const tags = optsKey.tags;
     await cache.put(
-      this.getCacheUrlKey(doId, tags),
-      new Response(`${hasBeenRevalidated}`, {
+      this.getCacheUrlKey(optsKey),
+      new Response(`${value}`, {
         headers: {
           "cache-control": `max-age=${this.opts.regionalCacheTtlSec ?? 5}`,
           ...(tags.length > 0
@@ -328,13 +376,13 @@ class ShardedDOTagCache implements NextModeTagCache {
     );
   }
 
-  async deleteRegionalCache(doId: DOId, tags: string[]) {
+  async deleteRegionalCache(optsKey: CacheTagKeyOptions) {
     // We never want to crash because of the cache
     try {
       if (!this.opts.regionalCache) return;
       const cache = await this.getCacheInstance();
       if (!cache) return;
-      await cache.delete(this.getCacheUrlKey(doId, tags));
+      await cache.delete(this.getCacheUrlKey(optsKey));
     } catch (e) {
       debugCache("Error while deleting from regional cache", e);
     }

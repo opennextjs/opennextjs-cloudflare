@@ -1,5 +1,10 @@
 import { error } from "@opennextjs/aws/adapters/logger.js";
-import { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/types/overrides.js";
+import {
+  CacheEntryType,
+  CacheValue,
+  IncrementalCache,
+  WithLastModified,
+} from "@opennextjs/aws/types/overrides.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
 import { debugCache, FALLBACK_BUILD_ID, IncrementalCacheEntry } from "../internal.js";
@@ -37,8 +42,8 @@ type Options = {
 
 interface PutToCacheInput {
   key: string;
-  isFetch: boolean | undefined;
-  entry: IncrementalCacheEntry<boolean>;
+  cacheType?: CacheEntryType;
+  entry: IncrementalCacheEntry<CacheEntryType>;
 }
 
 /**
@@ -60,13 +65,13 @@ class RegionalCache implements IncrementalCache {
     this.opts.shouldLazilyUpdateOnCacheHit ??= this.opts.mode === "long-lived";
   }
 
-  async get<IsFetch extends boolean = false>(
+  async get<CacheType extends CacheEntryType = "cache">(
     key: string,
-    isFetch?: IsFetch
-  ): Promise<WithLastModified<CacheValue<IsFetch>> | null> {
+    cacheType?: CacheType
+  ): Promise<WithLastModified<CacheValue<CacheType>> | null> {
     try {
       const cache = await this.getCacheInstance();
-      const urlKey = this.getCacheUrlKey(key, isFetch);
+      const urlKey = this.getCacheUrlKey(key, cacheType);
 
       // Check for a cached entry as this will be faster than the store response.
       const cachedResponse = await cache.match(urlKey);
@@ -76,11 +81,11 @@ class RegionalCache implements IncrementalCache {
         // Re-fetch from the store and update the regional cache in the background
         if (this.opts.shouldLazilyUpdateOnCacheHit) {
           getCloudflareContext().ctx.waitUntil(
-            this.store.get(key, isFetch).then(async (rawEntry) => {
+            this.store.get(key, cacheType).then(async (rawEntry) => {
               const { value, lastModified } = rawEntry ?? {};
 
               if (value && typeof lastModified === "number") {
-                await this.putToCache({ key, isFetch, entry: { value, lastModified } });
+                await this.putToCache({ key, cacheType, entry: { value, lastModified } });
               }
             })
           );
@@ -89,12 +94,14 @@ class RegionalCache implements IncrementalCache {
         return cachedResponse.json();
       }
 
-      const rawEntry = await this.store.get(key, isFetch);
+      const rawEntry = await this.store.get(key, cacheType);
       const { value, lastModified } = rawEntry ?? {};
       if (!value || typeof lastModified !== "number") return null;
 
       // Update the locale cache after retrieving from the store.
-      getCloudflareContext().ctx.waitUntil(this.putToCache({ key, isFetch, entry: { value, lastModified } }));
+      getCloudflareContext().ctx.waitUntil(
+        this.putToCache({ key, cacheType, entry: { value, lastModified } })
+      );
 
       return { value, lastModified };
     } catch (e) {
@@ -103,17 +110,17 @@ class RegionalCache implements IncrementalCache {
     }
   }
 
-  async set<IsFetch extends boolean = false>(
+  async set<CacheType extends CacheEntryType = "cache">(
     key: string,
-    value: CacheValue<IsFetch>,
-    isFetch?: IsFetch
+    value: CacheValue<CacheType>,
+    cacheType?: CacheType
   ): Promise<void> {
     try {
-      await this.store.set(key, value, isFetch);
+      await this.store.set(key, value, cacheType);
 
       await this.putToCache({
         key,
-        isFetch,
+        cacheType,
         entry: {
           value,
           // Note: `Date.now()` returns the time of the last IO rather than the actual time.
@@ -144,15 +151,13 @@ class RegionalCache implements IncrementalCache {
     return this.localCache;
   }
 
-  protected getCacheUrlKey(key: string, isFetch?: boolean) {
+  protected getCacheUrlKey(key: string, cacheType?: CacheEntryType) {
     const buildId = process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
-    return (
-      "http://cache.local" + `/${buildId}/${key}`.replace(/\/+/g, "/") + `.${isFetch ? "fetch" : "cache"}`
-    );
+    return "http://cache.local" + `/${buildId}/${key}`.replace(/\/+/g, "/") + `.${cacheType ?? "cache"}`;
   }
 
-  protected async putToCache({ key, isFetch, entry }: PutToCacheInput): Promise<void> {
-    const urlKey = this.getCacheUrlKey(key, isFetch);
+  protected async putToCache({ key, cacheType, entry }: PutToCacheInput): Promise<void> {
+    const urlKey = this.getCacheUrlKey(key, cacheType);
     const cache = await this.getCacheInstance();
 
     const age =
@@ -209,7 +214,7 @@ export function withRegionalCache(cache: IncrementalCache, opts: Options) {
 /**
  * Extract the list of tags from a cache entry.
  */
-function getTagsFromCacheEntry(entry: IncrementalCacheEntry<boolean>): string[] | undefined {
+function getTagsFromCacheEntry(entry: IncrementalCacheEntry<CacheEntryType>): string[] | undefined {
   if ("tags" in entry.value && entry.value.tags) {
     return entry.value.tags;
   }
@@ -224,5 +229,8 @@ function getTagsFromCacheEntry(entry: IncrementalCacheEntry<boolean>): string[] 
     if (typeof rawTags === "string") {
       return rawTags.split(",");
     }
+  }
+  if ("value" in entry.value) {
+    return entry.value.tags;
   }
 }

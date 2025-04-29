@@ -1,5 +1,10 @@
 import { error } from "@opennextjs/aws/adapters/logger.js";
-import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/types/overrides.js";
+import type {
+  CacheEntryType,
+  CacheValue,
+  IncrementalCache,
+  WithLastModified,
+} from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
@@ -24,20 +29,17 @@ export const PREFIX_ENV_NAME = "NEXT_INC_CACHE_KV_PREFIX";
 class KVIncrementalCache implements IncrementalCache {
   readonly name = NAME;
 
-  async get<IsFetch extends boolean = false>(
+  async get<CacheType extends CacheEntryType = "cache">(
     key: string,
-    isFetch?: IsFetch
-  ): Promise<WithLastModified<CacheValue<IsFetch>> | null> {
+    cacheType?: CacheType
+  ): Promise<WithLastModified<CacheValue<CacheType>> | null> {
     const kv = getCloudflareContext().env[BINDING_NAME];
     if (!kv) throw new IgnorableError("No KV Namespace");
 
     debugCache(`Get ${key}`);
 
     try {
-      const entry = await kv.get<IncrementalCacheEntry<IsFetch> | CacheValue<IsFetch>>(
-        this.getKVKey(key, isFetch),
-        "json"
-      );
+      const entry = await kv.get<IncrementalCacheEntry<CacheType>>(this.getKVKey(key, cacheType), "json");
 
       if (!entry) return null;
 
@@ -56,10 +58,10 @@ class KVIncrementalCache implements IncrementalCache {
     }
   }
 
-  async set<IsFetch extends boolean = false>(
+  async set<CacheType extends CacheEntryType = "cache">(
     key: string,
-    value: CacheValue<IsFetch>,
-    isFetch?: IsFetch
+    value: CacheValue<CacheType>,
+    cacheType?: CacheType
   ): Promise<void> {
     const kv = getCloudflareContext().env[BINDING_NAME];
     if (!kv) throw new IgnorableError("No KV Namespace");
@@ -68,7 +70,7 @@ class KVIncrementalCache implements IncrementalCache {
 
     try {
       await kv.put(
-        this.getKVKey(key, isFetch),
+        this.getKVKey(key, cacheType),
         JSON.stringify({
           value,
           // Note: `Date.now()` returns the time of the last IO rather than the actual time.
@@ -90,17 +92,18 @@ class KVIncrementalCache implements IncrementalCache {
     debugCache(`Delete ${key}`);
 
     try {
-      await kv.delete(this.getKVKey(key, /* isFetch= */ false));
+      // Only cache that gets deleted is the ISR/SSG cache.
+      await kv.delete(this.getKVKey(key, "cache"));
     } catch (e) {
       error("Failed to delete from cache", e);
     }
   }
 
-  protected getKVKey(key: string, isFetch?: boolean): string {
+  protected getKVKey(key: string, cacheType?: CacheEntryType): string {
     return computeCacheKey(key, {
       prefix: getCloudflareContext().env[PREFIX_ENV_NAME],
       buildId: process.env.NEXT_BUILD_ID,
-      isFetch,
+      cacheType,
     });
   }
 }

@@ -149,7 +149,14 @@ async function generateBundle(
   fs.mkdirSync(outPackagePath, { recursive: true });
 
   const ext = fnOptions.runtime === "deno" ? "mjs" : "cjs";
+  // Normal cache
   fs.copyFileSync(path.join(options.buildDir, `cache.${ext}`), path.join(outPackagePath, "cache.cjs"));
+
+  // Composable cache
+  fs.copyFileSync(
+    path.join(options.buildDir, `composable-cache.${ext}`),
+    path.join(outPackagePath, "composable-cache.cjs")
+  );
 
   if (fnOptions.runtime === "deno") {
     addDenoJson(outputPath, packagePath);
@@ -225,6 +232,8 @@ async function generateBundle(
   const isAfter141 = buildHelper.compareSemver(options.nextVersion, ">=", "14.1");
   const isAfter142 = buildHelper.compareSemver(options.nextVersion, ">=", "14.2");
 
+  const isAfter153 = buildHelper.compareSemver(options.nextVersion, ">=", "15.3.0");
+
   const disableRouting = isBefore13413 || config.middleware?.external;
 
   const plugins = [
@@ -245,6 +254,7 @@ async function generateBundle(
         ...(disableNextPrebundledReact ? ["requireHooks"] : []),
         ...(isBefore13413 ? ["trustHostHeader"] : ["requestHandlerHost"]),
         ...(isAfter141 ? ["experimentalIncrementalCacheHandler"] : ["stableIncrementalCache"]),
+        ...(isAfter153 ? [""] : ["composableCache"]),
       ],
     }),
 
