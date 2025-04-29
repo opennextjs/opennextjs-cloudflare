@@ -86,7 +86,7 @@ interface OpenNextConfig extends AwsOpenNextConfig {
   cloudflare?: {
     /**
      * Whether to use the "workerd" build conditions when bundling the server.
-     * IT is recommended to set it to `true` so that code specifically targeted to the
+     * It is recommended to set it to `true` so that code specifically targeted to the
      * workerd runtime is bundled.
      *
      * See https://esbuild.github.io/api/#conditions

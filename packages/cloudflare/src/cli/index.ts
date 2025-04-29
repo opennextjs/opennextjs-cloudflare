@@ -7,7 +7,6 @@ import { normalizeOptions } from "@opennextjs/aws/build/helper.js";
 import { printHeader, showWarningOnWindows } from "@opennextjs/aws/build/utils.js";
 import logger from "@opennextjs/aws/logger.js";
 
-import type { OpenNextConfig } from "../api/config.js";
 import { Arguments, getArgs } from "./args.js";
 import { build } from "./build/build.js";
 import { createOpenNextConfigIfNotExistent, ensureCloudflareConfig } from "./build/utils/index.js";
@@ -35,7 +34,7 @@ async function runCommand(args: Arguments) {
   ensureCloudflareConfig(config);
 
   // Initialize options
-  const options = normalizeOptions(config as OpenNextConfig, openNextDistDir, buildDir);
+  const options = normalizeOptions(config, openNextDistDir, buildDir);
   logger.setLevel(options.debug ? "debug" : "info");
 
   switch (args.command) {
