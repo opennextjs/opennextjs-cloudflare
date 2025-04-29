@@ -14,19 +14,19 @@ export type CacheEntryType = "cache" | "fetch" | "composable";
 export type IncrementalCache = {
   get<CacheType extends CacheEntryType = "cache">(
     key: string,
-    cacheType?: CacheType,
+    cacheType?: CacheType
   ): Promise<WithLastModified<CacheValue<CacheType>> | null>;
   set<CacheType extends CacheEntryType = "cache">(
     key: string,
     value: CacheValue<CacheType>,
-    isFetch?: CacheType,
+    isFetch?: CacheType
   ): Promise<void>;
   delete(key: string): Promise<void>;
   name: string;
 };
 ```
 
-NextModeTagCache also get a new function `getLastRevalidated` used for the composable cache: 
+NextModeTagCache also get a new function `getLastRevalidated` used for the composable cache:
 
 ```ts
   getLastRevalidated(tags: string[]): Promise<number>;
