@@ -3,7 +3,7 @@
   "main": ".open-next/worker.js",
   "name": "ssg-app",
   "compatibility_date": "2025-02-04",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
