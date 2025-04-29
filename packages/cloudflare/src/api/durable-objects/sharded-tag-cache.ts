@@ -15,13 +15,13 @@ export class DOShardedTagCache extends DurableObject<CloudflareEnv> {
     try {
       const result = this.sql
         .exec(
-          `SELECT revalidatedAt FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")}) ORDER BY revalidatedAt DESC LIMIT 1`,
+          `SELECT MAX(revalidatedAt) AS time FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")})`,
           ...tags
         )
         .toArray();
       if (result.length === 0) return 0;
       // We only care about the most recent revalidation
-      return result[0]?.revalidatedAt as number;
+      return result[0]?.time as number;
     } catch (e) {
       console.error(e);
       // By default we don't want to crash here, so we return 0

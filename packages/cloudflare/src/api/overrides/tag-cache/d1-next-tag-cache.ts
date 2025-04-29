@@ -19,13 +19,13 @@ export class D1NextModeTagCache implements NextModeTagCache {
     try {
       const result = await db
         .prepare(
-          `SELECT revalidatedAt FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")}) ORDER BY revalidatedAt DESC LIMIT 1`
+          `SELECT MAX(revalidatedAt) AS time FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")})`
         )
         .run();
 
       if (result.results.length === 0) return 0;
       // We only care about the most recent revalidation
-      return (result.results[0]?.revalidatedAt ?? 0) as number;
+      return (result.results[0]?.time ?? 0) as number;
     } catch (e) {
       error(e);
       // By default we don't want to crash here, so we return false

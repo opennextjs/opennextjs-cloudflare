@@ -34,7 +34,7 @@ CacheHandler = require('${normalizePath(cacheFile)}').default;
 export async function patchComposableCache(code: string, buildOpts: BuildOptions): Promise<string> {
   const { outputDir } = buildOpts;
 
-  // TODO: switch to cache.mjs
+  // TODO: switch to mjs
   const outputPath = path.join(outputDir, "server-functions/default");
   const cacheFile = path.join(outputPath, getPackagePath(buildOpts), "composable-cache.cjs");
   //TODO: Do we want to move this to the new CodePatcher ?
