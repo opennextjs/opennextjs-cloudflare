@@ -1,6 +1,6 @@
 import { BuildOptions } from "@opennextjs/aws/build/helper.js";
-import { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 
+import type { OpenNextConfig } from "../../api/config.js";
 import { getWranglerEnvironmentFlag, runWrangler } from "../utils/run-wrangler.js";
 import { populateCache } from "./populate-cache.js";
 

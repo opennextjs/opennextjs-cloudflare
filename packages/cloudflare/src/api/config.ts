@@ -1,4 +1,9 @@
-import { BaseOverride, LazyLoadedOverride, OpenNextConfig } from "@opennextjs/aws/types/open-next";
+import type { BuildOptions } from "@opennextjs/aws/build/helper";
+import {
+  BaseOverride,
+  LazyLoadedOverride,
+  OpenNextConfig as AwsOpenNextConfig,
+} from "@opennextjs/aws/types/open-next";
 import type { IncrementalCache, Queue, TagCache } from "@opennextjs/aws/types/overrides";
 
 export type Override<T extends BaseOverride> = "dummy" | T | LazyLoadedOverride<T>;
@@ -47,6 +52,9 @@ export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNe
     },
     // node:crypto is used to compute cache keys
     edgeExternals: ["node:crypto"],
+    cloudflare: {
+      useWorkerdCondition: true,
+    },
   };
 }
 
@@ -73,3 +81,28 @@ function resolveQueue(value: CloudflareOverrides["queue"] = "dummy") {
 
   return typeof value === "function" ? value : () => value;
 }
+
+interface OpenNextConfig extends AwsOpenNextConfig {
+  cloudflare?: {
+    /**
+     * Whether to use the "workerd" build conditions when bundling the server.
+     * It is recommended to set it to `true` so that code specifically targeted to the
+     * workerd runtime is bundled.
+     *
+     * See https://esbuild.github.io/api/#conditions
+     *
+     * @default true
+     */
+    useWorkerdCondition?: boolean;
+  };
+}
+
+/**
+ * @param buildOpts build options from AWS
+ * @returns The OpenConfig specific to cloudflare
+ */
+export function getOpenNextConfig(buildOpts: BuildOptions): OpenNextConfig {
+  return buildOpts.config;
+}
+
+export type { OpenNextConfig };
