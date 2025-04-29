@@ -36,7 +36,7 @@ export async function patchComposableCache(code: string, buildOpts: BuildOptions
 
   // TODO: switch to cache.mjs
   const outputPath = path.join(outputDir, "server-functions/default");
-  const cacheFile = path.join(outputPath, getPackagePath(buildOpts), "cache.cjs");
+  const cacheFile = path.join(outputPath, getPackagePath(buildOpts), "composable-cache.cjs");
   //TODO: Do we want to move this to the new CodePatcher ?
   return code.replace(
     "const { cacheHandlers } = this.nextConfig.experimental",

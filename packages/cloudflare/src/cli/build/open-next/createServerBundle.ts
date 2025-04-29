@@ -19,6 +19,7 @@ import {
   patchFetchCacheSetMissingWaitUntil,
   patchNextServer,
   patchUnstableCacheForISR,
+  patchUseCacheForISR,
 } from "@opennextjs/aws/build/patch/patches/index.js";
 // TODO: import from patches/index.js when https://github.com/opennextjs/opennextjs-aws/pull/827 is released
 import { patchBackgroundRevalidation } from "@opennextjs/aws/build/patch/patches/patchBackgroundRevalidation.js";
@@ -209,6 +210,7 @@ async function generateBundle(
     patchFetchCacheSetMissingWaitUntil,
     patchFetchCacheForISR,
     patchUnstableCacheForISR,
+    patchUseCacheForISR,
     patchNextServer,
     patchEnvVars,
     patchBackgroundRevalidation,
@@ -232,7 +234,11 @@ async function generateBundle(
   const isAfter141 = buildHelper.compareSemver(options.nextVersion, ">=", "14.1");
   const isAfter142 = buildHelper.compareSemver(options.nextVersion, ">=", "14.2");
 
-  const isAfter153 = buildHelper.compareSemver(options.nextVersion, ">=", "15.3.0");
+  const isAfter152 = buildHelper.compareSemver(
+    options.nextVersion,
+    ">=",
+    "15.2.0",
+  );
 
   const disableRouting = isBefore13413 || config.middleware?.external;
 
@@ -254,7 +260,7 @@ async function generateBundle(
         ...(disableNextPrebundledReact ? ["requireHooks"] : []),
         ...(isBefore13413 ? ["trustHostHeader"] : ["requestHandlerHost"]),
         ...(isAfter141 ? ["experimentalIncrementalCacheHandler"] : ["stableIncrementalCache"]),
-        ...(isAfter153 ? [""] : ["composableCache"]),
+        ...(isAfter152 ? [""] : ["composableCache"]),
       ],
     }),
 
