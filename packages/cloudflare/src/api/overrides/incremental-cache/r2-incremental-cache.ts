@@ -1,30 +1,15 @@
-import { createHash } from "node:crypto";
-
 import { error } from "@opennextjs/aws/adapters/logger.js";
 import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
-import { debugCache, FALLBACK_BUILD_ID } from "../internal.js";
+import { computeCacheKey, debugCache } from "../internal.js";
 
 export const NAME = "cf-r2-incremental-cache";
 
 export const BINDING_NAME = "NEXT_INC_CACHE_R2_BUCKET";
 
 export const PREFIX_ENV_NAME = "NEXT_INC_CACHE_R2_PREFIX";
-export const DEFAULT_PREFIX = "incremental-cache";
-
-export type KeyOptions = {
-  isFetch?: boolean;
-  directory?: string;
-  buildId?: string;
-};
-
-export function computeCacheKey(key: string, options: KeyOptions) {
-  const { isFetch = false, directory = DEFAULT_PREFIX, buildId = FALLBACK_BUILD_ID } = options;
-  const hash = createHash("sha256").update(key).digest("hex");
-  return `${directory}/${buildId}/${hash}.${isFetch ? "fetch" : "cache"}`.replace(/\/+/g, "/");
-}
 
 /**
  * An instance of the Incremental Cache that uses an R2 bucket (`NEXT_INC_CACHE_R2_BUCKET`) as it's
@@ -91,7 +76,7 @@ class R2IncrementalCache implements IncrementalCache {
 
   protected getR2Key(key: string, isFetch?: boolean): string {
     return computeCacheKey(key, {
-      directory: getCloudflareContext().env[PREFIX_ENV_NAME],
+      prefix: getCloudflareContext().env[PREFIX_ENV_NAME],
       buildId: process.env.NEXT_BUILD_ID,
       isFetch,
     });
