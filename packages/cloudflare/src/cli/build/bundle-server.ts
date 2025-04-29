@@ -7,6 +7,7 @@ import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.
 import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
 import { build, type Plugin } from "esbuild";
 
+import { getOpenNextConfig } from "../../api/config.js";
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
 import * as patches from "./patches/index.js";
@@ -77,7 +78,16 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
     target: "esnext",
     minify: false,
     metafile: true,
-    conditions: ["workerd"],
+    // Next traces files using the default conditions from `nft` (`node`, `require`, `import` and `default`)
+    //
+    // Because we use the `node` platform for this build, the "module" condition is used when no conditions are defined.
+    // The conditions are always set (should it be to an empty array) to disable the "module" condition.
+    //
+    // See:
+    // - default nft conditions: https://github.com/vercel/nft/blob/2b55b01/readme.md#exports--imports
+    // - Next no explicit override: https://github.com/vercel/next.js/blob/2efcf11/packages/next/src/build/collect-build-traces.ts#L287
+    // - ESBuild `node` platform: https://esbuild.github.io/api/#platform
+    conditions: getOpenNextConfig(buildOpts).cloudflare?.useWorkerdCondition === false ? [] : ["workerd"],
     plugins: [
       shimRequireHook(buildOpts),
       inlineDynamicRequires(updater, buildOpts),

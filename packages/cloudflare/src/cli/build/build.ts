@@ -6,8 +6,8 @@ import * as buildHelper from "@opennextjs/aws/build/helper.js";
 import { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { printHeader } from "@opennextjs/aws/build/utils.js";
 import logger from "@opennextjs/aws/logger.js";
-import { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 
+import { OpenNextConfig } from "../../api/config.js";
 import type { ProjectOptions } from "../project-options.js";
 import { bundleServer } from "./bundle-server.js";
 import { compileCacheAssetsManifestSqlFile } from "./open-next/compile-cache-assets-manifest.js";

@@ -33,6 +33,7 @@ import type { FunctionOptions, SplittedFunctionOptions } from "@opennextjs/aws/t
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import type { Plugin } from "esbuild";
 
+import { getOpenNextConfig } from "../../../api/config.js";
 import { patchResRevalidate } from "../patches/plugins/res-revalidate.js";
 import { normalizePath } from "../utils/index.js";
 import { copyWorkerdPackages } from "../utils/workerd.js";
@@ -189,9 +190,11 @@ async function generateBundle(
     bundledNextServer: isBundled,
   });
 
-  // Next does not trace the "workerd" build condition
-  // So we need to copy the whole packages using the condition
-  await copyWorkerdPackages(options, nodePackages);
+  if (getOpenNextConfig(options).cloudflare?.useWorkerdCondition !== false) {
+    // Next does not trace the "workerd" build condition
+    // So we need to copy the whole packages using the condition
+    await copyWorkerdPackages(options, nodePackages);
+  }
 
   const additionalCodePatches = codeCustomization?.additionalCodePatches ?? [];
 
