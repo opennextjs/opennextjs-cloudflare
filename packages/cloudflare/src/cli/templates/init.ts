@@ -20,6 +20,35 @@ Object.defineProperty(globalThis, Symbol.for("__cloudflare-context__"), {
   },
 });
 
+class Timeout implements NodeJS.Timeout {
+  constructor(private id: number, private disposer: (id: number) => void) {}
+
+  ref(): this {
+    return this;
+  }
+
+  close() {
+    this.disposer(this.id);
+  }
+
+  unref(): this {
+    return this;
+  }
+  hasRef(): boolean {
+    return false;
+  }
+  refresh(): this {
+    throw new Error("Method not implemented.");
+  }
+  [Symbol.toPrimitive](): number {
+    return this.id;
+  }
+  [Symbol.dispose](): void {
+    this.disposer(this.id);
+  }
+  
+}
+
 /**
  * Executes the handler with the Cloudflare context.
  */
@@ -94,6 +123,21 @@ function initRuntime() {
     __BUILD_TIMESTAMP_MS__: __BUILD_TIMESTAMP_MS__,
     __NEXT_BASE_PATH__: __NEXT_BASE_PATH__,
   });
+
+  const oldSetInterval = globalThis.setInterval;
+  const oldSetTimeout = globalThis.setTimeout;
+
+  // @ts-expect-error: workerd does not have the same types as node
+  globalThis.setInterval = (cb: (...args: unknown[]) => void, ms: number, ...args: unknown[]) => {
+    const id = oldSetInterval(cb, ms, ...args) as unknown as number;
+    return new Timeout(id, globalThis.clearInterval);
+  };
+
+  // @ts-expect-error: workerd does not have the same types as node
+  globalThis.setTimeout = (cb: (...args: unknown[]) => void, ms: number, ...args: unknown[]) => {
+    const id = oldSetTimeout(cb, ms, ...args) as unknown as number;
+    return new Timeout(id, globalThis.clearTimeout);
+  }
 }
 
 /**
