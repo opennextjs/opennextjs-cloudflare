@@ -6,13 +6,13 @@ export function register() {
   const timeout = setTimeout(() => {
     console.log("This is a delayed log from the instrumentation register callback");
   }, 0);
-  // This is to test that we have access to the node version of setTimeout
-  timeout.unref();
-  clearTimeout(timeout);
 
   if (process.env.NEXT_RUNTIME === "nodejs") {
     globalThis["__NODEJS_INSTRUMENTATION_SETUP"] =
       "this value has been set by calling the instrumentation `register` callback in the nodejs runtime";
+    // This is to test that we have access to the node version of setTimeout
+    timeout.unref();
+    clearTimeout(timeout);
   }
 
   if (process.env.NEXT_RUNTIME === "edge") {
