@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+// See https://github.com/opennextjs/opennextjs-cloudflare/issues/617
 test.describe("Node Middleware", () => {
   test.skip("Node middleware should add headers", async ({ request }) => {
     const resp = await request.get("/");

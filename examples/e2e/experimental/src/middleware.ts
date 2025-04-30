@@ -1,3 +1,6 @@
+// Node middleware is not supported yet in cloudflare
+// See https://github.com/opennextjs/opennextjs-cloudflare/issues/617
+
 // import crypto from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 
