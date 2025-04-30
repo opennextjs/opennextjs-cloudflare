@@ -5,6 +5,8 @@ import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
 
+import { normalizePath } from "../../utils/normalize-path.js";
+
 export function patchInstrumentation(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
   const builtInstrumentationPath = getBuiltInstrumentationPath(buildOpts);
 
@@ -84,7 +86,7 @@ function getBuiltInstrumentationPath(buildOpts: BuildOptions): string | null {
     getPackagePath(buildOpts),
     `.next/server/${INSTRUMENTATION_HOOK_FILENAME}.js`
   );
-  return existsSync(maybeBuiltInstrumentationPath) ? maybeBuiltInstrumentationPath : null;
+  return existsSync(maybeBuiltInstrumentationPath) ? normalizePath(maybeBuiltInstrumentationPath) : null;
 }
 
 /**
