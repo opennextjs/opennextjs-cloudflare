@@ -8,7 +8,11 @@ on:
 jobs:
   test:
     timeout-minutes: 30
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -17,7 +21,7 @@ jobs:
         uses: ./.github/actions/install-dependencies
 
       - name: Install Playwright
-        run: pnpm run install-playwright
+        uses: ./.github/actions/setup-playwright
 
       - name: Build the tool
         run: pnpm build
@@ -34,6 +38,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.os }}
           path: ./**/playwright-report
           retention-days: 1

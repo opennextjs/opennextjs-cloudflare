@@ -18,6 +18,8 @@ import { dirname, resolve } from "node:path";
 
 import type { PluginBuild } from "esbuild";
 
+import { normalizePath } from "../../utils/normalize-path.js";
+
 export function setWranglerExternal() {
   return {
     name: "wrangler-externals",
@@ -27,7 +29,7 @@ export function setWranglerExternal() {
 
       build.onResolve({ filter: /(\.bin|\.wasm\?module)$/ }, ({ path, importer }) => {
         return {
-          path: resolve(dirname(importer), path),
+          path: normalizePath(resolve(dirname(importer), path)),
           namespace,
           external: true,
         };
