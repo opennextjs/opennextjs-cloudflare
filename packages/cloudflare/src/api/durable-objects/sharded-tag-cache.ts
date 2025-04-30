@@ -11,6 +11,24 @@ export class DOShardedTagCache extends DurableObject<CloudflareEnv> {
     });
   }
 
+  async getLastRevalidated(tags: string[]): Promise<number> {
+    try {
+      const result = this.sql
+        .exec(
+          `SELECT MAX(revalidatedAt) AS time FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")})`,
+          ...tags
+        )
+        .toArray();
+      if (result.length === 0) return 0;
+      // We only care about the most recent revalidation
+      return result[0]?.time as number;
+    } catch (e) {
+      console.error(e);
+      // By default we don't want to crash here, so we return 0
+      return 0;
+    }
+  }
+
   async hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean> {
     return (
       this.sql

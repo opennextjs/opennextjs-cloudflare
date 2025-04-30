@@ -17,7 +17,7 @@ export function inlineEvalManifest(updater: ContentUpdater, buildOpts: BuildOpti
   return updater.updateContent("inline-eval-manifest", [
     {
       field: {
-        filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/load-manifest\.js$`, {
+        filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/load-manifest(\.external)?\.js$`, {
           escape: false,
         }),
         contentFilter: /function evalManifest\(/,

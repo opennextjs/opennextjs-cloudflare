@@ -1,5 +1,10 @@
 import { error } from "@opennextjs/aws/adapters/logger.js";
-import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/types/overrides.js";
+import type {
+  CacheEntryType,
+  CacheValue,
+  IncrementalCache,
+  WithLastModified,
+} from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
@@ -21,17 +26,17 @@ export const PREFIX_ENV_NAME = "NEXT_INC_CACHE_R2_PREFIX";
 class R2IncrementalCache implements IncrementalCache {
   readonly name = NAME;
 
-  async get<IsFetch extends boolean = false>(
+  async get<CacheType extends CacheEntryType = "cache">(
     key: string,
-    isFetch?: IsFetch
-  ): Promise<WithLastModified<CacheValue<IsFetch>> | null> {
+    cacheType?: CacheType
+  ): Promise<WithLastModified<CacheValue<CacheType>> | null> {
     const r2 = getCloudflareContext().env[BINDING_NAME];
     if (!r2) throw new IgnorableError("No R2 bucket");
 
     debugCache(`Get ${key}`);
 
     try {
-      const r2Object = await r2.get(this.getR2Key(key, isFetch));
+      const r2Object = await r2.get(this.getR2Key(key, cacheType));
       if (!r2Object) return null;
 
       return {
@@ -44,10 +49,10 @@ class R2IncrementalCache implements IncrementalCache {
     }
   }
 
-  async set<IsFetch extends boolean = false>(
+  async set<CacheType extends CacheEntryType = "cache">(
     key: string,
-    value: CacheValue<IsFetch>,
-    isFetch?: IsFetch
+    value: CacheValue<CacheType>,
+    cacheType?: CacheType
   ): Promise<void> {
     const r2 = getCloudflareContext().env[BINDING_NAME];
     if (!r2) throw new IgnorableError("No R2 bucket");
@@ -55,7 +60,7 @@ class R2IncrementalCache implements IncrementalCache {
     debugCache(`Set ${key}`);
 
     try {
-      await r2.put(this.getR2Key(key, isFetch), JSON.stringify(value));
+      await r2.put(this.getR2Key(key, cacheType), JSON.stringify(value));
     } catch (e) {
       error("Failed to set to cache", e);
     }
@@ -74,11 +79,11 @@ class R2IncrementalCache implements IncrementalCache {
     }
   }
 
-  protected getR2Key(key: string, isFetch?: boolean): string {
+  protected getR2Key(key: string, cacheType?: CacheEntryType): string {
     return computeCacheKey(key, {
       prefix: getCloudflareContext().env[PREFIX_ENV_NAME],
       buildId: process.env.NEXT_BUILD_ID,
-      isFetch,
+      cacheType,
     });
   }
 }

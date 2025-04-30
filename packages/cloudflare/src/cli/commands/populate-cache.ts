@@ -116,7 +116,7 @@ function populateR2IncrementalCache(
     const cacheKey = computeCacheKey(key, {
       prefix: process.env[R2_CACHE_PREFIX_ENV_NAME],
       buildId,
-      isFetch,
+      cacheType: isFetch ? "fetch" : "cache",
     });
 
     runWrangler(
@@ -149,7 +149,7 @@ function populateKVIncrementalCache(
     const cacheKey = computeCacheKey(key, {
       prefix: process.env[KV_CACHE_PREFIX_ENV_NAME],
       buildId,
-      isFetch,
+      cacheType: isFetch ? "fetch" : "cache",
     });
 
     runWrangler(

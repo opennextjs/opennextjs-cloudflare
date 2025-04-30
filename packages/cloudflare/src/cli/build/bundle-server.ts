@@ -176,6 +176,7 @@ export async function updateWorkerBundledCode(
   const patchedCode = await patchCodeWithValidations(code, [
     ["require", patches.patchRequire],
     ["cacheHandler", (code) => patches.patchCache(code, buildOpts)],
+    ["composableCache", (code) => patches.patchComposableCache(code, buildOpts), { isOptional: true }],
     [
       "'require(this.middlewareManifestPath)'",
       (code) => patches.inlineMiddlewareManifestRequire(code, buildOpts),
@@ -185,6 +186,11 @@ export async function updateWorkerBundledCode(
       "`require.resolve` call",
       // workers do not support dynamic require nor require.resolve
       (code) => code.replace('require.resolve("./cache.cjs")', '"unused"'),
+    ],
+    [
+      "`require.resolve composable cache` call",
+      // workers do not support dynamic require nor require.resolve
+      (code) => code.replace('require.resolve("./composable-cache.cjs")', '"unused"'),
     ],
   ]);
 

@@ -6,6 +6,7 @@ import { softTagFilter, withFilter } from "./tag-cache-filter";
 const mockedTagCache = {
   name: "mocked",
   mode: "nextMode",
+  getLastRevalidated: vi.fn(),
   getPathsByTags: vi.fn(),
   hasBeenRevalidated: vi.fn(),
   writeTags: vi.fn(),

@@ -248,10 +248,11 @@ describe("DOShardedTagCache", () => {
       cache.deleteRegionalCache = vi.fn();
       await cache.writeTags(["tag1"]);
       expect(cache.deleteRegionalCache).toHaveBeenCalled();
-      expect(cache.deleteRegionalCache).toHaveBeenCalledWith(
-        expect.objectContaining({ key: "tag-hard;shard-1;replica-1" }),
-        ["tag1"]
-      );
+      expect(cache.deleteRegionalCache).toHaveBeenCalledWith({
+        doId: expect.objectContaining({ key: "tag-hard;shard-1;replica-1" }),
+        tags: ["tag1"],
+        type: "boolean",
+      });
       // expect(cache.deleteRegionalCache).toHaveBeenCalledWith("tag-hard;shard-1;replica-1", ["tag1"]);
     });
   });
@@ -284,7 +285,7 @@ describe("DOShardedTagCache", () => {
         numberOfReplicas: 1,
         shardType: "hard",
       });
-      expect(await cache.getFromRegionalCache(doId, ["tag1"])).toBeUndefined();
+      expect(await cache.getFromRegionalCache({ doId, tags: ["tag1"], type: "boolean" })).toBeUndefined();
     });
 
     it("should call .match on the cache", async () => {
@@ -300,7 +301,7 @@ describe("DOShardedTagCache", () => {
         numberOfReplicas: 1,
         shardType: "hard",
       });
-      expect(await cache.getFromRegionalCache(doId, ["tag1"])).toBe("response");
+      expect(await cache.getFromRegionalCache({ doId, tags: ["tag1"], type: "boolean" })).toBe("response");
       // @ts-expect-error - Defined on cloudfare context
       globalThis.caches = undefined;
     });
@@ -310,8 +311,8 @@ describe("DOShardedTagCache", () => {
     it("should return the cache key without the random part", async () => {
       const cache = shardedDOTagCache();
       const doId1 = new DOId({ baseShardId: "shard-0", numberOfReplicas: 1, shardType: "hard" });
-      expect(cache.getCacheUrlKey(doId1, ["_N_T_/tag1"])).toBe(
-        "http://local.cache/shard/tag-hard;shard-0?tags=_N_T_%2Ftag1"
+      expect(cache.getCacheUrlKey({ doId: doId1, tags: ["_N_T_/tag1"], type: "boolean" })).toBe(
+        "http://local.cache/shard/tag-hard;shard-0?type=boolean&tags=_N_T_%2Ftag1"
       );
 
       const doId2 = new DOId({
@@ -319,8 +320,8 @@ describe("DOShardedTagCache", () => {
         numberOfReplicas: 1,
         shardType: "hard",
       });
-      expect(cache.getCacheUrlKey(doId2, ["tag1"])).toBe(
-        "http://local.cache/shard/tag-hard;shard-1?tags=tag1"
+      expect(cache.getCacheUrlKey({ doId: doId2, tags: ["tag1"], type: "boolean" })).toBe(
+        "http://local.cache/shard/tag-hard;shard-1?type=boolean&tags=tag1"
       );
     });
   });

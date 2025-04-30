@@ -30,3 +30,24 @@ CacheHandler = require('${normalizePath(cacheFile)}').default;
 `
   );
 }
+
+export async function patchComposableCache(code: string, buildOpts: BuildOptions): Promise<string> {
+  const { outputDir } = buildOpts;
+
+  // TODO: switch to mjs
+  const outputPath = path.join(outputDir, "server-functions/default");
+  const cacheFile = path.join(outputPath, getPackagePath(buildOpts), "composable-cache.cjs");
+  //TODO: Do we want to move this to the new CodePatcher ?
+  return code.replace(
+    "const { cacheHandlers } = this.nextConfig.experimental",
+    `
+const cacheHandlers = null;
+const handlersSymbol = Symbol.for('@next/cache-handlers');
+const handlersMapSymbol = Symbol.for('@next/cache-handlers-map');
+const handlersSetSymbol = Symbol.for('@next/cache-handlers-set');
+globalThis[handlersMapSymbol] = new Map();
+globalThis[handlersMapSymbol].set("default", require('${normalizePath(cacheFile)}').default);
+globalThis[handlersSetSymbol] = new Set(globalThis[handlersMapSymbol].values());
+`
+  );
+}

@@ -13,6 +13,27 @@ export class D1NextModeTagCache implements NextModeTagCache {
   readonly mode = "nextMode" as const;
   readonly name = NAME;
 
+  async getLastRevalidated(tags: string[]): Promise<number> {
+    const { isDisabled, db } = this.getConfig();
+    if (isDisabled) return 0;
+    try {
+      const result = await db
+        .prepare(
+          `SELECT MAX(revalidatedAt) AS time FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")})`
+        )
+        .run();
+
+      if (result.results.length === 0) return 0;
+      // We only care about the most recent revalidation
+      return (result.results[0]?.time ?? 0) as number;
+    } catch (e) {
+      error(e);
+      // By default we don't want to crash here, so we return false
+      // We still log the error though so we can debug it
+      return 0;
+    }
+  }
+
   async hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean> {
     const { isDisabled, db } = this.getConfig();
     if (isDisabled) return false;

@@ -19,6 +19,7 @@ import {
   patchFetchCacheSetMissingWaitUntil,
   patchNextServer,
   patchUnstableCacheForISR,
+  patchUseCacheForISR,
 } from "@opennextjs/aws/build/patch/patches/index.js";
 // TODO: import from patches/index.js when https://github.com/opennextjs/opennextjs-aws/pull/827 is released
 import { patchBackgroundRevalidation } from "@opennextjs/aws/build/patch/patches/patchBackgroundRevalidation.js";
@@ -149,7 +150,14 @@ async function generateBundle(
   fs.mkdirSync(outPackagePath, { recursive: true });
 
   const ext = fnOptions.runtime === "deno" ? "mjs" : "cjs";
+  // Normal cache
   fs.copyFileSync(path.join(options.buildDir, `cache.${ext}`), path.join(outPackagePath, "cache.cjs"));
+
+  // Composable cache
+  fs.copyFileSync(
+    path.join(options.buildDir, `composable-cache.${ext}`),
+    path.join(outPackagePath, "composable-cache.cjs")
+  );
 
   if (fnOptions.runtime === "deno") {
     addDenoJson(outputPath, packagePath);
@@ -202,6 +210,7 @@ async function generateBundle(
     patchFetchCacheSetMissingWaitUntil,
     patchFetchCacheForISR,
     patchUnstableCacheForISR,
+    patchUseCacheForISR,
     patchNextServer,
     patchEnvVars,
     patchBackgroundRevalidation,
@@ -225,6 +234,8 @@ async function generateBundle(
   const isAfter141 = buildHelper.compareSemver(options.nextVersion, ">=", "14.1");
   const isAfter142 = buildHelper.compareSemver(options.nextVersion, ">=", "14.2");
 
+  const isAfter152 = buildHelper.compareSemver(options.nextVersion, ">=", "15.2.0");
+
   const disableRouting = isBefore13413 || config.middleware?.external;
 
   const plugins = [
@@ -245,6 +256,7 @@ async function generateBundle(
         ...(disableNextPrebundledReact ? ["requireHooks"] : []),
         ...(isBefore13413 ? ["trustHostHeader"] : ["requestHandlerHost"]),
         ...(isAfter141 ? ["experimentalIncrementalCacheHandler"] : ["stableIncrementalCache"]),
+        ...(isAfter152 ? [""] : ["composableCache"]),
       ],
     }),
 
