@@ -146,7 +146,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
     },
     banner: {
       // We need to import them here, assigning them to `globalThis` does not work because node:timers use `globalThis` and thus create an infinite loop
-      js: `import {setInterval, setTimeout, setImmediate} from "node:timers"`,
+      js: `import {setInterval, clearInterval, setTimeout, clearTimeout, setImmediate, clearImmediate} from "node:timers"`,
     },
     platform: "node",
   });

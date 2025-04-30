@@ -8,6 +8,7 @@ export function register() {
   }, 0);
   // This is to test that we have access to the node version of setTimeout
   timeout.unref();
+  clearTimeout(timeout);
 
   if (process.env.NEXT_RUNTIME === "nodejs") {
     globalThis["__NODEJS_INSTRUMENTATION_SETUP"] =
