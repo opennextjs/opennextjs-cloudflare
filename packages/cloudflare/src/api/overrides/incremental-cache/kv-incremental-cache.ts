@@ -1,29 +1,21 @@
-import { createHash } from "node:crypto";
-
 import { error } from "@opennextjs/aws/adapters/logger.js";
 import type { CacheValue, IncrementalCache, WithLastModified } from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
-import { debugCache, FALLBACK_BUILD_ID, IncrementalCacheEntry } from "../internal.js";
+import { computeCacheKey, debugCache, IncrementalCacheEntry } from "../internal.js";
 
 export const NAME = "cf-kv-incremental-cache";
 
 export const BINDING_NAME = "NEXT_INC_CACHE_KV";
 
-export type KeyOptions = {
-  isFetch?: boolean;
-  buildId?: string;
-};
-
-export function computeCacheKey(key: string, options: KeyOptions) {
-  const { isFetch = false, buildId = FALLBACK_BUILD_ID } = options;
-  const hash = createHash("sha256").update(key).digest("hex");
-  return `${buildId}/${hash}.${isFetch ? "fetch" : "cache"}`.replace(/\/+/g, "/");
-}
+export const PREFIX_ENV_NAME = "NEXT_INC_CACHE_KV_PREFIX";
 
 /**
  * Open Next cache based on Cloudflare KV.
+ *
+ * The prefix that the cache entries are stored under can be configured with the `NEXT_INC_CACHE_KV_PREFIX`
+ * environment variable, and defaults to `incremental-cache`.
  *
  * Note: The class is instantiated outside of the request context.
  * The cloudflare context and process.env are not initialized yet
@@ -106,6 +98,7 @@ class KVIncrementalCache implements IncrementalCache {
 
   protected getKVKey(key: string, isFetch?: boolean): string {
     return computeCacheKey(key, {
+      prefix: getCloudflareContext().env[PREFIX_ENV_NAME],
       buildId: process.env.NEXT_BUILD_ID,
       isFetch,
     });

@@ -2,8 +2,10 @@ import type { Context, RunningCodeOptions } from "node:vm";
 
 import type { GetPlatformProxyOptions } from "wrangler";
 
-import type { DOQueueHandler } from "./durable-objects/queue";
-import { DOShardedTagCache } from "./durable-objects/sharded-tag-cache";
+import type { DOQueueHandler } from "./durable-objects/queue.js";
+import type { DOShardedTagCache } from "./durable-objects/sharded-tag-cache.js";
+import type { PREFIX_ENV_NAME as KV_CACHE_PREFIX_ENV_NAME } from "./overrides/incremental-cache/kv-incremental-cache.js";
+import type { PREFIX_ENV_NAME as R2_CACHE_PREFIX_ENV_NAME } from "./overrides/incremental-cache/r2-incremental-cache.js";
 
 declare global {
   interface CloudflareEnv {
@@ -19,11 +21,13 @@ declare global {
 
     // KV used for the incremental cache
     NEXT_INC_CACHE_KV?: KVNamespace;
+    // Prefix used for the KV incremental cache key
+    [KV_CACHE_PREFIX_ENV_NAME]?: string;
 
     // R2 bucket used for the incremental cache
     NEXT_INC_CACHE_R2_BUCKET?: R2Bucket;
     // Prefix used for the R2 incremental cache bucket
-    NEXT_INC_CACHE_R2_PREFIX?: string;
+    [R2_CACHE_PREFIX_ENV_NAME]?: string;
 
     // D1 db used for the tag cache
     NEXT_TAG_CACHE_D1?: D1Database;

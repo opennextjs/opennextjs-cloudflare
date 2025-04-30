@@ -16,12 +16,11 @@ import { unstable_readConfig } from "wrangler";
 
 import {
   BINDING_NAME as KV_CACHE_BINDING_NAME,
-  computeCacheKey as computeKVCacheKey,
   NAME as KV_CACHE_NAME,
+  PREFIX_ENV_NAME as KV_CACHE_PREFIX_ENV_NAME,
 } from "../../api/overrides/incremental-cache/kv-incremental-cache.js";
 import {
   BINDING_NAME as R2_CACHE_BINDING_NAME,
-  computeCacheKey as computeR2CacheKey,
   NAME as R2_CACHE_NAME,
   PREFIX_ENV_NAME as R2_CACHE_PREFIX_ENV_NAME,
 } from "../../api/overrides/incremental-cache/r2-incremental-cache.js";
@@ -29,6 +28,7 @@ import {
   CACHE_DIR as STATIC_ASSETS_CACHE_DIR,
   NAME as STATIC_ASSETS_CACHE_NAME,
 } from "../../api/overrides/incremental-cache/static-assets-incremental-cache.js";
+import { computeCacheKey } from "../../api/overrides/internal.js";
 import {
   BINDING_NAME as D1_TAG_BINDING_NAME,
   NAME as D1_TAG_NAME,
@@ -113,8 +113,8 @@ function populateR2IncrementalCache(
   const assets = getCacheAssets(options);
 
   for (const { fullPath, key, buildId, isFetch } of tqdm(assets)) {
-    const cacheKey = computeR2CacheKey(key, {
-      directory: process.env[R2_CACHE_PREFIX_ENV_NAME],
+    const cacheKey = computeCacheKey(key, {
+      prefix: process.env[R2_CACHE_PREFIX_ENV_NAME],
       buildId,
       isFetch,
     });
@@ -146,7 +146,8 @@ function populateKVIncrementalCache(
   const assets = getCacheAssets(options);
 
   for (const { fullPath, key, buildId, isFetch } of tqdm(assets)) {
-    const cacheKey = computeKVCacheKey(key, {
+    const cacheKey = computeCacheKey(key, {
+      prefix: process.env[KV_CACHE_PREFIX_ENV_NAME],
       buildId,
       isFetch,
     });
