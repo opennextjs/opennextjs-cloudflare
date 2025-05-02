@@ -3,7 +3,6 @@ import { describe, expect, test } from "vitest";
 import { transformBuildCondition, transformPackageJson } from "./workerd";
 
 describe("transformBuildCondition", () => {
-
   test("top level", () => {
     const exports = {
       workerd: "./path/to/workerd.js",
@@ -102,7 +101,6 @@ describe("transformBuildCondition", () => {
         },
       },
     });
-
   });
 });
 
@@ -119,8 +117,7 @@ describe("transformPackageJson", () => {
 
     expect(transformed).toEqual(json);
     expect(hasBuildCondition).toBe(false);
-  }
-  );
+  });
 
   test("exports only with no workerd condition", () => {
     const json = {
@@ -135,7 +132,7 @@ describe("transformPackageJson", () => {
 
     expect(transformed).toEqual(json);
     expect(hasBuildCondition).toBe(false);
-  })
+  });
 
   test("exports only with nested workerd condition", () => {
     const json = {
@@ -177,7 +174,7 @@ describe("transformPackageJson", () => {
       },
     });
     expect(hasBuildCondition).toBe(true);
-  })
+  });
 
   test("exports and imports with workerd condition both nested and top level", () => {
     const json = {
@@ -208,5 +205,5 @@ describe("transformPackageJson", () => {
       },
     });
     expect(hasBuildCondition).toBe(true);
-  })
+  });
 });

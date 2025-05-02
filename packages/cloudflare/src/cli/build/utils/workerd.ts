@@ -15,16 +15,15 @@ import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
  * @param condition The build condition to look for
  * @returns An object with the transformed exports and a boolean indicating if the build condition was found
  */
-export function transformBuildCondition(
-  exports: { [key: string]: unknown },
-  condition: string
-) {
+export function transformBuildCondition(exports: { [key: string]: unknown }, condition: string) {
   const transformed: { [key: string]: unknown } = {};
-  const hasTopLevelBuildCondition = Object.keys(exports).some((key) => (key === condition && typeof exports[key] === "string"));
+  const hasTopLevelBuildCondition = Object.keys(exports).some(
+    (key) => key === condition && typeof exports[key] === "string"
+  );
   let hasBuildCondition = hasTopLevelBuildCondition;
   for (const [key, value] of Object.entries(exports)) {
     if (typeof value === "object" && value != null) {
-      const {transformedExports, hasBuildCondition: innerBuildCondition } = transformBuildCondition(
+      const { transformedExports, hasBuildCondition: innerBuildCondition } = transformBuildCondition(
         value as { [key: string]: unknown },
         condition
       );
@@ -34,15 +33,14 @@ export function transformBuildCondition(
       // If it doesn't have the build condition, we need to keep everything as is
       // If it has the build condition, we need to keep only the build condition
       // and remove everything else
-      if(!hasTopLevelBuildCondition) {
+      if (!hasTopLevelBuildCondition) {
         transformed[key] = value;
-      }else if (key === condition) {
+      } else if (key === condition) {
         transformed[key] = value;
       }
-      
     }
   }
-  return {transformedExports: transformed, hasBuildCondition};
+  return { transformedExports: transformed, hasBuildCondition };
 }
 // We only care about these 2 fields
 interface PackageJson {
@@ -52,7 +50,7 @@ interface PackageJson {
 }
 
 /**
- * 
+ *
  * @param json The package.json object
  * @returns An object with the transformed package.json and a boolean indicating if the build condition was found
  */
@@ -69,7 +67,7 @@ export function transformPackageJson(json: PackageJson) {
     transformed.imports = imp.transformedExports;
     hasBuildCondition = hasBuildCondition || imp.hasBuildCondition;
   }
-  return {transformed, hasBuildCondition};
+  return { transformed, hasBuildCondition };
 }
 
 export async function copyWorkerdPackages(options: BuildOptions, nodePackages: Map<string, string>) {
@@ -81,23 +79,15 @@ export async function copyWorkerdPackages(options: BuildOptions, nodePackages: M
   for (const [src, dst] of nodePackages.entries()) {
     try {
       const pkgJson = JSON.parse(await fs.readFile(path.join(src, "package.json"), "utf8"));
-      const {transformed, hasBuildCondition} = transformPackageJson(pkgJson);
+      const { transformed, hasBuildCondition } = transformPackageJson(pkgJson);
       const match = src.match(isNodeModuleRegex);
-      if (
-        match?.groups?.pkg &&
-        externalPackages.includes(match.groups.pkg) &&
-        hasBuildCondition
-      ) {
+      if (match?.groups?.pkg && externalPackages.includes(match.groups.pkg) && hasBuildCondition) {
         logger.debug(
           `Copying package using a workerd condition: ${path.relative(options.appPath, src)} -> ${path.relative(options.appPath, dst)}`
         );
         fs.cp(src, dst, { recursive: true, force: true });
         // Write the transformed package.json
-        await fs.writeFile(
-          path.join(dst, "package.json"),
-          JSON.stringify(transformed),
-          "utf8"
-        );
+        await fs.writeFile(path.join(dst, "package.json"), JSON.stringify(transformed), "utf8");
       }
     } catch {
       logger.error(`Failed to copy ${src}`);
