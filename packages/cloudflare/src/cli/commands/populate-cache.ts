@@ -147,7 +147,7 @@ async function populateKVIncrementalCache(
 
   const assets = getCacheAssets(options);
 
-  const chunkSize = populateCacheOptions.cacheChunkSize ?? 25;
+  const chunkSize = Math.max(1, populateCacheOptions.cacheChunkSize ?? 25);
   const totalChunks = Math.ceil(assets.length / chunkSize);
 
   logger.info(`Inserting ${assets.length} assets to KV in chunks of ${chunkSize}`);
