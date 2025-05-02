@@ -144,6 +144,11 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       // This define should be safe to use for Next 14.2+, earlier versions (13.5 and less) will cause trouble
       "process.env.__NEXT_EXPERIMENTAL_REACT": `${needsExperimentalReact(nextConfig)}`,
     },
+    banner: {
+      // We need to import them here, assigning them to `globalThis` does not work because node:timers use `globalThis` and thus create an infinite loop
+      // See https://github.com/cloudflare/workerd/blob/d6a764c/src/node/internal/internal_timers.ts#L56-L70
+      js: `import {setInterval, clearInterval, setTimeout, clearTimeout, setImmediate, clearImmediate} from "node:timers"`,
+    },
     platform: "node",
   });
 
