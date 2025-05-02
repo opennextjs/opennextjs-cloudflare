@@ -12,7 +12,7 @@
     {
       "binding": "DB",
       "database_name": "db",
-      "database_id": "<BINDING_ID>",
+      "database_id": "<BINDING_ID>"
     }
-  ],
+  ]
 }
