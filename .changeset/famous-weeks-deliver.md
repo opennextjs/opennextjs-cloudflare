@@ -2,4 +2,4 @@
 "@opennextjs/cloudflare": patch
 ---
 
-global `setTimeout`, `setInterval` and `setImmediate` now use the one from node
+global timer functions now use the one from node:timers
