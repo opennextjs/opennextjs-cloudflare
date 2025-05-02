@@ -99,7 +99,7 @@ async function populateR2IncrementalCache(
   logger.info("\nPopulating R2 incremental cache...");
 
   const config = unstable_readConfig({ env: populateCacheOptions.environment });
-  const proxy = await getPlatformProxy<Record<string, string | undefined>>(populateCacheOptions);
+  const proxy = await getPlatformProxy<CloudflareEnv>(populateCacheOptions);
 
   const binding = config.r2_buckets.find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
   if (!binding) {
@@ -138,7 +138,7 @@ async function populateKVIncrementalCache(
   logger.info("\nPopulating KV incremental cache...");
 
   const config = unstable_readConfig({ env: populateCacheOptions.environment });
-  const proxy = await getPlatformProxy<Record<string, string | undefined>>(populateCacheOptions);
+  const proxy = await getPlatformProxy<CloudflareEnv>(populateCacheOptions);
 
   const binding = config.kv_namespaces.find(({ binding }) => binding === KV_CACHE_BINDING_NAME);
   if (!binding) {
