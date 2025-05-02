@@ -85,7 +85,7 @@ export async function copyWorkerdPackages(options: BuildOptions, nodePackages: M
         logger.debug(
           `Copying package using a workerd condition: ${path.relative(options.appPath, src)} -> ${path.relative(options.appPath, dst)}`
         );
-        fs.cp(src, dst, { recursive: true, force: true });
+        await fs.cp(src, dst, { recursive: true, force: true });
         // Write the transformed package.json
         await fs.writeFile(path.join(dst, "package.json"), JSON.stringify(transformed), "utf8");
       }
