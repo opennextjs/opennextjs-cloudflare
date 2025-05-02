@@ -1,4 +1,3 @@
-import Image from "next/image";
 import styles from "./page.module.css";
 import { getDb } from "@/lib/db";
 
@@ -12,9 +11,9 @@ export default async function Home() {
       <ul>
         {allUsers.map((user) => (
           <li key={user.id}>
-            <span data-testid={`name-${user.id}`}>{user.name}</span>
+            <span data-testid={`name-${user.name}`}>{user.name}</span>
             <br />
-            <span data-testid={`email-${user.id}`}>{user.email}</span>
+            <span data-testid={`email-${user.name}`}>{user.email}</span>
           </li>
         ))}
       </ul>
