@@ -1,0 +1,15 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url = env("NOT_USED")
+}
+
+model users {
+  id Int @id @default(autoincrement())
+  email String @unique
+  name String?
+}

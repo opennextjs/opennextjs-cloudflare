@@ -7,6 +7,7 @@ const apps = [
   "playground15",
   "vercel-blog-starter",
   "ssg-app",
+  "prisma",
   // e2e
   "app-pages-router",
   "app-router",

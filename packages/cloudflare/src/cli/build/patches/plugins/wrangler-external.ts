@@ -25,7 +25,8 @@ export function setWranglerExternal() {
     setup: async (build: PluginBuild) => {
       const namespace = "wrangler-externals-plugin";
 
-      build.onResolve({ filter: /(\.bin|\.wasm\?module)$/ }, ({ path, importer }) => {
+      //TODO: Ideally in the future we would like to analyze the files in case they are using wasm in a Node way (i.e. WebAssembly.instantiate)
+      build.onResolve({ filter: /(\.bin|\.wasm(\?module)?)$/ }, ({ path, importer }) => {
         return {
           path: resolve(dirname(importer), path),
           namespace,
