@@ -16,6 +16,7 @@
   ],
   "vars": {
     "hello": "Hello World from the cloudflare context!",
-    "PROCESS_ENV_VAR": "process.env"
+    "PROCESS_ENV_VAR": "process.env",
+    "NEXT_INC_CACHE_KV_PREFIX": "custom_prefix"
   }
 }

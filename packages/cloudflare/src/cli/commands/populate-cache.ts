@@ -12,7 +12,7 @@ import type {
 import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides.js";
 import { globSync } from "glob";
 import { tqdm } from "ts-tqdm";
-import { unstable_readConfig } from "wrangler";
+import { getPlatformProxy, unstable_readConfig } from "wrangler";
 
 import {
   BINDING_NAME as KV_CACHE_BINDING_NAME,
@@ -92,13 +92,14 @@ export function getCacheAssets(opts: BuildOptions): CacheAsset[] {
   return assets;
 }
 
-function populateR2IncrementalCache(
+async function populateR2IncrementalCache(
   options: BuildOptions,
   populateCacheOptions: { target: WranglerTarget; environment?: string }
 ) {
   logger.info("\nPopulating R2 incremental cache...");
 
   const config = unstable_readConfig({ env: populateCacheOptions.environment });
+  const proxy = await getPlatformProxy<CloudflareEnv>(populateCacheOptions);
 
   const binding = config.r2_buckets.find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
   if (!binding) {
@@ -114,7 +115,7 @@ function populateR2IncrementalCache(
 
   for (const { fullPath, key, buildId, isFetch } of tqdm(assets)) {
     const cacheKey = computeCacheKey(key, {
-      prefix: process.env[R2_CACHE_PREFIX_ENV_NAME],
+      prefix: proxy.env[R2_CACHE_PREFIX_ENV_NAME],
       buildId,
       cacheType: isFetch ? "fetch" : "cache",
     });
@@ -130,13 +131,14 @@ function populateR2IncrementalCache(
   logger.info(`Successfully populated cache with ${assets.length} assets`);
 }
 
-function populateKVIncrementalCache(
+async function populateKVIncrementalCache(
   options: BuildOptions,
   populateCacheOptions: { target: WranglerTarget; environment?: string }
 ) {
   logger.info("\nPopulating KV incremental cache...");
 
   const config = unstable_readConfig({ env: populateCacheOptions.environment });
+  const proxy = await getPlatformProxy<CloudflareEnv>(populateCacheOptions);
 
   const binding = config.kv_namespaces.find(({ binding }) => binding === KV_CACHE_BINDING_NAME);
   if (!binding) {
@@ -147,7 +149,7 @@ function populateKVIncrementalCache(
 
   for (const { fullPath, key, buildId, isFetch } of tqdm(assets)) {
     const cacheKey = computeCacheKey(key, {
-      prefix: process.env[KV_CACHE_PREFIX_ENV_NAME],
+      prefix: proxy.env[KV_CACHE_PREFIX_ENV_NAME],
       buildId,
       cacheType: isFetch ? "fetch" : "cache",
     });
@@ -220,10 +222,10 @@ export async function populateCache(
     const name = await resolveCacheName(incrementalCache);
     switch (name) {
       case R2_CACHE_NAME:
-        populateR2IncrementalCache(options, populateCacheOptions);
+        await populateR2IncrementalCache(options, populateCacheOptions);
         break;
       case KV_CACHE_NAME:
-        populateKVIncrementalCache(options, populateCacheOptions);
+        await populateKVIncrementalCache(options, populateCacheOptions);
         break;
       case STATIC_ASSETS_CACHE_NAME:
         populateStaticAssetsIncrementalCache(options);
