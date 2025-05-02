@@ -1,4 +1,4 @@
-import { cpSync, existsSync } from "node:fs";
+import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
@@ -133,7 +133,7 @@ async function populateR2IncrementalCache(
 
 async function populateKVIncrementalCache(
   options: BuildOptions,
-  populateCacheOptions: { target: WranglerTarget; environment?: string }
+  populateCacheOptions: { target: WranglerTarget; environment?: string; cacheChunkSize?: number }
 ) {
   logger.info("\nPopulating KV incremental cache...");
 
@@ -147,24 +147,36 @@ async function populateKVIncrementalCache(
 
   const assets = getCacheAssets(options);
 
-  for (const { fullPath, key, buildId, isFetch } of tqdm(assets)) {
-    const cacheKey = computeCacheKey(key, {
-      prefix: proxy.env[KV_CACHE_PREFIX_ENV_NAME],
-      buildId,
-      cacheType: isFetch ? "fetch" : "cache",
-    });
+  const chunkSize = Math.max(1, populateCacheOptions.cacheChunkSize ?? 25);
+  const totalChunks = Math.ceil(assets.length / chunkSize);
+
+  logger.info(`Inserting ${assets.length} assets to KV in chunks of ${chunkSize}`);
+
+  for (const i of tqdm(Array.from({ length: totalChunks }, (_, i) => i))) {
+    const chunkPath = path.join(options.outputDir, "cloudflare", `cache-chunk-${i}.json`);
+
+    const kvMapping = assets
+      .slice(i * chunkSize, (i + 1) * chunkSize)
+      .map(({ fullPath, key, buildId, isFetch }) => ({
+        key: computeCacheKey(key, {
+          prefix: proxy.env[KV_CACHE_PREFIX_ENV_NAME],
+          buildId,
+          cacheType: isFetch ? "fetch" : "cache",
+        }),
+        value: readFileSync(fullPath, "utf8"),
+      }));
+
+    writeFileSync(chunkPath, JSON.stringify(kvMapping));
 
     runWrangler(
       options,
-      [
-        "kv key put",
-        JSON.stringify(cacheKey),
-        `--binding ${JSON.stringify(KV_CACHE_BINDING_NAME)}`,
-        `--path ${JSON.stringify(fullPath)}`,
-      ],
+      ["kv bulk put", JSON.stringify(chunkPath), `--binding ${JSON.stringify(KV_CACHE_BINDING_NAME)}`],
       { ...populateCacheOptions, logging: "error" }
     );
+
+    rmSync(chunkPath);
   }
+
   logger.info(`Successfully populated cache with ${assets.length} assets`);
 }
 
@@ -209,7 +221,7 @@ function populateStaticAssetsIncrementalCache(options: BuildOptions) {
 export async function populateCache(
   options: BuildOptions,
   config: OpenNextConfig,
-  populateCacheOptions: { target: WranglerTarget; environment?: string }
+  populateCacheOptions: { target: WranglerTarget; environment?: string; cacheChunkSize?: number }
 ) {
   const { incrementalCache, tagCache } = config.default.override ?? {};
 

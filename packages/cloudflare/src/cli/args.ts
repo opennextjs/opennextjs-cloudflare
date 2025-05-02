@@ -15,11 +15,13 @@ export type Arguments = (
   | {
       command: "preview" | "deploy" | "upload";
       passthroughArgs: string[];
+      cacheChunkSize?: number;
     }
   | {
       command: "populateCache";
       target: WranglerTarget;
       environment?: string;
+      cacheChunkSize?: number;
     }
 ) & { outputDir?: string };
 
@@ -30,6 +32,7 @@ export function getArgs(): Arguments {
       output: { type: "string", short: "o" },
       noMinify: { type: "boolean", default: false },
       skipWranglerConfigCheck: { type: "boolean", default: false },
+      cacheChunkSize: { type: "string" },
     },
     allowPositionals: true,
   });
@@ -58,6 +61,7 @@ export function getArgs(): Arguments {
         command: positionals[0],
         outputDir,
         passthroughArgs,
+        ...(values.cacheChunkSize && { cacheChunkSize: Number(values.cacheChunkSize) }),
       };
     case "populateCache":
       if (!isWranglerTarget(positionals[1])) {
@@ -68,6 +72,7 @@ export function getArgs(): Arguments {
         outputDir,
         target: positionals[1],
         environment: getWranglerEnvironmentFlag(passthroughArgs),
+        ...(values.cacheChunkSize && { cacheChunkSize: Number(values.cacheChunkSize) }),
       };
     default:
       throw new Error(

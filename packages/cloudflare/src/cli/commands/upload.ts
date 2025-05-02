@@ -7,11 +7,12 @@ import { populateCache } from "./populate-cache.js";
 export async function upload(
   options: BuildOptions,
   config: OpenNextConfig,
-  uploadOptions: { passthroughArgs: string[] }
+  uploadOptions: { passthroughArgs: string[]; cacheChunkSize?: number }
 ) {
   await populateCache(options, config, {
     target: "remote",
     environment: getWranglerEnvironmentFlag(uploadOptions.passthroughArgs),
+    cacheChunkSize: uploadOptions.cacheChunkSize,
   });
 
   runWrangler(options, ["versions upload", ...uploadOptions.passthroughArgs], { logging: "all" });
