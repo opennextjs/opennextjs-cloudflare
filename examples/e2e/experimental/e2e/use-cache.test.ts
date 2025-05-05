@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test.describe("Composable Cache", () => {
   test("cached component should work in ssr", async ({ page }) => {
     await page.goto("/use-cache/ssr");
-    let fullyCachedElt = page.getByTestId("fullyCached");
+    let fullyCachedElt = page.getByTestId("fully-cached");
     let isrElt = page.getByTestId("isr");
     await expect(fullyCachedElt).toBeVisible();
     await expect(isrElt).toBeVisible();
@@ -12,9 +12,10 @@ test.describe("Composable Cache", () => {
     const initialIsrText = await isrElt.textContent();
 
     let isrText = initialIsrText;
+
     do {
       await page.reload();
-      fullyCachedElt = page.getByTestId("fullyCached");
+      fullyCachedElt = page.getByTestId("fully-cached");
       isrElt = page.getByTestId("isr");
       await expect(fullyCachedElt).toBeVisible();
       await expect(isrElt).toBeVisible();
@@ -27,7 +28,7 @@ test.describe("Composable Cache", () => {
 
   test("revalidateTag should work for fullyCached component", async ({ page, request }) => {
     await page.goto("/use-cache/ssr");
-    const fullyCachedElt = page.getByTestId("fullyCached");
+    const fullyCachedElt = page.getByTestId("fully-cached-with-tag");
     await expect(fullyCachedElt).toBeVisible();
 
     const initialFullyCachedText = await fullyCachedElt.textContent();
@@ -45,7 +46,7 @@ test.describe("Composable Cache", () => {
   test("cached component should work in isr", async ({ page }) => {
     await page.goto("/use-cache/isr");
 
-    let fullyCachedElt = page.getByTestId("fullyCached");
+    let fullyCachedElt = page.getByTestId("fully-cached");
     let isrElt = page.getByTestId("isr");
 
     await expect(fullyCachedElt).toBeVisible();
@@ -61,7 +62,7 @@ test.describe("Composable Cache", () => {
     while (isrText === initialIsrText) {
       await page.reload();
       isrElt = page.getByTestId("isr");
-      fullyCachedElt = page.getByTestId("fullyCached");
+      fullyCachedElt = page.getByTestId("fully-cached");
       await expect(isrElt).toBeVisible();
       isrText = await isrElt.textContent();
       await expect(fullyCachedElt).toBeVisible();
@@ -72,7 +73,7 @@ test.describe("Composable Cache", () => {
 
     do {
       await page.reload();
-      fullyCachedElt = page.getByTestId("fullyCached");
+      fullyCachedElt = page.getByTestId("fully-cached");
       isrElt = page.getByTestId("isr");
       await expect(fullyCachedElt).toBeVisible();
       await expect(isrElt).toBeVisible();
