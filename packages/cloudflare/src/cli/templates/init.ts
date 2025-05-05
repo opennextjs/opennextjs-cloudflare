@@ -94,6 +94,11 @@ function initRuntime() {
     __BUILD_TIMESTAMP_MS__: __BUILD_TIMESTAMP_MS__,
     __NEXT_BASE_PATH__: __NEXT_BASE_PATH__,
   });
+
+  // Some packages rely on `import.meta.url` (i.e. payload) but it is undefined in workerd
+  // It cause a bunch of issue, and will make even import crash
+  // TODO: verify that it won't cause other issues later with other packages
+  import.meta.url = "file:///worker.js";
 }
 
 /**
