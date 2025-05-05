@@ -28,6 +28,13 @@ export type CloudflareOverrides = {
    * Sets the revalidation queue implementation
    */
   queue?: "direct" | Override<Queue>;
+
+  /**
+   * Enable cache interception
+   * Disable this if you want to use PPR
+   * @default true
+   */
+  enableCacheInterception?: boolean;
 };
 
 /**
@@ -37,7 +44,7 @@ export type CloudflareOverrides = {
  * @returns the OpenNext configuration object
  */
 export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNextConfig {
-  const { incrementalCache, tagCache, queue } = config;
+  const { incrementalCache, tagCache, queue, enableCacheInterception = true } = config;
 
   return {
     default: {
@@ -49,12 +56,16 @@ export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNe
         tagCache: resolveTagCache(tagCache),
         queue: resolveQueue(queue),
       },
+      routePreloadingBehavior: "withWaitUntil"
     },
     // node:crypto is used to compute cache keys
     edgeExternals: ["node:crypto"],
     cloudflare: {
       useWorkerdCondition: true,
     },
+    dangerous: {
+      enableCacheInterception,
+    }
   };
 }
 
