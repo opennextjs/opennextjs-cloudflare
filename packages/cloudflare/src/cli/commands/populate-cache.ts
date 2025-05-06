@@ -125,7 +125,7 @@ async function populateR2IncrementalCache(
       ["r2 object put", quoteShellMeta(path.join(bucket, cacheKey)), `--file ${quoteShellMeta(fullPath)}`],
       // NOTE: R2 does not support the environment flag and results in the following error:
       // Incorrect type for the 'cacheExpiry' field on 'HttpMetadata': the provided value is not of type 'date'.
-      { target: populateCacheOptions.target, excludeRemoteFlag: true, logging: "error" }
+      { target: populateCacheOptions.target, logging: "error" }
     );
   }
   logger.info(`Successfully populated cache with ${assets.length} assets`);
