@@ -97,7 +97,6 @@ function initRuntime() {
     __BUILD_TIMESTAMP_MS__: __BUILD_TIMESTAMP_MS__,
     __NEXT_BASE_PATH__: __NEXT_BASE_PATH__,
   });
-
 }
 
 /**
