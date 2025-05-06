@@ -31,7 +31,7 @@ export type CloudflareOverrides = {
 
   /**
    * Enable cache interception
-   * Disable this if you want to use PPR
+   * Should be `false` when PPR is used
    * @default false
    */
   enableCacheInterception?: boolean;
