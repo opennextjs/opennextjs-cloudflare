@@ -56,7 +56,7 @@ export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNe
         tagCache: resolveTagCache(tagCache),
         queue: resolveQueue(queue),
       },
-      routePreloadingBehavior: "withWaitUntil"
+      routePreloadingBehavior: "withWaitUntil",
     },
     // node:crypto is used to compute cache keys
     edgeExternals: ["node:crypto"],
@@ -65,7 +65,7 @@ export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNe
     },
     dangerous: {
       enableCacheInterception,
-    }
+    },
   };
 }
 

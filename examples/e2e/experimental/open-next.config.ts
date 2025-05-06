@@ -15,5 +15,5 @@ export default defineCloudflareConfig({
   }),
   queue: doQueue,
   // Cache interception will break PPR
-  enableCacheInterception: false
+  enableCacheInterception: false,
 });
