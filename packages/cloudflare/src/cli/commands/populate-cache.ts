@@ -122,7 +122,7 @@ async function populateR2IncrementalCache(
 
     runWrangler(
       options,
-      ["r2 object put", JSON.stringify(path.join(bucket, cacheKey)), `--file ${JSON.stringify(fullPath)}`],
+      ["r2 object put", quoteShellMeta(path.join(bucket, cacheKey)), `--file ${quoteShellMeta(fullPath)}`],
       // NOTE: R2 does not support the environment flag and results in the following error:
       // Incorrect type for the 'cacheExpiry' field on 'HttpMetadata': the provided value is not of type 'date'.
       { target: populateCacheOptions.target, excludeRemoteFlag: true, logging: "error" }
@@ -170,7 +170,7 @@ async function populateKVIncrementalCache(
 
     runWrangler(
       options,
-      ["kv bulk put", JSON.stringify(chunkPath), `--binding ${JSON.stringify(KV_CACHE_BINDING_NAME)}`],
+      ["kv bulk put", quoteShellMeta(chunkPath), `--binding ${quoteShellMeta(KV_CACHE_BINDING_NAME)}`],
       { ...populateCacheOptions, logging: "error" }
     );
 
@@ -197,7 +197,7 @@ function populateD1TagCache(
     options,
     [
       "d1 execute",
-      JSON.stringify(D1_TAG_BINDING_NAME),
+      quoteShellMeta(D1_TAG_BINDING_NAME),
       `--command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);"`,
     ],
     { ...populateCacheOptions, logging: "error" }
@@ -257,4 +257,24 @@ export async function populateCache(
         logger.info("Tag cache does not need populating");
     }
   }
+}
+
+/**
+ * Escape shell metacharacters.
+ *
+ * When `spawnSync` is invoked with `shell: true`, metacharacters need to be escaped.
+ *
+ * Based on https://github.com/ljharb/shell-quote/blob/main/quote.js
+ *
+ * @param arg
+ * @returns escaped arg
+ */
+function quoteShellMeta(arg: string) {
+  if (/["\s]/.test(arg) && !/'/.test(arg)) {
+    return `'${arg.replace(/(['\\])/g, "\\$1")}'`;
+  }
+  if (/["'\s]/.test(arg)) {
+    return `"${arg.replace(/(["\\$`!])/g, "\\$1")}"`;
+  }
+  return arg.replace(/([A-Za-z]:)?([#!"$&'()*,:;<=>?@[\\\]^`{|}])/g, "$1\\$2");
 }
