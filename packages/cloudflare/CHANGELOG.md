@@ -1,5 +1,60 @@
 # @opennextjs/cloudflare
 
+## 1.0.0
+
+- [#613](https://github.com/opennextjs/opennextjs-cloudflare/pull/613) [`2d82fad`](https://github.com/opennextjs/opennextjs-cloudflare/commit/2d82fadfbbc2883e990a79197c8793afb8bf400d) Thanks [@conico974](https://github.com/conico974)! - Bump aws to 3.6.0
+
+  Introduce support for the composable cache
+
+  BREAKING CHANGE: The interface for the Incremental cache has changed. The new interface use a Cache type instead of a boolean to distinguish between the different types of caches. It also includes a new Cache type for the composable cache. The new interface is as follows:
+
+  ```ts
+  export type CacheEntryType = "cache" | "fetch" | "composable";
+
+  export type IncrementalCache = {
+    get<CacheType extends CacheEntryType = "cache">(
+      key: string,
+      cacheType?: CacheType
+    ): Promise<WithLastModified<CacheValue<CacheType>> | null>;
+    set<CacheType extends CacheEntryType = "cache">(
+      key: string,
+      value: CacheValue<CacheType>,
+      isFetch?: CacheType
+    ): Promise<void>;
+    delete(key: string): Promise<void>;
+    name: string;
+  };
+  ```
+
+  NextModeTagCache also get a new function `getLastRevalidated` used for the composable cache:
+
+  ```ts
+    getLastRevalidated(tags: string[]): Promise<number>;
+  ```
+
+- [#640](https://github.com/opennextjs/opennextjs-cloudflare/pull/640) [`af60dea`](https://github.com/opennextjs/opennextjs-cloudflare/commit/af60deae5460bc72bf3abd2e87ed442d102d533f) Thanks [@vicb](https://github.com/vicb)! - fix: escape shell arguments when populating the cache
+
+- [#628](https://github.com/opennextjs/opennextjs-cloudflare/pull/628) [`a169b76`](https://github.com/opennextjs/opennextjs-cloudflare/commit/a169b7669544a26f1b66cf9d5061b554d2f09edc) Thanks [@conico974](https://github.com/conico974)! - fix issues with build conditions and wasm
+
+- [#619](https://github.com/opennextjs/opennextjs-cloudflare/pull/619) [`09aaf35`](https://github.com/opennextjs/opennextjs-cloudflare/commit/09aaf359b2515b0aaab83f1cb50f2b2be6cb8ca7) Thanks [@conico974](https://github.com/conico974)! - global timer functions now use the one from node:timers
+
+- [#593](https://github.com/opennextjs/opennextjs-cloudflare/pull/593) [`faca3e1`](https://github.com/opennextjs/opennextjs-cloudflare/commit/faca3e1376dd47216f97a5dcaef6275fd16d84cb) Thanks [@vicb](https://github.com/vicb)! - Use the workerd build condition by default
+
+- [#641](https://github.com/opennextjs/opennextjs-cloudflare/pull/641) [`e07a2ed`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e07a2ede88896982fc4e91f1a2f131590bcdcd32) Thanks [@conico974](https://github.com/conico974)! - some performance improvements
+
+  - `enableCacheInterception` can be enabled using `defineCloudflareConfig`, it loads ISR/SSG pages from cache without waiting for the js page bundle to load. PPR is not supported at the moment
+  - `routePreloadingBehavior` is now set to `withWaitUntil`, which means a single route js will be lazy loaded on cold start, but other routes will be preloaded using `waitUntil` for better performance
+
+- [#639](https://github.com/opennextjs/opennextjs-cloudflare/pull/639) [`c4d278e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/c4d278eb2e727b508cb432929e9dc0882b8e4242) Thanks [@conico974](https://github.com/conico974)! - polyfill import.meta.url
+
+- [#622](https://github.com/opennextjs/opennextjs-cloudflare/pull/622) [`f5264d2`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f5264d2b6f7c72ff7c25a382a36c9de9bf897985) Thanks [@james-elicx](https://github.com/james-elicx)! - feat: use `getPlatformProxy` for cache population prefix vars
+
+- [#616](https://github.com/opennextjs/opennextjs-cloudflare/pull/616) [`f129602`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f12960266c1ceb381b8a6abb6234226e901f416e) Thanks [@james-elicx](https://github.com/james-elicx)! - feat: prefix for kv cache keys
+
+- [#644](https://github.com/opennextjs/opennextjs-cloudflare/pull/644) [`899bae0`](https://github.com/opennextjs/opennextjs-cloudflare/commit/899bae04ec981272868dfe3b3b20484019d00c8e) Thanks [@conico974](https://github.com/conico974)! - fix cache population for R2
+
+- [#626](https://github.com/opennextjs/opennextjs-cloudflare/pull/626) [`de9e05a`](https://github.com/opennextjs/opennextjs-cloudflare/commit/de9e05a414ddfe9055868194ee8e5df3489f82f7) Thanks [@james-elicx](https://github.com/james-elicx)! - feat: bulk insert cache entries to KV
+
 ## 1.0.0-beta.4
 
 ### Changes
