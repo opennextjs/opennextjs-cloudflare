@@ -32,7 +32,7 @@ export type CloudflareOverrides = {
   /**
    * Enable cache interception
    * Disable this if you want to use PPR
-   * @default true
+   * @default false
    */
   enableCacheInterception?: boolean;
 };
@@ -44,7 +44,7 @@ export type CloudflareOverrides = {
  * @returns the OpenNext configuration object
  */
 export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNextConfig {
-  const { incrementalCache, tagCache, queue, enableCacheInterception = true } = config;
+  const { incrementalCache, tagCache, queue, enableCacheInterception = false } = config;
 
   return {
     default: {
