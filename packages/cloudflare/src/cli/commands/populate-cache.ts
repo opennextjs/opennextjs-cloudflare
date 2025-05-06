@@ -168,11 +168,10 @@ async function populateKVIncrementalCache(
 
     writeFileSync(chunkPath, JSON.stringify(kvMapping));
 
-    runWrangler(
-      options,
-      ["kv bulk put", quoteShellMeta(chunkPath), `--binding ${quoteShellMeta(KV_CACHE_BINDING_NAME)}`],
-      { ...populateCacheOptions, logging: "error" }
-    );
+    runWrangler(options, ["kv bulk put", quoteShellMeta(chunkPath), `--binding ${KV_CACHE_BINDING_NAME}`], {
+      ...populateCacheOptions,
+      logging: "error",
+    });
 
     rmSync(chunkPath);
   }
@@ -197,7 +196,7 @@ function populateD1TagCache(
     options,
     [
       "d1 execute",
-      quoteShellMeta(D1_TAG_BINDING_NAME),
+      D1_TAG_BINDING_NAME,
       `--command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);"`,
     ],
     { ...populateCacheOptions, logging: "error" }
