@@ -17,7 +17,7 @@ jobs:
         uses: ./.github/actions/install-dependencies
 
       - name: Install Playwright
-        run: pnpm run install-playwright
+        uses: ./.github/actions/setup-playwright
 
       - name: Build the tool
         run: pnpm build
