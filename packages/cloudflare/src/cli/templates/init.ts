@@ -61,6 +61,9 @@ function initRuntime() {
 
   globalThis.__dirname ??= "";
   globalThis.__filename ??= "";
+  // Some packages rely on `import.meta.url` but it is undefined in workerd
+  // For example it causes a bunch of issues, and will make even import crash with payload
+  import.meta.url ??= "file:///worker.js";
 
   // Do not crash on cache not supported
   // https://github.com/cloudflare/workerd/pull/2434
@@ -95,10 +98,6 @@ function initRuntime() {
     __NEXT_BASE_PATH__: __NEXT_BASE_PATH__,
   });
 
-  // Some packages rely on `import.meta.url` (i.e. payload) but it is undefined in workerd
-  // It cause a bunch of issue, and will make even import crash
-  // TODO: verify that it won't cause other issues later with other packages
-  import.meta.url = "file:///worker.js";
 }
 
 /**
