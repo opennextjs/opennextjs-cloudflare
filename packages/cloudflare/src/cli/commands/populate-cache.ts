@@ -100,6 +100,8 @@ async function populateR2IncrementalCache(
 
   const config = unstable_readConfig({ env: populateCacheOptions.environment });
   const proxy = await getPlatformProxy<CloudflareEnv>(populateCacheOptions);
+  const prefix = proxy.env[R2_CACHE_PREFIX_ENV_NAME]; // Set the cache type to R2 for the current environment
+  await proxy.dispose();
 
   const binding = config.r2_buckets.find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
   if (!binding) {
@@ -115,7 +117,7 @@ async function populateR2IncrementalCache(
 
   for (const { fullPath, key, buildId, isFetch } of tqdm(assets)) {
     const cacheKey = computeCacheKey(key, {
-      prefix: proxy.env[R2_CACHE_PREFIX_ENV_NAME],
+      prefix,
       buildId,
       cacheType: isFetch ? "fetch" : "cache",
     });
@@ -139,6 +141,8 @@ async function populateKVIncrementalCache(
 
   const config = unstable_readConfig({ env: populateCacheOptions.environment });
   const proxy = await getPlatformProxy<CloudflareEnv>(populateCacheOptions);
+  const prefix = proxy.env[KV_CACHE_PREFIX_ENV_NAME];
+  await proxy.dispose();
 
   const binding = config.kv_namespaces.find(({ binding }) => binding === KV_CACHE_BINDING_NAME);
   if (!binding) {
@@ -159,7 +163,7 @@ async function populateKVIncrementalCache(
       .slice(i * chunkSize, (i + 1) * chunkSize)
       .map(({ fullPath, key, buildId, isFetch }) => ({
         key: computeCacheKey(key, {
-          prefix: proxy.env[KV_CACHE_PREFIX_ENV_NAME],
+          prefix,
           buildId,
           cacheType: isFetch ? "fetch" : "cache",
         }),
