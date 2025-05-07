@@ -12,7 +12,7 @@ import type {
 import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides.js";
 import { globSync } from "glob";
 import { tqdm } from "ts-tqdm";
-import { getPlatformProxy, unstable_readConfig } from "wrangler";
+import { getPlatformProxy, type GetPlatformProxyOptions, unstable_readConfig } from "wrangler";
 
 import {
   BINDING_NAME as KV_CACHE_BINDING_NAME,
@@ -92,6 +92,13 @@ export function getCacheAssets(opts: BuildOptions): CacheAsset[] {
   return assets;
 }
 
+async function getPlatformProxyEnv<T extends keyof CloudflareEnv>(options: GetPlatformProxyOptions, key: T) {
+  const proxy = await getPlatformProxy<CloudflareEnv>(options);
+  const prefix = proxy.env[key];
+  await proxy.dispose();
+  return prefix;
+}
+
 async function populateR2IncrementalCache(
   options: BuildOptions,
   populateCacheOptions: { target: WranglerTarget; environment?: string }
@@ -99,7 +106,6 @@ async function populateR2IncrementalCache(
   logger.info("\nPopulating R2 incremental cache...");
 
   const config = unstable_readConfig({ env: populateCacheOptions.environment });
-  const proxy = await getPlatformProxy<CloudflareEnv>(populateCacheOptions);
 
   const binding = config.r2_buckets.find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
   if (!binding) {
@@ -111,15 +117,16 @@ async function populateR2IncrementalCache(
     throw new Error(`R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} should have a 'bucket_name'`);
   }
 
+  const prefix = await getPlatformProxyEnv(populateCacheOptions, R2_CACHE_PREFIX_ENV_NAME);
+
   const assets = getCacheAssets(options);
 
   for (const { fullPath, key, buildId, isFetch } of tqdm(assets)) {
     const cacheKey = computeCacheKey(key, {
-      prefix: proxy.env[R2_CACHE_PREFIX_ENV_NAME],
+      prefix,
       buildId,
       cacheType: isFetch ? "fetch" : "cache",
     });
-
     runWrangler(
       options,
       ["r2 object put", quoteShellMeta(path.join(bucket, cacheKey)), `--file ${quoteShellMeta(fullPath)}`],
@@ -138,12 +145,13 @@ async function populateKVIncrementalCache(
   logger.info("\nPopulating KV incremental cache...");
 
   const config = unstable_readConfig({ env: populateCacheOptions.environment });
-  const proxy = await getPlatformProxy<CloudflareEnv>(populateCacheOptions);
 
   const binding = config.kv_namespaces.find(({ binding }) => binding === KV_CACHE_BINDING_NAME);
   if (!binding) {
     throw new Error(`No KV binding ${JSON.stringify(KV_CACHE_BINDING_NAME)} found!`);
   }
+
+  const prefix = await getPlatformProxyEnv(populateCacheOptions, KV_CACHE_PREFIX_ENV_NAME);
 
   const assets = getCacheAssets(options);
 
@@ -159,7 +167,7 @@ async function populateKVIncrementalCache(
       .slice(i * chunkSize, (i + 1) * chunkSize)
       .map(({ fullPath, key, buildId, isFetch }) => ({
         key: computeCacheKey(key, {
-          prefix: proxy.env[KV_CACHE_PREFIX_ENV_NAME],
+          prefix,
           buildId,
           cacheType: isFetch ? "fetch" : "cache",
         }),
