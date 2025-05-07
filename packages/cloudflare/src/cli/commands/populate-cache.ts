@@ -12,7 +12,7 @@ import type {
 import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides.js";
 import { globSync } from "glob";
 import { tqdm } from "ts-tqdm";
-import { getPlatformProxy, unstable_readConfig } from "wrangler";
+import { getPlatformProxy, type GetPlatformProxyOptions, unstable_readConfig } from "wrangler";
 
 import {
   BINDING_NAME as KV_CACHE_BINDING_NAME,
@@ -92,14 +92,11 @@ export function getCacheAssets(opts: BuildOptions): CacheAsset[] {
   return assets;
 }
 
-async function getPlatformProxyEnv(
-  populateCacheOptions: { target: WranglerTarget; environment?: string },
-  envName: keyof CloudflareEnv
-) {
-  const proxy = await getPlatformProxy<CloudflareEnv>(populateCacheOptions);
-  const prefix = proxy.env[envName];
+async function getPlatformProxyEnv<T extends keyof CloudflareEnv>(options: GetPlatformProxyOptions, key: T) {
+  const proxy = await getPlatformProxy<CloudflareEnv>(options);
+  const prefix = proxy.env[key];
   await proxy.dispose();
-  return prefix as string | undefined;
+  return prefix;
 }
 
 async function populateR2IncrementalCache(
