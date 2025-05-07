@@ -21,9 +21,7 @@ export function getStaticProps() {
   };
 }
 
-export default function Page({
-  message,
-}: InferGetStaticPropsType<typeof getStaticProps>) {
+export default function Page({ message }: InferGetStaticPropsType<typeof getStaticProps>) {
   return (
     <div>
       <h1>Static Fallback Page</h1>

@@ -1,10 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Middleware Cookies", () => {
-  test("should be able to set cookies on response in middleware", async ({
-    page,
-    context,
-  }) => {
+  test("should be able to set cookies on response in middleware", async ({ page, context }) => {
     await page.goto("/");
 
     const cookies = await context.cookies();
@@ -21,13 +18,8 @@ test.describe("Middleware Cookies", () => {
 
     expect(await page.getByTestId("foo").textContent()).toBe("bar");
   });
-  test("should not expose internal Next headers in response", async ({
-    page,
-    context,
-  }) => {
-    const responsePromise = page.waitForResponse((response) =>
-      response.url().includes("/cookies"),
-    );
+  test("should not expose internal Next headers in response", async ({ page, context }) => {
+    const responsePromise = page.waitForResponse((response) => response.url().includes("/cookies"));
 
     await page.goto("/cookies");
 

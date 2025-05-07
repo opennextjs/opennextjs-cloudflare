@@ -8,9 +8,7 @@ export function getServerSideProps() {
   };
 }
 
-export default function Page({
-  message,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function Page({ message }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <div>
       <h1>Dynamic Fallback Page</h1>

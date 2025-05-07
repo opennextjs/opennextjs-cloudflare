@@ -17,9 +17,7 @@ test.describe("fallback", () => {
     await expect(p).toHaveText("This is a static ssg page.");
   });
 
-  test("should work with fallback intercepted by dynamic route", async ({
-    page,
-  }) => {
+  test("should work with fallback intercepted by dynamic route", async ({ page }) => {
     await page.goto("/fallback-intercepted/something/");
     const h1 = page.locator("h1");
     await expect(h1).toHaveText("Dynamic Fallback Page");

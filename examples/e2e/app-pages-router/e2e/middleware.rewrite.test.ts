@@ -29,9 +29,7 @@ test.describe("Middleware Rewrite", () => {
     await expect(el).toBeVisible();
   });
 
-  test("Middleware Rewrite should override original search params", async ({
-    page,
-  }) => {
+  test("Middleware Rewrite should override original search params", async ({ page }) => {
     await page.goto("/rewrite?a=1&multi=3");
     let el = page.getByText("Rewritten Destination", { exact: true });
     await expect(el).toBeVisible();
