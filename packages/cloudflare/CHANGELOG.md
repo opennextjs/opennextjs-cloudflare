@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.0.1
+
+### Patch Changes
+
+- [#648](https://github.com/opennextjs/opennextjs-cloudflare/pull/648) [`cb3a2f2`](https://github.com/opennextjs/opennextjs-cloudflare/commit/cb3a2f28264fa1273059f87846e6e39811bc5402) Thanks [@conico974](https://github.com/conico974)! - fix cache population hanging
+
 ## 1.0.0
 
 - [#613](https://github.com/opennextjs/opennextjs-cloudflare/pull/613) [`2d82fad`](https://github.com/opennextjs/opennextjs-cloudflare/commit/2d82fadfbbc2883e990a79197c8793afb8bf400d) Thanks [@conico974](https://github.com/conico974)! - Bump aws to 3.6.0
