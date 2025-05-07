@@ -27,6 +27,14 @@ export function middleware(request: NextRequest) {
     u.searchParams.set("a", "b");
     return NextResponse.rewrite(u);
   }
+  if (path === "/rewrite-multi-params") {
+    const u = new URL("/rewrite-destination", `${protocol}://${host}`);
+    u.searchParams.append("multi", "0");
+    u.searchParams.append("multi", "1");
+    u.searchParams.append("multi", "2");
+    u.searchParams.set("a", "b");
+    return NextResponse.rewrite(u);
+  }
   if (path === "/api/middleware") {
     return new NextResponse(JSON.stringify({ hello: "middleware" }), {
       status: 200,
@@ -42,6 +50,19 @@ export function middleware(request: NextRequest) {
         "content-type": "application/json",
       },
     });
+  }
+
+  if (path === "/head" && request.method === "HEAD") {
+    return new NextResponse(null, {
+      headers: {
+        "x-from-middleware": "true",
+      },
+    });
+  }
+
+  if (path === "/fetch") {
+    // This one test both that we don't modify immutable headers
+    return fetch(new URL("/api/hello", request.url));
   }
   const rHeaders = new Headers(request.headers);
   const r = NextResponse.next({
