@@ -92,6 +92,16 @@ export function getCacheAssets(opts: BuildOptions): CacheAsset[] {
   return assets;
 }
 
+async function getPlatformProxyEnv(
+  populateCacheOptions: { target: WranglerTarget; environment?: string },
+  envName: keyof CloudflareEnv
+) {
+  const proxy = await getPlatformProxy<CloudflareEnv>(populateCacheOptions);
+  const prefix = proxy.env[envName];
+  await proxy.dispose();
+  return prefix as string | undefined;
+}
+
 async function populateR2IncrementalCache(
   options: BuildOptions,
   populateCacheOptions: { target: WranglerTarget; environment?: string }
@@ -99,9 +109,6 @@ async function populateR2IncrementalCache(
   logger.info("\nPopulating R2 incremental cache...");
 
   const config = unstable_readConfig({ env: populateCacheOptions.environment });
-  const proxy = await getPlatformProxy<CloudflareEnv>(populateCacheOptions);
-  const prefix = proxy.env[R2_CACHE_PREFIX_ENV_NAME]; // Set the cache type to R2 for the current environment
-  await proxy.dispose();
 
   const binding = config.r2_buckets.find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
   if (!binding) {
@@ -113,6 +120,8 @@ async function populateR2IncrementalCache(
     throw new Error(`R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} should have a 'bucket_name'`);
   }
 
+  const prefix = await getPlatformProxyEnv(populateCacheOptions, R2_CACHE_PREFIX_ENV_NAME);
+
   const assets = getCacheAssets(options);
 
   for (const { fullPath, key, buildId, isFetch } of tqdm(assets)) {
@@ -121,7 +130,6 @@ async function populateR2IncrementalCache(
       buildId,
       cacheType: isFetch ? "fetch" : "cache",
     });
-
     runWrangler(
       options,
       ["r2 object put", quoteShellMeta(path.join(bucket, cacheKey)), `--file ${quoteShellMeta(fullPath)}`],
@@ -140,14 +148,13 @@ async function populateKVIncrementalCache(
   logger.info("\nPopulating KV incremental cache...");
 
   const config = unstable_readConfig({ env: populateCacheOptions.environment });
-  const proxy = await getPlatformProxy<CloudflareEnv>(populateCacheOptions);
-  const prefix = proxy.env[KV_CACHE_PREFIX_ENV_NAME];
-  await proxy.dispose();
 
   const binding = config.kv_namespaces.find(({ binding }) => binding === KV_CACHE_BINDING_NAME);
   if (!binding) {
     throw new Error(`No KV binding ${JSON.stringify(KV_CACHE_BINDING_NAME)} found!`);
   }
+
+  const prefix = await getPlatformProxyEnv(populateCacheOptions, KV_CACHE_PREFIX_ENV_NAME);
 
   const assets = getCacheAssets(options);
 
