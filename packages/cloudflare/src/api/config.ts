@@ -4,7 +4,12 @@ import {
   LazyLoadedOverride,
   OpenNextConfig as AwsOpenNextConfig,
 } from "@opennextjs/aws/types/open-next";
-import type { CDNInvalidationHandler, IncrementalCache, Queue, TagCache } from "@opennextjs/aws/types/overrides";
+import type {
+  CDNInvalidationHandler,
+  IncrementalCache,
+  Queue,
+  TagCache,
+} from "@opennextjs/aws/types/overrides";
 
 export type Override<T extends BaseOverride> = "dummy" | T | LazyLoadedOverride<T>;
 
@@ -32,7 +37,7 @@ export type CloudflareOverrides = {
   /**
    * Sets the automatic cache purge implementation
    */
-  cachePurge?: Override<CDNInvalidationHandler>
+  cachePurge?: Override<CDNInvalidationHandler>;
 
   /**
    * Enable cache interception

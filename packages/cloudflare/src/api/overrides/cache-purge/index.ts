@@ -9,5 +9,5 @@ export default {
     debugCache("cdnInvalidation", "Invalidating paths:", tags);
     await purgeCacheByTags(tags);
     debugCache("cdnInvalidation", "Invalidated paths:", tags);
-  }
+  },
 } satisfies CDNInvalidationHandler;
