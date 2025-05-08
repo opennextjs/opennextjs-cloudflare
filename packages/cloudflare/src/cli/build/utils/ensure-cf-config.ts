@@ -22,7 +22,7 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
       config.default?.override?.queue === "dummy" ||
       config.default?.override?.queue === "direct" ||
       typeof config.default?.override?.queue === "function",
-    mwIsMiddlewareIntegrated: config.middleware === undefined,
+    // mwIsMiddlewareIntegrated: config.middleware === undefined,
     hasCryptoExternal: config.edgeExternals?.includes("node:crypto"),
   };
 

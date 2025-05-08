@@ -96,6 +96,7 @@ function initRuntime() {
     Request: CustomRequest,
     __BUILD_TIMESTAMP_MS__: __BUILD_TIMESTAMP_MS__,
     __NEXT_BASE_PATH__: __NEXT_BASE_PATH__,
+    __dangerous_ON_edge_converter_returns_request: true,
   });
 }
 

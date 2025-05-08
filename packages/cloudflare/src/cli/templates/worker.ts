@@ -1,5 +1,7 @@
 //@ts-expect-error: Will be resolved by wrangler build
 import { runWithCloudflareRequestContext } from "./cloudflare/init.js";
+// @ts-expect-error: Will be resolved by wrangler build
+import { handler as middlewareHandler } from "./middleware/handler.mjs";
 
 //@ts-expect-error: Will be resolved by wrangler build
 export { DOQueueHandler } from "./.build/durable-objects/queue.js";
@@ -32,10 +34,17 @@ export default {
           : fetch(imageUrl, { cf: { cacheEverything: true } });
       }
 
+      // - `Request`s are handled by the Next server
+      const reqOrResp = await middlewareHandler(request, env, ctx);
+
+      if (reqOrResp instanceof Response) {
+        return reqOrResp;
+      }
+
       // @ts-expect-error: resolved by wrangler build
       const { handler } = await import("./server-functions/default/handler.mjs");
 
-      return handler(request, env, ctx);
+      return handler(reqOrResp, env, ctx);
     });
   },
 } satisfies ExportedHandler<CloudflareEnv>;
