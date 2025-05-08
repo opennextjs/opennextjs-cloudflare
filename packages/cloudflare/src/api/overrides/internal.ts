@@ -31,11 +31,10 @@ export function computeCacheKey(key: string, options: KeyOptions) {
   return `${prefix}/${buildId}/${hash}.${cacheType}`.replace(/\/+/g, "/");
 }
 
-
 export async function purgeCacheByTags(tags: string[]) {
-  const {env} = getCloudflareContext()
+  const { env } = getCloudflareContext();
 
-  if(!env.CACHE_ZONE_ID && !env.CACHE_API_TOKEN) {
+  if (!env.CACHE_ZONE_ID && !env.CACHE_API_TOKEN) {
     // THIS IS A NO-OP
     debugCache("purgeCacheByTags", "No cache zone ID or API token provided. Skipping cache purge.");
     return;
@@ -44,30 +43,31 @@ export async function purgeCacheByTags(tags: string[]) {
   try {
     const response = await fetch(
       `https://api.cloudflare.com/client/v4/zones/${env.CACHE_ZONE_ID}/purge_cache`,
-    {
-      headers: {
-        "Authorization": `Bearer ${env.CACHE_API_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      method: "POST",
-      body: JSON.stringify({
-        tags,
-      }),
-    })
+      {
+        headers: {
+          Authorization: `Bearer ${env.CACHE_API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({
+          tags,
+        }),
+      }
+    );
     if (!response.ok) {
       const text = await response.text();
       throw new Error(`Failed to purge cache: ${response.status} ${text}`);
     }
-    const bodyResponse = await response.json() as {
+    const bodyResponse = (await response.json()) as {
       success: boolean;
       errors: Array<{ code: number; message: string }>;
       messages: Array<{ code: number; message: string }>;
-    }
+    };
     if (!bodyResponse.success) {
       throw new Error(`Failed to purge cache: ${JSON.stringify(bodyResponse.errors)}`);
     }
     debugCache("purgeCacheByTags", "Cache purged successfully for tags:", tags);
-  }catch (error) {
+  } catch (error) {
     console.error("Error purging cache by tags:", error);
   }
 }
