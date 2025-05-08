@@ -54,6 +54,10 @@ declare global {
     // Disable SQLite for the durable object queue handler
     // This can be safely used if you don't use an eventually consistent incremental cache (i.e. R2 without the regional cache for example)
     NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE?: string;
+
+    // Below are the optional env variables for purging the cache
+    CACHE_ZONE_ID?: string;
+    CACHE_API_TOKEN?: string;
   }
 }
 
