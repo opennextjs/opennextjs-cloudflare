@@ -75,9 +75,8 @@ export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNe
         incrementalCache: resolveIncrementalCache(incrementalCache),
         tagCache: resolveTagCache(tagCache),
         queue: resolveQueue(queue),
-        cdnInvalidation: resolveCdnInvalidation(cachePurge),
-      }
-    }
+      },
+    },
   };
 }
 
