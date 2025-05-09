@@ -17,7 +17,6 @@ export const purgeCache = ({ type = "direct" }: PurgeOptions) => {
       if (type === "direct") {
         await internalPurgeCacheByTags(env, tags);
       } else {
-        console.log("purgeCacheByTags DO", tags);
         const durableObject = env.NEXT_CACHE_DO_PURGE;
         if (!durableObject) {
           debugCache("cdnInvalidation", "No durable object found. Skipping cache purge.");
