@@ -33,6 +33,27 @@ export function computeCacheKey(key: string, options: KeyOptions) {
 
 export async function purgeCacheByTags(tags: string[]) {
   const { env } = getCloudflareContext();
+  // We have a durable object for purging cache
+  // We should use it
+  if (env.NEXT_CACHE_DO_PURGE) {
+    const durableObject = env.NEXT_CACHE_DO_PURGE;
+    if (!durableObject) {
+      debugCache("purgeCacheByTags", "No durable object found. Skipping cache purge.");
+      return;
+    }
+    const id = durableObject.idFromName("cache-purge");
+    const obj = durableObject.get(id);
+    await obj.purgeCacheByTags(tags);
+  } else {
+    // We don't have a durable object for purging cache
+    // We should use the API directly
+    await internalPurgeCacheByTags(env, tags);
+  }
+}
+
+export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[]) {
+  //TODO: Remove this before commit
+  console.log("purgeCacheByTags", tags);
 
   if (!env.CACHE_ZONE_ID && !env.CACHE_API_TOKEN) {
     // THIS IS A NO-OP

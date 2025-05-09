@@ -2,6 +2,7 @@ import type { Context, RunningCodeOptions } from "node:vm";
 
 import type { GetPlatformProxyOptions } from "wrangler";
 
+import type { BucketCachePurge } from "./durable-objects/bucket-cache-purge.js";
 import type { DOQueueHandler } from "./durable-objects/queue.js";
 import type { DOShardedTagCache } from "./durable-objects/sharded-tag-cache.js";
 import type { PREFIX_ENV_NAME as KV_CACHE_PREFIX_ENV_NAME } from "./overrides/incremental-cache/kv-incremental-cache.js";
@@ -56,8 +57,11 @@ declare global {
     NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE?: string;
 
     // Below are the optional env variables for purging the cache
+    // Durable Object namespace to use for the durable object queue
+    NEXT_CACHE_DO_PURGE?: DurableObjectNamespace<BucketCachePurge>;
     CACHE_ZONE_ID?: string;
     CACHE_API_TOKEN?: string;
+    CACHE_BUFFER_TIME_IN_SECONDS?: string;
   }
 }
 
