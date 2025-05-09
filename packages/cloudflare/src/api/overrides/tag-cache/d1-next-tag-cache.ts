@@ -3,7 +3,7 @@ import type { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
 
 import type { OpenNextConfig } from "../../../api/config.js";
 import { getCloudflareContext } from "../../cloudflare-context.js";
-import { debugCache, FALLBACK_BUILD_ID } from "../internal.js";
+import { debugCache, FALLBACK_BUILD_ID, purgeCacheByTags } from "../internal.js";
 
 export const NAME = "d1-next-mode-tag-cache";
 
@@ -66,6 +66,7 @@ export class D1NextModeTagCache implements NextModeTagCache {
           .bind(this.getCacheKey(tag), Date.now())
       )
     );
+    await purgeCacheByTags(tags);
   }
 
   private getConfig() {
