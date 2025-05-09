@@ -9,6 +9,7 @@ export function compileDurableObjects(buildOpts: BuildOptions) {
   const entryPoints = [
     _require.resolve("@opennextjs/cloudflare/durable-objects/queue"),
     _require.resolve("@opennextjs/cloudflare/durable-objects/sharded-tag-cache"),
+    _require.resolve("@opennextjs/cloudflare/durable-objects/bucket-cache-purge"),
   ];
 
   const { outputDir } = buildOpts;
