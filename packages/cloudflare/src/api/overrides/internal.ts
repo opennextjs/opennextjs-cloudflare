@@ -52,10 +52,7 @@ export async function purgeCacheByTags(tags: string[]) {
 }
 
 export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[]) {
-  //TODO: Remove this before commit
-  console.log("purgeCacheByTags", tags);
-
-  if (!env.CACHE_ZONE_ID && !env.CACHE_API_TOKEN) {
+  if (!env.CACHE_PURGE_ZONE_ID && !env.CACHE_PURGE_API_TOKEN) {
     // THIS IS A NO-OP
     debugCache("purgeCacheByTags", "No cache zone ID or API token provided. Skipping cache purge.");
     return;
@@ -63,10 +60,10 @@ export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[
 
   try {
     const response = await fetch(
-      `https://api.cloudflare.com/client/v4/zones/${env.CACHE_ZONE_ID}/purge_cache`,
+      `https://api.cloudflare.com/client/v4/zones/${env.CACHE_PURGE_ZONE_ID}/purge_cache`,
       {
         headers: {
-          Authorization: `Bearer ${env.CACHE_API_TOKEN}`,
+          Authorization: `Bearer ${env.CACHE_PURGE_ZONE_ID}`,
           "Content-Type": "application/json",
         },
         method: "POST",
@@ -82,7 +79,6 @@ export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[
     const bodyResponse = (await response.json()) as {
       success: boolean;
       errors: Array<{ code: number; message: string }>;
-      messages: Array<{ code: number; message: string }>;
     };
     if (!bodyResponse.success) {
       throw new Error(`Failed to purge cache: ${JSON.stringify(bodyResponse.errors)}`);

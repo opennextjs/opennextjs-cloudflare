@@ -12,7 +12,6 @@ vi.mock("cloudflare:workers", () => ({
   },
 }));
 
-
 const createBucketCachePurge = () => {
   const mockState = {
     waitUntil: vi.fn(),
@@ -39,7 +38,7 @@ describe("BucketCachePurge", () => {
     expect(cache.ctx.blockConcurrencyWhile).toHaveBeenCalled();
     // @ts-expect-error - testing private method
     expect(cache.ctx.storage.sql.exec).toHaveBeenCalledWith(
-      expect.stringContaining("CREATE TABLE IF NOT EXISTS cache_purge"),
+      expect.stringContaining("CREATE TABLE IF NOT EXISTS cache_purge")
     );
   });
 
@@ -51,12 +50,12 @@ describe("BucketCachePurge", () => {
       // @ts-expect-error - testing private method
       expect(cache.ctx.storage.sql.exec).toHaveBeenCalledWith(
         expect.stringContaining("INSERT OR REPLACE INTO cache_purge"),
-        [tags[0]],
+        [tags[0]]
       );
       // @ts-expect-error - testing private method
       expect(cache.ctx.storage.sql.exec).toHaveBeenCalledWith(
         expect.stringContaining("INSERT OR REPLACE INTO cache_purge"),
-        [tags[1]],
+        [tags[1]]
       );
     });
 
@@ -77,7 +76,7 @@ describe("BucketCachePurge", () => {
       // @ts-expect-error - testing private method
       expect(cache.ctx.storage.setAlarm).not.toHaveBeenCalled();
     });
-  })
+  });
 
   describe("alarm", () => {
     it("should purge cache by tags and delete them from the sql table", async () => {
@@ -90,7 +89,7 @@ describe("BucketCachePurge", () => {
       // @ts-expect-error - testing private method
       expect(cache.ctx.storage.sql.exec).toHaveBeenCalledWith(
         expect.stringContaining("DELETE FROM cache_purge"),
-        ["tag1", "tag2"],
+        ["tag1", "tag2"]
       );
     });
     it("should not purge cache if no tags are found", async () => {
@@ -103,7 +102,7 @@ describe("BucketCachePurge", () => {
       // @ts-expect-error - testing private method
       expect(cache.ctx.storage.sql.exec).not.toHaveBeenCalledWith(
         expect.stringContaining("DELETE FROM cache_purge"),
-        [],
+        []
       );
     });
 
@@ -119,7 +118,7 @@ describe("BucketCachePurge", () => {
       expect(internalPurgeCacheByTagsSpy).toHaveBeenCalledWith(
         // @ts-expect-error - testing private method
         cache.env,
-        tags,
+        tags
       );
       // @ts-expect-error - testing private method 1st is constructor, 2nd is to get the tags and 3rd is to delete them
       expect(cache.ctx.storage.sql.exec).toHaveBeenCalledTimes(3);
@@ -137,16 +136,14 @@ describe("BucketCachePurge", () => {
       expect(internalPurgeCacheByTagsSpy).toHaveBeenCalledWith(
         // @ts-expect-error - testing private method
         cache.env,
-        tags,
+        tags
       );
       // @ts-expect-error - testing private method 1st is constructor, 2nd is to get the tags and 3rd is to delete them, 4th is to get the next 100 tags
       expect(cache.ctx.storage.sql.exec).toHaveBeenCalledTimes(4);
       // @ts-expect-error - testing private method
       expect(cache.ctx.storage.sql.exec).toHaveBeenLastCalledWith(
-        expect.stringContaining("SELECT * FROM cache_purge LIMIT 100"),
+        expect.stringContaining("SELECT * FROM cache_purge LIMIT 100")
       );
     });
-
-
-  })
+  });
 });

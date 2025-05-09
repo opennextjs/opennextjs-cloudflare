@@ -57,11 +57,14 @@ declare global {
     NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE?: string;
 
     // Below are the optional env variables for purging the cache
-    // Durable Object namespace to use for the durable object queue
+    // Durable Object namespace to use for the durable object cache purge
     NEXT_CACHE_DO_PURGE?: DurableObjectNamespace<BucketCachePurge>;
-    CACHE_ZONE_ID?: string;
-    CACHE_API_TOKEN?: string;
-    CACHE_BUFFER_TIME_IN_SECONDS?: string;
+    // The amount of time in seconds that the cache purge will wait before purging the cache
+    NEXT_CACHE_DO_PURGE_BUFFER_TIME_IN_SECONDS?: string;
+    // The zone ID to use for the cache purge https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/
+    CACHE_PURGE_ZONE_ID?: string;
+    // The API token to use for the cache purge. It should have the `Cache Purge` permission
+    CACHE_PURGE_API_TOKEN?: string;
   }
 }
 

@@ -9,8 +9,8 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
 
   constructor(state: DurableObjectState, env: CloudflareEnv) {
     super(state, env);
-    this.bufferTimeInSeconds = env.CACHE_BUFFER_TIME_IN_SECONDS
-      ? parseInt(env.CACHE_BUFFER_TIME_IN_SECONDS)
+    this.bufferTimeInSeconds = env.NEXT_CACHE_DO_PURGE_BUFFER_TIME_IN_SECONDS
+      ? parseInt(env.NEXT_CACHE_DO_PURGE_BUFFER_TIME_IN_SECONDS)
       : DEFAULT_BUFFER_TIME; // Default buffer time
 
     // Initialize the sql table if it doesn't exist
@@ -21,7 +21,7 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
       );
       CREATE UNIQUE INDEX IF NOT EXISTS tag_index ON cache_purge (tag);
       `);
-    })
+    });
   }
 
   async purgeCacheByTags(tags: string[]) {
