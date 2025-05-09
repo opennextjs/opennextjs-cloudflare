@@ -14,12 +14,14 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
       : DEFAULT_BUFFER_TIME; // Default buffer time
 
     // Initialize the sql table if it doesn't exist
-    state.storage.sql.exec(`
+    state.blockConcurrencyWhile(async () => {
+      state.storage.sql.exec(`
       CREATE TABLE IF NOT EXISTS cache_purge (
         tag TEXT NOT NULL
       );
       CREATE UNIQUE INDEX IF NOT EXISTS tag_index ON cache_purge (tag);
       `);
+    })
   }
 
   async purgeCacheByTags(tags: string[]) {
@@ -47,6 +49,11 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
     `
       )
       .toArray();
+    if (tags.length === 0) {
+      // No tags to purge, we can stop
+      // It shouldn't happen, but just in case
+      return;
+    }
     do {
       await internalPurgeCacheByTags(
         this.env,
