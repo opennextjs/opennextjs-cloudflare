@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 1.0.2
+
+### Patch Changes
+
+- [#656](https://github.com/opennextjs/opennextjs-cloudflare/pull/656) [`a20d2df`](https://github.com/opennextjs/opennextjs-cloudflare/commit/a20d2dff1274d2932eb53c2900eaaa8199e07eaa) Thanks [@conico974](https://github.com/conico974)! - revert to using an external middleware
+
+  This will reduce cpu time for anything coming from the routing layer (i.e. redirects, rewrites, middleware response or when using cache interception)
+
 ## 1.0.1
 
 ### Patch Changes
