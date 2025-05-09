@@ -9,6 +9,7 @@ import type { OpenNextConfig } from "../../../api/config.js";
  */
 export function ensureCloudflareConfig(config: OpenNextConfig) {
   const requirements = {
+    // Check for the default function
     dftUseCloudflareWrapper: config.default?.override?.wrapper === "cloudflare-node",
     dftUseEdgeConverter: config.default?.override?.converter === "edge",
     dftUseFetchProxy: config.default?.override?.proxyExternalRequest === "fetch",
@@ -22,7 +23,11 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
       config.default?.override?.queue === "dummy" ||
       config.default?.override?.queue === "direct" ||
       typeof config.default?.override?.queue === "function",
-    mwIsMiddlewareIntegrated: config.middleware === undefined,
+    // Check for the middleware function
+    mwIsMiddlewareExternal: config.middleware?.external === true,
+    mwUseCloudflareWrapper: config.middleware?.override?.wrapper === "cloudflare-edge",
+    mwUseEdgeConverter: config.middleware?.override?.converter === "edge",
+    mwUseFetchProxy: config.middleware?.override?.proxyExternalRequest === "fetch",
     hasCryptoExternal: config.edgeExternals?.includes("node:crypto"),
   };
 
@@ -40,11 +45,22 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
               converter: "edge",
               proxyExternalRequest: "fetch",
               incrementalCache: "dummy" | function,
-              tagCache: "dummy",
+              tagCache: "dummy" | function,
               queue: "dummy" | "direct" | function,
             },
           },
           edgeExternals: ["node:crypto"],
+          middleware: {
+            external: true,
+            override: {
+              wrapper: "cloudflare-edge",
+              converter: "edge",
+              proxyExternalRequest: "fetch",
+              incrementalCache: "dummy" | function,
+              tagCache: "dummy" | function,
+              queue: "dummy" | "direct" | function,
+            },
+          },
         }\n\n`.replace(/^ {8}/gm, "")
     );
   }

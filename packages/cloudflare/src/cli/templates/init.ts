@@ -96,6 +96,10 @@ function initRuntime() {
     Request: CustomRequest,
     __BUILD_TIMESTAMP_MS__: __BUILD_TIMESTAMP_MS__,
     __NEXT_BASE_PATH__: __NEXT_BASE_PATH__,
+    // The external middleware will use the convertTo function of the `edge` converter
+    // by default it will try to fetch the request, but since we are running everything in the same worker
+    // we need to use the request as is.
+    __dangerous_ON_edge_converter_returns_request: true,
   });
 }
 
