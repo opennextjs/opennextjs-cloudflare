@@ -53,9 +53,9 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
       .toArray();
     do {
       if (tags.length === 0) {
-      // No tags to purge, we can stop
-      return;
-    }
+        // No tags to purge, we can stop
+        return;
+      }
       await internalPurgeCacheByTags(
         this.env,
         tags.map((row) => row.tag)
@@ -71,9 +71,7 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
       `,
         tags.map((row) => row.tag)
       );
-      if (tags.length < MAX_NUMBER_OF_TAGS_PER_PURGE
-
-      ) {
+      if (tags.length < MAX_NUMBER_OF_TAGS_PER_PURGE) {
         // If we have less than MAX_NUMBER_OF_TAGS_PER_PURGE tags, we can stop
         tags = [];
       } else {
