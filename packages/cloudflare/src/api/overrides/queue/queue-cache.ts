@@ -77,7 +77,13 @@ class QueueCache implements Queue {
     const cache = await this.getCache();
     await cache.put(
       cacheKey,
-      new Response(null, { status: 200, headers: { "Cache-Control": `max-age=${this.regionalCacheTtlSec}` } })
+      new Response(null, {
+        status: 200,
+        headers: {
+          "Cache-Control": `max-age=${this.regionalCacheTtlSec}`,
+          "Cache-Tag": `_N_T_/${msg.MessageBody.url}`,
+        },
+      })
     );
   }
 
