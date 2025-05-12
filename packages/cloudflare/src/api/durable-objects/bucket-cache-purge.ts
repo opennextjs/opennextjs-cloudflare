@@ -2,7 +2,8 @@ import { DurableObject } from "cloudflare:workers";
 
 import { internalPurgeCacheByTags } from "../overrides/internal";
 
-const DEFAULT_BUFFER_TIME = 5; // seconds
+const DEFAULT_BUFFER_TIME_IN_SECONDS = 5;
+const MAX_NUMBER_OF_TAGS_PER_PURGE = 100;
 
 export class BucketCachePurge extends DurableObject<CloudflareEnv> {
   bufferTimeInSeconds: number;
@@ -11,7 +12,7 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
     super(state, env);
     this.bufferTimeInSeconds = env.NEXT_CACHE_DO_PURGE_BUFFER_TIME_IN_SECONDS
       ? parseInt(env.NEXT_CACHE_DO_PURGE_BUFFER_TIME_IN_SECONDS)
-      : DEFAULT_BUFFER_TIME; // Default buffer time
+      : DEFAULT_BUFFER_TIME_IN_SECONDS; // Default buffer time
 
     // Initialize the sql table if it doesn't exist
     state.blockConcurrencyWhile(async () => {
@@ -45,7 +46,7 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
     let tags = this.ctx.storage.sql
       .exec<{ tag: string }>(
         `
-      SELECT * FROM cache_purge LIMIT 100
+      SELECT * FROM cache_purge LIMIT ${MAX_NUMBER_OF_TAGS_PER_PURGE}
     `
       )
       .toArray();
@@ -75,7 +76,7 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
         tags = this.ctx.storage.sql
           .exec<{ tag: string }>(
             `
-          SELECT * FROM cache_purge LIMIT 100
+          SELECT * FROM cache_purge LIMIT ${MAX_NUMBER_OF_TAGS_PER_PURGE}
         `
           )
           .toArray();

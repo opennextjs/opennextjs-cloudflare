@@ -63,7 +63,7 @@ export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[
       `https://api.cloudflare.com/client/v4/zones/${env.CACHE_PURGE_ZONE_ID}/purge_cache`,
       {
         headers: {
-          Authorization: `Bearer ${env.CACHE_PURGE_ZONE_ID}`,
+          Authorization: `Bearer ${env.CACHE_PURGE_API_TOKEN}`,
           "Content-Type": "application/json",
         },
         method: "POST",
