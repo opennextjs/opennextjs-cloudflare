@@ -56,14 +56,20 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
         // No tags to purge, we can stop
         return;
       }
-      await internalPurgeCacheByTags(
+      const result = await internalPurgeCacheByTags(
         this.env,
         tags.map((row) => row.tag)
       );
+      // For every other error, we just remove the tags from the sql table
+      // and continue
+      if (result === "rate-limit-exceeded") {
+        // Rate limit exceeded, we need to wait for the next alarm
+        // and try again
+        // We throw here to take advantage of the built-in retry
+        throw new Error("Rate limit exceeded");
+      }
+
       // Delete the tags from the sql table
-      // We always delete even if the purge fails
-      // because we don't want to keep the tags in the table
-      // and we don't want to keep retrying the purge
       this.ctx.storage.sql.exec(
         `
         DELETE FROM cache_purge
