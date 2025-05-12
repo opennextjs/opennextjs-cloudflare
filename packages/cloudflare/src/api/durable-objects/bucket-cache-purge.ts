@@ -3,6 +3,7 @@ import { DurableObject } from "cloudflare:workers";
 import { internalPurgeCacheByTags } from "../overrides/internal";
 
 const DEFAULT_BUFFER_TIME_IN_SECONDS = 5;
+// https://developers.cloudflare.com/cache/how-to/purge-cache/#hostname-tag-prefix-url-and-purge-everything-limits
 const MAX_NUMBER_OF_TAGS_PER_PURGE = 100;
 
 export class BucketCachePurge extends DurableObject<CloudflareEnv> {
@@ -50,17 +51,19 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
     `
       )
       .toArray();
-    if (tags.length === 0) {
+    do {
+      if (tags.length === 0) {
       // No tags to purge, we can stop
-      // It shouldn't happen, but just in case
       return;
     }
-    do {
       await internalPurgeCacheByTags(
         this.env,
         tags.map((row) => row.tag)
       );
       // Delete the tags from the sql table
+      // We always delete even if the purge fails
+      // because we don't want to keep the tags in the table
+      // and we don't want to keep retrying the purge
       this.ctx.storage.sql.exec(
         `
         DELETE FROM cache_purge
@@ -68,8 +71,10 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
       `,
         tags.map((row) => row.tag)
       );
-      if (tags.length < 100) {
-        // If we have less than 100 tags, we can stop
+      if (tags.length < MAX_NUMBER_OF_TAGS_PER_PURGE
+
+      ) {
+        // If we have less than MAX_NUMBER_OF_TAGS_PER_PURGE tags, we can stop
         tags = [];
       } else {
         // Otherwise, we need to get the next 100 tags
@@ -81,6 +86,6 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
           )
           .toArray();
       }
-    } while (tags.length > 0);
+    } while (tags.length >= 0);
   }
 }

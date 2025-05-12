@@ -37,10 +37,6 @@ export async function purgeCacheByTags(tags: string[]) {
   // We should use it
   if (env.NEXT_CACHE_DO_PURGE) {
     const durableObject = env.NEXT_CACHE_DO_PURGE;
-    if (!durableObject) {
-      debugCache("purgeCacheByTags", "No durable object found. Skipping cache purge.");
-      return;
-    }
     const id = durableObject.idFromName("cache-purge");
     const obj = durableObject.get(id);
     await obj.purgeCacheByTags(tags);
