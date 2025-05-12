@@ -51,7 +51,7 @@ export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[
   if (!env.CACHE_PURGE_ZONE_ID && !env.CACHE_PURGE_API_TOKEN) {
     // THIS IS A NO-OP
     debugCache("purgeCacheByTags", "No cache zone ID or API token provided. Skipping cache purge.");
-    return;
+    return "missing-credentials";
   }
 
   try {
@@ -68,19 +68,27 @@ export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[
         }),
       }
     );
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Failed to purge cache: ${response.status} ${text}`);
+    if (response.status === 429) {
+      // Rate limit exceeded
+      debugCache("purgeCacheByTags", "Rate limit exceeded. Skipping cache purge.");
+      return "rate-limit-exceeded";
     }
     const bodyResponse = (await response.json()) as {
       success: boolean;
       errors: Array<{ code: number; message: string }>;
     };
     if (!bodyResponse.success) {
-      throw new Error(`Failed to purge cache: ${JSON.stringify(bodyResponse.errors)}`);
+      debugCache(
+        "purgeCacheByTags",
+        "Cache purge failed. Errors:",
+        bodyResponse.errors.map((error) => `${error.code}: ${error.message}`)
+      );
+      return "purge-failed";
     }
     debugCache("purgeCacheByTags", "Cache purged successfully for tags:", tags);
+    return "purge-success";
   } catch (error) {
     console.error("Error purging cache by tags:", error);
+    return "purge-failed";
   }
 }
