@@ -33,6 +33,7 @@ import {
   BINDING_NAME as D1_TAG_BINDING_NAME,
   NAME as D1_TAG_NAME,
 } from "../../api/overrides/tag-cache/d1-next-tag-cache.js";
+import { normalizePath } from "../build/utils/normalize-path.js";
 import type { WranglerTarget } from "../utils/run-wrangler.js";
 import { runWrangler } from "../utils/run-wrangler.js";
 
@@ -57,8 +58,8 @@ export function getCacheAssets(opts: BuildOptions): CacheAsset[] {
   const assets: CacheAsset[] = [];
 
   for (const file of allFiles) {
-    const fullPath = file.fullpathPosix();
-    const relativePath = path.relative(path.join(opts.outputDir, "cache"), fullPath);
+    const fullPath = file.fullpath();
+    const relativePath = normalizePath(path.relative(path.join(opts.outputDir, "cache"), fullPath));
 
     if (relativePath.startsWith("__fetch")) {
       const [__fetch, buildId, ...keyParts] = relativePath.split("/");
@@ -129,7 +130,11 @@ async function populateR2IncrementalCache(
     });
     runWrangler(
       options,
-      ["r2 object put", quoteShellMeta(path.join(bucket, cacheKey)), `--file ${quoteShellMeta(fullPath)}`],
+      [
+        "r2 object put",
+        quoteShellMeta(normalizePath(path.join(bucket, cacheKey))),
+        `--file ${quoteShellMeta(fullPath)}`,
+      ],
       // NOTE: R2 does not support the environment flag and results in the following error:
       // Incorrect type for the 'cacheExpiry' field on 'HttpMetadata': the provided value is not of type 'date'.
       { target: populateCacheOptions.target, logging: "error" }
