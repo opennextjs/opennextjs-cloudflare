@@ -96,7 +96,7 @@ test.describe("Composable Cache", () => {
     await expect(isrElt).toBeVisible();
     let initialIsrText = await isrElt.textContent();
 
-     // We have to force reload until ISR has triggered at least once, otherwise the test will be flakey
+    // We have to force reload until ISR has triggered at least once, otherwise the test will be flakey
 
     let isrText = initialIsrText;
 

@@ -1,7 +1,7 @@
 /**
  * This patch will replace the createSnapshot function in the
  * server/app-render/async-local-storage.js file to an empty string.
- * This is necessary because the createSnapshot function is causing I/O issues for 
+ * This is necessary because the createSnapshot function is causing I/O issues for
  * ISR/SSG revalidation in Cloudflare Workers.
  * TODO: Find a better fix for this issue.
  */
@@ -28,12 +28,9 @@ export const patchUseCacheIO: CodePatcher = {
     {
       versions: ">=15.3.1",
       field: {
-        pathFilter: getCrossPlatformPathRegex(
-          String.raw`server/app-render/async-local-storage\.js$`,
-          {
-            escape: false,
-          }
-        ),
+        pathFilter: getCrossPlatformPathRegex(String.raw`server/app-render/async-local-storage\.js$`, {
+          escape: false,
+        }),
         contentFilter: /createSnapshot/,
         patchCode: async ({ code }) => patchCode(code, rule),
       },

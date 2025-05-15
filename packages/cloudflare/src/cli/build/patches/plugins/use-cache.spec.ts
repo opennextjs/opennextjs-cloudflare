@@ -78,7 +78,7 @@ function createSnapshot() {
 }
 
 //# sourceMappingURL=async-local-storage.js.map
-`
+`;
 
 test("patch the createSnapshot function", () => {
   const patchedCode = patchCode(codeToPatch, rule);
@@ -156,4 +156,4 @@ function createSnapshot() {
 
 //# sourceMappingURL=async-local-storage.js.map
 "`);
-})
+});
