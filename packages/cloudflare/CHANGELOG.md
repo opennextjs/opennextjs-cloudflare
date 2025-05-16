@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 1.0.3
+
+### Patch Changes
+
+- [#666](https://github.com/opennextjs/opennextjs-cloudflare/pull/666) [`e87d8bb`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e87d8bb460ded4f6d6cbeb1ddf69788d1c817cda) Thanks [@conico974](https://github.com/conico974)! - fix fetch inside `use cache` in ISR
+
+- [#599](https://github.com/opennextjs/opennextjs-cloudflare/pull/599) [`7b06a42`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7b06a42455d6f0dc90f76c85e4c372446f350ba3) Thanks [@james-elicx](https://github.com/james-elicx)! - Fix multiple Windows path issues.
+
 ## 1.0.2
 
 ### Patch Changes
