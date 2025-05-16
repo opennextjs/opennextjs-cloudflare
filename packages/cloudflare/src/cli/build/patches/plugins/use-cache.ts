@@ -3,6 +3,10 @@
  * server/app-render/async-local-storage.js file to an empty string.
  * This is necessary because the createSnapshot function is causing I/O issues for
  * ISR/SSG revalidation in Cloudflare Workers.
+ * This is because by default it will use AsyncLocalStorage.snapshot() and it will
+ * bind everything to the initial request context.
+ * The downsides is that use cache function will have access to the full request
+ * ALS context from next (i.e. cookies, headers ...)
  * TODO: Find a better fix for this issue.
  */
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
