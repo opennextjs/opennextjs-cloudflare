@@ -83,4 +83,45 @@ test.describe("Composable Cache", () => {
     const fullyCachedText = await fullyCachedElt.textContent();
     expect(fullyCachedText).toEqual(initialFullyCachedText);
   });
+
+  test("cached fetch should work in ISR", async ({ page }) => {
+    await page.goto("/use-cache/fetch");
+
+    let dateElt = page.getByTestId("date");
+    await expect(dateElt).toBeVisible();
+
+    let initialDate = await dateElt.textContent();
+
+    let isrElt = page.getByTestId("isr");
+    await expect(isrElt).toBeVisible();
+    let initialIsrText = await isrElt.textContent();
+
+    // We have to force reload until ISR has triggered at least once, otherwise the test will be flakey
+
+    let isrText = initialIsrText;
+
+    while (isrText === initialIsrText) {
+      await page.reload();
+      isrElt = page.getByTestId("isr");
+      dateElt = page.getByTestId("date");
+      await expect(isrElt).toBeVisible();
+      isrText = await isrElt.textContent();
+      await expect(dateElt).toBeVisible();
+      initialDate = await dateElt.textContent();
+      await page.waitForTimeout(1000);
+    }
+    initialIsrText = isrText;
+
+    do {
+      await page.reload();
+      dateElt = page.getByTestId("date");
+      isrElt = page.getByTestId("isr");
+      await expect(dateElt).toBeVisible();
+      await expect(isrElt).toBeVisible();
+      isrText = await isrElt.textContent();
+      await page.waitForTimeout(1000);
+    } while (isrText === initialIsrText);
+    const fullyCachedText = await dateElt.textContent();
+    expect(fullyCachedText).toEqual(initialDate);
+  });
 });
