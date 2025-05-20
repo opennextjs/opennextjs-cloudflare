@@ -24,6 +24,7 @@ class QueueCache implements Queue {
   readonly regionalCacheTtlSec: number;
   readonly waitForQueueAck: boolean;
   cache: Cache | undefined;
+  // Local mapping from key to insertedAtSec
   localCache: Map<string, number> = new Map();
 
   constructor(
@@ -43,10 +44,9 @@ class QueueCache implements Queue {
       }
       if (!this.waitForQueueAck) {
         await this.putToCache(msg);
-      }
-
-      await this.originalQueue.send(msg);
-      if (this.waitForQueueAck) {
+        await this.originalQueue.send(msg);
+      } else {
+        await this.originalQueue.send(msg);
         await this.putToCache(msg);
       }
     } catch (e) {
@@ -68,7 +68,7 @@ class QueueCache implements Queue {
   }
 
   private getCacheKey(msg: QueueMessage) {
-    return new Request(new URL(this.getCacheUrlString(msg), "http://local.cache"));
+    return "http://local.cache" + this.getCacheUrlString(msg);
   }
 
   private async putToCache(msg: QueueMessage) {
@@ -81,6 +81,8 @@ class QueueCache implements Queue {
         status: 200,
         headers: {
           "Cache-Control": `max-age=${this.regionalCacheTtlSec}`,
+          // Tag cache is set to the value of the soft tag assigned by Next.js
+          // This way you can invalidate this cache as well as any other regional cache
           "Cache-Tag": `_N_T_/${msg.MessageBody.url}`,
         },
       })
@@ -109,8 +111,9 @@ class QueueCache implements Queue {
    */
   private clearLocalCache() {
     const now = Date.now();
-    for (const [key, value] of this.localCache.entries()) {
-      if (now - value > this.regionalCacheTtlSec * 1000) {
+    const insertAtSecMax = this.regionalCacheTtlSec * 1000;
+    for (const [key, insertAtSec] of this.localCache.entries()) {
+      if (now - insertAtSec > insertAtSecMax) {
         this.localCache.delete(key);
       }
     }
