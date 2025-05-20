@@ -84,6 +84,11 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
     if (this.checkSyncTable(msg)) return;
 
     if (this.ongoingRevalidations.size >= this.maxRevalidations) {
+      if (this.ongoingRevalidations.size > 2 * this.maxRevalidations) {
+        console.warn(
+          `Your durable object has 2 times the maximum number of revalidations (${this.maxRevalidations}) in progress. If this happens often, you should consider increasing the NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION or the number of durable objects with the MAX_REVALIDATE_CONCURRENCY env var.`
+        );
+      }
       debug(
         `The maximum number of revalidations (${this.maxRevalidations}) is reached. Blocking until one of the revalidations finishes.`
       );
