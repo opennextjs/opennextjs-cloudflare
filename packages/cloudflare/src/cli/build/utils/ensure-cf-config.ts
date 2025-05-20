@@ -36,9 +36,9 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
   }
 
   if (Object.values(requirements).some((satisfied) => !satisfied)) {
-    throw new Error(
+    const errorMessage =
       "The `open-next.config.ts` should have a default export like this:\n\n" +
-        `{
+      `{
           default: {
             override: {
               wrapper: "cloudflare-node",
@@ -61,7 +61,11 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
               queue: "dummy" | "direct" | function,
             },
           },
-        }\n\n`.replace(/^ {8}/gm, "")
-    );
+        }\n\n`.replace(/^ {8}/gm, "");
+    if (config.cloudflare?.dangerousDisableConfigValidation) {
+      logger.warn(errorMessage);
+      return;
+    }
+    throw new Error(errorMessage);
   }
 }

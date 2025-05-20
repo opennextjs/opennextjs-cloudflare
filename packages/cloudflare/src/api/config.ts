@@ -116,6 +116,14 @@ interface OpenNextConfig extends AwsOpenNextConfig {
      * @default true
      */
     useWorkerdCondition?: boolean;
+
+    /**
+     * Disable throwing an error when the config validation fails.
+     * This is useful for overriding some of the default provided by cloudflare.
+     * **USE AT YOUR OWN RISK**
+     * @default false
+     */
+    dangerousDisableConfigValidation?: boolean;
   };
 }
 
