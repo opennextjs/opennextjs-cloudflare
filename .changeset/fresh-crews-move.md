@@ -2,4 +2,4 @@
 "@opennextjs/cloudflare": patch
 ---
 
-add an option to not throw on validation of the config
+add a `cloudflare.dangerousDisableConfigValidation` config option to not throw on validation of the config
