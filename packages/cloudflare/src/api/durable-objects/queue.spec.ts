@@ -111,10 +111,6 @@ describe("DurableObjectQueue", () => {
       expect(queue.ongoingRevalidations.has("id6")).toBe(false);
       expect(Array.from(queue.ongoingRevalidations.keys())).toEqual(["id", "id2", "id3", "id4", "id5"]);
 
-      // BlockConcurrencyWhile is called twice here, first time during creation of the object and second time when we try to revalidate
-      // @ts-expect-error
-      expect(queue.ctx.blockConcurrencyWhile).toHaveBeenCalledTimes(2);
-
       // Here we await the blocked request to ensure it's resolved
       await blockedReq;
       // We then need to await for the actual revalidation to finish
