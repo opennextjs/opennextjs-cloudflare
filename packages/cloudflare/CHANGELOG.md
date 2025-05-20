@@ -1,5 +1,17 @@
 # @opennextjs/cloudflare
 
+## 1.0.4
+
+### Patch Changes
+
+- [#676](https://github.com/opennextjs/opennextjs-cloudflare/pull/676) [`ead6ddc`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ead6ddce45a9c7725f027fb8f7e826f864d82be5) Thanks [@vicb](https://github.com/vicb)! - bump esbuild to 0.25.4
+
+- [#675](https://github.com/opennextjs/opennextjs-cloudflare/pull/675) [`e6040bc`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e6040bcaaf887148b5be44e08fe79c7e4ff92042) Thanks [@conico974](https://github.com/conico974)! - add a `cloudflare.dangerousDisableConfigValidation` config option to not throw on validation of the config
+
+- [#674](https://github.com/opennextjs/opennextjs-cloudflare/pull/674) [`ec9ea58`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ec9ea58764fa344b6a47df33b4ae05063d9a1c07) Thanks [@conico974](https://github.com/conico974)! - fix blockConcurrencyWhile on DO queue
+
+- [#672](https://github.com/opennextjs/opennextjs-cloudflare/pull/672) [`9188e67`](https://github.com/opennextjs/opennextjs-cloudflare/commit/9188e679cc70d14bc2dedfa2428926b51c1a1ba9) Thanks [@conico974](https://github.com/conico974)! - bump aws to 3.6.2. More details about the fixes can be found here: https://github.com/opennextjs/opennextjs-aws/blob/main/packages/open-next/CHANGELOG.md#362
+
 ## 1.0.3
 
 ### Patch Changes
