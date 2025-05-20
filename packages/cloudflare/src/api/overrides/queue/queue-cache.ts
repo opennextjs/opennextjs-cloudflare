@@ -110,10 +110,9 @@ class QueueCache implements Queue {
    * Remove any value older than the TTL from the local cache
    */
   private clearLocalCache() {
-    const now = Date.now();
-    const insertAtSecMax = this.regionalCacheTtlSec * 1000;
+    const insertAtSecMax = Date.now() - this.regionalCacheTtlSec * 1000;
     for (const [key, insertAtSec] of this.localCache.entries()) {
-      if (now - insertAtSec > insertAtSecMax) {
+      if (insertAtSec < insertAtSecMax) {
         this.localCache.delete(key);
       }
     }
