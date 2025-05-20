@@ -1,4 +1,4 @@
-import { debug, error } from "@opennextjs/aws/adapters/logger.js";
+import { debug, error, warn } from "@opennextjs/aws/adapters/logger.js";
 import type { QueueMessage } from "@opennextjs/aws/types/overrides";
 import {
   FatalError,
@@ -74,7 +74,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 
   async revalidate(msg: QueueMessage) {
     if (this.ongoingRevalidations.size > 2 * this.maxRevalidations) {
-      console.warn(
+      warn(
         `Your durable object has 2 times the maximum number of revalidations (${this.maxRevalidations}) in progress. If this happens often, you should consider increasing the NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION or the number of durable objects with the MAX_REVALIDATE_CONCURRENCY env var.`
       );
     }
