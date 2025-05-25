@@ -68,19 +68,17 @@ interface ShardedDOTagCacheOptions {
     numberOfHardReplicas: number;
 
     /**
-     * Whether to enable regional replication
-     * Regional replication will duplicate each shards and their associated replicas into every regions
-     * This will reduce the latency for the read operations
-     * On write, the write will be sent to all the shards and all the replicas in all the regions
-     * @default false
+     * Enable regional replication for the shards.
+     * 
+     * If not set, no regional replication will be performed and durable objects will be created without a location hint
+     * 
+     * Can be used to reduce latency for users in different regions and to spread the load across multiple regions.
+     * 
+     * This will increase the number of durable objects created, as each shard will be replicated in all regions.
      */
-    enableRegionalReplication?: boolean;
-
-    /**
-     * Default region to use for the regional replication when the region cannot be determined
-     * @default "enam"
-     */
-    defaultRegion?: AllowedDurableObjectRegion;
+    regionalReplicationOptions?: {
+      defaultRegion: AllowedDurableObjectRegion;
+    }
   };
 
   /**
@@ -138,8 +136,8 @@ class ShardedDOTagCache implements NextModeTagCache {
     this.numSoftReplicas = opts.shardReplication?.numberOfSoftReplicas ?? 1;
     this.numHardReplicas = opts.shardReplication?.numberOfHardReplicas ?? 1;
     this.maxWriteRetries = opts.maxWriteRetries ?? DEFAULT_WRITE_RETRIES;
-    this.enableRegionalReplication = opts.shardReplication?.enableRegionalReplication ?? false;
-    this.defaultRegion = opts.shardReplication?.defaultRegion ?? DEFAULT_REGION;
+    this.enableRegionalReplication = Boolean(opts.shardReplication?.regionalReplicationOptions);
+    this.defaultRegion = opts.shardReplication?.regionalReplicationOptions?.defaultRegion ?? DEFAULT_REGION;
   }
 
   private getDurableObjectStub(doId: DOId) {

@@ -122,7 +122,9 @@ describe("DOShardedTagCache", () => {
           shardReplication: {
             numberOfSoftReplicas: 2,
             numberOfHardReplicas: 2,
-            enableRegionalReplication: true,
+            regionalReplicationOptions: {
+              defaultRegion: "enam",
+            }
           },
         });
         const shardedTagCollection = cache.groupTagsByDO({
@@ -154,7 +156,9 @@ describe("DOShardedTagCache", () => {
           shardReplication: {
             numberOfSoftReplicas: 2,
             numberOfHardReplicas: 2,
-            enableRegionalReplication: true,
+            regionalReplicationOptions: {
+              defaultRegion: "enam",
+            }
           },
         });
         const shardedTagCollection = cache.groupTagsByDO({
@@ -175,7 +179,9 @@ describe("DOShardedTagCache", () => {
           shardReplication: {
             numberOfSoftReplicas: 2,
             numberOfHardReplicas: 2,
-            enableRegionalReplication: true,
+            regionalReplicationOptions: {
+              defaultRegion: "enam",
+            }
           },
         });
         const shardedTagCollection = cache.groupTagsByDO({
