@@ -69,16 +69,16 @@ interface ShardedDOTagCacheOptions {
 
     /**
      * Enable regional replication for the shards.
-     * 
+     *
      * If not set, no regional replication will be performed and durable objects will be created without a location hint
-     * 
+     *
      * Can be used to reduce latency for users in different regions and to spread the load across multiple regions.
-     * 
+     *
      * This will increase the number of durable objects created, as each shard will be replicated in all regions.
      */
     regionalReplicationOptions?: {
       defaultRegion: AllowedDurableObjectRegion;
-    }
+    };
   };
 
   /**

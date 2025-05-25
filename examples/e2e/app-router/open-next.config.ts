@@ -13,7 +13,7 @@ export default defineCloudflareConfig({
       numberOfHardReplicas: 2,
       regionalReplicationOptions: {
         defaultRegion: "enam",
-      }
+      },
     },
   }),
   queue: doQueue,

@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import shardedDOTagCache, { AVAILABLE_REGIONS, DOId } from "./do-sharded-tag-cache";
 
-
 const hasBeenRevalidatedMock = vi.fn();
 const writeTagsMock = vi.fn();
 const idFromNameMock = vi.fn();
@@ -124,7 +123,7 @@ describe("DOShardedTagCache", () => {
             numberOfHardReplicas: 2,
             regionalReplicationOptions: {
               defaultRegion: "enam",
-            }
+            },
           },
         });
         const shardedTagCollection = cache.groupTagsByDO({
@@ -158,7 +157,7 @@ describe("DOShardedTagCache", () => {
             numberOfHardReplicas: 2,
             regionalReplicationOptions: {
               defaultRegion: "enam",
-            }
+            },
           },
         });
         const shardedTagCollection = cache.groupTagsByDO({
@@ -181,7 +180,7 @@ describe("DOShardedTagCache", () => {
             numberOfHardReplicas: 2,
             regionalReplicationOptions: {
               defaultRegion: "enam",
-            }
+            },
           },
         });
         const shardedTagCollection = cache.groupTagsByDO({
