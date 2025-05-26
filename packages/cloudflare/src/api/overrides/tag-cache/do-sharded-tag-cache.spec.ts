@@ -121,7 +121,7 @@ describe("DOShardedTagCache", () => {
           shardReplication: {
             numberOfSoftReplicas: 2,
             numberOfHardReplicas: 2,
-            regionalReplicationOptions: {
+            regionalReplication: {
               defaultRegion: "enam",
             },
           },
@@ -155,7 +155,7 @@ describe("DOShardedTagCache", () => {
           shardReplication: {
             numberOfSoftReplicas: 2,
             numberOfHardReplicas: 2,
-            regionalReplicationOptions: {
+            regionalReplication: {
               defaultRegion: "enam",
             },
           },
@@ -178,7 +178,7 @@ describe("DOShardedTagCache", () => {
           shardReplication: {
             numberOfSoftReplicas: 2,
             numberOfHardReplicas: 2,
-            regionalReplicationOptions: {
+            regionalReplication: {
               defaultRegion: "enam",
             },
           },

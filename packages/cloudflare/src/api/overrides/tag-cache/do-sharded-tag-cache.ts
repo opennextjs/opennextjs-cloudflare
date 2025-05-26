@@ -76,7 +76,7 @@ interface ShardedDOTagCacheOptions {
      *
      * This will increase the number of durable objects created, as each shard will be replicated in all regions.
      */
-    regionalReplicationOptions?: {
+    regionalReplication?: {
       defaultRegion: AllowedDurableObjectRegion;
     };
   };
@@ -136,8 +136,8 @@ class ShardedDOTagCache implements NextModeTagCache {
     this.numSoftReplicas = opts.shardReplication?.numberOfSoftReplicas ?? 1;
     this.numHardReplicas = opts.shardReplication?.numberOfHardReplicas ?? 1;
     this.maxWriteRetries = opts.maxWriteRetries ?? DEFAULT_WRITE_RETRIES;
-    this.enableRegionalReplication = Boolean(opts.shardReplication?.regionalReplicationOptions);
-    this.defaultRegion = opts.shardReplication?.regionalReplicationOptions?.defaultRegion ?? DEFAULT_REGION;
+    this.enableRegionalReplication = Boolean(opts.shardReplication?.regionalReplication);
+    this.defaultRegion = opts.shardReplication?.regionalReplication?.defaultRegion ?? DEFAULT_REGION;
   }
 
   private getDurableObjectStub(doId: DOId) {
