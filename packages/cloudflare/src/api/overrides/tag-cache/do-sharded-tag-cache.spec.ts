@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import shardedDOTagCache, { DOId } from "./do-sharded-tag-cache";
+import shardedDOTagCache, { AVAILABLE_REGIONS, DOId } from "./do-sharded-tag-cache";
 
 const hasBeenRevalidatedMock = vi.fn();
 const writeTagsMock = vi.fn();
@@ -9,6 +9,8 @@ const getMock = vi
   .fn()
   .mockReturnValue({ hasBeenRevalidated: hasBeenRevalidatedMock, writeTags: writeTagsMock });
 const waitUntilMock = vi.fn().mockImplementation(async (fn) => fn());
+// @ts-expect-error - We define it here only for the test
+globalThis.continent = undefined;
 const sendDLQMock = vi.fn();
 vi.mock("../../cloudflare-context", () => ({
   getCloudflareContext: () => ({
@@ -19,6 +21,10 @@ vi.mock("../../cloudflare-context", () => ({
       },
     },
     ctx: { waitUntil: waitUntilMock },
+    cf: {
+      // @ts-expect-error - We define it here only for the test
+      continent: globalThis.continent,
+    },
   }),
 }));
 
@@ -107,6 +113,87 @@ describe("DOShardedTagCache", () => {
 
         expect(secondDOId?.replicaId).toBeGreaterThanOrEqual(1);
         expect(secondDOId?.replicaId).toBeLessThanOrEqual(2);
+      });
+
+      it("should generate one doIds, but in the default region", () => {
+        const cache = shardedDOTagCache({
+          baseShardSize: 4,
+          shardReplication: {
+            numberOfSoftReplicas: 2,
+            numberOfHardReplicas: 2,
+            regionalReplication: {
+              defaultRegion: "enam",
+            },
+          },
+        });
+        const shardedTagCollection = cache.groupTagsByDO({
+          tags: ["tag1", "_N_T_/tag1"],
+          generateAllReplicas: false,
+        });
+        expect(shardedTagCollection.length).toBe(2);
+        const firstDOId = shardedTagCollection[0]?.doId;
+        const secondDOId = shardedTagCollection[1]?.doId;
+
+        expect(firstDOId?.shardId).toBe("tag-soft;shard-3");
+        expect(firstDOId?.region).toBe("enam");
+        expect(secondDOId?.shardId).toBe("tag-hard;shard-1");
+        expect(secondDOId?.region).toBe("enam");
+
+        // We still need to check if the last part is between the correct boundaries
+        expect(firstDOId?.replicaId).toBeGreaterThanOrEqual(1);
+        expect(firstDOId?.replicaId).toBeLessThanOrEqual(2);
+
+        expect(secondDOId?.replicaId).toBeGreaterThanOrEqual(1);
+        expect(secondDOId?.replicaId).toBeLessThanOrEqual(2);
+      });
+
+      it("should generate one doIds, but in the correct region", () => {
+        // @ts-expect-error - We define it here only for the test
+        globalThis.continent = "EU";
+        const cache = shardedDOTagCache({
+          baseShardSize: 4,
+          shardReplication: {
+            numberOfSoftReplicas: 2,
+            numberOfHardReplicas: 2,
+            regionalReplication: {
+              defaultRegion: "enam",
+            },
+          },
+        });
+        const shardedTagCollection = cache.groupTagsByDO({
+          tags: ["tag1", "_N_T_/tag1"],
+          generateAllReplicas: false,
+        });
+        expect(shardedTagCollection.length).toBe(2);
+        expect(shardedTagCollection[0]?.doId.region).toBe("weur");
+        expect(shardedTagCollection[1]?.doId.region).toBe("weur");
+
+        //@ts-expect-error - We need to reset the global variable
+        globalThis.continent = undefined;
+      });
+
+      it("should generate all the appropriate replicas in all the regions with enableRegionalReplication", () => {
+        const cache = shardedDOTagCache({
+          baseShardSize: 4,
+          shardReplication: {
+            numberOfSoftReplicas: 2,
+            numberOfHardReplicas: 2,
+            regionalReplication: {
+              defaultRegion: "enam",
+            },
+          },
+        });
+        const shardedTagCollection = cache.groupTagsByDO({
+          tags: ["tag1", "_N_T_/tag1"],
+          generateAllReplicas: true,
+        });
+        // 6 regions times 4 shards replica
+        expect(shardedTagCollection.length).toBe(24);
+        shardedTagCollection.forEach(({ doId }) => {
+          expect(AVAILABLE_REGIONS).toContain(doId.region);
+          // It should end with the region
+          expect(doId.key).toMatch(/tag-(soft|hard);shard-\d;replica-\d;region-(enam|weur|sam|afr|apac|oc)$/);
+        });
       });
     });
   });

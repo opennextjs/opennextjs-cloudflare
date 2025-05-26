@@ -12,6 +12,9 @@ export default defineCloudflareConfig({
     shardReplication: {
       numberOfSoftReplicas: 8,
       numberOfHardReplicas: 2,
+      regionalReplication: {
+        defaultRegion: "enam",
+      },
     },
   }),
   enableCacheInterception: true,
