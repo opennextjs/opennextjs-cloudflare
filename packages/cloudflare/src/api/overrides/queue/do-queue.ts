@@ -4,7 +4,7 @@ import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 import { getCloudflareContext } from "../../cloudflare-context";
 
 export default {
-  name: "do-queue",
+  name: "durable-queue",
   send: async (msg: QueueMessage) => {
     const durableObject = getCloudflareContext().env.NEXT_CACHE_DO_QUEUE;
     if (!durableObject) throw new IgnorableError("No durable object binding for cache revalidation");
