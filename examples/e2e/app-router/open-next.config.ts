@@ -15,7 +15,7 @@ export default defineCloudflareConfig({
       numberOfHardReplicas: 2,
     },
   }),
-  cachePurge: purgeCache({type: "durableObject"}),
+  cachePurge: purgeCache({ type: "durableObject" }),
   enableCacheInterception: true,
   queue: queueCache(doQueue),
 });
