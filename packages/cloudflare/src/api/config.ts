@@ -4,7 +4,12 @@ import {
   LazyLoadedOverride,
   OpenNextConfig as AwsOpenNextConfig,
 } from "@opennextjs/aws/types/open-next";
-import type { IncrementalCache, Queue, TagCache } from "@opennextjs/aws/types/overrides";
+import type {
+  CDNInvalidationHandler,
+  IncrementalCache,
+  Queue,
+  TagCache,
+} from "@opennextjs/aws/types/overrides";
 
 export type Override<T extends BaseOverride> = "dummy" | T | LazyLoadedOverride<T>;
 
@@ -30,6 +35,11 @@ export type CloudflareOverrides = {
   queue?: "direct" | Override<Queue>;
 
   /**
+   * Sets the automatic cache purge implementation
+   */
+  cachePurge?: Override<CDNInvalidationHandler>;
+
+  /**
    * Enable cache interception
    * Should be `false` when PPR is used
    * @default false
@@ -44,7 +54,7 @@ export type CloudflareOverrides = {
  * @returns the OpenNext configuration object
  */
 export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNextConfig {
-  const { incrementalCache, tagCache, queue, enableCacheInterception = false } = config;
+  const { incrementalCache, tagCache, queue, cachePurge, enableCacheInterception = false } = config;
 
   return {
     default: {
@@ -55,6 +65,7 @@ export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNe
         incrementalCache: resolveIncrementalCache(incrementalCache),
         tagCache: resolveTagCache(tagCache),
         queue: resolveQueue(queue),
+        cdnInvalidation: resolveCdnInvalidation(cachePurge),
       },
       routePreloadingBehavior: "withWaitUntil",
     },
@@ -97,6 +108,14 @@ function resolveTagCache(value: CloudflareOverrides["tagCache"] = "dummy") {
 }
 
 function resolveQueue(value: CloudflareOverrides["queue"] = "dummy") {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return typeof value === "function" ? value : () => value;
+}
+
+function resolveCdnInvalidation(value: CloudflareOverrides["cachePurge"] = "dummy") {
   if (typeof value === "string") {
     return value;
   }

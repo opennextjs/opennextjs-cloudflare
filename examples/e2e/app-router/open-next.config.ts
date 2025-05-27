@@ -3,6 +3,7 @@ import r2IncrementalCache from "@opennextjs/cloudflare/overrides/incremental-cac
 import shardedTagCache from "@opennextjs/cloudflare/overrides/tag-cache/do-sharded-tag-cache";
 import doQueue from "@opennextjs/cloudflare/overrides/queue/do-queue";
 import queueCache from "@opennextjs/cloudflare/overrides/queue/queue-cache";
+import { purgeCache } from "@opennextjs/cloudflare/overrides/cache-purge/index";
 
 export default defineCloudflareConfig({
   incrementalCache: r2IncrementalCache,
@@ -17,6 +18,7 @@ export default defineCloudflareConfig({
       },
     },
   }),
+  cachePurge: purgeCache({ type: "durableObject" }),
   enableCacheInterception: true,
   queue: queueCache(doQueue),
 });

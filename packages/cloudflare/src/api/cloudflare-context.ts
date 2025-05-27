@@ -2,6 +2,7 @@ import type { Context, RunningCodeOptions } from "node:vm";
 
 import type { GetPlatformProxyOptions } from "wrangler";
 
+import type { BucketCachePurge } from "./durable-objects/bucket-cache-purge.js";
 import type { DOQueueHandler } from "./durable-objects/queue.js";
 import type { DOShardedTagCache } from "./durable-objects/sharded-tag-cache.js";
 import type { PREFIX_ENV_NAME as KV_CACHE_PREFIX_ENV_NAME } from "./overrides/incremental-cache/kv-incremental-cache.js";
@@ -54,6 +55,16 @@ declare global {
     // Disable SQLite for the durable object queue handler
     // This can be safely used if you don't use an eventually consistent incremental cache (i.e. R2 without the regional cache for example)
     NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE?: string;
+
+    // Below are the optional env variables for purging the cache
+    // Durable Object namespace to use for the durable object cache purge
+    NEXT_CACHE_DO_PURGE?: DurableObjectNamespace<BucketCachePurge>;
+    // The amount of time in seconds that the cache purge will wait before purging the cache
+    NEXT_CACHE_DO_PURGE_BUFFER_TIME_IN_SECONDS?: string;
+    // The zone ID to use for the cache purge https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/
+    CACHE_PURGE_ZONE_ID?: string;
+    // The API token to use for the cache purge. It should have the `Cache Purge` permission
+    CACHE_PURGE_API_TOKEN?: string;
   }
 }
 

@@ -5,7 +5,7 @@ import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import type { OpenNextConfig } from "../../../api/config.js";
 import { getCloudflareContext } from "../../cloudflare-context";
-import { debugCache } from "../internal";
+import { debugCache, purgeCacheByTags } from "../internal";
 
 export const DEFAULT_WRITE_RETRIES = 3;
 export const DEFAULT_NUM_SHARDS = 4;
@@ -380,6 +380,7 @@ class ShardedDOTagCache implements NextModeTagCache {
         await this.performWriteTagsWithRetry(doId, tags, currentTime);
       })
     );
+    await purgeCacheByTags(tags);
   }
 
   async performWriteTagsWithRetry(doId: DOId, tags: string[], lastModified: number, retryNumber = 0) {
