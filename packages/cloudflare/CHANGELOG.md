@@ -1,5 +1,21 @@
 # @opennextjs/cloudflare
 
+## 1.1.0
+
+### Minor Changes
+
+- [#655](https://github.com/opennextjs/opennextjs-cloudflare/pull/655) [`2c819c6`](https://github.com/opennextjs/opennextjs-cloudflare/commit/2c819c629e8460ccca53fd771b46e048b512348e) Thanks [@conico974](https://github.com/conico974)! - Automatic Cache API purge
+
+- [#500](https://github.com/opennextjs/opennextjs-cloudflare/pull/500) [`5142788`](https://github.com/opennextjs/opennextjs-cloudflare/commit/5142788f3e76fc63a3c4ee9b61f0cc4643e98e1a) Thanks [@conico974](https://github.com/conico974)! - add regional replicas for the sharded tag cache
+
+- [#496](https://github.com/opennextjs/opennextjs-cloudflare/pull/496) [`298fd4e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/298fd4e29cd13ae68327fde80286575372bb5e32) Thanks [@conico974](https://github.com/conico974)! - add an optional cache for the durable queue
+
+### Patch Changes
+
+- [#685](https://github.com/opennextjs/opennextjs-cloudflare/pull/685) [`360012c`](https://github.com/opennextjs/opennextjs-cloudflare/commit/360012c38299a52413675574b209690c04e5bf87) Thanks [@vicb](https://github.com/vicb)! - bump aws to 3.6.4
+
+  More details about the fixes can be found [here](https://github.com/opennextjs/opennextjs-aws/blob/main/packages/open-next/CHANGELOG.md#364)
+
 ## 1.0.4
 
 ### Patch Changes
