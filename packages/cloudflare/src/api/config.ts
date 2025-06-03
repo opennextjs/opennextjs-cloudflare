@@ -48,10 +48,8 @@ export type CloudflareOverrides = {
   enableCacheInterception?: boolean;
 
   /**
-   * Set the route preloading behavior.
-   *
+   * Route preloading behavior.
    * Using a value other than "none" can result in higher CPU usage on cold starts.
-   *
    * @default "none"
    */
   routePreloadingBehavior?: RoutePreloadingBehavior;
