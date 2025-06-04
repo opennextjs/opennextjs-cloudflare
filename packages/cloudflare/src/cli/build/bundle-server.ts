@@ -11,6 +11,7 @@ import { getOpenNextConfig } from "../../api/config.js";
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
 import * as patches from "./patches/index.js";
+import { patchDropBabel } from "./patches/plugins/babel.js";
 import { inlineBuildId } from "./patches/plugins/build-id.js";
 import { inlineDynamicRequires } from "./patches/plugins/dynamic-requires.js";
 import { inlineEvalManifest } from "./patches/plugins/eval-manifest.js";
@@ -101,6 +102,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       inlineLoadManifest(updater, buildOpts),
       inlineBuildId(updater),
       patchDepdDeprecations(updater),
+      patchDropBabel(updater),
       // Apply updater updates, must be the last plugin
       updater.plugin,
     ] as Plugin[],
