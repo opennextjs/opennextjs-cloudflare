@@ -13,7 +13,6 @@ import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
 import * as patches from "./patches/index.js";
 import { inlineBuildId } from "./patches/plugins/build-id.js";
 import { inlineDynamicRequires } from "./patches/plugins/dynamic-requires.js";
-import { inlineEvalManifest } from "./patches/plugins/eval-manifest.js";
 import { inlineFindDir } from "./patches/plugins/find-dir.js";
 import { patchInstrumentation } from "./patches/plugins/instrumentation.js";
 import { inlineLoadManifest } from "./patches/plugins/load-manifest.js";
@@ -96,7 +95,6 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       handleOptionalDependencies(optionalDependencies),
       patchInstrumentation(updater, buildOpts),
       patchPagesRouterContext(buildOpts),
-      inlineEvalManifest(updater, buildOpts),
       inlineFindDir(updater, buildOpts),
       inlineLoadManifest(updater, buildOpts),
       inlineBuildId(updater),
