@@ -9,7 +9,7 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
-import path, { join } from "node:path";
+import path from "node:path";
 
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
@@ -31,7 +31,7 @@ export function patchNextServer(updater: ContentUpdater, buildOpts: BuildOptions
 
           contents = patchCode(contents, buildIdRule);
 
-          const manifestPath = join(
+          const manifestPath = path.join(
             outputDir,
             "server-functions/default",
             getPackagePath(buildOpts),
