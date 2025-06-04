@@ -152,7 +152,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
 
   fs.writeFileSync(openNextServerBundle + ".meta.json", JSON.stringify(result.metafile, null, 2));
 
-  await updateWorkerBundledCode(openNextServerBundle, buildOpts);
+  await updateWorkerBundledCode(openNextServerBundle);
 
   const isMonorepo = monorepoRoot !== appPath;
   if (isMonorepo) {
@@ -170,16 +170,11 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
 /**
  * This function applies patches required for the code to run on workers.
  */
-export async function updateWorkerBundledCode(
-  workerOutputFile: string,
-  buildOpts: BuildOptions
-): Promise<void> {
+export async function updateWorkerBundledCode(workerOutputFile: string): Promise<void> {
   const code = await readFile(workerOutputFile, "utf8");
 
   const patchedCode = await patchCodeWithValidations(code, [
     ["require", patches.patchRequire],
-    ["cacheHandler", (code) => patches.patchCache(code, buildOpts)],
-    ["composableCache", (code) => patches.patchComposableCache(code, buildOpts), { isOptional: true }],
     [
       "`require.resolve` call",
       // workers do not support dynamic require nor require.resolve
