@@ -1,5 +1,7 @@
 /**
- * Inline `loadManifest` as it relies on `readFileSync` that is not supported by workerd.
+ * Inline `loadManifest` and `evalManifest` from `load-manifest.js`
+ *
+ * They rely on `readFileSync` that is not supported by workerd.
  */
 
 import { readFile } from "node:fs/promises";
@@ -21,13 +23,17 @@ export function inlineLoadManifest(updater: ContentUpdater, buildOpts: BuildOpti
           escape: false,
         }),
         contentFilter: /function loadManifest\(/,
-        callback: async ({ contents }) => patchCode(contents, await getRule(buildOpts)),
+        callback: async ({ contents }) => {
+          contents = await patchCode(contents, await getLoadManifestRule(buildOpts));
+          contents = await patchCode(contents, await getEvalManifestRule(buildOpts));
+          return contents;
+        },
       },
     },
   ]);
 }
 
-async function getRule(buildOpts: BuildOptions) {
+async function getLoadManifestRule(buildOpts: BuildOptions) {
   const { outputDir } = buildOpts;
 
   const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts));
@@ -39,10 +45,9 @@ async function getRule(buildOpts: BuildOptions) {
     await Promise.all(
       manifests.map(
         async (manifest) => `
-            if ($PATH.endsWith("${normalizePath("/" + relative(dotNextDir, manifest))}")) {
-              return ${await readFile(manifest, "utf-8")};
-            }
-          `
+if ($PATH.endsWith("${normalizePath("/" + relative(dotNextDir, manifest))}")) {
+  return ${await readFile(manifest, "utf-8")};
+}`
       )
     )
   ).join("\n");
@@ -59,6 +64,50 @@ function loadManifest($PATH, $$$ARGS) {
   $PATH = $PATH.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
   ${returnManifests}
   throw new Error(\`Unexpected loadManifest(\${$PATH}) call!\`);
+}`,
+  } satisfies RuleConfig;
+}
+
+async function getEvalManifestRule(buildOpts: BuildOptions) {
+  const { outputDir } = buildOpts;
+
+  const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts), ".next");
+  const appDir = join(baseDir, "server/app");
+  const manifests = await glob(join(baseDir, "**/*_client-reference-manifest.js"), {
+    windowsPathsNoEscape: true,
+  });
+
+  const returnManifests = manifests
+    .map((manifest) => {
+      const endsWith = normalizePath(relative(baseDir, manifest));
+      const key = normalizePath("/" + relative(appDir, manifest)).replace(
+        "_client-reference-manifest.js",
+        ""
+      );
+      return `
+if ($PATH.endsWith("${endsWith}")) {
+  require(${JSON.stringify(manifest)});
+  return {
+    __RSC_MANIFEST: {
+    "${key}": globalThis.__RSC_MANIFEST["${key}"],
+    },
+  };
+}`;
+    })
+    .join("\n");
+
+  return {
+    rule: {
+      pattern: `
+function evalManifest($PATH, $$$ARGS) {
+  $$$_
+}`,
+    },
+    fix: `
+function evalManifest($PATH, $$$ARGS) {
+  $PATH = $PATH.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
+  ${returnManifests}
+  throw new Error(\`Unexpected evalManifest(\${$PATH}) call!\`);
 }`,
   } satisfies RuleConfig;
 }
