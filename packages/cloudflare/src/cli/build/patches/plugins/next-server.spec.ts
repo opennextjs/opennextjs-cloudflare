@@ -83,7 +83,7 @@ class NextNodeServer extends _baseserver.default {
     `);
   });
 
-  test("build ID", () => {
+  test("middleware manifest", () => {
     const code = `
 class NextNodeServer extends _baseserver.default {
     constructor(options){
