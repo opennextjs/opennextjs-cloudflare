@@ -1,6 +1,8 @@
 /**
  * Misc patches for `next-server.js`
  *
+ * Note: we will probably need to revisit the patches when the Next adapter API lands
+ *
  * - Inline `getBuildId` as it relies on `readFileSync` that is not supported by workerd
  * - Inline the middleware manifest
  */
