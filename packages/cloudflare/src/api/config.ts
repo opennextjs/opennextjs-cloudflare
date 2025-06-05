@@ -3,6 +3,7 @@ import {
   BaseOverride,
   LazyLoadedOverride,
   OpenNextConfig as AwsOpenNextConfig,
+  type RoutePreloadingBehavior,
 } from "@opennextjs/aws/types/open-next";
 import type {
   CDNInvalidationHandler,
@@ -45,6 +46,13 @@ export type CloudflareOverrides = {
    * @default false
    */
   enableCacheInterception?: boolean;
+
+  /**
+   * Route preloading behavior.
+   * Using a value other than "none" can result in higher CPU usage on cold starts.
+   * @default "none"
+   */
+  routePreloadingBehavior?: RoutePreloadingBehavior;
 };
 
 /**
@@ -54,7 +62,14 @@ export type CloudflareOverrides = {
  * @returns the OpenNext configuration object
  */
 export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNextConfig {
-  const { incrementalCache, tagCache, queue, cachePurge, enableCacheInterception = false } = config;
+  const {
+    incrementalCache,
+    tagCache,
+    queue,
+    cachePurge,
+    enableCacheInterception = false,
+    routePreloadingBehavior = "none",
+  } = config;
 
   return {
     default: {
@@ -67,7 +82,7 @@ export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNe
         queue: resolveQueue(queue),
         cdnInvalidation: resolveCdnInvalidation(cachePurge),
       },
-      routePreloadingBehavior: "withWaitUntil",
+      routePreloadingBehavior,
     },
     // node:crypto is used to compute cache keys
     edgeExternals: ["node:crypto"],
