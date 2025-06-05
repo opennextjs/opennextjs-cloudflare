@@ -13,16 +13,7 @@ import * as buildHelper from "@opennextjs/aws/build/helper.js";
 import { installDependencies } from "@opennextjs/aws/build/installDeps.js";
 import type { CodePatcher } from "@opennextjs/aws/build/patch/codePatcher.js";
 import { applyCodePatches } from "@opennextjs/aws/build/patch/codePatcher.js";
-import {
-  patchEnvVars,
-  patchFetchCacheForISR,
-  patchFetchCacheSetMissingWaitUntil,
-  patchNextServer,
-  patchUnstableCacheForISR,
-  patchUseCacheForISR,
-} from "@opennextjs/aws/build/patch/patches/index.js";
-// TODO: import from patches/index.js when https://github.com/opennextjs/opennextjs-aws/pull/827 is released
-import { patchBackgroundRevalidation } from "@opennextjs/aws/build/patch/patches/patchBackgroundRevalidation.js";
+import * as awsPatches from "@opennextjs/aws/build/patch/patches/index.js";
 import logger from "@opennextjs/aws/logger.js";
 import { minifyAll } from "@opennextjs/aws/minimize-js.js";
 import type { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
@@ -208,13 +199,14 @@ async function generateBundle(
   const additionalCodePatches = codeCustomization?.additionalCodePatches ?? [];
 
   await applyCodePatches(options, tracedFiles, manifests, [
-    patchFetchCacheSetMissingWaitUntil,
-    patchFetchCacheForISR,
-    patchUnstableCacheForISR,
-    patchUseCacheForISR,
-    patchNextServer,
-    patchEnvVars,
-    patchBackgroundRevalidation,
+    awsPatches.patchFetchCacheSetMissingWaitUntil,
+    awsPatches.patchFetchCacheForISR,
+    awsPatches.patchUnstableCacheForISR,
+    awsPatches.patchUseCacheForISR,
+    awsPatches.patchNextServer,
+    awsPatches.patchEnvVars,
+    awsPatches.patchBackgroundRevalidation,
+    awsPatches.patchDropBabel,
     // Cloudflare specific patches
     patchResRevalidate,
     patchUseCacheIO,
