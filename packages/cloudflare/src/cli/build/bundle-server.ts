@@ -16,6 +16,7 @@ import { inlineFindDir } from "./patches/plugins/find-dir.js";
 import { patchInstrumentation } from "./patches/plugins/instrumentation.js";
 import { inlineLoadManifest } from "./patches/plugins/load-manifest.js";
 import { patchNextServer } from "./patches/plugins/next-server.js";
+import { patchResolveCache } from "./patches/plugins/open-next.js";
 import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
 import { patchPagesRouterContext } from "./patches/plugins/pages-router-context.js";
 import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations.js";
@@ -99,6 +100,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       inlineLoadManifest(updater, buildOpts),
       patchNextServer(updater, buildOpts),
       patchDepdDeprecations(updater),
+      patchResolveCache(updater, buildOpts),
       // Apply updater updates, must be the last plugin
       updater.plugin,
     ] as Plugin[],
@@ -172,21 +174,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
  */
 export async function updateWorkerBundledCode(workerOutputFile: string): Promise<void> {
   const code = await readFile(workerOutputFile, "utf8");
-
-  const patchedCode = await patchCodeWithValidations(code, [
-    ["require", patches.patchRequire],
-    [
-      "`require.resolve` call",
-      // workers do not support dynamic require nor require.resolve
-      (code) => code.replace('require.resolve("./cache.cjs")', '"unused"'),
-    ],
-    [
-      "`require.resolve composable cache` call",
-      // workers do not support dynamic require nor require.resolve
-      (code) => code.replace('require.resolve("./composable-cache.cjs")', '"unused"'),
-    ],
-  ]);
-
+  const patchedCode = await patchCodeWithValidations(code, [["require", patches.patchRequire]]);
   await writeFile(workerOutputFile, patchedCode);
 }
 
