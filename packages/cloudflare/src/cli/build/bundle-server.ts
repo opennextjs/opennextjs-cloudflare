@@ -104,24 +104,24 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
     ] as Plugin[],
     external: ["./middleware/handler.mjs"],
     alias: {
-      // Note: it looks like node-fetch is actually not necessary for us, so we could replace it with an empty shim
-      //       but just to be safe we replace it with a module that re-exports the native fetch
-      //       we do this to both save on bundle size (there isn't really any benefit in us shipping the node-fetch code)
-      //       and also get rid of a warning in the terminal caused by the package (because it performs an === comparison with -0)
+      // Workers have `fetch` so the `node-fetch` polyfill is not needed
       "next/dist/compiled/node-fetch": path.join(buildOpts.outputDir, "cloudflare-templates/shims/fetch.js"),
-      // Note: we apply an empty shim to next/dist/compiled/ws because it generates two `eval`s:
-      //   eval("require")("bufferutil");
-      //   eval("require")("utf-8-validate");
+      // Workers have builtin Web Sockets
       "next/dist/compiled/ws": path.join(buildOpts.outputDir, "cloudflare-templates/shims/empty.js"),
-      // Note: we apply an empty shim to next/dist/compiled/edge-runtime since (amongst others) it generated the following `eval`:
-      //   eval(getModuleCode)(module, module.exports, throwingRequire, params.context, ...Object.values(params.scopedContext));
-      //   which comes from https://github.com/vercel/edge-runtime/blob/6e96b55f/packages/primitives/src/primitives/load.js#L57-L63
+      // The toolbox optimizer pulls severals MB of dependencies (`caniuse-lite`, `terser`, `acorn`, ...)
+      // Drop it to optimize the code size
+      // See https://github.com/vercel/next.js/blob/6eb235c/packages/next/src/server/optimize-amp.ts
+      "next/dist/compiled/@ampproject/toolbox-optimizer": path.join(
+        buildOpts.outputDir,
+        "cloudflare-templates/shims/throw.js"
+      ),
+      // The edge runtime is not supported
       "next/dist/compiled/edge-runtime": path.join(
         buildOpts.outputDir,
         "cloudflare-templates/shims/empty.js"
       ),
-      // `@next/env` is a library Next.js uses for loading dotenv files, for obvious reasons we need to stub it here
-      // source: https://github.com/vercel/next.js/tree/0ac10d79720/packages/next-env
+      // `@next/env` is used by Next to load environment variables from files.
+      // OpenNext inlines the values at build time so this is not needed.
       "@next/env": path.join(buildOpts.outputDir, "cloudflare-templates/shims/env.js"),
     },
     define: {
