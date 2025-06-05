@@ -1,5 +1,21 @@
 # @opennextjs/cloudflare
 
+## 1.2.0
+
+### Minor Changes
+
+- [#696](https://github.com/opennextjs/opennextjs-cloudflare/pull/696) [`de6a6cd`](https://github.com/opennextjs/opennextjs-cloudflare/commit/de6a6cd9511e6e6418fa2cd6ada38181566ac88b) Thanks [@vicb](https://github.com/vicb)! - Add the `routePreloadingBehavior` to the options of `defineCloudflareConfig`.
+
+  The default is set to "none" as other values might increase CPU usage on cold starts.
+
+### Patch Changes
+
+- [#700](https://github.com/opennextjs/opennextjs-cloudflare/pull/700) [`56e9366`](https://github.com/opennextjs/opennextjs-cloudflare/commit/56e9366b736d5999afd421975bbb4167746d4ff7) Thanks [@vicb](https://github.com/vicb)! - perf: drop `@ampproject/toolbox-optimizer` to reduce the server bundle size
+
+- [#689](https://github.com/opennextjs/opennextjs-cloudflare/pull/689) [`64a10a6`](https://github.com/opennextjs/opennextjs-cloudflare/commit/64a10a6ea4d0c7207e66e8b038b4ed8343f50caf) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: Ensure the protocol is correct for redirects in server actions during preview mode
+
+- [#710](https://github.com/opennextjs/opennextjs-cloudflare/pull/710) [`903ad45`](https://github.com/opennextjs/opennextjs-cloudflare/commit/903ad452f4a551e0a54089def37e797ecad58209) Thanks [@vicb](https://github.com/vicb)! - perf: drop babel to reduce the server bundle size
+
 ## 1.1.0
 
 ### Minor Changes
