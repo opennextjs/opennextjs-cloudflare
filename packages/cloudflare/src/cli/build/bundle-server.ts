@@ -11,11 +11,11 @@ import { getOpenNextConfig } from "../../api/config.js";
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
 import * as patches from "./patches/index.js";
-import { inlineBuildId } from "./patches/plugins/build-id.js";
 import { inlineDynamicRequires } from "./patches/plugins/dynamic-requires.js";
 import { inlineFindDir } from "./patches/plugins/find-dir.js";
 import { patchInstrumentation } from "./patches/plugins/instrumentation.js";
 import { inlineLoadManifest } from "./patches/plugins/load-manifest.js";
+import { patchNextServer } from "./patches/plugins/next-server.js";
 import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
 import { patchPagesRouterContext } from "./patches/plugins/pages-router-context.js";
 import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations.js";
@@ -97,7 +97,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       patchPagesRouterContext(buildOpts),
       inlineFindDir(updater, buildOpts),
       inlineLoadManifest(updater, buildOpts),
-      inlineBuildId(updater),
+      patchNextServer(updater, buildOpts),
       patchDepdDeprecations(updater),
       // Apply updater updates, must be the last plugin
       updater.plugin,
@@ -180,11 +180,6 @@ export async function updateWorkerBundledCode(
     ["require", patches.patchRequire],
     ["cacheHandler", (code) => patches.patchCache(code, buildOpts)],
     ["composableCache", (code) => patches.patchComposableCache(code, buildOpts), { isOptional: true }],
-    [
-      "'require(this.middlewareManifestPath)'",
-      (code) => patches.inlineMiddlewareManifestRequire(code, buildOpts),
-      { isOptional: true },
-    ],
     [
       "`require.resolve` call",
       // workers do not support dynamic require nor require.resolve
