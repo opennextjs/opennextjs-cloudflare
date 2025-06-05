@@ -14,7 +14,7 @@ import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-upd
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
 export function patchNextServer(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
-  return updater.updateContent("inline-build-id", [
+  return updater.updateContent("next-server", [
     {
       field: {
         filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/next-server\.js$`, {
