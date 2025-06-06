@@ -19,8 +19,6 @@ export function patchResolveCache(updater: ContentUpdater, buildOpts: BuildOptio
     path.join(outputPath, packagePath, `index.mjs`)
   );
 
-  console.error({ index: indexPath });
-
   return updater.updateContent("patch-resolve-cache", [
     {
       field: {

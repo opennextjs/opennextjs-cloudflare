@@ -25,6 +25,5 @@ export async function patchCodeWithValidations(
     }
   }
 
-  console.log(`All ${patches.length} patches applied\n`);
   return patchedCode;
 }
