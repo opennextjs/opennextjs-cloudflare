@@ -48,7 +48,7 @@ const optionalDependencies = [
 export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
   patches.copyPackageCliFiles(packageDistDir, buildOpts);
 
-  const { appPath, outputDir, monorepoRoot } = buildOpts;
+  const { appPath, outputDir, monorepoRoot, debug } = buildOpts;
   const baseManifestPath = path.join(
     outputDir,
     "server-functions/default",
@@ -76,7 +76,11 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
     outfile: openNextServerBundle,
     format: "esm",
     target: "esnext",
-    minify: false,
+    // Minify code as much as possible but stay safe by not renaming identifiers
+    minifyWhitespace: !debug,
+    minifyIdentifiers: false,
+    minifySyntax: !debug,
+    legalComments: "none",
     metafile: true,
     // Next traces files using the default conditions from `nft` (`node`, `require`, `import` and `default`)
     //
