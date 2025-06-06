@@ -174,7 +174,9 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
  */
 export async function updateWorkerBundledCode(workerOutputFile: string): Promise<void> {
   const code = await readFile(workerOutputFile, "utf8");
-  const patchedCode = await patchCodeWithValidations(code, [["require", patches.patchRequire]]);
+  const patchedCode = await patchCodeWithValidations(code, [
+    ["require", patches.patchRequire, { isOptional: true }],
+  ]);
   await writeFile(workerOutputFile, patchedCode);
 }
 
