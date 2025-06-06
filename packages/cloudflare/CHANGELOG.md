@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 1.2.1
+
+### Patch Changes
+
+- [#714](https://github.com/opennextjs/opennextjs-cloudflare/pull/714) [`eedbe2b`](https://github.com/opennextjs/opennextjs-cloudflare/commit/eedbe2b772db476a68c68133d24cf80ea5bb9b82) Thanks [@vicb](https://github.com/vicb)! - perf: minify the generated bundle by default
+
+- [#713](https://github.com/opennextjs/opennextjs-cloudflare/pull/713) [`3d8fb0c`](https://github.com/opennextjs/opennextjs-cloudflare/commit/3d8fb0c353c180fa80c831a2a7703a5f58f33f54) Thanks [@vicb](https://github.com/vicb)! - make the "require" patch optional
+
 ## 1.2.0
 
 ### Minor Changes
