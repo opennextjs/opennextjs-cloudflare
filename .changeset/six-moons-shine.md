@@ -2,4 +2,4 @@
 "@opennextjs/cloudflare": patch
 ---
 
-feat: pass cli arguments not used by opennext to wrangler
+feat: pass cli arguments not used by `opennextjs-cloudflare` to wrangler

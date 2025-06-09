@@ -26,6 +26,7 @@ export type Arguments = (
     }
 ) & { outputDir?: string };
 
+// Config for parsing CLI arguments
 const config = {
   allowPositionals: true,
   strict: false,
