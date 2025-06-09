@@ -87,7 +87,7 @@ export function getPassthroughArgs<T extends ParseArgsConfig>(args: string[], { 
   const passthroughArgs: string[] = [];
 
   args.forEach((fullArg, idx) => {
-    const [, name] = /^--?(\w+)(=.+)?$/.exec(fullArg) ?? [];
+    const [, name] = /^--?(\w[\w-_]*)(=.+)?$/.exec(fullArg) ?? [];
     if (name && !(name in options)) {
       passthroughArgs.push(fullArg);
 

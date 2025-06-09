@@ -15,6 +15,11 @@ describe("getPassthroughArgs", () => {
       "-pre",
       "152",
       "--pre2=1543",
+      "--",
+      "--port",
+      "1234",
+      "--inspector-port",
+      "1234",
     ];
 
     expect(getPassthroughArgs(args, { options: { skipBuild: { type: "boolean" } } })).toEqual([
@@ -24,6 +29,10 @@ describe("getPassthroughArgs", () => {
       "-pre",
       "152",
       "--pre2=1543",
+      "--port",
+      "1234",
+      "--inspector-port",
+      "1234",
     ]);
   });
 });
