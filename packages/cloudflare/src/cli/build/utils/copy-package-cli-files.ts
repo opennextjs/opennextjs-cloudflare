@@ -3,7 +3,7 @@ import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 
-import { getOutputWorkerPath } from "../../bundle-server.js";
+import { getOutputWorkerPath } from "../bundle-server.js";
 
 /**
  * Copies

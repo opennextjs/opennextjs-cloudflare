@@ -10,7 +10,6 @@ import { build, type Plugin } from "esbuild";
 import { getOpenNextConfig } from "../../api/config.js";
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
-import * as patches from "./patches/index.js";
 import { inlineDynamicRequires } from "./patches/plugins/dynamic-requires.js";
 import { inlineFindDir } from "./patches/plugins/find-dir.js";
 import { patchInstrumentation } from "./patches/plugins/instrumentation.js";
@@ -23,7 +22,7 @@ import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations
 import { fixRequire } from "./patches/plugins/require.js";
 import { shimRequireHook } from "./patches/plugins/require-hook.js";
 import { setWranglerExternal } from "./patches/plugins/wrangler-external.js";
-import { needsExperimentalReact, normalizePath, patchCodeWithValidations } from "./utils/index.js";
+import { copyPackageCliFiles, needsExperimentalReact, normalizePath } from "./utils/index.js";
 
 /** The dist directory of the Cloudflare adapter package */
 const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -46,7 +45,7 @@ const optionalDependencies = [
  * Bundle the Open Next server.
  */
 export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
-  patches.copyPackageCliFiles(packageDistDir, buildOpts);
+  copyPackageCliFiles(packageDistDir, buildOpts);
 
   const { appPath, outputDir, monorepoRoot, debug } = buildOpts;
   const baseManifestPath = path.join(
@@ -174,13 +173,11 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
 }
 
 /**
- * This function applies patches required for the code to run on workers.
+ * This function apply updates to the bundled code.
  */
 export async function updateWorkerBundledCode(workerOutputFile: string): Promise<void> {
   const code = await readFile(workerOutputFile, "utf8");
-  const patchedCode = await patchCodeWithValidations(code, [
-    ["require", patches.patchRequire, { isOptional: true }],
-  ]);
+  const patchedCode = code.replace(/__require\d?\(/g, "require(").replace(/__require\d?\./g, "require.");
   await writeFile(workerOutputFile, patchedCode);
 }
 
