@@ -64,6 +64,7 @@
     "@tsconfig/strictest": "catalog:",
     "@types/mock-fs": "catalog:",
     "@types/node": "catalog:",
+    "diff": "^8.0.2",
     "esbuild": "catalog:",
     "eslint": "catalog:",
     "eslint-plugin-import": "catalog:",
