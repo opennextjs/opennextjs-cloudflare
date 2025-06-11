@@ -87,22 +87,21 @@ export function getArgs(): Arguments {
 export function getPassthroughArgs<T extends ParseArgsConfig>(args: string[], { options = {} }: T) {
   const passthroughArgs: string[] = [];
 
-  args.forEach((fullArg, idx) => {
-    const [, name] = /^--?(\w[\w-_]*)(=.+)?$/.exec(fullArg) ?? [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--") {
+      passthroughArgs.push(...args.slice(i + 1));
+      return passthroughArgs;
+    }
+
+    const [, name] = /^--?(\w[\w-_]*)(=.+)?$/.exec(args[i]!) ?? [];
     if (name && !(name in options)) {
-      passthroughArgs.push(fullArg);
+      passthroughArgs.push(args[i]!);
 
-      for (let i = idx + 1; i < args.length; i++) {
-        const arg = args[i];
-
-        if (!arg || arg.startsWith("-")) {
-          break;
-        } else {
-          passthroughArgs.push(arg);
-        }
+      while (!args[i + 1]?.startsWith("-")) {
+        passthroughArgs.push(args[++i]!);
       }
     }
-  });
+  }
 
   return passthroughArgs;
 }
