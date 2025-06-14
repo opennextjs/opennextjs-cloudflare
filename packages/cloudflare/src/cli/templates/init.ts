@@ -140,11 +140,109 @@ function populateProcessEnv(url: URL, env: CloudflareEnv) {
   process.env.__NEXT_PRIVATE_ORIGIN = url.origin;
 }
 
+export type RemotePattern = {
+  protocol?: "http" | "https";
+  hostname: string;
+  port?: string;
+  pathname: string;
+  search?: string;
+};
+
+const imgRemotePatterns = __IMAGES_REMOTE_PATTERNS__;
+
+/**
+ * Fetches an images.
+ *
+ * Local images (starting with a '/' as fetched using the passed fetcher).
+ * Remote images should match the configured remote patterns or a 404 response is returned.
+ */
+export function fetchImage(fetcher: Fetcher | undefined, url: string) {
+  // https://github.com/vercel/next.js/blob/d76f0b1/packages/next/src/server/image-optimizer.ts#L208
+  if (!url || url.length > 3072 || url.startsWith("//")) {
+    return new Response("Not Found", { status: 404 });
+  }
+
+  // Local
+  if (url.startsWith("/")) {
+    if (/\/_next\/image($|\/)/.test(decodeURIComponent(parseUrl(url)?.pathname ?? ""))) {
+      return new Response("Not Found", { status: 404 });
+    }
+
+    return fetcher?.fetch(`http://assets.local${url}`);
+  }
+
+  // Remote
+  let hrefParsed: URL;
+  try {
+    hrefParsed = new URL(url);
+  } catch {
+    return new Response("Not Found", { status: 404 });
+  }
+
+  if (!["http:", "https:"].includes(hrefParsed.protocol)) {
+    return new Response("Not Found", { status: 404 });
+  }
+
+  if (!imgRemotePatterns.some((p: RemotePattern) => matchRemotePattern(p, hrefParsed))) {
+    return new Response("Not Found", { status: 404 });
+  }
+
+  return fetch(url, { cf: { cacheEverything: true } });
+}
+
+export function matchRemotePattern(pattern: RemotePattern, url: URL): boolean {
+  // https://github.com/vercel/next.js/blob/d76f0b1/packages/next/src/shared/lib/match-remote-pattern.ts
+  if (pattern.protocol !== undefined) {
+    if (pattern.protocol.replace(/:$/, "") !== url.protocol.replace(/:$/, "")) {
+      return false;
+    }
+  }
+  if (pattern.port !== undefined) {
+    if (pattern.port !== url.port) {
+      return false;
+    }
+  }
+
+  if (pattern.hostname === undefined) {
+    throw new Error(`Pattern should define hostname but found\n${JSON.stringify(pattern)}`);
+  } else {
+    if (!new RegExp(pattern.hostname).test(url.hostname)) {
+      return false;
+    }
+  }
+
+  if (pattern.search !== undefined) {
+    if (pattern.search !== url.search) {
+      return false;
+    }
+  }
+
+  // Should be the same as writeImagesManifest()
+  if (!new RegExp(pattern.pathname).test(url.pathname)) {
+    return false;
+  }
+
+  return true;
+}
+
+function parseUrl(url: string): URL | undefined {
+  let parsed: URL | undefined = undefined;
+  try {
+    parsed = new URL(url, "http://n");
+  } catch {
+    // empty
+  }
+  return parsed;
+}
+
 /* eslint-disable no-var */
 declare global {
   // Build timestamp
   var __BUILD_TIMESTAMP_MS__: number;
   // Next basePath
   var __NEXT_BASE_PATH__: string;
+  // Images patterns
+  var __IMAGES_REMOTE_PATTERNS__: RemotePattern[];
+  var __IMAGES_LOCAL_PATTERNS__: unknown[];
 }
 /* eslint-enable no-var */
