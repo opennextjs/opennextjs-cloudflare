@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.3.0
+
+### Minor Changes
+
+- [#727](https://github.com/opennextjs/opennextjs-cloudflare/pull/727) [`36119c0`](https://github.com/opennextjs/opennextjs-cloudflare/commit/36119c0f490c95b3d4f6e826d745b728c80625ab) Thanks [@vicb](https://github.com/vicb)! - Enforce remotePatterns when fetching external images
+
 ## 1.2.1
 
 ### Patch Changes
