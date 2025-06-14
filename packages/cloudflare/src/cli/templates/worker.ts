@@ -1,5 +1,5 @@
 //@ts-expect-error: Will be resolved by wrangler build
-import { runWithCloudflareRequestContext } from "./cloudflare/init.js";
+import { fetchImage, runWithCloudflareRequestContext } from "./cloudflare/init.js";
 // @ts-expect-error: Will be resolved by wrangler build
 import { handler as middlewareHandler } from "./middleware/handler.mjs";
 
@@ -31,9 +31,7 @@ export default {
       // Fallback for the Next default image loader.
       if (url.pathname === `${globalThis.__NEXT_BASE_PATH__}/_next/image`) {
         const imageUrl = url.searchParams.get("url") ?? "";
-        return imageUrl.startsWith("/")
-          ? env.ASSETS?.fetch(`http://assets.local${imageUrl}`)
-          : fetch(imageUrl, { cf: { cacheEverything: true } });
+        return fetchImage(env.ASSETS, imageUrl);
       }
 
       // - `Request`s are handled by the Next server
