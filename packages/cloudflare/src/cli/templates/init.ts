@@ -148,7 +148,7 @@ export type RemotePattern = {
   search?: string;
 };
 
-const imgRemotePatterns = JSON.parse(__IMAGES_REMOTE_PATTERNS__);
+const imgRemotePatterns = __IMAGES_REMOTE_PATTERNS__;
 
 /**
  * Fetches an images.
@@ -187,7 +187,7 @@ export function fetchImage(fetcher: Fetcher | undefined, url: string) {
     return new Response("Not Found", { status: 404 });
   }
 
-  fetch(url, { cf: { cacheEverything: true } });
+  return fetch(url, { cf: { cacheEverything: true } });
 }
 
 export function matchRemotePattern(pattern: RemotePattern, url: URL): boolean {
@@ -242,7 +242,7 @@ declare global {
   // Next basePath
   var __NEXT_BASE_PATH__: string;
   // Images patterns
-  var __IMAGES_REMOTE_PATTERNS__: string;
-  var __IMAGES_LOCAL_PATTERNS__: string;
+  var __IMAGES_REMOTE_PATTERNS__: RemotePattern[];
+  var __IMAGES_LOCAL_PATTERNS__: unknown[];
 }
 /* eslint-enable no-var */
