@@ -150,6 +150,12 @@ export type RemotePattern = {
 
 const imgRemotePatterns = JSON.parse(__IMAGES_REMOTE_PATTERNS__);
 
+/**
+ * Fetches an images.
+ *
+ * Local images (starting with a '/' as fetched using the passed fetcher).
+ * Remote images should match the configured remote patterns or a 404 response is returned.
+ */
 export function fetchImage(fetcher: Fetcher | undefined, url: string) {
   // https://github.com/vercel/next.js/blob/d76f0b1/packages/next/src/server/image-optimizer.ts#L208
   if (!url || url.length > 3072 || url.startsWith("//")) {
@@ -200,7 +206,7 @@ export function matchRemotePattern(pattern: RemotePattern, url: URL): boolean {
   if (pattern.hostname === undefined) {
     throw new Error(`Pattern should define hostname but found\n${JSON.stringify(pattern)}`);
   } else {
-    if (new RegExp(pattern.hostname).test(url.hostname)) {
+    if (!new RegExp(pattern.hostname).test(url.hostname)) {
       return false;
     }
   }
@@ -212,7 +218,7 @@ export function matchRemotePattern(pattern: RemotePattern, url: URL): boolean {
   }
 
   // Should be the same as writeImagesManifest()
-  if (new RegExp(pattern.pathname).test(url.pathname)) {
+  if (!new RegExp(pattern.pathname).test(url.pathname)) {
     return false;
   }
 
