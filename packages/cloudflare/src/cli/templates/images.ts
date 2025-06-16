@@ -2,6 +2,7 @@ export type RemotePattern = {
   protocol?: "http" | "https";
   hostname: string;
   port?: string;
+  // pathname is always set in the manifest (to `makeRe(pathname ?? '**', { dot: true }).source`)
   pathname: string;
   search?: string;
 };
