@@ -1,5 +1,7 @@
 //@ts-expect-error: Will be resolved by wrangler build
-import { fetchImage, runWithCloudflareRequestContext } from "./cloudflare/init.js";
+import { fetchImage } from "./cloudflare/images.js";
+//@ts-expect-error: Will be resolved by wrangler build
+import { runWithCloudflareRequestContext } from "./cloudflare/init.js";
 // @ts-expect-error: Will be resolved by wrangler build
 import { handler as middlewareHandler } from "./middleware/handler.mjs";
 
