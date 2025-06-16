@@ -16,7 +16,7 @@ export type RemotePattern = {
 export function fetchImage(fetcher: Fetcher | undefined, imageUrl: string) {
   // https://github.com/vercel/next.js/blob/d76f0b1/packages/next/src/server/image-optimizer.ts#L208
   if (!imageUrl || imageUrl.length > 3072 || imageUrl.startsWith("//")) {
-    return new Response("Unsupported image config", { status: 400 });
+    return getUrlErrorResponse();
   }
 
   // Local
@@ -26,10 +26,10 @@ export function fetchImage(fetcher: Fetcher | undefined, imageUrl: string) {
       const url = new URL(imageUrl, "http://n");
       pathname = decodeURIComponent(url.pathname);
     } catch {
-      return new Response("Unsupported image config", { status: 400 });
+      return getUrlErrorResponse();
     }
     if (/\/_next\/image($|\/)/.test(pathname)) {
-      return new Response("Unsupported image config", { status: 400 });
+      return getUrlErrorResponse();
     }
 
     return fetcher?.fetch(`http://assets.local${imageUrl}`);
@@ -40,15 +40,15 @@ export function fetchImage(fetcher: Fetcher | undefined, imageUrl: string) {
   try {
     url = new URL(imageUrl);
   } catch {
-    return new Response("Unsupported image config", { status: 400 });
+    return getUrlErrorResponse();
   }
 
   if (url.protocol !== "http:" && url.protocol !== "https:") {
-    return new Response("Unsupported image config", { status: 400 });
+    return getUrlErrorResponse();
   }
 
   if (!__IMAGES_REMOTE_PATTERNS__.some((p: RemotePattern) => matchRemotePattern(p, url))) {
-    return new Response("Unsupported image config", { status: 400 });
+    return getUrlErrorResponse();
   }
 
   return fetch(imageUrl, { cf: { cacheEverything: true } });
@@ -81,6 +81,13 @@ export function matchRemotePattern(pattern: RemotePattern, url: URL): boolean {
   }
 
   return true;
+}
+
+/**
+ * @returns same error as Next.js when the url query parameter is not accepted.
+ */
+function getUrlErrorResponse() {
+  return new Response(`"url" parameter is not allowed`, { status: 400 });
 }
 
 /* eslint-disable no-var */
