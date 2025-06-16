@@ -27,6 +27,6 @@ test.describe("playground/cloudflare", () => {
 
   test("404 when fetching an image disallowed by remotePatterns", async ({ page }) => {
     const res = await page.request.get("/_next/image?url=https://avatars.githubusercontent.com/u/248817");
-    expect(res.status()).toBe(404);
+    expect(res.status()).toBe(400);
   });
 });

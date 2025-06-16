@@ -16,7 +16,7 @@ export type RemotePattern = {
 export function fetchImage(fetcher: Fetcher | undefined, imageUrl: string) {
   // https://github.com/vercel/next.js/blob/d76f0b1/packages/next/src/server/image-optimizer.ts#L208
   if (!imageUrl || imageUrl.length > 3072 || imageUrl.startsWith("//")) {
-    return new Response("Not Found", { status: 404 });
+    return new Response("Unsupported image config", { status: 400 });
   }
 
   // Local
@@ -26,10 +26,10 @@ export function fetchImage(fetcher: Fetcher | undefined, imageUrl: string) {
       const url = new URL(imageUrl, "http://n");
       pathname = decodeURIComponent(url.pathname);
     } catch {
-      return new Response("Not Found", { status: 404 });
+      return new Response("Unsupported image config", { status: 400 });
     }
     if (/\/_next\/image($|\/)/.test(pathname)) {
-      return new Response("Not Found", { status: 404 });
+      return new Response("Unsupported image config", { status: 400 });
     }
 
     return fetcher?.fetch(`http://assets.local${imageUrl}`);
@@ -40,15 +40,15 @@ export function fetchImage(fetcher: Fetcher | undefined, imageUrl: string) {
   try {
     url = new URL(imageUrl);
   } catch {
-    return new Response("Not Found", { status: 404 });
+    return new Response("Unsupported image config", { status: 400 });
   }
 
   if (url.protocol !== "http:" && url.protocol !== "https:") {
-    return new Response("Not Found", { status: 404 });
+    return new Response("Unsupported image config", { status: 400 });
   }
 
   if (!__IMAGES_REMOTE_PATTERNS__.some((p: RemotePattern) => matchRemotePattern(p, url))) {
-    return new Response("Not Found", { status: 404 });
+    return new Response("Unsupported image config", { status: 400 });
   }
 
   return fetch(imageUrl, { cf: { cacheEverything: true } });
