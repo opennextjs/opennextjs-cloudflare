@@ -11,6 +11,15 @@ const nextConfig = {
     serverSourceMaps: true,
     instrumentationHook: true,
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "avatars.githubusercontent.com",
+        pathname: "/u/248818",
+      },
+    ],
+  },
 };
 
 export default nextConfig;

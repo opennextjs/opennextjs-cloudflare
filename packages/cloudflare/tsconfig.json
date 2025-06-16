@@ -15,5 +15,6 @@
     "target": "ES2022",
     "types": ["@cloudflare/workers-types", "@opennextjs/aws/types/global.d.ts"]
   },
-  "include": ["src/**/*.ts", "env.d.ts"]
+  "include": ["src/**/*.ts", "env.d.ts"],
+  "exclude": ["src/**/*.spec.ts"]
 }

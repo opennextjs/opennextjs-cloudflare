@@ -3,7 +3,6 @@ import { compileCache } from "@opennextjs/aws/build/compileCache.js";
 import { createCacheAssets, createStaticAssets } from "@opennextjs/aws/build/createAssets.js";
 import { createMiddleware } from "@opennextjs/aws/build/createMiddleware.js";
 import * as buildHelper from "@opennextjs/aws/build/helper.js";
-import { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { printHeader } from "@opennextjs/aws/build/utils.js";
 import logger from "@opennextjs/aws/logger.js";
 
@@ -12,6 +11,7 @@ import type { ProjectOptions } from "../project-options.js";
 import { bundleServer } from "./bundle-server.js";
 import { compileCacheAssetsManifestSqlFile } from "./open-next/compile-cache-assets-manifest.js";
 import { compileEnvFiles } from "./open-next/compile-env-files.js";
+import { compileImages } from "./open-next/compile-images.js";
 import { compileInit } from "./open-next/compile-init.js";
 import { compileDurableObjects } from "./open-next/compileDurableObjects.js";
 import { createServerBundle } from "./open-next/createServerBundle.js";
@@ -28,7 +28,7 @@ import { getVersion } from "./utils/version.js";
  * @param projectOpts The options for the project
  */
 export async function build(
-  options: BuildOptions,
+  options: buildHelper.BuildOptions,
   config: OpenNextConfig,
   projectOpts: ProjectOptions
 ): Promise<void> {
@@ -66,6 +66,9 @@ export async function build(
 
   // Compile workerd init
   compileInit(options);
+
+  // Compile image helpers
+  compileImages(options);
 
   // Compile middleware
   await createMiddleware(options, { forceOnlyBuildOnce: true });
