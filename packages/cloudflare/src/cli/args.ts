@@ -98,7 +98,9 @@ export function getPassthroughArgs<T extends ParseArgsConfig>(args: string[], { 
     if (name && !(name in options)) {
       passthroughArgs.push(args[i]!);
 
-      while (!args[i + 1]?.startsWith("-")) {
+      // Array args can have multiple values  
+      // ref https://github.com/yargs/yargs-parser/blob/main/README.md#greedy-arrays     
+      while (i < args.length - 1 && !args[i + 1]?.startsWith("-")) {
         passthroughArgs.push(args[++i]!);
       }
     }
