@@ -93,7 +93,8 @@ export function getPassthroughArgs<T extends ParseArgsConfig>(args: string[], { 
       return passthroughArgs;
     }
 
-    const [, name] = /^--?(\w[\w-_]*)(=.+)?$/.exec(args[i]!) ?? [];
+    // look for `--arg(=value)`, `-arg(=value)`    
+    const [, name] = /^--?(\w[\w-]*)(=.+)?$/.exec(args[i]!) ?? [];
     if (name && !(name in options)) {
       passthroughArgs.push(args[i]!);
 
