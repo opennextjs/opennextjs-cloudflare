@@ -81,7 +81,9 @@ export async function copyWorkerdPackages(options: BuildOptions, nodePackages: M
 
   // Copy full external packages when they use "workerd" build condition
   const nextConfig = loadConfig(path.join(options.appBuildOutputPath, ".next"));
-  const externalPackages = nextConfig.serverExternalPackages ?? [];
+  const externalPackages =
+    // @ts-expect-error In Next 14 its under experimental
+    nextConfig.serverExternalPackages ?? nextConfig.experimental.serverExternalPackages ?? [];
   for (const [src, dst] of nodePackages.entries()) {
     try {
       const pkgJson = JSON.parse(await fs.readFile(path.join(src, "package.json"), "utf8"));
