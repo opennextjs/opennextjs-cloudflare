@@ -1,5 +1,6 @@
 import { mkdirSync, type Stats, statSync } from "node:fs";
 import { resolve } from "node:path";
+import type { ParseArgsConfig } from "node:util";
 import { parseArgs } from "node:util";
 
 import type { WranglerTarget } from "./utils/run-wrangler.js";
@@ -25,22 +26,24 @@ export type Arguments = (
     }
 ) & { outputDir?: string };
 
+// Config for parsing CLI arguments
+const config = {
+  allowPositionals: true,
+  strict: false,
+  options: {
+    skipBuild: { type: "boolean", short: "s", default: false },
+    output: { type: "string", short: "o" },
+    noMinify: { type: "boolean", default: false },
+    skipWranglerConfigCheck: { type: "boolean", default: false },
+    cacheChunkSize: { type: "string" },
+  },
+} as const satisfies ParseArgsConfig;
+
 export function getArgs(): Arguments {
-  const { positionals, values } = parseArgs({
-    options: {
-      skipBuild: { type: "boolean", short: "s", default: false },
-      output: { type: "string", short: "o" },
-      noMinify: { type: "boolean", default: false },
-      skipWranglerConfigCheck: { type: "boolean", default: false },
-      cacheChunkSize: { type: "string" },
-    },
-    allowPositionals: true,
-  });
+  const { positionals, values } = parseArgs(config);
 
-  const outputDir = values.output ? resolve(values.output) : undefined;
+  const outputDir = typeof values.output === "string" ? resolve(values.output) : undefined;
   if (outputDir) assertDirArg(outputDir, "output", true);
-
-  const passthroughArgs = getPassthroughArgs();
 
   switch (positionals[0]) {
     case "build":
@@ -48,9 +51,9 @@ export function getArgs(): Arguments {
         command: "build",
         outputDir,
         skipNextBuild:
-          values.skipBuild || ["1", "true", "yes"].includes(String(process.env.SKIP_NEXT_APP_BUILD)),
+          !!values.skipBuild || ["1", "true", "yes"].includes(String(process.env.SKIP_NEXT_APP_BUILD)),
         skipWranglerConfigCheck:
-          values.skipWranglerConfigCheck ||
+          !!values.skipWranglerConfigCheck ||
           ["1", "true", "yes"].includes(String(process.env.SKIP_WRANGLER_CONFIG_CHECK)),
         minify: !values.noMinify,
       };
@@ -60,7 +63,7 @@ export function getArgs(): Arguments {
       return {
         command: positionals[0],
         outputDir,
-        passthroughArgs,
+        passthroughArgs: getPassthroughArgs(process.argv, config),
         ...(values.cacheChunkSize && { cacheChunkSize: Number(values.cacheChunkSize) }),
       };
     case "populateCache":
@@ -71,7 +74,7 @@ export function getArgs(): Arguments {
         command: "populateCache",
         outputDir,
         target: positionals[1],
-        environment: getWranglerEnvironmentFlag(passthroughArgs),
+        environment: getWranglerEnvironmentFlag(process.argv),
         ...(values.cacheChunkSize && { cacheChunkSize: Number(values.cacheChunkSize) }),
       };
     default:
@@ -81,9 +84,29 @@ export function getArgs(): Arguments {
   }
 }
 
-function getPassthroughArgs() {
-  const passthroughPos = process.argv.indexOf("--");
-  return passthroughPos === -1 ? [] : process.argv.slice(passthroughPos + 1);
+export function getPassthroughArgs<T extends ParseArgsConfig>(args: string[], { options = {} }: T) {
+  const passthroughArgs: string[] = [];
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--") {
+      passthroughArgs.push(...args.slice(i + 1));
+      return passthroughArgs;
+    }
+
+    // look for `--arg(=value)`, `-arg(=value)`
+    const [, name] = /^--?(\w[\w-]*)(=.+)?$/.exec(args[i]!) ?? [];
+    if (name && !(name in options)) {
+      passthroughArgs.push(args[i]!);
+
+      // Array args can have multiple values
+      // ref https://github.com/yargs/yargs-parser/blob/main/README.md#greedy-arrays
+      while (i < args.length - 1 && !args[i + 1]?.startsWith("-")) {
+        passthroughArgs.push(args[++i]!);
+      }
+    }
+  }
+
+  return passthroughArgs;
 }
 
 function assertDirArg(path: string, argName?: string, make?: boolean) {
