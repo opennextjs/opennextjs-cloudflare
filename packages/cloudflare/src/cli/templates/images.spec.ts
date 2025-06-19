@@ -402,7 +402,6 @@ describe("matchLocalPattern", () => {
     expect(mLP(p, "/path")).toBe(false);
     expect(mLP(p, "/path/to")).toBe(false);
     expect(mLP(p, "/path/to/file")).toBe(true);
-
     expect(mLP(p, "/path/to/file.txt")).toBe(false);
     expect(mLP(p, "/path/to/file?q=1")).toBe(true);
     expect(mLP(p, "/path/to/file?q=1&a=two")).toBe(true);
