@@ -1,8 +1,14 @@
-export type RemotePattern = {
+type RemotePattern = {
   protocol?: "http" | "https";
   hostname: string;
   port?: string;
   // pathname is always set in the manifest (to `makeRe(pathname ?? '**', { dot: true }).source`)
+  pathname: string;
+  search?: string;
+};
+
+type LocalPattern = {
+  // pathname is always set in the manifest
   pathname: string;
   search?: string;
 };
@@ -22,13 +28,20 @@ export function fetchImage(fetcher: Fetcher | undefined, imageUrl: string) {
   // Local
   if (imageUrl.startsWith("/")) {
     let pathname: string;
+    let url: URL;
     try {
-      const url = new URL(imageUrl, "http://n");
+      // We only need pathname and search
+      url = new URL(imageUrl, "http://n");
       pathname = decodeURIComponent(url.pathname);
     } catch {
       return getUrlErrorResponse();
     }
+
     if (/\/_next\/image($|\/)/.test(pathname)) {
+      return getUrlErrorResponse();
+    }
+
+    if (!__IMAGES_LOCAL_PATTERNS__.some((p: LocalPattern) => matchLocalPattern(p, url))) {
       return getUrlErrorResponse();
     }
 
@@ -83,6 +96,21 @@ export function matchRemotePattern(pattern: RemotePattern, url: URL): boolean {
   return true;
 }
 
+export function matchLocalPattern(pattern: LocalPattern, url: URL): boolean {
+  // https://github.com/vercel/next.js/blob/d76f0b1/packages/next/src/shared/lib/match-local-pattern.ts
+  if (pattern.search !== undefined) {
+    if (pattern.search !== url.search) {
+      return false;
+    }
+  }
+
+  if (!new RegExp(pattern.pathname).test(url.pathname)) {
+    return false;
+  }
+
+  return true;
+}
+
 /**
  * @returns same error as Next.js when the url query parameter is not accepted.
  */
@@ -93,6 +121,6 @@ function getUrlErrorResponse() {
 /* eslint-disable no-var */
 declare global {
   var __IMAGES_REMOTE_PATTERNS__: RemotePattern[];
-  var __IMAGES_LOCAL_PATTERNS__: unknown[];
+  var __IMAGES_LOCAL_PATTERNS__: LocalPattern[];
 }
 /* eslint-enable no-var */
