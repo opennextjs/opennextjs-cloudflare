@@ -7,7 +7,7 @@ type RemotePattern = {
   search?: string;
 };
 
-type LocalPattern = {
+export type LocalPattern = {
   // pathname is always set in the manifest
   pathname: string;
   search?: string;
