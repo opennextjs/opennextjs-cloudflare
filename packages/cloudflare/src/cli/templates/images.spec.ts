@@ -392,7 +392,7 @@ describe("matchLocalPattern", () => {
     expect(mLP(p, "/path/to/file.txt?q=1&a=two")).toBe(false);
   });
 
-  it.only("should match literal pathname and any search query string", () => {
+  it("should match literal pathname and any search query string", () => {
     const p = {
       pathname: pm.makeRe("/path/to/file", {
         dot: true,
