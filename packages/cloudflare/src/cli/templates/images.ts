@@ -41,6 +41,11 @@ export function fetchImage(fetcher: Fetcher | undefined, imageUrl: string) {
       return getUrlErrorResponse();
     }
 
+    // If localPatterns are not defined all local images are allowed.
+    if (__IMAGES_LOCAL_PATTERNS__.length === 0) {
+      return fetcher?.fetch(`http://assets.local${imageUrl}`);
+    }
+
     if (!__IMAGES_LOCAL_PATTERNS__.some((p: LocalPattern) => matchLocalPattern(p, url))) {
       return getUrlErrorResponse();
     }
@@ -60,6 +65,7 @@ export function fetchImage(fetcher: Fetcher | undefined, imageUrl: string) {
     return getUrlErrorResponse();
   }
 
+  // The remotePatterns is used to allow images from specific remote external paths and block all others.
   if (!__IMAGES_REMOTE_PATTERNS__.some((p: RemotePattern) => matchRemotePattern(p, url))) {
     return getUrlErrorResponse();
   }
@@ -98,17 +104,11 @@ export function matchRemotePattern(pattern: RemotePattern, url: URL): boolean {
 
 export function matchLocalPattern(pattern: LocalPattern, url: URL): boolean {
   // https://github.com/vercel/next.js/blob/d76f0b1/packages/next/src/shared/lib/match-local-pattern.ts
-  if (pattern.search !== undefined) {
-    if (pattern.search !== url.search) {
-      return false;
-    }
-  }
-
-  if (!new RegExp(pattern.pathname).test(url.pathname)) {
+  if (pattern.search !== undefined && pattern.search !== url.search) {
     return false;
   }
 
-  return true;
+  return new RegExp(pattern.pathname).test(url.pathname);
 }
 
 /**
