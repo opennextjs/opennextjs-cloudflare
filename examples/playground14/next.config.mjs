@@ -19,6 +19,12 @@ const nextConfig = {
         pathname: "/u/248818",
       },
     ],
+    localPatterns: [
+      {
+        pathname: "/snipp/**",
+        search: "?iscute=yes",
+      },
+    ],
   },
 };
 
