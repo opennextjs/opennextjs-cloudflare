@@ -60,7 +60,7 @@ export async function getDeploymentMapping(
   const deploymentId = nextConfig.deploymentId;
 
   if (!deploymentId) {
-    logger.error("Deployment ID should be set int the Next config when skew protection is enabled");
+    logger.error("Deployment ID should be set in the Next config when skew protection is enabled");
     process.exit(1);
   }
 
