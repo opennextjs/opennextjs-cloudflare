@@ -15,6 +15,7 @@ export async function compileInit(options: BuildOptions) {
 
 	const nextConfig = loadConfig(path.join(options.appBuildOutputPath, ".next"));
 	const basePath = nextConfig.basePath ?? "";
+	const deploymentId = nextConfig.deploymentId ?? "";
 
 	await build({
 		entryPoints: [initPath],
@@ -27,6 +28,7 @@ export async function compileInit(options: BuildOptions) {
 		define: {
 			__BUILD_TIMESTAMP_MS__: JSON.stringify(Date.now()),
 			__NEXT_BASE_PATH__: JSON.stringify(basePath),
+			__DEPLOYMENT_ID__: JSON.stringify(deploymentId),
 		},
 	});
 }

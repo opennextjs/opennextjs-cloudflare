@@ -12,7 +12,7 @@ import type {
 import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides.js";
 import { globSync } from "glob";
 import { tqdm } from "ts-tqdm";
-import { getPlatformProxy, type GetPlatformProxyOptions, unstable_readConfig } from "wrangler";
+import { unstable_readConfig } from "wrangler";
 
 import {
 	BINDING_NAME as KV_CACHE_BINDING_NAME,
@@ -36,6 +36,7 @@ import {
 import { normalizePath } from "../build/utils/normalize-path.js";
 import type { WranglerTarget } from "../utils/run-wrangler.js";
 import { runWrangler } from "../utils/run-wrangler.js";
+import { getEnvFromPlatformProxy, quoteShellMeta } from "./helpers.js";
 
 async function resolveCacheName(
 	value:
@@ -93,13 +94,6 @@ export function getCacheAssets(opts: BuildOptions): CacheAsset[] {
 	return assets;
 }
 
-async function getPlatformProxyEnv<T extends keyof CloudflareEnv>(options: GetPlatformProxyOptions, key: T) {
-	const proxy = await getPlatformProxy<CloudflareEnv>(options);
-	const prefix = proxy.env[key];
-	await proxy.dispose();
-	return prefix;
-}
-
 async function populateR2IncrementalCache(
 	options: BuildOptions,
 	populateCacheOptions: { target: WranglerTarget; environment?: string }
@@ -118,7 +112,8 @@ async function populateR2IncrementalCache(
 		throw new Error(`R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} should have a 'bucket_name'`);
 	}
 
-	const prefix = await getPlatformProxyEnv(populateCacheOptions, R2_CACHE_PREFIX_ENV_NAME);
+	const envVars = await getEnvFromPlatformProxy(populateCacheOptions);
+	const prefix = envVars[R2_CACHE_PREFIX_ENV_NAME];
 
 	const assets = getCacheAssets(options);
 
@@ -156,7 +151,8 @@ async function populateKVIncrementalCache(
 		throw new Error(`No KV binding ${JSON.stringify(KV_CACHE_BINDING_NAME)} found!`);
 	}
 
-	const prefix = await getPlatformProxyEnv(populateCacheOptions, KV_CACHE_PREFIX_ENV_NAME);
+	const envVars = await getEnvFromPlatformProxy(populateCacheOptions);
+	const prefix = envVars[KV_CACHE_PREFIX_ENV_NAME];
 
 	const assets = getCacheAssets(options);
 
@@ -269,24 +265,4 @@ export async function populateCache(
 				logger.info("Tag cache does not need populating");
 		}
 	}
-}
-
-/**
- * Escape shell metacharacters.
- *
- * When `spawnSync` is invoked with `shell: true`, metacharacters need to be escaped.
- *
- * Based on https://github.com/ljharb/shell-quote/blob/main/quote.js
- *
- * @param arg
- * @returns escaped arg
- */
-function quoteShellMeta(arg: string) {
-	if (/["\s]/.test(arg) && !/'/.test(arg)) {
-		return `'${arg.replace(/(['\\])/g, "\\$1")}'`;
-	}
-	if (/["'\s]/.test(arg)) {
-		return `"${arg.replace(/(["\\$`!])/g, "\\$1")}"`;
-	}
-	return arg.replace(/([A-Za-z]:)?([#!"$&'()*,:;<=>?@[\\\]^`{|}])/g, "$1\\$2");
 }

@@ -158,6 +158,15 @@ interface OpenNextConfig extends AwsOpenNextConfig {
 		 * @default false
 		 */
 		dangerousDisableConfigValidation?: boolean;
+
+		/**
+		 * Enable skew protection.
+		 *
+		 * Note: Skew Protection is experimental and might break on minor releases.
+		 *
+		 * @default false
+		 */
+		skewProtectionEnabled?: boolean;
 	};
 }
 
@@ -167,6 +176,13 @@ interface OpenNextConfig extends AwsOpenNextConfig {
  */
 export function getOpenNextConfig(buildOpts: BuildOptions): OpenNextConfig {
 	return buildOpts.config;
+}
+
+/**
+ * @returns Unique deployment ID
+ */
+export function getDeploymentId(): string {
+	return `dpl-${new Date().getTime().toString(36)}`;
 }
 
 export type { OpenNextConfig };
