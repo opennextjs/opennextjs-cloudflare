@@ -1,13 +1,12 @@
-/**
- * See https://github.com/vercel/next.js/blob/64702a9/test/unit/image-optimizer/match-remote-pattern.test.ts
- */
-
 import pm from "picomatch";
 import { describe, expect, it } from "vitest";
 
 import type { LocalPattern } from "./images.js";
 import { matchLocalPattern, matchRemotePattern as mRP } from "./images.js";
 
+/**
+ * See https://github.com/vercel/next.js/blob/64702a9/test/unit/image-optimizer/match-remote-pattern.test.ts
+ */
 describe("matchRemotePattern", () => {
   it("should match literal hostname", () => {
     const p = { hostname: pm.makeRe("example.com") } as const;
@@ -363,6 +362,9 @@ describe("matchRemotePattern", () => {
   });
 });
 
+/**
+ * See https://github.com/vercel/next.js/blob/64702a9/test/unit/image-optimizer/match-local-pattern.test.ts
+ */
 describe("matchLocalPattern", () => {
   const mLP = (p: LocalPattern, urlPathAndQuery: string) =>
     matchLocalPattern(p, new URL(urlPathAndQuery, "http://n"));

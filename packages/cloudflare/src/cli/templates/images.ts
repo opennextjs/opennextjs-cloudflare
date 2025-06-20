@@ -1,4 +1,4 @@
-type RemotePattern = {
+export type RemotePattern = {
   protocol?: "http" | "https";
   hostname: string;
   port?: string;
@@ -42,11 +42,10 @@ export function fetchImage(fetcher: Fetcher | undefined, imageUrl: string) {
     }
 
     // If localPatterns are not defined all local images are allowed.
-    if (__IMAGES_LOCAL_PATTERNS__.length === 0) {
-      return fetcher?.fetch(`http://assets.local${imageUrl}`);
-    }
-
-    if (!__IMAGES_LOCAL_PATTERNS__.some((p: LocalPattern) => matchLocalPattern(p, url))) {
+    if (
+      __IMAGES_LOCAL_PATTERNS__.length > 0 &&
+      !__IMAGES_LOCAL_PATTERNS__.some((p: LocalPattern) => matchLocalPattern(p, url))
+    ) {
       return getUrlErrorResponse();
     }
 
