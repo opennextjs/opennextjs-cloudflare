@@ -13,6 +13,7 @@ import { compileCacheAssetsManifestSqlFile } from "./open-next/compile-cache-ass
 import { compileEnvFiles } from "./open-next/compile-env-files.js";
 import { compileImages } from "./open-next/compile-images.js";
 import { compileInit } from "./open-next/compile-init.js";
+import { compileSkewProtection } from "./open-next/compile-skew-protection.js";
 import { compileDurableObjects } from "./open-next/compileDurableObjects.js";
 import { createServerBundle } from "./open-next/createServerBundle.js";
 import { createWranglerConfigIfNotExistent } from "./utils/index.js";
@@ -58,17 +59,11 @@ export async function build(
   printHeader("Generating bundle");
   buildHelper.initOutputDir(options);
 
-  // Compile cache.ts
   compileCache(options);
-
-  // Compile .env files
   compileEnvFiles(options);
-
-  // Compile workerd init
   compileInit(options);
-
-  // Compile image helpers
   compileImages(options);
+  compileSkewProtection(options, config);
 
   // Compile middleware
   await createMiddleware(options, { forceOnlyBuildOnce: true });
