@@ -1,5 +1,25 @@
 # @opennextjs/cloudflare
 
+## 1.3.1
+
+### Patch Changes
+
+- [#730](https://github.com/opennextjs/opennextjs-cloudflare/pull/730) [`ae31733`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ae317335fa110f6f981e06ba170460b5cdb1f40c) Thanks [@vicb](https://github.com/vicb)! - add tests for remote patterns
+
+- [#738](https://github.com/opennextjs/opennextjs-cloudflare/pull/738) [`b911c3e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/b911c3e7532c64b6fe687c8abd59f23d048c3776) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: support Next 14 experimental.serverComponentsExternalPackages
+
+- [#740](https://github.com/opennextjs/opennextjs-cloudflare/pull/740) [`d8150d2`](https://github.com/opennextjs/opennextjs-cloudflare/commit/d8150d201e4ce282d8a7bff743771d7ab61e9b11) Thanks [@sommeeeer](https://github.com/sommeeeer)! - feat(images): implement localPatterns for images
+
+- [#720](https://github.com/opennextjs/opennextjs-cloudflare/pull/720) [`9ed8d8a`](https://github.com/opennextjs/opennextjs-cloudflare/commit/9ed8d8aa5c728fc8a25e562ba44290c07fdda8ec) Thanks [@james-elicx](https://github.com/james-elicx)! - feat: pass cli arguments not used by `opennextjs-cloudflare` to wrangler
+
+  Previously, arguments had to be provided after `--` e.g. `opennextjs-cloudflare preview -- --port 12345`. This is no longer necessary, and they can be provided normally, e.g. `opennextjs-cloudflare preview --port 12345`.
+
+- [#743](https://github.com/opennextjs/opennextjs-cloudflare/pull/743) [`7a2fc7d`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7a2fc7d9ec353d7be7c33f81d08e3097ad62cd66) Thanks [@vicb](https://github.com/vicb)! - update @opennextjs/aws to 3.6.6
+
+  [3.6.6 Release notes](https://github.com/opennextjs/opennextjs-aws/releases/tag/v3.6.6)
+
+- [#712](https://github.com/opennextjs/opennextjs-cloudflare/pull/712) [`2f6dd81`](https://github.com/opennextjs/opennextjs-cloudflare/commit/2f6dd81a7b5b1fb4ed16b9b0e0289ee780328e3c) Thanks [@vicb](https://github.com/vicb)! - Drop the patch for NextServer#getMiddlewareManifest (taken care of by was)
+
 ## 1.3.0
 
 ### Minor Changes
