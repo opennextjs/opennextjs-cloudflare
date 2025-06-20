@@ -94,11 +94,7 @@ export function matchRemotePattern(pattern: RemotePattern, url: URL): boolean {
   }
 
   // Should be the same as writeImagesManifest()
-  if (!new RegExp(pattern.pathname).test(url.pathname)) {
-    return false;
-  }
-
-  return true;
+  return new RegExp(pattern.pathname).test(url.pathname);
 }
 
 export function matchLocalPattern(pattern: LocalPattern, url: URL): boolean {
