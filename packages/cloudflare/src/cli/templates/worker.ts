@@ -2,6 +2,8 @@
 import { fetchImage } from "./cloudflare/images.js";
 //@ts-expect-error: Will be resolved by wrangler build
 import { runWithCloudflareRequestContext } from "./cloudflare/init.js";
+//@ts-expect-error: Will be resolved by wrangler build
+import { maybeGetSkewProtectionResponse } from "./cloudflare/skew-protection.js";
 // @ts-expect-error: Will be resolved by wrangler build
 import { handler as middlewareHandler } from "./middleware/handler.mjs";
 
@@ -15,6 +17,12 @@ export { BucketCachePurge } from "./.build/durable-objects/bucket-cache-purge.js
 export default {
 	async fetch(request, env, ctx) {
 		return runWithCloudflareRequestContext(request, env, ctx, async () => {
+			const response = maybeGetSkewProtectionResponse(request);
+
+			if (response) {
+				return response;
+			}
+
 			const url = new URL(request.url);
 
 			// Serve images in development.
