@@ -107,7 +107,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
       // Apply updater updates, must be the last plugin
       updater.plugin,
     ] as Plugin[],
-    external: ["./middleware/handler.mjs"],
+    external: ["./middleware/handler.mjs", "cloudflare:*"],
     alias: {
       // Workers have `fetch` so the `node-fetch` polyfill is not needed
       "next/dist/compiled/node-fetch": path.join(buildOpts.outputDir, "cloudflare-templates/shims/fetch.js"),
