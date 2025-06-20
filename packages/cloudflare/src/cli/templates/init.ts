@@ -94,8 +94,8 @@ function initRuntime() {
 
   Object.assign(globalThis, {
     Request: CustomRequest,
-    __BUILD_TIMESTAMP_MS__: __BUILD_TIMESTAMP_MS__,
-    __NEXT_BASE_PATH__: __NEXT_BASE_PATH__,
+    __BUILD_TIMESTAMP_MS__,
+    __NEXT_BASE_PATH__,
     // The external middleware will use the convertTo function of the `edge` converter
     // by default it will try to fetch the request, but since we are running everything in the same worker
     // we need to use the request as is.
@@ -138,6 +138,11 @@ function populateProcessEnv(url: URL, env: CloudflareEnv) {
    * https://github.com/vercel/next.js/blob/6b1e48080e896e0d44a05fe009cb79d2d3f91774/packages/next/src/server/app-render/action-handler.ts#L307-L316
    */
   process.env.__NEXT_PRIVATE_ORIGIN = url.origin;
+
+  // `__DEPLOYMENT_ID__` is a string (passed via ESBuild).
+  if (__DEPLOYMENT_ID__) {
+    process.env.DEPLOYMENT_ID = __DEPLOYMENT_ID__;
+  }
 }
 
 /* eslint-disable no-var */
@@ -146,5 +151,7 @@ declare global {
   var __BUILD_TIMESTAMP_MS__: number;
   // Next basePath
   var __NEXT_BASE_PATH__: string;
+  // Deployment ID
+  var __DEPLOYMENT_ID__: string;
 }
 /* eslint-enable no-var */
