@@ -12,20 +12,15 @@ export function compileDurableObjects(buildOpts: BuildOptions) {
 		_require.resolve("@opennextjs/cloudflare/durable-objects/bucket-cache-purge"),
 	];
 
-	const { outputDir } = buildOpts;
-
 	const baseManifestPath = path.join(
-		outputDir,
+		buildOpts.outputDir,
 		"server-functions/default",
 		getPackagePath(buildOpts),
 		".next"
 	);
 
-	// We need to change the type in aws
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const prerenderManifest = loadPrerenderManifest(baseManifestPath) as any;
+	const prerenderManifest = loadPrerenderManifest(baseManifestPath);
 	const previewModeId = prerenderManifest.preview.previewModeId;
-
 	const BUILD_ID = loadBuildId(baseManifestPath);
 
 	return esbuildSync(

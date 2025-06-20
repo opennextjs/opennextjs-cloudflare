@@ -4,5 +4,7 @@
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-	return new Response(JSON.stringify(process.env));
+	return new Response(JSON.stringify(process.env, null, 2), {
+		headers: { "content-type": "application/json" },
+	});
 }

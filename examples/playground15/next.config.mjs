@@ -1,4 +1,4 @@
-import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+import { initOpenNextCloudflareForDev, getDeploymentId } from "@opennextjs/cloudflare";
 
 initOpenNextCloudflareForDev();
 
@@ -10,6 +10,7 @@ const nextConfig = {
 		// Generate source map to validate the fix for opennextjs/opennextjs-cloudflare#341
 		serverSourceMaps: true,
 	},
+	deploymentId: getDeploymentId(),
 };
 
 export default nextConfig;
