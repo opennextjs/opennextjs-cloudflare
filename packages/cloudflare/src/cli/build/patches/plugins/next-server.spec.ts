@@ -1,12 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { computePatchDiff } from "../../utils/test-patch.js";
-import {
-  buildIdRule,
-  createCacheHandlerRule,
-  createComposableCacheHandlersRule,
-  createMiddlewareManifestRule,
-} from "./next-server.js";
+import { buildIdRule, createCacheHandlerRule, createComposableCacheHandlersRule } from "./next-server.js";
 
 describe("Next Server", () => {
   const nextServerCode = `
@@ -126,38 +121,6 @@ class NextNodeServer extends _baseserver.default {
                if (this.minimalMode) return null;
                const manifest = require(this.middlewareManifestPath);
                return manifest;
-      "
-    `);
-  });
-
-  test("middleware manifest", () => {
-    expect(computePatchDiff("next-server.js", nextServerCode, createMiddlewareManifestRule("manifest")))
-      .toMatchInlineSnapshot(`
-      "Index: next-server.js
-      ===================================================================
-      --- next-server.js
-      +++ next-server.js
-      @@ -1,5 +1,4 @@
-      -
-       class NextNodeServer extends _baseserver.default {
-           constructor(options){
-               // Initialize super class
-               super(options);
-      @@ -30,12 +29,10 @@
-                   throw err;
-               }
-           }
-           getMiddlewareManifest() {
-      -        if (this.minimalMode) return null;
-      -        const manifest = require(this.middlewareManifestPath);
-      -        return manifest;
-      -    }
-      +  return "manifest";
-      +}
-           async loadCustomCacheHandlers() {
-               const { cacheHandlers } = this.nextConfig.experimental;
-               if (!cacheHandlers) return;
-               // If we've already initialized the cache handlers interface, don't do it
       "
     `);
   });
