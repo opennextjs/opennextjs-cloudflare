@@ -18,37 +18,37 @@ import { upload } from "./commands/upload.js";
 const nextAppDir = process.cwd();
 
 async function runCommand(args: Arguments) {
-  printHeader(`Cloudflare ${args.command}`);
+	printHeader(`Cloudflare ${args.command}`);
 
-  showWarningOnWindows();
+	showWarningOnWindows();
 
-  const baseDir = nextAppDir;
-  const require = createRequire(import.meta.url);
-  const openNextDistDir = path.dirname(require.resolve("@opennextjs/aws/index.js"));
+	const baseDir = nextAppDir;
+	const require = createRequire(import.meta.url);
+	const openNextDistDir = path.dirname(require.resolve("@opennextjs/aws/index.js"));
 
-  await createOpenNextConfigIfNotExistent(baseDir);
-  const { config, buildDir } = await compileOpenNextConfig(baseDir, undefined, {
-    compileEdge: true,
-  });
+	await createOpenNextConfigIfNotExistent(baseDir);
+	const { config, buildDir } = await compileOpenNextConfig(baseDir, undefined, {
+		compileEdge: true,
+	});
 
-  ensureCloudflareConfig(config);
+	ensureCloudflareConfig(config);
 
-  // Initialize options
-  const options = normalizeOptions(config, openNextDistDir, buildDir);
-  logger.setLevel(options.debug ? "debug" : "info");
+	// Initialize options
+	const options = normalizeOptions(config, openNextDistDir, buildDir);
+	logger.setLevel(options.debug ? "debug" : "info");
 
-  switch (args.command) {
-    case "build":
-      return build(options, config, { ...args, sourceDir: baseDir });
-    case "preview":
-      return preview(options, config, args);
-    case "deploy":
-      return deploy(options, config, args);
-    case "upload":
-      return upload(options, config, args);
-    case "populateCache":
-      return populateCache(options, config, args);
-  }
+	switch (args.command) {
+		case "build":
+			return build(options, config, { ...args, sourceDir: baseDir });
+		case "preview":
+			return preview(options, config, args);
+		case "deploy":
+			return deploy(options, config, args);
+		case "upload":
+			return upload(options, config, args);
+		case "populateCache":
+			return populateCache(options, config, args);
+	}
 }
 
 await runCommand(getArgs());

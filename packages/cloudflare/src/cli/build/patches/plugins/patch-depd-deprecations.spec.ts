@@ -4,8 +4,8 @@ import { describe, expect, test } from "vitest";
 import { rule } from "./patch-depd-deprecations.js";
 
 describe("patchDepdDeprecations", () => {
-  test("patch", () => {
-    const code = `
+	test("patch", () => {
+		const code = `
       function prepareObjectStackTrace(e,t){
         return t
       }
@@ -22,11 +22,11 @@ describe("patchDepdDeprecations", () => {
         return deprecatedfn;
       }`;
 
-    expect(patchCode(code, rule)).toMatchInlineSnapshot(`
+		expect(patchCode(code, rule)).toMatchInlineSnapshot(`
       "function prepareObjectStackTrace(e,t){
               return t
             }
             function wrapfunction(fn, message) { if(typeof fn !== 'function') throw new Error("argument fn must be a function"); return function deprecated_fn(...args) { console.warn(message); return fn(...args); } }"
     `);
-  });
+	});
 });

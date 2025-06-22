@@ -8,25 +8,25 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { getCacheAssets } from "./populate-cache";
 
 describe("getCacheAssets", () => {
-  beforeAll(() => {
-    mockFs();
+	beforeAll(() => {
+		mockFs();
 
-    const fetchBaseDir = "/base/path/cache/__fetch/buildID";
-    const cacheDir = "/base/path/cache/buildID/path/to";
+		const fetchBaseDir = "/base/path/cache/__fetch/buildID";
+		const cacheDir = "/base/path/cache/buildID/path/to";
 
-    mkdirSync(fetchBaseDir, { recursive: true });
-    mkdirSync(cacheDir, { recursive: true });
+		mkdirSync(fetchBaseDir, { recursive: true });
+		mkdirSync(cacheDir, { recursive: true });
 
-    for (let i = 0; i < 3; i++) {
-      writeFileSync(path.join(fetchBaseDir, `${i}`), "", { encoding: "utf-8" });
-      writeFileSync(path.join(cacheDir, `${i}.cache`), "", { encoding: "utf-8" });
-    }
-  });
+		for (let i = 0; i < 3; i++) {
+			writeFileSync(path.join(fetchBaseDir, `${i}`), "", { encoding: "utf-8" });
+			writeFileSync(path.join(cacheDir, `${i}.cache`), "", { encoding: "utf-8" });
+		}
+	});
 
-  afterAll(() => mockFs.restore());
+	afterAll(() => mockFs.restore());
 
-  test("list cache assets", () => {
-    expect(getCacheAssets({ outputDir: "/base/path" } as BuildOptions)).toMatchInlineSnapshot(`
+	test("list cache assets", () => {
+		expect(getCacheAssets({ outputDir: "/base/path" } as BuildOptions)).toMatchInlineSnapshot(`
       [
         {
           "buildId": "buildID",
@@ -66,5 +66,5 @@ describe("getCacheAssets", () => {
         },
       ]
     `);
-  });
+	});
 });

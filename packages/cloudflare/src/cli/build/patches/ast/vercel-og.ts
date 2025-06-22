@@ -25,7 +25,7 @@ fix: |-
  * @returns Results of applying the rule.
  */
 export function patchVercelOgImport(root: SgNode) {
-  return applyRule(vercelOgImportRule, root);
+	return applyRule(vercelOgImportRule, root);
 }
 
 export const vercelOgFallbackFontRule = `
@@ -58,5 +58,5 @@ fix: |-
  * @returns Results of applying the rule.
  */
 export function patchVercelOgFallbackFont(root: SgNode) {
-  return applyRule(vercelOgFallbackFontRule, root);
+	return applyRule(vercelOgFallbackFontRule, root);
 }

@@ -28,77 +28,77 @@ import { getVersion } from "./utils/version.js";
  * @param projectOpts The options for the project
  */
 export async function build(
-  options: buildHelper.BuildOptions,
-  config: OpenNextConfig,
-  projectOpts: ProjectOptions
+	options: buildHelper.BuildOptions,
+	config: OpenNextConfig,
+	projectOpts: ProjectOptions
 ): Promise<void> {
-  // Do not minify the code so that we can apply string replacement patch.
-  // Note that wrangler will still minify the bundle.
-  options.minify = false;
+	// Do not minify the code so that we can apply string replacement patch.
+	// Note that wrangler will still minify the bundle.
+	options.minify = false;
 
-  // Pre-build validation
-  buildHelper.checkRunningInsideNextjsApp(options);
-  logger.info(`App directory: ${options.appPath}`);
-  buildHelper.printNextjsVersion(options);
-  ensureNextjsVersionSupported(options);
-  const { aws, cloudflare } = getVersion();
-  logger.info(`@opennextjs/cloudflare version: ${cloudflare}`);
-  logger.info(`@opennextjs/aws version: ${aws}`);
+	// Pre-build validation
+	buildHelper.checkRunningInsideNextjsApp(options);
+	logger.info(`App directory: ${options.appPath}`);
+	buildHelper.printNextjsVersion(options);
+	ensureNextjsVersionSupported(options);
+	const { aws, cloudflare } = getVersion();
+	logger.info(`@opennextjs/cloudflare version: ${cloudflare}`);
+	logger.info(`@opennextjs/aws version: ${aws}`);
 
-  if (projectOpts.skipNextBuild) {
-    logger.warn("Skipping Next.js build");
-  } else {
-    // Build the next app
-    printHeader("Building Next.js app");
-    setStandaloneBuildMode(options);
-    buildNextjsApp(options);
-  }
+	if (projectOpts.skipNextBuild) {
+		logger.warn("Skipping Next.js build");
+	} else {
+		// Build the next app
+		printHeader("Building Next.js app");
+		setStandaloneBuildMode(options);
+		buildNextjsApp(options);
+	}
 
-  // Generate deployable bundle
-  printHeader("Generating bundle");
-  buildHelper.initOutputDir(options);
+	// Generate deployable bundle
+	printHeader("Generating bundle");
+	buildHelper.initOutputDir(options);
 
-  // Compile cache.ts
-  compileCache(options);
+	// Compile cache.ts
+	compileCache(options);
 
-  // Compile .env files
-  compileEnvFiles(options);
+	// Compile .env files
+	compileEnvFiles(options);
 
-  // Compile workerd init
-  compileInit(options);
+	// Compile workerd init
+	compileInit(options);
 
-  // Compile image helpers
-  compileImages(options);
+	// Compile image helpers
+	compileImages(options);
 
-  // Compile middleware
-  await createMiddleware(options, { forceOnlyBuildOnce: true });
+	// Compile middleware
+	await createMiddleware(options, { forceOnlyBuildOnce: true });
 
-  createStaticAssets(options, { useBasePath: true });
+	createStaticAssets(options, { useBasePath: true });
 
-  if (config.dangerous?.disableIncrementalCache !== true) {
-    const { useTagCache, metaFiles } = createCacheAssets(options);
+	if (config.dangerous?.disableIncrementalCache !== true) {
+		const { useTagCache, metaFiles } = createCacheAssets(options);
 
-    if (useTagCache) {
-      compileCacheAssetsManifestSqlFile(options, metaFiles);
-    }
-  }
+		if (useTagCache) {
+			compileCacheAssetsManifestSqlFile(options, metaFiles);
+		}
+	}
 
-  await createServerBundle(options);
+	await createServerBundle(options);
 
-  await compileDurableObjects(options);
+	await compileDurableObjects(options);
 
-  await bundleServer(options);
+	await bundleServer(options);
 
-  if (!projectOpts.skipWranglerConfigCheck) {
-    await createWranglerConfigIfNotExistent(projectOpts);
-  }
+	if (!projectOpts.skipWranglerConfigCheck) {
+		await createWranglerConfigIfNotExistent(projectOpts);
+	}
 
-  logger.info("OpenNext build complete.");
+	logger.info("OpenNext build complete.");
 }
 
 function ensureNextjsVersionSupported(options: buildHelper.BuildOptions) {
-  if (buildHelper.compareSemver(options.nextVersion, "<", "14.2.0")) {
-    logger.error("Next.js version unsupported, please upgrade to version 14.2 or greater.");
-    process.exit(1);
-  }
+	if (buildHelper.compareSemver(options.nextVersion, "<", "14.2.0")) {
+		logger.error("Next.js version unsupported, please upgrade to version 14.2 or greater.");
+		process.exit(1);
+	}
 }

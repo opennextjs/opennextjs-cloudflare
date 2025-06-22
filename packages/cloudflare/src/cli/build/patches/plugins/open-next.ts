@@ -10,28 +10,28 @@ import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-upd
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
 export function patchResolveCache(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
-  const { outputDir } = buildOpts;
-  const packagePath = getPackagePath(buildOpts);
-  const outputPath = path.join(outputDir, "server-functions/default");
+	const { outputDir } = buildOpts;
+	const packagePath = getPackagePath(buildOpts);
+	const outputPath = path.join(outputDir, "server-functions/default");
 
-  const indexPath = path.relative(
-    buildOpts.appBuildOutputPath,
-    path.join(outputPath, packagePath, `index.mjs`)
-  );
+	const indexPath = path.relative(
+		buildOpts.appBuildOutputPath,
+		path.join(outputPath, packagePath, `index.mjs`)
+	);
 
-  return updater.updateContent("patch-resolve-cache", [
-    {
-      field: {
-        filter: getCrossPlatformPathRegex(indexPath),
-        contentFilter: /cacheHandlerPath/,
-        callback: async ({ contents }) => {
-          contents = patchCode(contents, cacheHandlerRule);
-          contents = patchCode(contents, compositeCacheHandlerRule);
-          return contents;
-        },
-      },
-    },
-  ]);
+	return updater.updateContent("patch-resolve-cache", [
+		{
+			field: {
+				filter: getCrossPlatformPathRegex(indexPath),
+				contentFilter: /cacheHandlerPath/,
+				callback: async ({ contents }) => {
+					contents = patchCode(contents, cacheHandlerRule);
+					contents = patchCode(contents, compositeCacheHandlerRule);
+					return contents;
+				},
+			},
+		},
+	]);
 }
 
 export const cacheHandlerRule = `

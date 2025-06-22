@@ -1,20 +1,20 @@
 {
-  "$schema": "https://json.schemastore.org/tsconfig",
-  "extends": "@tsconfig/strictest/tsconfig.json",
-  "compilerOptions": {
-    "declaration": true,
-    "esModuleInterop": true,
-    "exactOptionalPropertyTypes": false,
-    "forceConsistentCasingInFileNames": true,
-    "lib": ["ESNext"],
-    "module": "ESNext",
-    "moduleResolution": "node",
-    "noImplicitReturns": false,
-    "noPropertyAccessFromIndexSignature": false,
-    "outDir": "./dist",
-    "target": "ES2022",
-    "types": ["@cloudflare/workers-types", "@opennextjs/aws/types/global.d.ts"]
-  },
-  "include": ["src/**/*.ts", "env.d.ts"],
-  "exclude": ["src/**/*.spec.ts"]
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"extends": "@tsconfig/strictest/tsconfig.json",
+	"compilerOptions": {
+		"declaration": true,
+		"esModuleInterop": true,
+		"exactOptionalPropertyTypes": false,
+		"forceConsistentCasingInFileNames": true,
+		"lib": ["ESNext"],
+		"module": "ESNext",
+		"moduleResolution": "node",
+		"noImplicitReturns": false,
+		"noPropertyAccessFromIndexSignature": false,
+		"outDir": "./dist",
+		"target": "ES2022",
+		"types": ["@cloudflare/workers-types", "@opennextjs/aws/types/global.d.ts"]
+	},
+	"include": ["src/**/*.ts", "env.d.ts"],
+	"exclude": ["src/**/*.spec.ts"]
 }

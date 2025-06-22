@@ -9,9 +9,9 @@ import logger from "@opennextjs/aws/logger.js";
 export type WranglerTarget = "local" | "remote";
 
 type WranglerOptions = {
-  target?: WranglerTarget;
-  environment?: string;
-  logging?: "all" | "error";
+	target?: WranglerTarget;
+	environment?: string;
+	logging?: "all" | "error";
 };
 
 /**
@@ -21,14 +21,14 @@ type WranglerOptions = {
  * @returns Whether yarn modern is used.
  */
 function isYarnModern(options: BuildOptions) {
-  const packageJson: { packageManager?: string } = JSON.parse(
-    readFileSync(path.join(options.monorepoRoot, "package.json"), "utf-8")
-  );
+	const packageJson: { packageManager?: string } = JSON.parse(
+		readFileSync(path.join(options.monorepoRoot, "package.json"), "utf-8")
+	);
 
-  if (!packageJson.packageManager?.startsWith("yarn")) return false;
+	if (!packageJson.packageManager?.startsWith("yarn")) return false;
 
-  const [, version] = packageJson.packageManager.split("@");
-  return version ? compareSemver(version, ">=", "4.0.0") : false;
+	const [, version] = packageJson.packageManager.split("@");
+	return version ? compareSemver(version, ">=", "4.0.0") : false;
 }
 
 /**
@@ -42,52 +42,52 @@ function isYarnModern(options: BuildOptions) {
  * @returns Arguments with a passthrough flag injected when needed.
  */
 function injectPassthroughFlagForArgs(options: BuildOptions, args: string[]) {
-  if (options.packager !== "npm" && (options.packager !== "yarn" || isYarnModern(options))) {
-    return args;
-  }
+	if (options.packager !== "npm" && (options.packager !== "yarn" || isYarnModern(options))) {
+		return args;
+	}
 
-  const flagInArgsIndex = args.findIndex((v) => v.startsWith("--"));
-  if (flagInArgsIndex !== -1) {
-    args.splice(flagInArgsIndex, 0, "--");
-  }
+	const flagInArgsIndex = args.findIndex((v) => v.startsWith("--"));
+	if (flagInArgsIndex !== -1) {
+		args.splice(flagInArgsIndex, 0, "--");
+	}
 
-  return args;
+	return args;
 }
 
 export function runWrangler(options: BuildOptions, args: string[], wranglerOpts: WranglerOptions = {}) {
-  const result = spawnSync(
-    options.packager,
-    [
-      options.packager === "bun" ? "x" : "exec",
-      "wrangler",
-      ...injectPassthroughFlagForArgs(
-        options,
-        [
-          ...args,
-          wranglerOpts.environment && `--env ${wranglerOpts.environment}`,
-          wranglerOpts.target === "remote" && "--remote",
-          wranglerOpts.target === "local" && "--local",
-        ].filter((v): v is string => !!v)
-      ),
-    ],
-    {
-      shell: true,
-      stdio: wranglerOpts.logging === "error" ? ["ignore", "ignore", "inherit"] : "inherit",
-      env: {
-        ...process.env,
-        ...(wranglerOpts.logging === "error" ? { WRANGLER_LOG: "error" } : undefined),
-      },
-    }
-  );
+	const result = spawnSync(
+		options.packager,
+		[
+			options.packager === "bun" ? "x" : "exec",
+			"wrangler",
+			...injectPassthroughFlagForArgs(
+				options,
+				[
+					...args,
+					wranglerOpts.environment && `--env ${wranglerOpts.environment}`,
+					wranglerOpts.target === "remote" && "--remote",
+					wranglerOpts.target === "local" && "--local",
+				].filter((v): v is string => !!v)
+			),
+		],
+		{
+			shell: true,
+			stdio: wranglerOpts.logging === "error" ? ["ignore", "ignore", "inherit"] : "inherit",
+			env: {
+				...process.env,
+				...(wranglerOpts.logging === "error" ? { WRANGLER_LOG: "error" } : undefined),
+			},
+		}
+	);
 
-  if (result.status !== 0) {
-    logger.error("Wrangler command failed");
-    process.exit(1);
-  }
+	if (result.status !== 0) {
+		logger.error("Wrangler command failed");
+		process.exit(1);
+	}
 }
 
 export function isWranglerTarget(v: string | undefined): v is WranglerTarget {
-  return !!v && ["local", "remote"].includes(v);
+	return !!v && ["local", "remote"].includes(v);
 }
 
 /**
@@ -97,16 +97,16 @@ export function isWranglerTarget(v: string | undefined): v is WranglerTarget {
  * @returns Value of the environment flag.
  */
 export function getWranglerEnvironmentFlag(args: string[]) {
-  for (let i = 0; i <= args.length; i++) {
-    const arg = args[i];
-    if (!arg) continue;
+	for (let i = 0; i <= args.length; i++) {
+		const arg = args[i];
+		if (!arg) continue;
 
-    if (arg === "--env" || arg === "-e") {
-      return args[i + 1];
-    }
+		if (arg === "--env" || arg === "-e") {
+			return args[i + 1];
+		}
 
-    if (arg.startsWith("--env=") || arg.startsWith("-e=")) {
-      return arg.split("=")[1];
-    }
-  }
+		if (arg.startsWith("--env=") || arg.startsWith("-e=")) {
+			return arg.split("=")[1];
+		}
+	}
 }

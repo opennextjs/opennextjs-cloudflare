@@ -81,7 +81,7 @@ function createSnapshot() {
 `;
 
 test("patch the createSnapshot function", () => {
-  expect(computePatchDiff("async-local-storage.js", code, rule)).toMatchInlineSnapshot(`
+	expect(computePatchDiff("async-local-storage.js", code, rule)).toMatchInlineSnapshot(`
     "Index: async-local-storage.js
     ===================================================================
     --- async-local-storage.js

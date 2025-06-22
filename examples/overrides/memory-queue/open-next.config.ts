@@ -3,6 +3,6 @@ import kvIncrementalCache from "@opennextjs/cloudflare/overrides/incremental-cac
 import memoryQueue from "@opennextjs/cloudflare/overrides/queue/memory-queue";
 
 export default defineCloudflareConfig({
-  incrementalCache: kvIncrementalCache,
-  queue: memoryQueue,
+	incrementalCache: kvIncrementalCache,
+	queue: memoryQueue,
 });

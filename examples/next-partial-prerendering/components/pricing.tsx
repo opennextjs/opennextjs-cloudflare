@@ -12,77 +12,77 @@ import { delayShippingEstimate, withDelay } from '#/lib/delay';
 import { cookies } from 'next/headers';
 
 async function AddToCartFromCookies() {
-  // Get the cart count from the users cookies and pass it to the client
-  // AddToCart component
-  const cartCount = Number(cookies().get('_cart_count')?.value || '0');
-  return <AddToCart initialCartCount={cartCount} />;
+	// Get the cart count from the users cookies and pass it to the client
+	// AddToCart component
+	const cartCount = Number(cookies().get('_cart_count')?.value || '0');
+	return <AddToCart initialCartCount={cartCount} />;
 }
 
 function LoadingDots() {
-  return (
-    <div className="text-sm">
-      <span className="space-x-0.5">
-        <span className="inline-flex animate-[loading_1.4s_ease-in-out_infinite] rounded-full">
-          &bull;
-        </span>
-        <span className="inline-flex animate-[loading_1.4s_ease-in-out_0.2s_infinite] rounded-full">
-          &bull;
-        </span>
-        <span className="inline-flex animate-[loading_1.4s_ease-in-out_0.4s_infinite] rounded-full">
-          &bull;
-        </span>
-      </span>
-    </div>
-  );
+	return (
+		<div className="text-sm">
+			<span className="space-x-0.5">
+				<span className="inline-flex animate-[loading_1.4s_ease-in-out_infinite] rounded-full">
+					&bull;
+				</span>
+				<span className="inline-flex animate-[loading_1.4s_ease-in-out_0.2s_infinite] rounded-full">
+					&bull;
+				</span>
+				<span className="inline-flex animate-[loading_1.4s_ease-in-out_0.4s_infinite] rounded-full">
+					&bull;
+				</span>
+			</span>
+		</div>
+	);
 }
 
 async function UserSpecificDetails({ productId }: { productId: string }) {
-  const data = await withDelay(
-    fetch(
-      `https://app-router-api.vercel.app/api/products?id=${productId}&filter=price,usedPrice,leadTime,stock`,
-      {
-        // We intentionally disable Next.js Cache to better demo
-        // streaming
-        cache: 'no-store',
-      },
-    ),
-    delayShippingEstimate,
-  );
+	const data = await withDelay(
+		fetch(
+			`https://app-router-api.vercel.app/api/products?id=${productId}&filter=price,usedPrice,leadTime,stock`,
+			{
+				// We intentionally disable Next.js Cache to better demo
+				// streaming
+				cache: 'no-store',
+			},
+		),
+		delayShippingEstimate,
+	);
 
-  const product = (await data.json()) as Product;
+	const product = (await data.json()) as Product;
 
-  const price = dinero(product.price as DineroSnapshot<number>);
+	const price = dinero(product.price as DineroSnapshot<number>);
 
-  return (
-    <>
-      <ProductSplitPayments price={price} />
-      {product.usedPrice ? (
-        <ProductUsedPrice usedPrice={product.usedPrice} />
-      ) : null}
-      <ProductEstimatedArrival leadTime={product.leadTime} hasDeliveryTime />
-      {product.stock <= 1 ? (
-        <ProductLowStockWarning stock={product.stock} />
-      ) : null}
-    </>
-  );
+	return (
+		<>
+			<ProductSplitPayments price={price} />
+			{product.usedPrice ? (
+				<ProductUsedPrice usedPrice={product.usedPrice} />
+			) : null}
+			<ProductEstimatedArrival leadTime={product.leadTime} hasDeliveryTime />
+			{product.stock <= 1 ? (
+				<ProductLowStockWarning stock={product.stock} />
+			) : null}
+		</>
+	);
 }
 
 export function Pricing({ product }: { product: Product }) {
-  const price = dinero(product.price as DineroSnapshot<number>);
+	const price = dinero(product.price as DineroSnapshot<number>);
 
-  return (
-    <div className="space-y-4 rounded-lg bg-gray-900 p-3">
-      <ProductPrice price={price} discount={product.discount} />
+	return (
+		<div className="space-y-4 rounded-lg bg-gray-900 p-3">
+			<ProductPrice price={price} discount={product.discount} />
 
-      <Ping />
+			<Ping />
 
-      <Suspense fallback={<LoadingDots />}>
-        <UserSpecificDetails productId={product.id} />
-      </Suspense>
+			<Suspense fallback={<LoadingDots />}>
+				<UserSpecificDetails productId={product.id} />
+			</Suspense>
 
-      <Suspense fallback={<AddToCart initialCartCount={0} />}>
-        <AddToCartFromCookies />
-      </Suspense>
-    </div>
-  );
+			<Suspense fallback={<AddToCart initialCartCount={0} />}>
+				<AddToCartFromCookies />
+			</Suspense>
+		</div>
+	);
 }

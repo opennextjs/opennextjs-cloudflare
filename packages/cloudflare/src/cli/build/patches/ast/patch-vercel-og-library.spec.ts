@@ -14,39 +14,39 @@ const openNextOgRoutePath = path.join(openNextFunctionDir, ".next/server/app/og/
 const openNextVercelOgDir = path.join(openNextFunctionDir, "node_modules/next/dist/compiled/@vercel/og");
 
 const buildOpts = {
-  appBuildOutputPath: "examples/api",
-  monorepoRoot: "",
-  outputDir: "examples/api/.open-next",
+	appBuildOutputPath: "examples/api",
+	monorepoRoot: "",
+	outputDir: "examples/api/.open-next",
 } as BuildOptions;
 
 describe("patchVercelOgLibrary", () => {
-  beforeAll(() => {
-    mockFs();
+	beforeAll(() => {
+		mockFs();
 
-    mkdirSync(nodeModulesVercelOgDir, { recursive: true });
-    mkdirSync(path.dirname(nextServerOgNftPath), { recursive: true });
-    mkdirSync(path.dirname(openNextOgRoutePath), { recursive: true });
-    mkdirSync(openNextVercelOgDir, { recursive: true });
+		mkdirSync(nodeModulesVercelOgDir, { recursive: true });
+		mkdirSync(path.dirname(nextServerOgNftPath), { recursive: true });
+		mkdirSync(path.dirname(openNextOgRoutePath), { recursive: true });
+		mkdirSync(openNextVercelOgDir, { recursive: true });
 
-    writeFileSync(
-      nextServerOgNftPath,
-      JSON.stringify({ version: 1, files: [`../../../../../../${nodeModulesVercelOgDir}/index.node.js`] })
-    );
-    writeFileSync(
-      path.join(nodeModulesVercelOgDir, "index.edge.js"),
-      `var fallbackFont = fetch(new URL("./noto-sans-v27-latin-regular.ttf", import.meta.url)).then((res) => res.arrayBuffer());`
-    );
-    writeFileSync(openNextOgRoutePath, `e.exports=import("next/dist/compiled/@vercel/og/index.node.js")`);
-    writeFileSync(path.join(openNextVercelOgDir, "index.node.js"), "");
-    writeFileSync(path.join(openNextVercelOgDir, "noto-sans-v27-latin-regular.ttf"), "");
-  });
+		writeFileSync(
+			nextServerOgNftPath,
+			JSON.stringify({ version: 1, files: [`../../../../../../${nodeModulesVercelOgDir}/index.node.js`] })
+		);
+		writeFileSync(
+			path.join(nodeModulesVercelOgDir, "index.edge.js"),
+			`var fallbackFont = fetch(new URL("./noto-sans-v27-latin-regular.ttf", import.meta.url)).then((res) => res.arrayBuffer());`
+		);
+		writeFileSync(openNextOgRoutePath, `e.exports=import("next/dist/compiled/@vercel/og/index.node.js")`);
+		writeFileSync(path.join(openNextVercelOgDir, "index.node.js"), "");
+		writeFileSync(path.join(openNextVercelOgDir, "noto-sans-v27-latin-regular.ttf"), "");
+	});
 
-  afterAll(() => mockFs.restore());
+	afterAll(() => mockFs.restore());
 
-  it("should patch the open-next files correctly", () => {
-    patchVercelOgLibrary(buildOpts);
+	it("should patch the open-next files correctly", () => {
+		patchVercelOgLibrary(buildOpts);
 
-    expect(readdirSync(openNextVercelOgDir)).toMatchInlineSnapshot(`
+		expect(readdirSync(openNextVercelOgDir)).toMatchInlineSnapshot(`
       [
         "index.edge.js",
         "index.node.js",
@@ -54,8 +54,8 @@ describe("patchVercelOgLibrary", () => {
       ]
     `);
 
-    expect(readFileSync(path.join(openNextVercelOgDir, "index.edge.js"), { encoding: "utf-8" }))
-      .toMatchInlineSnapshot(`
+		expect(readFileSync(path.join(openNextVercelOgDir, "index.edge.js"), { encoding: "utf-8" }))
+			.toMatchInlineSnapshot(`
       "async function getFallbackFont() {
         // .bin is used so that a loader does not need to be configured for .ttf files
         return (await import("./noto-sans-v27-latin-regular.ttf.bin")).default;
@@ -64,8 +64,8 @@ describe("patchVercelOgLibrary", () => {
       var fallbackFont = getFallbackFont();"
     `);
 
-    expect(readFileSync(openNextOgRoutePath, { encoding: "utf-8" })).toMatchInlineSnapshot(
-      `"e.exports=import("next/dist/compiled/@vercel/og/index.edge.js")"`
-    );
-  });
+		expect(readFileSync(openNextOgRoutePath, { encoding: "utf-8" })).toMatchInlineSnapshot(
+			`"e.exports=import("next/dist/compiled/@vercel/og/index.edge.js")"`
+		);
+	});
 });

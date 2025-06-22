@@ -64,20 +64,20 @@ fix: await (await import("@opennextjs/cloudflare")).getCloudflareContext().env.W
 `;
 
 export const patchResRevalidate: CodePatcher = {
-  name: "patch-res-revalidate",
-  patches: [
-    {
-      versions: ">=14.2.0",
-      field: {
-        pathFilter: getCrossPlatformPathRegex(
-          String.raw`(pages-api\.runtime\.prod\.js|node/api-resolver\.js)$`,
-          {
-            escape: false,
-          }
-        ),
-        contentFilter: /\.trustHostHeader/,
-        patchCode: async ({ code }) => patchCode(code, rule),
-      },
-    },
-  ],
+	name: "patch-res-revalidate",
+	patches: [
+		{
+			versions: ">=14.2.0",
+			field: {
+				pathFilter: getCrossPlatformPathRegex(
+					String.raw`(pages-api\.runtime\.prod\.js|node/api-resolver\.js)$`,
+					{
+						escape: false,
+					}
+				),
+				contentFilter: /\.trustHostHeader/,
+				patchCode: async ({ code }) => patchCode(code, rule),
+			},
+		},
+	],
 };

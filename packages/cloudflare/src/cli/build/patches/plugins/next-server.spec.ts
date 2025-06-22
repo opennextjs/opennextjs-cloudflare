@@ -4,7 +4,7 @@ import { computePatchDiff } from "../../utils/test-patch.js";
 import { buildIdRule, createCacheHandlerRule, createComposableCacheHandlersRule } from "./next-server.js";
 
 describe("Next Server", () => {
-  const nextServerCode = `
+	const nextServerCode = `
 class NextNodeServer extends _baseserver.default {
     constructor(options){
         // Initialize super class
@@ -88,8 +88,8 @@ class NextNodeServer extends _baseserver.default {
     // ...
 }`;
 
-  test("build ID", () => {
-    expect(computePatchDiff("next-server.js", nextServerCode, buildIdRule)).toMatchInlineSnapshot(`
+	test("build ID", () => {
+		expect(computePatchDiff("next-server.js", nextServerCode, buildIdRule)).toMatchInlineSnapshot(`
       "Index: next-server.js
       ===================================================================
       --- next-server.js
@@ -123,11 +123,11 @@ class NextNodeServer extends _baseserver.default {
                return manifest;
       "
     `);
-  });
+	});
 
-  test("cache handler", () => {
-    expect(computePatchDiff("next-server.js", nextServerCode, createCacheHandlerRule("manifest")))
-      .toMatchInlineSnapshot(`
+	test("cache handler", () => {
+		expect(computePatchDiff("next-server.js", nextServerCode, createCacheHandlerRule("manifest")))
+			.toMatchInlineSnapshot(`
       "Index: next-server.js
       ===================================================================
       --- next-server.js
@@ -152,11 +152,11 @@ class NextNodeServer extends _baseserver.default {
                await this.loadCustomCacheHandlers();
       "
     `);
-  });
+	});
 
-  test("composable cache handler", () => {
-    expect(computePatchDiff("next-server.js", nextServerCode, createComposableCacheHandlersRule("manifest")))
-      .toMatchInlineSnapshot(`
+	test("composable cache handler", () => {
+		expect(computePatchDiff("next-server.js", nextServerCode, createComposableCacheHandlersRule("manifest")))
+			.toMatchInlineSnapshot(`
       "Index: next-server.js
       ===================================================================
       --- next-server.js
@@ -186,5 +186,5 @@ class NextNodeServer extends _baseserver.default {
                if (!(0, _handlers.initializeCacheHandlers)()) return;
       "
     `);
-  });
+	});
 });

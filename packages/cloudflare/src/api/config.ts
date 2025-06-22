@@ -1,15 +1,15 @@
 import type { BuildOptions } from "@opennextjs/aws/build/helper";
 import {
-  BaseOverride,
-  LazyLoadedOverride,
-  OpenNextConfig as AwsOpenNextConfig,
-  type RoutePreloadingBehavior,
+	BaseOverride,
+	LazyLoadedOverride,
+	OpenNextConfig as AwsOpenNextConfig,
+	type RoutePreloadingBehavior,
 } from "@opennextjs/aws/types/open-next";
 import type {
-  CDNInvalidationHandler,
-  IncrementalCache,
-  Queue,
-  TagCache,
+	CDNInvalidationHandler,
+	IncrementalCache,
+	Queue,
+	TagCache,
 } from "@opennextjs/aws/types/overrides";
 
 export type Override<T extends BaseOverride> = "dummy" | T | LazyLoadedOverride<T>;
@@ -20,39 +20,39 @@ export type Override<T extends BaseOverride> = "dummy" | T | LazyLoadedOverride<
  * See the [Caching documentation](https://opennext.js.org/cloudflare/caching))
  */
 export type CloudflareOverrides = {
-  /**
-   * Sets the incremental cache implementation.
-   */
-  incrementalCache?: Override<IncrementalCache>;
+	/**
+	 * Sets the incremental cache implementation.
+	 */
+	incrementalCache?: Override<IncrementalCache>;
 
-  /**
-   * Sets the tag cache implementation.
-   */
-  tagCache?: Override<TagCache>;
+	/**
+	 * Sets the tag cache implementation.
+	 */
+	tagCache?: Override<TagCache>;
 
-  /**
-   * Sets the revalidation queue implementation
-   */
-  queue?: "direct" | Override<Queue>;
+	/**
+	 * Sets the revalidation queue implementation
+	 */
+	queue?: "direct" | Override<Queue>;
 
-  /**
-   * Sets the automatic cache purge implementation
-   */
-  cachePurge?: Override<CDNInvalidationHandler>;
+	/**
+	 * Sets the automatic cache purge implementation
+	 */
+	cachePurge?: Override<CDNInvalidationHandler>;
 
-  /**
-   * Enable cache interception
-   * Should be `false` when PPR is used
-   * @default false
-   */
-  enableCacheInterception?: boolean;
+	/**
+	 * Enable cache interception
+	 * Should be `false` when PPR is used
+	 * @default false
+	 */
+	enableCacheInterception?: boolean;
 
-  /**
-   * Route preloading behavior.
-   * Using a value other than "none" can result in higher CPU usage on cold starts.
-   * @default "none"
-   */
-  routePreloadingBehavior?: RoutePreloadingBehavior;
+	/**
+	 * Route preloading behavior.
+	 * Using a value other than "none" can result in higher CPU usage on cold starts.
+	 * @default "none"
+	 */
+	routePreloadingBehavior?: RoutePreloadingBehavior;
 };
 
 /**
@@ -62,103 +62,103 @@ export type CloudflareOverrides = {
  * @returns the OpenNext configuration object
  */
 export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNextConfig {
-  const {
-    incrementalCache,
-    tagCache,
-    queue,
-    cachePurge,
-    enableCacheInterception = false,
-    routePreloadingBehavior = "none",
-  } = config;
+	const {
+		incrementalCache,
+		tagCache,
+		queue,
+		cachePurge,
+		enableCacheInterception = false,
+		routePreloadingBehavior = "none",
+	} = config;
 
-  return {
-    default: {
-      override: {
-        wrapper: "cloudflare-node",
-        converter: "edge",
-        proxyExternalRequest: "fetch",
-        incrementalCache: resolveIncrementalCache(incrementalCache),
-        tagCache: resolveTagCache(tagCache),
-        queue: resolveQueue(queue),
-        cdnInvalidation: resolveCdnInvalidation(cachePurge),
-      },
-      routePreloadingBehavior,
-    },
-    // node:crypto is used to compute cache keys
-    edgeExternals: ["node:crypto"],
-    cloudflare: {
-      useWorkerdCondition: true,
-    },
-    dangerous: {
-      enableCacheInterception,
-    },
-    middleware: {
-      external: true,
-      override: {
-        wrapper: "cloudflare-edge",
-        converter: "edge",
-        proxyExternalRequest: "fetch",
-        incrementalCache: resolveIncrementalCache(incrementalCache),
-        tagCache: resolveTagCache(tagCache),
-        queue: resolveQueue(queue),
-      },
-    },
-  };
+	return {
+		default: {
+			override: {
+				wrapper: "cloudflare-node",
+				converter: "edge",
+				proxyExternalRequest: "fetch",
+				incrementalCache: resolveIncrementalCache(incrementalCache),
+				tagCache: resolveTagCache(tagCache),
+				queue: resolveQueue(queue),
+				cdnInvalidation: resolveCdnInvalidation(cachePurge),
+			},
+			routePreloadingBehavior,
+		},
+		// node:crypto is used to compute cache keys
+		edgeExternals: ["node:crypto"],
+		cloudflare: {
+			useWorkerdCondition: true,
+		},
+		dangerous: {
+			enableCacheInterception,
+		},
+		middleware: {
+			external: true,
+			override: {
+				wrapper: "cloudflare-edge",
+				converter: "edge",
+				proxyExternalRequest: "fetch",
+				incrementalCache: resolveIncrementalCache(incrementalCache),
+				tagCache: resolveTagCache(tagCache),
+				queue: resolveQueue(queue),
+			},
+		},
+	};
 }
 
 function resolveIncrementalCache(value: CloudflareOverrides["incrementalCache"] = "dummy") {
-  if (typeof value === "string") {
-    return value;
-  }
+	if (typeof value === "string") {
+		return value;
+	}
 
-  return typeof value === "function" ? value : () => value;
+	return typeof value === "function" ? value : () => value;
 }
 
 function resolveTagCache(value: CloudflareOverrides["tagCache"] = "dummy") {
-  if (typeof value === "string") {
-    return value;
-  }
+	if (typeof value === "string") {
+		return value;
+	}
 
-  return typeof value === "function" ? value : () => value;
+	return typeof value === "function" ? value : () => value;
 }
 
 function resolveQueue(value: CloudflareOverrides["queue"] = "dummy") {
-  if (typeof value === "string") {
-    return value;
-  }
+	if (typeof value === "string") {
+		return value;
+	}
 
-  return typeof value === "function" ? value : () => value;
+	return typeof value === "function" ? value : () => value;
 }
 
 function resolveCdnInvalidation(value: CloudflareOverrides["cachePurge"] = "dummy") {
-  if (typeof value === "string") {
-    return value;
-  }
+	if (typeof value === "string") {
+		return value;
+	}
 
-  return typeof value === "function" ? value : () => value;
+	return typeof value === "function" ? value : () => value;
 }
 
 interface OpenNextConfig extends AwsOpenNextConfig {
-  cloudflare?: {
-    /**
-     * Whether to use the "workerd" build conditions when bundling the server.
-     * It is recommended to set it to `true` so that code specifically targeted to the
-     * workerd runtime is bundled.
-     *
-     * See https://esbuild.github.io/api/#conditions
-     *
-     * @default true
-     */
-    useWorkerdCondition?: boolean;
+	cloudflare?: {
+		/**
+		 * Whether to use the "workerd" build conditions when bundling the server.
+		 * It is recommended to set it to `true` so that code specifically targeted to the
+		 * workerd runtime is bundled.
+		 *
+		 * See https://esbuild.github.io/api/#conditions
+		 *
+		 * @default true
+		 */
+		useWorkerdCondition?: boolean;
 
-    /**
-     * Disable throwing an error when the config validation fails.
-     * This is useful for overriding some of the default provided by cloudflare.
-     * **USE AT YOUR OWN RISK**
-     * @default false
-     */
-    dangerousDisableConfigValidation?: boolean;
-  };
+		/**
+		 * Disable throwing an error when the config validation fails.
+		 * This is useful for overriding some of the default provided by cloudflare.
+		 * **USE AT YOUR OWN RISK**
+		 * @default false
+		 */
+		dangerousDisableConfigValidation?: boolean;
+	};
 }
 
 /**
@@ -166,7 +166,7 @@ interface OpenNextConfig extends AwsOpenNextConfig {
  * @returns The OpenConfig specific to cloudflare
  */
 export function getOpenNextConfig(buildOpts: BuildOptions): OpenNextConfig {
-  return buildOpts.config;
+	return buildOpts.config;
 }
 
 export type { OpenNextConfig };

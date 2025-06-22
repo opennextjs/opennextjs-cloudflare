@@ -1,26 +1,26 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "main": ".open-next/worker.js",
-  "name": "app-pages-router",
-  "compatibility_date": "2024-12-30",
-  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
-  "r2_buckets": [
-    {
-      "binding": "NEXT_INC_CACHE_R2_BUCKET",
-      "bucket_name": "cache"
-    }
-  ],
-  "services": [
-    {
-      "binding": "WORKER_SELF_REFERENCE",
-      "service": "app-pages-router"
-    }
-  ],
-  "vars": {
-    "NEXT_INC_CACHE_R2_PREFIX": "custom_prefix"
-  }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"main": ".open-next/worker.js",
+	"name": "app-pages-router",
+	"compatibility_date": "2024-12-30",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"r2_buckets": [
+		{
+			"binding": "NEXT_INC_CACHE_R2_BUCKET",
+			"bucket_name": "cache"
+		}
+	],
+	"services": [
+		{
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "app-pages-router"
+		}
+	],
+	"vars": {
+		"NEXT_INC_CACHE_R2_PREFIX": "custom_prefix"
+	}
 }

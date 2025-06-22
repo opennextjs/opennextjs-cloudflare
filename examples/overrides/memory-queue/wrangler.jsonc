@@ -1,23 +1,23 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "main": ".open-next/worker.js",
-  "name": "memory-queue",
-  "compatibility_date": "2025-02-04",
-  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
-  "kv_namespaces": [
-    {
-      "binding": "NEXT_INC_CACHE_KV",
-      "id": "<BINDING_ID>"
-    }
-  ],
-  "services": [
-    {
-      "binding": "WORKER_SELF_REFERENCE",
-      "service": "memory-queue"
-    }
-  ]
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"main": ".open-next/worker.js",
+	"name": "memory-queue",
+	"compatibility_date": "2025-02-04",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"kv_namespaces": [
+		{
+			"binding": "NEXT_INC_CACHE_KV",
+			"id": "<BINDING_ID>"
+		}
+	],
+	"services": [
+		{
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "memory-queue"
+		}
+	]
 }

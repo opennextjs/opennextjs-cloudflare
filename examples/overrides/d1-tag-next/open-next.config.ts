@@ -3,6 +3,6 @@ import kvIncrementalCache from "@opennextjs/cloudflare/overrides/incremental-cac
 import d1NextTagCache from "@opennextjs/cloudflare/overrides/tag-cache/d1-next-tag-cache";
 
 export default defineCloudflareConfig({
-  incrementalCache: kvIncrementalCache,
-  tagCache: d1NextTagCache,
+	incrementalCache: kvIncrementalCache,
+	tagCache: d1NextTagCache,
 });

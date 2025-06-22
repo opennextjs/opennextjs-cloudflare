@@ -21,26 +21,26 @@ import type { PluginBuild } from "esbuild";
 import { normalizePath } from "../../utils/normalize-path.js";
 
 export function setWranglerExternal() {
-  return {
-    name: "wrangler-externals",
+	return {
+		name: "wrangler-externals",
 
-    setup: async (build: PluginBuild) => {
-      const namespace = "wrangler-externals-plugin";
+		setup: async (build: PluginBuild) => {
+			const namespace = "wrangler-externals-plugin";
 
-      //TODO: Ideally in the future we would like to analyze the files in case they are using wasm in a Node way (i.e. WebAssembly.instantiate)
-      build.onResolve({ filter: /(\.bin|\.wasm(\?module)?)$/ }, ({ path, importer }) => {
-        return {
-          path: normalizePath(resolve(dirname(importer), path)),
-          namespace,
-          external: true,
-        };
-      });
+			//TODO: Ideally in the future we would like to analyze the files in case they are using wasm in a Node way (i.e. WebAssembly.instantiate)
+			build.onResolve({ filter: /(\.bin|\.wasm(\?module)?)$/ }, ({ path, importer }) => {
+				return {
+					path: normalizePath(resolve(dirname(importer), path)),
+					namespace,
+					external: true,
+				};
+			});
 
-      build.onLoad({ filter: /.*/, namespace }, async ({ path }) => {
-        return {
-          contents: `export * from '${path}';`,
-        };
-      });
-    },
-  };
+			build.onLoad({ filter: /.*/, namespace }, async ({ path }) => {
+				return {
+					contents: `export * from '${path}';`,
+				};
+			});
+		},
+	};
 }

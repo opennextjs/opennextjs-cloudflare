@@ -3,7 +3,7 @@ import { revalidateTag } from "next/cache";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  revalidateTag("revalidate");
+	revalidateTag("revalidate");
 
-  return new Response("ok");
+	return new Response("ok");
 }
