@@ -126,7 +126,7 @@ export async function getDeploymentMapping(
  * @param deploymentId Deployment ID
  * @returns The updated mapping
  */
-function updateDeploymentMapping(
+export function updateDeploymentMapping(
 	mapping: Record<string, string>,
 	versions: { id: string }[],
 	deploymentId: string
