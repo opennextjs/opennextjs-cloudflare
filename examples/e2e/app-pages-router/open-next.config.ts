@@ -3,7 +3,7 @@ import r2IncrementalCache from "@opennextjs/cloudflare/overrides/incremental-cac
 import memoryQueue from "@opennextjs/cloudflare/overrides/queue/memory-queue";
 
 export default defineCloudflareConfig({
-  incrementalCache: r2IncrementalCache,
-  queue: memoryQueue,
-  enableCacheInterception: true,
+	incrementalCache: r2IncrementalCache,
+	queue: memoryQueue,
+	enableCacheInterception: true,
 });

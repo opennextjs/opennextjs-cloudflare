@@ -5,15 +5,15 @@ import { getWranglerEnvironmentFlag, runWrangler } from "../utils/run-wrangler.j
 import { populateCache } from "./populate-cache.js";
 
 export async function deploy(
-  options: BuildOptions,
-  config: OpenNextConfig,
-  deployOptions: { passthroughArgs: string[]; cacheChunkSize?: number }
+	options: BuildOptions,
+	config: OpenNextConfig,
+	deployOptions: { passthroughArgs: string[]; cacheChunkSize?: number }
 ) {
-  await populateCache(options, config, {
-    target: "remote",
-    environment: getWranglerEnvironmentFlag(deployOptions.passthroughArgs),
-    cacheChunkSize: deployOptions.cacheChunkSize,
-  });
+	await populateCache(options, config, {
+		target: "remote",
+		environment: getWranglerEnvironmentFlag(deployOptions.passthroughArgs),
+		cacheChunkSize: deployOptions.cacheChunkSize,
+	});
 
-  runWrangler(options, ["deploy", ...deployOptions.passthroughArgs], { logging: "all" });
+	runWrangler(options, ["deploy", ...deployOptions.passthroughArgs], { logging: "all" });
 }

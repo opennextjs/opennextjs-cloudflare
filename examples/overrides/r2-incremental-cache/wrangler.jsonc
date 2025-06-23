@@ -1,37 +1,37 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "main": ".open-next/worker.js",
-  "name": "r2-incremental-cache",
-  "compatibility_date": "2025-02-04",
-  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
-  "env": {
-    "e2e": {
-      "d1_databases": [
-        {
-          "binding": "NEXT_TAG_CACHE_D1",
-          "database_id": "NEXT_TAG_CACHE_D1",
-          "database_name": "NEXT_TAG_CACHE_D1"
-        }
-      ],
-      "services": [
-        {
-          "binding": "WORKER_SELF_REFERENCE",
-          "service": "r2-incremental-cache-e2e"
-        }
-      ],
-      "r2_buckets": [
-        {
-          "binding": "NEXT_INC_CACHE_R2_BUCKET",
-          "bucket_name": "cache"
-        }
-      ]
-    },
-    "prod": {
-      // left blank to test that environment configuration works properly
-    }
-  }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"main": ".open-next/worker.js",
+	"name": "r2-incremental-cache",
+	"compatibility_date": "2025-02-04",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"env": {
+		"e2e": {
+			"d1_databases": [
+				{
+					"binding": "NEXT_TAG_CACHE_D1",
+					"database_id": "NEXT_TAG_CACHE_D1",
+					"database_name": "NEXT_TAG_CACHE_D1"
+				}
+			],
+			"services": [
+				{
+					"binding": "WORKER_SELF_REFERENCE",
+					"service": "r2-incremental-cache-e2e"
+				}
+			],
+			"r2_buckets": [
+				{
+					"binding": "NEXT_INC_CACHE_R2_BUCKET",
+					"bucket_name": "cache"
+				}
+			]
+		},
+		"prod": {
+			// left blank to test that environment configuration works properly
+		}
+	}
 }

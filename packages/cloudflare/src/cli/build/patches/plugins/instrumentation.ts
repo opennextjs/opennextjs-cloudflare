@@ -8,36 +8,36 @@ import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-upd
 import { normalizePath } from "../../utils/normalize-path.js";
 
 export function patchInstrumentation(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
-  const builtInstrumentationPath = getBuiltInstrumentationPath(buildOpts);
+	const builtInstrumentationPath = getBuiltInstrumentationPath(buildOpts);
 
-  updater.updateContent("patch-instrumentation-next15", [
-    {
-      field: {
-        filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/,
-        contentFilter: /async loadInstrumentationModule\(/,
-        callback: ({ contents }) => patchCode(contents, getNext15Rule(builtInstrumentationPath)),
-      },
-    },
-  ]);
+	updater.updateContent("patch-instrumentation-next15", [
+		{
+			field: {
+				filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/,
+				contentFilter: /async loadInstrumentationModule\(/,
+				callback: ({ contents }) => patchCode(contents, getNext15Rule(builtInstrumentationPath)),
+			},
+		},
+	]);
 
-  updater.updateContent("patch-instrumentation-next14", [
-    {
-      field: {
-        filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/,
-        contentFilter: /async prepareImpl\(/,
-        callback: ({ contents }) => patchCode(contents, getNext14Rule(builtInstrumentationPath)),
-      },
-    },
-  ]);
+	updater.updateContent("patch-instrumentation-next14", [
+		{
+			field: {
+				filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/,
+				contentFilter: /async prepareImpl\(/,
+				callback: ({ contents }) => patchCode(contents, getNext14Rule(builtInstrumentationPath)),
+			},
+		},
+	]);
 
-  return {
-    name: "patch-instrumentation",
-    setup() {},
-  };
+	return {
+		name: "patch-instrumentation",
+		setup() {},
+	};
 }
 
 export function getNext15Rule(builtInstrumentationPath: string | null) {
-  return `
+	return `
     rule:
       kind: method_definition
       all:
@@ -53,7 +53,7 @@ export function getNext15Rule(builtInstrumentationPath: string | null) {
 }
 
 export function getNext14Rule(builtInstrumentationPath: string | null) {
-  return `
+	return `
     rule:
       kind: method_definition
       any:
@@ -78,15 +78,15 @@ export function getNext14Rule(builtInstrumentationPath: string | null) {
  * @returns the path to instrumentation.js, or null if it doesn't exist
  */
 function getBuiltInstrumentationPath(buildOpts: BuildOptions): string | null {
-  const { outputDir } = buildOpts;
+	const { outputDir } = buildOpts;
 
-  const maybeBuiltInstrumentationPath = join(
-    outputDir,
-    "server-functions/default",
-    getPackagePath(buildOpts),
-    `.next/server/${INSTRUMENTATION_HOOK_FILENAME}.js`
-  );
-  return existsSync(maybeBuiltInstrumentationPath) ? normalizePath(maybeBuiltInstrumentationPath) : null;
+	const maybeBuiltInstrumentationPath = join(
+		outputDir,
+		"server-functions/default",
+		getPackagePath(buildOpts),
+		`.next/server/${INSTRUMENTATION_HOOK_FILENAME}.js`
+	);
+	return existsSync(maybeBuiltInstrumentationPath) ? normalizePath(maybeBuiltInstrumentationPath) : null;
 }
 
 /**

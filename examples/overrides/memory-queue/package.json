@@ -1,29 +1,29 @@
 {
-  "name": "memory-queue",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "build:worker": "pnpm opennextjs-cloudflare build",
-    "preview:worker": "pnpm opennextjs-cloudflare preview",
-    "preview": "pnpm build:worker && pnpm preview:worker",
-    "e2e": "playwright test -c e2e/playwright.config.ts"
-  },
-  "dependencies": {
-    "react": "catalog:e2e",
-    "react-dom": "catalog:e2e",
-    "next": "catalog:e2e"
-  },
-  "devDependencies": {
-    "@opennextjs/cloudflare": "workspace:*",
-    "@playwright/test": "catalog:",
-    "@types/node": "catalog:",
-    "@types/react": "catalog:e2e",
-    "@types/react-dom": "catalog:e2e",
-    "typescript": "catalog:",
-    "wrangler": "catalog:"
-  }
+	"name": "memory-queue",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"dev": "next dev",
+		"build": "next build",
+		"start": "next start",
+		"lint": "next lint",
+		"build:worker": "pnpm opennextjs-cloudflare build",
+		"preview:worker": "pnpm opennextjs-cloudflare preview",
+		"preview": "pnpm build:worker && pnpm preview:worker",
+		"e2e": "playwright test -c e2e/playwright.config.ts"
+	},
+	"dependencies": {
+		"react": "catalog:e2e",
+		"react-dom": "catalog:e2e",
+		"next": "catalog:e2e"
+	},
+	"devDependencies": {
+		"@opennextjs/cloudflare": "workspace:*",
+		"@playwright/test": "catalog:",
+		"@types/node": "catalog:",
+		"@types/react": "catalog:e2e",
+		"@types/react-dom": "catalog:e2e",
+		"typescript": "catalog:",
+		"wrangler": "catalog:"
+	}
 }

@@ -1,86 +1,86 @@
 {
-  "name": "@opennextjs/cloudflare",
-  "description": "Cloudflare builder for next apps",
-  "version": "1.3.1",
-  "type": "module",
-  "scripts": {
-    "clean": "rimraf dist",
-    "build": "pnpm clean && tsc",
-    "build:watch": "tsc -w",
-    "lint:check": "eslint",
-    "lint:fix": "eslint --fix",
-    "ts:check": "tsc --noEmit",
-    "test": "vitest --run",
-    "test:watch": "vitest"
-  },
-  "bin": {
-    "opennextjs-cloudflare": "dist/cli/index.js"
-  },
-  "main": "./dist/api/index.js",
-  "types": "./dist/api/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/api/index.js",
-      "types": "./dist/api/index.d.ts",
-      "default": "./dist/api/index.js"
-    },
-    "./*": {
-      "import": "./dist/api/*.js",
-      "types": "./dist/api/*.d.ts",
-      "default": "./dist/api/*.js"
-    }
-  },
-  "files": [
-    "README.md",
-    "dist",
-    "templates"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/opennextjs/opennextjs-cloudflare.git",
-    "directory": "packages/cloudflare"
-  },
-  "keywords": [
-    "opennextjs-cloudflare",
-    "cloudflare",
-    "workers",
-    "next.js"
-  ],
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/opennextjs/opennextjs-cloudflare/issues"
-  },
-  "homepage": "https://github.com/opennextjs/opennextjs-cloudflare",
-  "dependencies": {
-    "@dotenvx/dotenvx": "catalog:",
-    "@opennextjs/aws": "3.6.6",
-    "enquirer": "^2.4.1",
-    "glob": "catalog:",
-    "ts-tqdm": "^0.8.6"
-  },
-  "devDependencies": {
-    "@cloudflare/workers-types": "catalog:",
-    "@eslint/js": "catalog:",
-    "@tsconfig/strictest": "catalog:",
-    "@types/mock-fs": "catalog:",
-    "@types/node": "catalog:",
-    "@types/picomatch": "^4.0.0",
-    "diff": "^8.0.2",
-    "esbuild": "catalog:",
-    "eslint": "catalog:",
-    "eslint-plugin-import": "catalog:",
-    "eslint-plugin-simple-import-sort": "catalog:",
-    "eslint-plugin-unicorn": "catalog:",
-    "globals": "catalog:",
-    "mock-fs": "catalog:",
-    "next": "catalog:",
-    "picomatch": "^4.0.2",
-    "rimraf": "catalog:",
-    "typescript": "catalog:",
-    "typescript-eslint": "catalog:",
-    "vitest": "catalog:"
-  },
-  "peerDependencies": {
-    "wrangler": "catalog:"
-  }
+	"name": "@opennextjs/cloudflare",
+	"description": "Cloudflare builder for next apps",
+	"version": "1.3.1",
+	"type": "module",
+	"scripts": {
+		"clean": "rimraf dist",
+		"build": "pnpm clean && tsc",
+		"build:watch": "tsc -w",
+		"lint:check": "eslint",
+		"lint:fix": "eslint --fix",
+		"ts:check": "tsc --noEmit",
+		"test": "vitest --run",
+		"test:watch": "vitest"
+	},
+	"bin": {
+		"opennextjs-cloudflare": "dist/cli/index.js"
+	},
+	"main": "./dist/api/index.js",
+	"types": "./dist/api/index.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/api/index.js",
+			"types": "./dist/api/index.d.ts",
+			"default": "./dist/api/index.js"
+		},
+		"./*": {
+			"import": "./dist/api/*.js",
+			"types": "./dist/api/*.d.ts",
+			"default": "./dist/api/*.js"
+		}
+	},
+	"files": [
+		"README.md",
+		"dist",
+		"templates"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/opennextjs/opennextjs-cloudflare.git",
+		"directory": "packages/cloudflare"
+	},
+	"keywords": [
+		"opennextjs-cloudflare",
+		"cloudflare",
+		"workers",
+		"next.js"
+	],
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/opennextjs/opennextjs-cloudflare/issues"
+	},
+	"homepage": "https://github.com/opennextjs/opennextjs-cloudflare",
+	"dependencies": {
+		"@dotenvx/dotenvx": "catalog:",
+		"@opennextjs/aws": "3.6.6",
+		"enquirer": "^2.4.1",
+		"glob": "catalog:",
+		"ts-tqdm": "^0.8.6"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "catalog:",
+		"@eslint/js": "catalog:",
+		"@tsconfig/strictest": "catalog:",
+		"@types/mock-fs": "catalog:",
+		"@types/node": "catalog:",
+		"@types/picomatch": "^4.0.0",
+		"diff": "^8.0.2",
+		"esbuild": "catalog:",
+		"eslint": "catalog:",
+		"eslint-plugin-import": "catalog:",
+		"eslint-plugin-simple-import-sort": "catalog:",
+		"eslint-plugin-unicorn": "catalog:",
+		"globals": "catalog:",
+		"mock-fs": "catalog:",
+		"next": "catalog:",
+		"picomatch": "^4.0.2",
+		"rimraf": "catalog:",
+		"typescript": "catalog:",
+		"typescript-eslint": "catalog:",
+		"vitest": "catalog:"
+	},
+	"peerDependencies": {
+		"wrangler": "catalog:"
+	}
 }

@@ -1,3 +1,3 @@
 export default async function Nested() {
-  return <div>Nested</div>;
+	return <div>Nested</div>;
 }

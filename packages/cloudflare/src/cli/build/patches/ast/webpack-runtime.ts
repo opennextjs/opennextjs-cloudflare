@@ -28,7 +28,7 @@ import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 
 // Inline the code when there are multiple chunks
 export function buildMultipleChunksRule(chunks: number[]) {
-  return `
+	return `
 rule:
   pattern: ($CHUNK_ID, $_PROMISES) => { $$$ }
   inside: {pattern: $_.$_.require = $$$_, stopBy: end}
@@ -74,24 +74,24 @@ fix: |
  * the webpack dynamic requires.
  */
 export async function patchWebpackRuntime(buildOpts: BuildOptions) {
-  const { outputDir } = buildOpts;
+	const { outputDir } = buildOpts;
 
-  const dotNextServerDir = join(
-    outputDir,
-    "server-functions/default",
-    getPackagePath(buildOpts),
-    ".next/server"
-  );
+	const dotNextServerDir = join(
+		outputDir,
+		"server-functions/default",
+		getPackagePath(buildOpts),
+		".next/server"
+	);
 
-  // Look for all the chunks.
-  const chunks = readdirSync(join(dotNextServerDir, "chunks"))
-    .filter((chunk) => /^\d+\.js$/.test(chunk))
-    .map((chunk) => {
-      return Number(chunk.replace(/\.js$/, ""));
-    });
+	// Look for all the chunks.
+	const chunks = readdirSync(join(dotNextServerDir, "chunks"))
+		.filter((chunk) => /^\d+\.js$/.test(chunk))
+		.map((chunk) => {
+			return Number(chunk.replace(/\.js$/, ""));
+		});
 
-  patchFile(join(dotNextServerDir, "webpack-runtime.js"), chunks);
-  patchFile(join(dotNextServerDir, "webpack-api-runtime.js"), chunks);
+	patchFile(join(dotNextServerDir, "webpack-runtime.js"), chunks);
+	patchFile(join(dotNextServerDir, "webpack-api-runtime.js"), chunks);
 }
 
 /**
@@ -101,10 +101,10 @@ export async function patchWebpackRuntime(buildOpts: BuildOptions) {
  * @param chunks List of chunks in the chunks folder.
  */
 function patchFile(filename: string, chunks: number[]) {
-  if (existsSync(filename)) {
-    let code = readFileSync(filename, "utf-8");
-    code = patchCode(code, buildMultipleChunksRule(chunks));
-    code = patchCode(code, singleChunkRule);
-    writeFileSync(filename, code);
-  }
+	if (existsSync(filename)) {
+		let code = readFileSync(filename, "utf-8");
+		code = patchCode(code, buildMultipleChunksRule(chunks));
+		code = patchCode(code, singleChunkRule);
+		writeFileSync(filename, code);
+	}
 }

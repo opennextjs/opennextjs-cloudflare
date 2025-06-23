@@ -4,3 +4,4 @@ pnpm-lock.yaml
 .vscode/setting.json
 test-fixtures
 test-snapshots
+playwright-report

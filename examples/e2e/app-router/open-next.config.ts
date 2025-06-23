@@ -6,19 +6,19 @@ import queueCache from "@opennextjs/cloudflare/overrides/queue/queue-cache";
 import { purgeCache } from "@opennextjs/cloudflare/overrides/cache-purge/index";
 
 export default defineCloudflareConfig({
-  incrementalCache: r2IncrementalCache,
-  // With such a configuration, we could have up to 12 * (8 + 2) = 120 Durable Objects instances
-  tagCache: shardedTagCache({
-    baseShardSize: 12,
-    shardReplication: {
-      numberOfSoftReplicas: 8,
-      numberOfHardReplicas: 2,
-      regionalReplication: {
-        defaultRegion: "enam",
-      },
-    },
-  }),
-  cachePurge: purgeCache({ type: "durableObject" }),
-  enableCacheInterception: true,
-  queue: queueCache(doQueue),
+	incrementalCache: r2IncrementalCache,
+	// With such a configuration, we could have up to 12 * (8 + 2) = 120 Durable Objects instances
+	tagCache: shardedTagCache({
+		baseShardSize: 12,
+		shardReplication: {
+			numberOfSoftReplicas: 8,
+			numberOfHardReplicas: 2,
+			regionalReplication: {
+				defaultRegion: "enam",
+			},
+		},
+	}),
+	cachePurge: purgeCache({ type: "durableObject" }),
+	enableCacheInterception: true,
+	queue: queueCache(doQueue),
 });

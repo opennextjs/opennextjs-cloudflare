@@ -27,17 +27,17 @@ fix:
 `;
 
 export const patchUseCacheIO: CodePatcher = {
-  name: "patch-use-cache",
-  patches: [
-    {
-      versions: ">=15.3.1",
-      field: {
-        pathFilter: getCrossPlatformPathRegex(String.raw`server/app-render/async-local-storage\.js$`, {
-          escape: false,
-        }),
-        contentFilter: /createSnapshot/,
-        patchCode: async ({ code }) => patchCode(code, rule),
-      },
-    },
-  ],
+	name: "patch-use-cache",
+	patches: [
+		{
+			versions: ">=15.3.1",
+			field: {
+				pathFilter: getCrossPlatformPathRegex(String.raw`server/app-render/async-local-storage\.js$`, {
+					escape: false,
+				}),
+				contentFilter: /createSnapshot/,
+				patchCode: async ({ code }) => patchCode(code, rule),
+			},
+		},
+	],
 };

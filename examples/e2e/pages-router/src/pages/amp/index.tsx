@@ -9,31 +9,31 @@
 export const config = { amp: true };
 
 export async function getServerSideProps() {
-  return {
-    props: {
-      time: new Date().toISOString(),
-    },
-  };
+	return {
+		props: {
+			time: new Date().toISOString(),
+		},
+	};
 }
 
 function MyAmpPage({ time }: { time: string }) {
-  const date = new Date(time);
+	const date = new Date(time);
 
-  return (
-    <div>
-      <p>Some time: {date.toJSON()}</p>
-      {/* @ts-expect-error AMP Component not recognized by TypeScript */}
-      <amp-timeago
-        width="0"
-        height="15"
-        datetime={date.toJSON()}
-        layout="responsive"
-        data-testid="amp-timeago"
-      >
-        .{/* @ts-ignore */}
-      </amp-timeago>
-    </div>
-  );
+	return (
+		<div>
+			<p>Some time: {date.toJSON()}</p>
+			{/* @ts-expect-error AMP Component not recognized by TypeScript */}
+			<amp-timeago
+				width="0"
+				height="15"
+				datetime={date.toJSON()}
+				layout="responsive"
+				data-testid="amp-timeago"
+			>
+				.{/* @ts-ignore */}
+			</amp-timeago>
+		</div>
+	);
 }
 
 export default MyAmpPage;

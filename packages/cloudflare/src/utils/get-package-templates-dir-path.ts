@@ -11,5 +11,5 @@ const templatesDirPath = path.join(__dirname, "/../../templates");
  * @returns the resolved path of the templates directory
  */
 export function getPackageTemplatesDirPath(): string {
-  return templatesDirPath;
+	return templatesDirPath;
 }

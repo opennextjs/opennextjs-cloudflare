@@ -10,6 +10,6 @@ import { createPatch } from "diff";
  * @returns diff in unified diff format
  */
 export function computePatchDiff(filename: string, src: string, rule: string): string {
-  const dst = patchCode(src, rule);
-  return createPatch(filename, src, dst);
+	const dst = patchCode(src, rule);
+	return createPatch(filename, src, dst);
 }

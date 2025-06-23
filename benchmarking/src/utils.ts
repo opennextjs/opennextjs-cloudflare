@@ -8,34 +8,34 @@ import ora from "ora";
  * @returns The operations results
  */
 export async function parallelRunWithSpinner<T>(
-  spinnerText: string,
-  operations: (() => Promise<T>)[]
+	spinnerText: string,
+	operations: (() => Promise<T>)[]
 ): Promise<T[]> {
-  const spinner = ora({
-    discardStdin: false,
-    hideCursor: false,
-  }).start();
+	const spinner = ora({
+		discardStdin: false,
+		hideCursor: false,
+	}).start();
 
-  let doneCount = 0;
+	let doneCount = 0;
 
-  const updateSpinnerText = () => {
-    doneCount++;
-    spinner.text = `${spinnerText} (${doneCount}/${operations.length})`;
-  };
+	const updateSpinnerText = () => {
+		doneCount++;
+		spinner.text = `${spinnerText} (${doneCount}/${operations.length})`;
+	};
 
-  updateSpinnerText();
+	updateSpinnerText();
 
-  const results = await Promise.all(
-    operations.map(async (operation) => {
-      const result = await operation();
-      updateSpinnerText();
-      return result;
-    })
-  );
+	const results = await Promise.all(
+		operations.map(async (operation) => {
+			const result = await operation();
+			updateSpinnerText();
+			return result;
+		})
+	);
 
-  spinner.stop();
+	spinner.stop();
 
-  return results;
+	return results;
 }
 
 /**
@@ -46,16 +46,16 @@ export async function parallelRunWithSpinner<T>(
  * @returns the computed percentile
  */
 export function getPercentile(data: number[], percentile: number): number {
-  if (Number.isNaN(percentile) || percentile < 0 || percentile > 100) {
-    throw new Error(`A percentile needs to be between 0 and 100, found: ${percentile}`);
-  }
+	if (Number.isNaN(percentile) || percentile < 0 || percentile > 100) {
+		throw new Error(`A percentile needs to be between 0 and 100, found: ${percentile}`);
+	}
 
-  data = data.sort((a, b) => a - b);
+	data = data.sort((a, b) => a - b);
 
-  const rank = (percentile / 100) * (data.length - 1);
+	const rank = (percentile / 100) * (data.length - 1);
 
-  const rankInt = Math.floor(rank);
-  const rankFract = rank - rankInt;
+	const rankInt = Math.floor(rank);
+	const rankFract = rank - rankInt;
 
-  return Math.round(data[rankInt]! + rankFract * (data[rankInt + 1]! - data[rankInt]!));
+	return Math.round(data[rankInt]! + rankFract * (data[rankInt + 1]! - data[rankInt]!));
 }

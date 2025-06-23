@@ -4,26 +4,26 @@ import nodePath from "node:path";
 import { getPercentile } from "./utils";
 
 export type FetchBenchmark = {
-  iterationsMs: number[];
-  averageMs: number;
-  p90Ms: number;
+	iterationsMs: number[];
+	averageMs: number;
+	p90Ms: number;
 };
 
 export type BenchmarkingResults = {
-  name: string;
-  path: string;
-  fetchBenchmark: FetchBenchmark;
+	name: string;
+	path: string;
+	fetchBenchmark: FetchBenchmark;
 }[];
 
 type BenchmarkFetchOptions = {
-  numberOfIterations?: number;
-  maxRandomDelayMs?: number;
-  fetch: (deploymentUrl: string) => Promise<Response>;
+	numberOfIterations?: number;
+	maxRandomDelayMs?: number;
+	fetch: (deploymentUrl: string) => Promise<Response>;
 };
 
 const defaultOptions: Required<Omit<BenchmarkFetchOptions, "fetch">> = {
-  numberOfIterations: 20,
-  maxRandomDelayMs: 15_000,
+	numberOfIterations: 20,
+	maxRandomDelayMs: 15_000,
 };
 
 /**
@@ -38,17 +38,17 @@ const defaultOptions: Required<Omit<BenchmarkFetchOptions, "fetch">> = {
  * @returns the benchmarking results for the application
  */
 export async function benchmarkApplicationResponseTime({
-  build,
-  deploy,
-  fetch,
+	build,
+	deploy,
+	fetch,
 }: {
-  build: () => Promise<void>;
-  deploy: () => Promise<string>;
-  fetch: (deploymentUrl: string) => Promise<Response>;
+	build: () => Promise<void>;
+	deploy: () => Promise<string>;
+	fetch: (deploymentUrl: string) => Promise<Response>;
 }): Promise<FetchBenchmark> {
-  await build();
-  const deploymentUrl = await deploy();
-  return benchmarkFetch(deploymentUrl, { fetch });
+	await build();
+	const deploymentUrl = await deploy();
+	return benchmarkFetch(deploymentUrl, { fetch });
 }
 
 /**
@@ -59,38 +59,38 @@ export async function benchmarkApplicationResponseTime({
  * @returns the computed average alongside all the single call times
  */
 async function benchmarkFetch(url: string, options: BenchmarkFetchOptions): Promise<FetchBenchmark> {
-  const benchmarkFetchCall = async () => {
-    const preTimeMs = performance.now();
-    const resp = await options.fetch(url);
-    const postTimeMs = performance.now();
+	const benchmarkFetchCall = async () => {
+		const preTimeMs = performance.now();
+		const resp = await options.fetch(url);
+		const postTimeMs = performance.now();
 
-    if (!resp.ok) {
-      throw new Error(`Error: Failed to fetch from "${url}"`);
-    }
+		if (!resp.ok) {
+			throw new Error(`Error: Failed to fetch from "${url}"`);
+		}
 
-    return postTimeMs - preTimeMs;
-  };
+		return postTimeMs - preTimeMs;
+	};
 
-  const resolvedOptions = { ...defaultOptions, ...options };
+	const resolvedOptions = { ...defaultOptions, ...options };
 
-  const iterationsMs = await Promise.all(
-    new Array(resolvedOptions.numberOfIterations).fill(null).map(async () => {
-      // let's add a random delay before we make the fetch
-      await nodeTimesPromises.setTimeout(Math.round(Math.random() * resolvedOptions.maxRandomDelayMs));
+	const iterationsMs = await Promise.all(
+		new Array(resolvedOptions.numberOfIterations).fill(null).map(async () => {
+			// let's add a random delay before we make the fetch
+			await nodeTimesPromises.setTimeout(Math.round(Math.random() * resolvedOptions.maxRandomDelayMs));
 
-      return benchmarkFetchCall();
-    })
-  );
+			return benchmarkFetchCall();
+		})
+	);
 
-  const averageMs = iterationsMs.reduce((time, sum) => sum + time) / iterationsMs.length;
+	const averageMs = iterationsMs.reduce((time, sum) => sum + time) / iterationsMs.length;
 
-  const p90Ms = getPercentile(iterationsMs, 90);
+	const p90Ms = getPercentile(iterationsMs, 90);
 
-  return {
-    iterationsMs,
-    averageMs,
-    p90Ms,
-  };
+	return {
+		iterationsMs,
+		averageMs,
+		p90Ms,
+	};
 }
 
 /**
@@ -100,18 +100,18 @@ async function benchmarkFetch(url: string, options: BenchmarkFetchOptions): Prom
  * @returns the path to the created json file
  */
 export async function saveResultsToDisk(results: BenchmarkingResults): Promise<string> {
-  const date = new Date();
+	const date = new Date();
 
-  const fileName = `${toSimpleDateString(date)}.json`;
+	const fileName = `${toSimpleDateString(date)}.json`;
 
-  const outputFile = nodePath.resolve(`./results/${fileName}`);
+	const outputFile = nodePath.resolve(`./results/${fileName}`);
 
-  await nodeFsPromises.mkdir(nodePath.dirname(outputFile), { recursive: true });
+	await nodeFsPromises.mkdir(nodePath.dirname(outputFile), { recursive: true });
 
-  const resultStr = JSON.stringify(results, null, 2);
-  await nodeFsPromises.writeFile(outputFile, resultStr);
+	const resultStr = JSON.stringify(results, null, 2);
+	await nodeFsPromises.writeFile(outputFile, resultStr);
 
-  return outputFile;
+	return outputFile;
 }
 
 /**
@@ -125,8 +125,8 @@ export async function saveResultsToDisk(results: BenchmarkingResults): Promise<s
  * @returns a string representing the date
  */
 function toSimpleDateString(date: Date): string {
-  const isoString = date.toISOString();
-  const isoDate = isoString.split(".")[0]!;
+	const isoString = date.toISOString();
+	const isoDate = isoString.split(".")[0]!;
 
-  return isoDate.replace("T", "_").replaceAll(":", "-");
+	return isoDate.replace("T", "_").replaceAll(":", "-");
 }

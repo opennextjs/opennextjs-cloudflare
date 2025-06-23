@@ -5,10 +5,10 @@ import r2IncrementalCache from "@opennextjs/cloudflare/overrides/incremental-cac
 import { withRegionalCache } from "@opennextjs/cloudflare/overrides/incremental-cache/regional-cache";
 
 export default defineCloudflareConfig({
-  incrementalCache: withRegionalCache(r2IncrementalCache, {
-    mode: "long-lived",
-    shouldLazilyUpdateOnCacheHit: true,
-  }),
-  tagCache: d1NextTagCache,
-  queue: memoryQueue,
+	incrementalCache: withRegionalCache(r2IncrementalCache, {
+		mode: "long-lived",
+		shouldLazilyUpdateOnCacheHit: true,
+	}),
+	tagCache: d1NextTagCache,
+	queue: memoryQueue,
 });

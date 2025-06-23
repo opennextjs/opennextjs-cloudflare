@@ -7,8 +7,8 @@ import { expect, test } from "@playwright/test";
  * run only locally to the baseURL doesn't match
  */
 test.skip("Request.url is host", async ({ baseURL, page }) => {
-  await page.goto("/api/host");
+	await page.goto("/api/host");
 
-  const el = page.getByText(`{"url":"${baseURL}/api/host"}`);
-  await expect(el).toBeVisible();
+	const el = page.getByText(`{"url":"${baseURL}/api/host"}`);
+	await expect(el).toBeVisible();
 });

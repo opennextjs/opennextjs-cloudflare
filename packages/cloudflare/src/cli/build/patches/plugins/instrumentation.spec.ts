@@ -4,7 +4,7 @@ import { describe, expect, test } from "vitest";
 import { getNext14Rule, getNext15Rule } from "./instrumentation.js";
 
 describe("LoadInstrumentationModule (Next15)", () => {
-  const code = `
+	const code = `
       export default class NextNodeServer extends BaseServer {
         protected async loadInstrumentationModule() {
           if (!this.serverOptions.dev) {
@@ -31,27 +31,27 @@ describe("LoadInstrumentationModule (Next15)", () => {
       }
     `;
 
-  test("patch when an instrumentation file is not present", async () => {
-    expect(patchCode(code, getNext15Rule(null))).toMatchInlineSnapshot(`
+	test("patch when an instrumentation file is not present", async () => {
+		expect(patchCode(code, getNext15Rule(null))).toMatchInlineSnapshot(`
         "export default class NextNodeServer extends BaseServer {
                 async loadInstrumentationModule() { this.instrumentation = null; return this.instrumentation; }
               }
             "
       `);
-  });
+	});
 
-  test("patch when an instrumentation file is present", async () => {
-    expect(patchCode(code, getNext15Rule("/_file_exists_/instrumentation.js"))).toMatchInlineSnapshot(`
+	test("patch when an instrumentation file is present", async () => {
+		expect(patchCode(code, getNext15Rule("/_file_exists_/instrumentation.js"))).toMatchInlineSnapshot(`
         "export default class NextNodeServer extends BaseServer {
                 async loadInstrumentationModule() { this.instrumentation = require('/_file_exists_/instrumentation.js'); return this.instrumentation; }
               }
             "
       `);
-  });
+	});
 });
 
 describe("prepareImpl (Next14)", () => {
-  const code = `
+	const code = `
       export default class NextNodeServer extends BaseServer {
           async prepareImpl() {
             await super.prepareImpl();
@@ -70,8 +70,8 @@ describe("prepareImpl (Next14)", () => {
       }
     `;
 
-  test("patch when an instrumentation file is not present", async () => {
-    expect(patchCode(code, getNext14Rule(null))).toMatchInlineSnapshot(`
+	test("patch when an instrumentation file is not present", async () => {
+		expect(patchCode(code, getNext14Rule(null))).toMatchInlineSnapshot(`
       "export default class NextNodeServer extends BaseServer {
                 async prepareImpl() {
         await super.prepareImpl();
@@ -81,10 +81,10 @@ describe("prepareImpl (Next14)", () => {
             }
           "
     `);
-  });
+	});
 
-  test("patch when an instrumentation file is present", async () => {
-    expect(patchCode(code, getNext14Rule("/_file_exists_/instrumentation.js"))).toMatchInlineSnapshot(`
+	test("patch when an instrumentation file is present", async () => {
+		expect(patchCode(code, getNext14Rule("/_file_exists_/instrumentation.js"))).toMatchInlineSnapshot(`
       "export default class NextNodeServer extends BaseServer {
                 async prepareImpl() {
         await super.prepareImpl();
@@ -94,5 +94,5 @@ describe("prepareImpl (Next14)", () => {
             }
           "
     `);
-  });
+	});
 });

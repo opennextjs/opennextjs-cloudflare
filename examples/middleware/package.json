@@ -1,31 +1,31 @@
 {
-  "name": "middleware",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "build:worker": "pnpm opennextjs-cloudflare build",
-    "preview:worker": "pnpm opennextjs-cloudflare preview",
-    "preview": "pnpm build:worker && pnpm preview:worker",
-    "e2e": "playwright test -c e2e/playwright.config.ts",
-    "e2e:dev": "playwright test -c e2e/playwright.dev.config.ts"
-  },
-  "dependencies": {
-    "@clerk/nextjs": "6.9.6",
-    "next": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:"
-  },
-  "devDependencies": {
-    "@opennextjs/cloudflare": "workspace:*",
-    "@playwright/test": "catalog:",
-    "@types/node": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "eslint": "catalog:",
-    "typescript": "catalog:",
-    "wrangler": "catalog:"
-  }
+	"name": "middleware",
+	"private": true,
+	"scripts": {
+		"dev": "next dev",
+		"build": "next build",
+		"start": "next start",
+		"lint": "next lint",
+		"build:worker": "pnpm opennextjs-cloudflare build",
+		"preview:worker": "pnpm opennextjs-cloudflare preview",
+		"preview": "pnpm build:worker && pnpm preview:worker",
+		"e2e": "playwright test -c e2e/playwright.config.ts",
+		"e2e:dev": "playwright test -c e2e/playwright.dev.config.ts"
+	},
+	"dependencies": {
+		"@clerk/nextjs": "6.9.6",
+		"next": "catalog:",
+		"react": "catalog:",
+		"react-dom": "catalog:"
+	},
+	"devDependencies": {
+		"@opennextjs/cloudflare": "workspace:*",
+		"@playwright/test": "catalog:",
+		"@types/node": "catalog:",
+		"@types/react": "catalog:",
+		"@types/react-dom": "catalog:",
+		"eslint": "catalog:",
+		"typescript": "catalog:",
+		"wrangler": "catalog:"
+	}
 }

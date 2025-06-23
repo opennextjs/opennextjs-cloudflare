@@ -14,77 +14,77 @@ import { askConfirmation } from "../../utils/ask-confirmation.js";
  * @param projectOpts The options for the project
  */
 export async function createWranglerConfigIfNotExistent(projectOpts: ProjectOptions): Promise<void> {
-  const possibleExts = ["toml", "json", "jsonc"];
+	const possibleExts = ["toml", "json", "jsonc"];
 
-  const wranglerConfigFileExists = possibleExts.some((ext) =>
-    existsSync(join(projectOpts.sourceDir, `wrangler.${ext}`))
-  );
-  if (wranglerConfigFileExists) {
-    return;
-  }
+	const wranglerConfigFileExists = possibleExts.some((ext) =>
+		existsSync(join(projectOpts.sourceDir, `wrangler.${ext}`))
+	);
+	if (wranglerConfigFileExists) {
+		return;
+	}
 
-  const answer = await askConfirmation(
-    "No `wrangler.(toml|json|jsonc)` config file found, do you want to create one?"
-  );
+	const answer = await askConfirmation(
+		"No `wrangler.(toml|json|jsonc)` config file found, do you want to create one?"
+	);
 
-  if (!answer) {
-    console.warn(
-      "No Wrangler config file created" +
-        "\n" +
-        "(to avoid this check use the `--skipWranglerConfigCheck` flag or set a `SKIP_WRANGLER_CONFIG_CHECK` environment variable to `yes`)"
-    );
-    return;
-  }
+	if (!answer) {
+		console.warn(
+			"No Wrangler config file created" +
+				"\n" +
+				"(to avoid this check use the `--skipWranglerConfigCheck` flag or set a `SKIP_WRANGLER_CONFIG_CHECK` environment variable to `yes`)"
+		);
+		return;
+	}
 
-  let wranglerConfig = readFileSync(join(getPackageTemplatesDirPath(), "wrangler.jsonc"), "utf8");
+	let wranglerConfig = readFileSync(join(getPackageTemplatesDirPath(), "wrangler.jsonc"), "utf8");
 
-  const appName = getAppNameFromPackageJson(projectOpts.sourceDir) ?? "app-name";
-  if (appName) {
-    wranglerConfig = wranglerConfig.replace('"app-name"', JSON.stringify(appName.replaceAll("_", "-")));
-  }
+	const appName = getAppNameFromPackageJson(projectOpts.sourceDir) ?? "app-name";
+	if (appName) {
+		wranglerConfig = wranglerConfig.replace('"app-name"', JSON.stringify(appName.replaceAll("_", "-")));
+	}
 
-  const compatDate = await getLatestCompatDate();
-  if (compatDate) {
-    wranglerConfig = wranglerConfig.replace(
-      /"compatibility_date": "\d{4}-\d{2}-\d{2}"/,
-      `"compatibility_date": ${JSON.stringify(compatDate)}`
-    );
-  }
+	const compatDate = await getLatestCompatDate();
+	if (compatDate) {
+		wranglerConfig = wranglerConfig.replace(
+			/"compatibility_date": "\d{4}-\d{2}-\d{2}"/,
+			`"compatibility_date": ${JSON.stringify(compatDate)}`
+		);
+	}
 
-  writeFileSync(join(projectOpts.sourceDir, "wrangler.jsonc"), wranglerConfig);
+	writeFileSync(join(projectOpts.sourceDir, "wrangler.jsonc"), wranglerConfig);
 }
 
 function getAppNameFromPackageJson(sourceDir: string): string | undefined {
-  try {
-    const packageJsonStr = readFileSync(join(sourceDir, "package.json"), "utf8");
-    const packageJson: Record<string, string> = JSON.parse(packageJsonStr);
-    if (typeof packageJson.name === "string") return packageJson.name;
-  } catch {
-    /* empty */
-  }
+	try {
+		const packageJsonStr = readFileSync(join(sourceDir, "package.json"), "utf8");
+		const packageJson: Record<string, string> = JSON.parse(packageJsonStr);
+		if (typeof packageJson.name === "string") return packageJson.name;
+	} catch {
+		/* empty */
+	}
 }
 
 export async function getLatestCompatDate(): Promise<string | undefined> {
-  try {
-    const resp = await fetch(`https://registry.npmjs.org/workerd`);
-    const latestWorkerdVersion = (
-      (await resp.json()) as {
-        "dist-tags": { latest: string };
-      }
-    )["dist-tags"].latest;
+	try {
+		const resp = await fetch(`https://registry.npmjs.org/workerd`);
+		const latestWorkerdVersion = (
+			(await resp.json()) as {
+				"dist-tags": { latest: string };
+			}
+		)["dist-tags"].latest;
 
-    // The format of the workerd version is `major.yyyymmdd.patch`.
-    const match = latestWorkerdVersion.match(/\d+\.(\d{4})(\d{2})(\d{2})\.\d+/);
+		// The format of the workerd version is `major.yyyymmdd.patch`.
+		const match = latestWorkerdVersion.match(/\d+\.(\d{4})(\d{2})(\d{2})\.\d+/);
 
-    if (match) {
-      const [, year, month, date] = match;
-      const compatDate = `${year}-${month}-${date}`;
+		if (match) {
+			const [, year, month, date] = match;
+			const compatDate = `${year}-${month}-${date}`;
 
-      return compatDate;
-    }
-  } catch {
-    /* empty */
-  }
+			return compatDate;
+		}
+	} catch {
+		/* empty */
+	}
 }
 
 /**
@@ -95,17 +95,17 @@ export async function getLatestCompatDate(): Promise<string | undefined> {
  * @param sourceDir The source directory for the project
  */
 export async function createOpenNextConfigIfNotExistent(sourceDir: string): Promise<void> {
-  const openNextConfigPath = join(sourceDir, "open-next.config.ts");
+	const openNextConfigPath = join(sourceDir, "open-next.config.ts");
 
-  if (!existsSync(openNextConfigPath)) {
-    const answer = await askConfirmation(
-      "Missing required `open-next.config.ts` file, do you want to create one?"
-    );
+	if (!existsSync(openNextConfigPath)) {
+		const answer = await askConfirmation(
+			"Missing required `open-next.config.ts` file, do you want to create one?"
+		);
 
-    if (!answer) {
-      throw new Error("The `open-next.config.ts` file is required, aborting!");
-    }
+		if (!answer) {
+			throw new Error("The `open-next.config.ts` file is required, aborting!");
+		}
 
-    cpSync(join(getPackageTemplatesDirPath(), "open-next.config.ts"), openNextConfigPath);
-  }
+		cpSync(join(getPackageTemplatesDirPath(), "open-next.config.ts"), openNextConfigPath);
+	}
 }

@@ -4,9 +4,9 @@ import { describe, expect, test } from "vitest";
 import { buildMultipleChunksRule, singleChunkRule } from "./webpack-runtime.js";
 
 describe("webpack runtime", () => {
-  describe("multiple chunks", () => {
-    test("patch runtime", () => {
-      const code = `
+	describe("multiple chunks", () => {
+		test("patch runtime", () => {
+			const code = `
           /******/ 		// require() chunk loading for javascript
           /******/ 		__webpack_require__.f.require = (chunkId, promises) => {
           /******/ 			// "1" is the signal for "already loaded"
@@ -21,7 +21,7 @@ describe("webpack runtime", () => {
           };
       `;
 
-      expect(patchCode(code, buildMultipleChunksRule([1, 2, 3]))).toMatchInlineSnapshot(`
+			expect(patchCode(code, buildMultipleChunksRule([1, 2, 3]))).toMatchInlineSnapshot(`
         "/******/ 		// require() chunk loading for javascript
                   /******/ 		__webpack_require__.f.require = (chunkId, _) => {
           if (!installedChunks[chunkId]) {
@@ -37,15 +37,15 @@ describe("webpack runtime", () => {
         ;
               "
       `);
-    });
+		});
 
-    test("patch minified runtime", () => {
-      const code = `
+		test("patch minified runtime", () => {
+			const code = `
       t.f.require=(o,n)=>{e[o]||(658!=o?r(require("./chunks/"+t.u(o))):e[o]=1)}
       `;
 
-      expect(patchCode(code, buildMultipleChunksRule([1, 2, 3]))).toMatchInlineSnapshot(
-        `
+			expect(patchCode(code, buildMultipleChunksRule([1, 2, 3]))).toMatchInlineSnapshot(
+				`
         "t.f.require=(o, _) => {
           if (!e[o]) {
             switch (o) {
@@ -60,13 +60,13 @@ describe("webpack runtime", () => {
 
               "
       `
-      );
-    });
-  });
+			);
+		});
+	});
 
-  describe("single chunk", () => {
-    test("patch runtime", () => {
-      const code = `
+	describe("single chunk", () => {
+		test("patch runtime", () => {
+			const code = `
 /******/ 		// require() chunk loading for javascript
 /******/ 		__webpack_require__.f.require = (chunkId, promises) => {
 /******/ 			// "1" is the signal for "already loaded"
@@ -78,7 +78,7 @@ describe("webpack runtime", () => {
 /******/ 		};
 `;
 
-      expect(patchCode(code, singleChunkRule)).toMatchInlineSnapshot(`
+			expect(patchCode(code, singleChunkRule)).toMatchInlineSnapshot(`
         "/******/ 		// require() chunk loading for javascript
         /******/ 		__webpack_require__.f.require = (chunkId, _) => {
           if (!installedChunks[chunkId]) {
@@ -90,14 +90,14 @@ describe("webpack runtime", () => {
         ;
         "
       `);
-    });
+		});
 
-    test("patch minified runtime", () => {
-      const code = `
+		test("patch minified runtime", () => {
+			const code = `
       o.f.require=(t,a)=>{e[t]||(710==t?r(require("./chunks/"+o.u(t))):e[t]=1)}
       `;
 
-      expect(patchCode(code, singleChunkRule)).toMatchInlineSnapshot(`
+			expect(patchCode(code, singleChunkRule)).toMatchInlineSnapshot(`
         "o.f.require=(t, _) => {
           if (!e[t]) {
             try {
@@ -108,6 +108,6 @@ describe("webpack runtime", () => {
 
               "
       `);
-    });
-  });
+		});
+	});
 });

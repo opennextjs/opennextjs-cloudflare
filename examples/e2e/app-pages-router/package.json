@@ -1,35 +1,35 @@
 {
-  "name": "app-pages-router",
-  "version": "0.1.6",
-  "private": true,
-  "scripts": {
-    "openbuild": "node ../../packages/open-next/dist/index.js build --build-command \"npx turbo build\"",
-    "dev": "next dev --turbopack --port 3003",
-    "build": "next build",
-    "start": "next start --port 3003",
-    "lint": "next lint",
-    "clean": "rm -rf .turbo node_modules .next .open-next",
-    "build:worker": "pnpm opennextjs-cloudflare build",
-    "preview:worker": "pnpm opennextjs-cloudflare preview",
-    "preview": "pnpm build:worker && pnpm preview:worker",
-    "e2e": "playwright test -c e2e/playwright.config.ts"
-  },
-  "dependencies": {
-    "@opennextjs/cloudflare": "workspace:*",
-    "@example/shared": "workspace:*",
-    "next": "catalog:e2e",
-    "react": "catalog:e2e",
-    "react-dom": "catalog:e2e"
-  },
-  "devDependencies": {
-    "@playwright/test": "catalog:",
-    "@types/node": "catalog:e2e",
-    "@types/react": "catalog:e2e",
-    "@types/react-dom": "catalog:e2e",
-    "autoprefixer": "catalog:e2e",
-    "postcss": "catalog:e2e",
-    "tailwindcss": "catalog:e2e",
-    "typescript": "catalog:default",
-    "wrangler": "catalog:"
-  }
+	"name": "app-pages-router",
+	"version": "0.1.6",
+	"private": true,
+	"scripts": {
+		"openbuild": "node ../../packages/open-next/dist/index.js build --build-command \"npx turbo build\"",
+		"dev": "next dev --turbopack --port 3003",
+		"build": "next build",
+		"start": "next start --port 3003",
+		"lint": "next lint",
+		"clean": "rm -rf .turbo node_modules .next .open-next",
+		"build:worker": "pnpm opennextjs-cloudflare build",
+		"preview:worker": "pnpm opennextjs-cloudflare preview",
+		"preview": "pnpm build:worker && pnpm preview:worker",
+		"e2e": "playwright test -c e2e/playwright.config.ts"
+	},
+	"dependencies": {
+		"@opennextjs/cloudflare": "workspace:*",
+		"@example/shared": "workspace:*",
+		"next": "catalog:e2e",
+		"react": "catalog:e2e",
+		"react-dom": "catalog:e2e"
+	},
+	"devDependencies": {
+		"@playwright/test": "catalog:",
+		"@types/node": "catalog:e2e",
+		"@types/react": "catalog:e2e",
+		"@types/react-dom": "catalog:e2e",
+		"autoprefixer": "catalog:e2e",
+		"postcss": "catalog:e2e",
+		"tailwindcss": "catalog:e2e",
+		"typescript": "catalog:default",
+		"wrangler": "catalog:"
+	}
 }

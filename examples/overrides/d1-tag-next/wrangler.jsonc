@@ -1,27 +1,27 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "main": ".open-next/worker.js",
-  "name": "ssg-app",
-  "compatibility_date": "2025-02-04",
-  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
-  "vars": {
-    "APP_VERSION": "1.2.345"
-  },
-  "kv_namespaces": [
-    {
-      "binding": "NEXT_INC_CACHE_KV",
-      "id": "<BINDING_ID>"
-    }
-  ],
-  "d1_databases": [
-    {
-      "binding": "NEXT_TAG_CACHE_D1",
-      "database_id": "NEXT_TAG_CACHE_D1",
-      "database_name": "NEXT_TAG_CACHE_D1"
-    }
-  ]
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"main": ".open-next/worker.js",
+	"name": "ssg-app",
+	"compatibility_date": "2025-02-04",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"vars": {
+		"APP_VERSION": "1.2.345"
+	},
+	"kv_namespaces": [
+		{
+			"binding": "NEXT_INC_CACHE_KV",
+			"id": "<BINDING_ID>"
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "NEXT_TAG_CACHE_D1",
+			"database_id": "NEXT_TAG_CACHE_D1",
+			"database_name": "NEXT_TAG_CACHE_D1"
+		}
+	]
 }

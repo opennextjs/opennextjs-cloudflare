@@ -11,26 +11,26 @@ import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-upd
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
 export function inlineFindDir(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
-  return updater.updateContent("inline-find-dir", [
-    {
-      field: {
-        filter: getCrossPlatformPathRegex(String.raw`/next/dist/lib/find-pages-dir\.js$`, { escape: false }),
-        contentFilter: /function findDir\(/,
-        callback: async ({ contents }) => patchCode(contents, await getRule(buildOpts)),
-      },
-    },
-  ]);
+	return updater.updateContent("inline-find-dir", [
+		{
+			field: {
+				filter: getCrossPlatformPathRegex(String.raw`/next/dist/lib/find-pages-dir\.js$`, { escape: false }),
+				contentFilter: /function findDir\(/,
+				callback: async ({ contents }) => patchCode(contents, await getRule(buildOpts)),
+			},
+		},
+	]);
 }
 
 async function getRule(buildOpts: BuildOptions) {
-  const { outputDir } = buildOpts;
+	const { outputDir } = buildOpts;
 
-  const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts), ".next/server");
+	const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts), ".next/server");
 
-  const appExists = existsSync(join(baseDir, "app"));
-  const pagesExists = existsSync(join(baseDir, "pages"));
+	const appExists = existsSync(join(baseDir, "app"));
+	const pagesExists = existsSync(join(baseDir, "pages"));
 
-  return `
+	return `
 rule:
   pattern: function findDir($DIR, $NAME) { $$$_ }
 fix: |-

@@ -8,15 +8,15 @@ import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-upd
  * retains the same type of behavior but without using `eval`
  */
 export function patchDepdDeprecations(updater: ContentUpdater): Plugin {
-  return updater.updateContent("patch-depd-deprecations", [
-    {
-      field: {
-        filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/,
-        contentFilter: /argument fn must be a function/,
-        callback: ({ contents }) => patchCode(contents, rule),
-      },
-    },
-  ]);
+	return updater.updateContent("patch-depd-deprecations", [
+		{
+			field: {
+				filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/,
+				contentFilter: /argument fn must be a function/,
+				callback: ({ contents }) => patchCode(contents, rule),
+			},
+		},
+	]);
 }
 
 export const rule = `

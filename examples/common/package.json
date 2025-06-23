@@ -1,5 +1,5 @@
 {
-  "name": "common",
-  "private": true,
-  "type": "module"
+	"name": "common",
+	"private": true,
+	"type": "module"
 }
