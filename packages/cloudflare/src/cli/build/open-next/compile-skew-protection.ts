@@ -17,17 +17,21 @@ export async function compileSkewProtection(options: BuildOptions, config: OpenN
 
 	// Create a tree of assets located inside the base path
 	const assetPath = path.join(options.outputDir, "assets", globalThis.__NEXT_BASE_PATH__ ?? "");
-	const files = skewProtectionEnabled
+	const assets = skewProtectionEnabled
 		? await glob(`**/*`, {
 				windowsPathsNoEscape: true,
 				posix: true,
 				nodir: true,
 				absolute: false,
 				cwd: assetPath,
+				// All files located inside `_next/static` are static assets, no need to list them
+				ignore: ["_next/static/**"],
 			})
 		: [];
-	// All files located inside `_next/static` are static assets, no need to list them
-	const assetTree = filesToTree(files.filter((path) => !path.startsWith("_next/static/")));
+
+	console.log(assets);
+
+	const assetTree = filesToTree(assets);
 
 	await build({
 		entryPoints: [initPath],
@@ -45,7 +49,7 @@ export async function compileSkewProtection(options: BuildOptions, config: OpenN
 }
 
 /**
- * Converts a list a file to tree of `FolderNode`
+ * Converts a list of file paths into a tree of `FolderNode`
  *
  * @param paths The list of path
  * @returns The root node of the tree
