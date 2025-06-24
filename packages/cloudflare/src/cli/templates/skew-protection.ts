@@ -95,7 +95,7 @@ function maybeFetchAsset(request: Request, assets: Fetcher | undefined): Promise
  * A node represents a folder in the file tree
  */
 export type FolderNode = {
-	// List of file file in this folder
+	// List of files in this folder
 	f: string[];
 	// Sub-folders.
 	d: Record<string, FolderNode>;
