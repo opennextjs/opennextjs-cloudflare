@@ -60,11 +60,6 @@ export async function build(
 	buildHelper.initOutputDir(options);
 
 	compileCache(options);
-	compileEnvFiles(options);
-	compileInit(options);
-	compileImages(options);
-	compileSkewProtection(options, config);
-
 	// Compile middleware
 	await createMiddleware(options, { forceOnlyBuildOnce: true });
 
@@ -77,6 +72,12 @@ export async function build(
 			compileCacheAssetsManifestSqlFile(options, metaFiles);
 		}
 	}
+
+	compileEnvFiles(options);
+	compileInit(options);
+	compileImages(options);
+	// Compile skew protection, needs the assets to be copied first (see `createStaticAssets`)
+	compileSkewProtection(options, config);
 
 	await createServerBundle(options);
 

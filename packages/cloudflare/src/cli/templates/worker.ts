@@ -17,7 +17,7 @@ export { BucketCachePurge } from "./.build/durable-objects/bucket-cache-purge.js
 export default {
 	async fetch(request, env, ctx) {
 		return runWithCloudflareRequestContext(request, env, ctx, async () => {
-			const response = maybeGetSkewProtectionResponse(request);
+			const response = maybeGetSkewProtectionResponse(request, env.ASSETS);
 
 			if (response) {
 				return response;
