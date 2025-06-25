@@ -29,7 +29,6 @@ export async function compileSkewProtection(options: BuildOptions, config: OpenN
 			})
 		: [];
 
-	console.log(assets);
 
 	const assetTree = filesToTree(assets);
 
