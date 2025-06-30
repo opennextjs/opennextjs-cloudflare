@@ -1,3 +1,5 @@
+import { getPost } from "../../../../lib/posts";
+
 // Imported from https://nextjs.org/docs/app/building-your-application/data-fetching/incremental-static-regeneration
 interface Post {
 	id: string;
@@ -19,7 +21,7 @@ export async function generateStaticParams() {
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
 	const id = (await params).id;
-	const post: Post = await fetch(`https://api.vercel.app/blog/${id}`).then((res) => res.json());
+	const post: Post = await getPost({ id }).then((res) => res.json());
 	return (
 		<main>
 			<h1>{post.title}</h1>
