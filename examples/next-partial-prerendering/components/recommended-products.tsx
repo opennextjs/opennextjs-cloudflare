@@ -1,9 +1,12 @@
+import { connection } from 'next/server';
 import { Product } from '#/types/product';
 import { ProductCard } from '#/components/product-card';
 import { delayRecommendedProducts, withDelay } from '#/lib/delay';
 import { getProducts } from '#/lib/products';
 
 export async function RecommendedProducts() {
+	await connection();
+
 	let products: Product[] = await withDelay(
 		getProducts({ exclude: ['1'] }).then((res) => res.json()),
 		delayRecommendedProducts,

@@ -1,3 +1,4 @@
+import { connection } from 'next/server';
 import type { Product } from '#/types/product';
 import { Ping } from '#/components/ping';
 import { ProductEstimatedArrival } from '#/components/product-estimated-arrival';
@@ -13,6 +14,8 @@ import { cookies } from 'next/headers';
 import { getProduct } from '#/lib/products';
 
 async function AddToCartFromCookies() {
+	await connection();
+
 	// Get the cart count from the users cookies and pass it to the client
 	// AddToCart component
 	const cartCount = Number(cookies().get('_cart_count')?.value || '0');

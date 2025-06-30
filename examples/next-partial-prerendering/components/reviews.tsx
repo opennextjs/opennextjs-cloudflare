@@ -1,9 +1,12 @@
+import { connection } from 'next/server';
 import type { Review } from '#/types/review';
 import { ProductReviewCard } from '#/components/product-review-card';
 import { delayReviews, withDelay } from '#/lib/delay';
 import { getReviews } from '#/lib/reviews';
 
 export async function Reviews() {
+	await connection();
+
 	let reviews: Review[] = await withDelay(
 		getReviews().then((res) => res.json()),
 		delayReviews,

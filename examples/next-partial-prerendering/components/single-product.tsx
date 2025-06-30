@@ -1,3 +1,4 @@
+import { connection } from 'next/server';
 import { Pricing } from '#/components/pricing';
 import type { Product } from '#/types/product';
 import { ProductRating } from '#/components/product-rating';
@@ -5,6 +6,8 @@ import Image from 'next/image';
 import { getProduct } from '#/lib/products';
 
 export async function SingleProduct() {
+	await connection();
+
 	const product: Product = await getProduct({ id: '1' }).then((res) =>
 		res.json(),
 	);
