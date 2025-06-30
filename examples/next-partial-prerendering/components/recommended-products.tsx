@@ -1,19 +1,15 @@
+import { connection } from 'next/server';
 import { Product } from '#/types/product';
 import { ProductCard } from '#/components/product-card';
 import { delayRecommendedProducts, withDelay } from '#/lib/delay';
+import { getProducts } from '#/lib/products';
 
 export async function RecommendedProducts() {
+	// Tell Next.js to render dynamically at runtime instead of build-time
+	await connection();
+
 	let products: Product[] = await withDelay(
-		fetch(
-			// We intentionally delay the response to simulate a slow data
-			// request that would benefit from streaming
-			`https://app-router-api.vercel.app/api/products?filter=1`,
-			{
-				// We intentionally disable Next.js Cache to better demo
-				// streaming
-				cache: 'no-store',
-			},
-		).then((res) => res.json()),
+		getProducts({ exclude: ['1'] }).then((res) => res.json()),
 		delayRecommendedProducts,
 	);
 

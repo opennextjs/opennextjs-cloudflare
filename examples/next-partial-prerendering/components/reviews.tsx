@@ -1,19 +1,15 @@
+import { connection } from 'next/server';
 import type { Review } from '#/types/review';
 import { ProductReviewCard } from '#/components/product-review-card';
 import { delayReviews, withDelay } from '#/lib/delay';
+import { getReviews } from '#/lib/reviews';
 
 export async function Reviews() {
+	// Tell Next.js to render dynamically at runtime instead of build-time
+	await connection();
+
 	let reviews: Review[] = await withDelay(
-		fetch(
-			// We intentionally delay the response to simulate a slow data
-			// request that would benefit from streaming
-			`https://app-router-api.vercel.app/api/reviews`,
-			{
-				// We intentionally disable Next.js Cache to better demo
-				// streaming
-				cache: 'no-store',
-			},
-		).then((res) => res.json()),
+		getReviews().then((res) => res.json()),
 		delayReviews,
 	);
 

@@ -1,3 +1,4 @@
+import { connection } from 'next/server';
 import type { Product } from '#/types/product';
 import { Ping } from '#/components/ping';
 import { ProductEstimatedArrival } from '#/components/product-estimated-arrival';
@@ -10,8 +11,12 @@ import { Suspense } from 'react';
 import { AddToCart } from '#/components/add-to-cart';
 import { delayShippingEstimate, withDelay } from '#/lib/delay';
 import { cookies } from 'next/headers';
+import { getProduct } from '#/lib/products';
 
 async function AddToCartFromCookies() {
+	// Tell Next.js to render dynamically at runtime instead of build-time
+	await connection();
+
 	// Get the cart count from the users cookies and pass it to the client
 	// AddToCart component
 	const cartCount = Number(cookies().get('_cart_count')?.value || '0');
@@ -38,14 +43,7 @@ function LoadingDots() {
 
 async function UserSpecificDetails({ productId }: { productId: string }) {
 	const data = await withDelay(
-		fetch(
-			`https://app-router-api.vercel.app/api/products?id=${productId}&filter=price,usedPrice,leadTime,stock`,
-			{
-				// We intentionally disable Next.js Cache to better demo
-				// streaming
-				cache: 'no-store',
-			},
-		),
+		getProduct({ id: productId }),
 		delayShippingEstimate,
 	);
 
