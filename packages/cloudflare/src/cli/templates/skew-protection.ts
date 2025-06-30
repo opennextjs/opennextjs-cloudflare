@@ -25,25 +25,21 @@ export const CURRENT_VERSION_ID = "current";
  * @param request
  * @returns
  */
-export function maybeGetSkewProtectionResponse(
-	request: Request,
-	assets: Fetcher | undefined
-): Promise<Response> | Response | undefined {
+export function maybeGetSkewProtectionResponse(request: Request): Promise<Response> | Response | undefined {
 	// no early return as esbuild would not treeshake the code.
 	if (__SKEW_PROTECTION_ENABLED__) {
 		const url = new URL(request.url);
 
 		// Skew protection is only active for the latest version of the app served on a custom domain.
-		// For `localhost` and older deployments we still need to serve assets when the worker runs first.
 		if (url.hostname === "localhost" || url.pathname.endsWith(".workers.dev")) {
-			return maybeFetchAsset(request, assets);
+			return undefined;
 		}
 
 		const requestDeploymentId = request.headers.get("x-deployment-id") ?? url.searchParams.get("dpl");
 
 		if (!requestDeploymentId || requestDeploymentId === process.env.DEPLOYMENT_ID) {
 			// The request does not specify a deployment id or it is the current deployment id
-			return maybeFetchAsset(request, assets);
+			return undefined;
 		}
 
 		const mapping = process.env[DEPLOYMENT_MAPPING_ENV_NAME]
@@ -69,69 +65,8 @@ export function maybeGetSkewProtectionResponse(
 	}
 }
 
-/**
- * Fetches a file from the assets when the path is a known asset.
- *
- * @param request The incoming request
- * @param assets The Fetcher used to retrieve assets
- * @returns A `Promise<Response>` when the path is an assets, undefined otherwise
- */
-function maybeFetchAsset(request: Request, assets: Fetcher | undefined): Promise<Response> | undefined {
-	if (!assets) {
-		return undefined;
-	}
-
-	let path = new URL(request.url).pathname;
-	const basePath = globalThis.__NEXT_BASE_PATH__;
-	if (basePath && path.startsWith(basePath)) {
-		path = path.slice(basePath.length);
-	}
-	if (path.startsWith("/_next/static/") || isFileInTree(path, __CF_ASSETS_TREE__)) {
-		return assets.fetch(request);
-	}
-}
-
-/**
- * A node represents a folder in the file tree
- */
-export type FolderNode = {
-	// List of files in this folder
-	f: string[];
-	// Sub-folders.
-	d: Record<string, FolderNode>;
-};
-
-/**
- * Checks whether a file is in the tree
- *
- * @param filepath The path to the file
- * @param tree The root node of the tree
- * @returns Whether the file is in this tree
- */
-export function isFileInTree(filepath: string, tree: FolderNode): boolean {
-	// Split the filename into components, filtering out empty strings from potential leading/trailing slashes
-	const parts = filepath.split("/").filter(Boolean);
-
-	if (parts.length === 0) {
-		return false; // An empty filename cannot be in the tree
-	}
-
-	let currentNode: FolderNode | undefined = tree;
-
-	// Traverse through folder parts
-	for (let i = 0; i < parts.length - 1; i++) {
-		currentNode = currentNode.d[parts[i] as string];
-		if (!currentNode) {
-			return false; // Folder not found in the tree
-		}
-	}
-	// Check if the file exists in the current node's files array
-	return currentNode.f.includes(parts.at(-1) as string);
-}
-
 /* eslint-disable no-var */
 declare global {
 	var __SKEW_PROTECTION_ENABLED__: boolean;
-	var __CF_ASSETS_TREE__: FolderNode;
 }
 /* eslint-enable no-var */
