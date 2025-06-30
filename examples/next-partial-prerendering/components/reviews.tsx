@@ -5,6 +5,7 @@ import { delayReviews, withDelay } from '#/lib/delay';
 import { getReviews } from '#/lib/reviews';
 
 export async function Reviews() {
+	// Tell Next.js to render dynamically at runtime instead of build-time
 	await connection();
 
 	let reviews: Review[] = await withDelay(

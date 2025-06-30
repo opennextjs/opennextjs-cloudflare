@@ -5,6 +5,7 @@ import { delayRecommendedProducts, withDelay } from '#/lib/delay';
 import { getProducts } from '#/lib/products';
 
 export async function RecommendedProducts() {
+	// Tell Next.js to render dynamically at runtime instead of build-time
 	await connection();
 
 	let products: Product[] = await withDelay(

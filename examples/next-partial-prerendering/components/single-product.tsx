@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { getProduct } from '#/lib/products';
 
 export async function SingleProduct() {
+	// Tell Next.js to render dynamically at runtime instead of build-time
 	await connection();
 
 	const product: Product = await getProduct({ id: '1' }).then((res) =>

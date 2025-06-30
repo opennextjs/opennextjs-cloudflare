@@ -14,6 +14,7 @@ import { cookies } from 'next/headers';
 import { getProduct } from '#/lib/products';
 
 async function AddToCartFromCookies() {
+	// Tell Next.js to render dynamically at runtime instead of build-time
 	await connection();
 
 	// Get the cart count from the users cookies and pass it to the client
