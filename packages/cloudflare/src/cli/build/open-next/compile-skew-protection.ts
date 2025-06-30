@@ -11,7 +11,7 @@ export async function compileSkewProtection(options: BuildOptions, config: OpenN
 	const templatesDir = path.join(currentDir, "../../templates");
 	const initPath = path.join(templatesDir, "skew-protection.js");
 
-	const skewProtectionEnabled = config.cloudflare?.skewProtectionEnabled ?? false;
+	const skewProtectionEnabled = config.cloudflare?.skewProtection?.enabled === true;
 
 	await build({
 		entryPoints: [initPath],

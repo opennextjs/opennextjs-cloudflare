@@ -38,6 +38,7 @@ import type { WorkerEnvVar } from "./helpers.js";
 const MAX_NUMBER_OF_VERSIONS = 20;
 /** Maximum age of versions to list */
 const MAX_VERSION_AGE_DAYS = 7;
+const MS_PER_DAY = 24 * 3600 * 1000;
 
 /**
  * Compute the deployment mapping for a deployment.
@@ -52,7 +53,7 @@ export async function getDeploymentMapping(
 	config: OpenNextConfig,
 	envVars: WorkerEnvVar
 ): Promise<Record<string, string> | undefined> {
-	if (config.cloudflare?.skewProtectionEnabled !== true) {
+	if (config.cloudflare?.skewProtection?.enabled !== true) {
 		return undefined;
 	}
 
@@ -93,6 +94,10 @@ export async function getDeploymentMapping(
 	const deployedVersions = await listWorkerVersions(scriptName, {
 		client,
 		accountId,
+		maxNumberOfVersions: config.cloudflare?.skewProtection?.maxNumberOfVersions,
+		afterTimeMs: config.cloudflare?.skewProtection?.maxVersionAgeDays
+			? Date.now() - config.cloudflare?.skewProtection?.maxVersionAgeDays * MS_PER_DAY
+			: undefined,
 	});
 
 	const existingMapping =

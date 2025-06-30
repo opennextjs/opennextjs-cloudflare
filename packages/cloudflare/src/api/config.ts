@@ -160,13 +160,22 @@ interface OpenNextConfig extends AwsOpenNextConfig {
 		dangerousDisableConfigValidation?: boolean;
 
 		/**
-		 * Enable skew protection.
+		 * Skew protection.
 		 *
 		 * Note: Skew Protection is experimental and might break on minor releases.
 		 *
 		 * @default false
 		 */
-		skewProtectionEnabled?: boolean;
+		skewProtection?: {
+			// Whether to enable skew protection
+			enabled?: boolean;
+			// Maximum number of versions to retrieve
+			// @default 20
+			maxNumberOfVersions?: number;
+			// Maximum age of versions to retrieve in days
+			// @default 7
+			maxVersionAgeDays?: number;
+		};
 	};
 }
 
