@@ -40,7 +40,7 @@ function Skeleton() {
 
 export function ReviewsSkeleton() {
 	return (
-		<div className="space-y-6">
+		<div className="space-y-6" data-testid="reviews-loader">
 			<div className={`h-7 w-2/5 rounded-lg bg-gray-900 ${shimmer}`} />
 			<div className="space-y-8">
 				<Skeleton />
