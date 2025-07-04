@@ -65,6 +65,7 @@
 		"@types/mock-fs": "catalog:",
 		"@types/node": "catalog:",
 		"@types/picomatch": "^4.0.0",
+		"cloudflare": "^4.4.1",
 		"diff": "^8.0.2",
 		"esbuild": "catalog:",
 		"eslint": "catalog:",
