@@ -110,3 +110,24 @@ export function getWranglerEnvironmentFlag(args: string[]) {
 		}
 	}
 }
+
+/**
+ * Find the value of the config flag (`--config` / `-c`) used by Wrangler.
+ *
+ * @param args - CLI arguments.
+ * @returns Value of the config flag.
+ */
+export function getWranglerConfigFlag(args: string[]) {
+	for (let i = 0; i <= args.length; i++) {
+		const arg = args[i];
+		if (!arg) continue;
+
+		if (arg === "--config" || arg === "-c") {
+			return args[i + 1];
+		}
+
+		if (arg.startsWith("--config=") || arg.startsWith("-c=")) {
+			return arg.split("=")[1];
+		}
+	}
+}

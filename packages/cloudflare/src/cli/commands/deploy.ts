@@ -1,7 +1,7 @@
 import { BuildOptions } from "@opennextjs/aws/build/helper.js";
 
 import type { OpenNextConfig } from "../../api/config.js";
-import { getWranglerEnvironmentFlag, runWrangler } from "../utils/run-wrangler.js";
+import { getWranglerConfigFlag, getWranglerEnvironmentFlag, runWrangler } from "../utils/run-wrangler.js";
 import { populateCache } from "./populate-cache.js";
 
 export async function deploy(
@@ -12,6 +12,7 @@ export async function deploy(
 	await populateCache(options, config, {
 		target: "remote",
 		environment: getWranglerEnvironmentFlag(deployOptions.passthroughArgs),
+		config: getWranglerConfigFlag(deployOptions.passthroughArgs),
 		cacheChunkSize: deployOptions.cacheChunkSize,
 	});
 
