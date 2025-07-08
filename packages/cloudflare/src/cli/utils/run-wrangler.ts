@@ -91,22 +91,52 @@ export function isWranglerTarget(v: string | undefined): v is WranglerTarget {
 }
 
 /**
+ * Returns the value of the flag.
+ *
+ * The value is retrieved for `<argName> value` or `<argName>=value`.
+ *
+ * @param args List of args
+ * @param argName The arg name with leading dashes, i.e. `--env` or `-e`
+ * @returns The value or undefined when not found
+ */
+export function getFlagValue(args: string[], ...argNames: string[]): string | undefined {
+	if (argNames.some((name) => !name.startsWith("-"))) {
+		// Names should start with "-" or "--"
+		throw new Error(`Invalid arg names: ${argNames}`);
+	}
+
+	for (const argName of argNames) {
+		for (let i = 0; i <= args.length; i++) {
+			const arg = args[i];
+			if (!arg) continue;
+
+			if (arg === argName) {
+				return args[i + 1];
+			}
+
+			if (arg.startsWith(argName)) {
+				return arg.split("=")[1];
+			}
+		}
+	}
+}
+
+/**
  * Find the value of the environment flag (`--env` / `-e`) used by Wrangler.
  *
  * @param args - CLI arguments.
- * @returns Value of the environment flag.
+ * @returns Value of the environment flag or undefined when not found
  */
-export function getWranglerEnvironmentFlag(args: string[]) {
-	for (let i = 0; i <= args.length; i++) {
-		const arg = args[i];
-		if (!arg) continue;
+export function getWranglerEnvironmentFlag(args: string[]): string | undefined {
+	return getFlagValue(args, "--env", "-e");
+}
 
-		if (arg === "--env" || arg === "-e") {
-			return args[i + 1];
-		}
-
-		if (arg.startsWith("--env=") || arg.startsWith("-e=")) {
-			return arg.split("=")[1];
-		}
-	}
+/**
+ * Find the value of the config flag (`--config` / `-c`) used by Wrangler.
+ *
+ * @param args - CLI arguments.
+ * @returns Value of the config flag or undefined when not found
+ */
+export function getWranglerConfigFlag(args: string[]): string | undefined {
+	return getFlagValue(args, "--config", "-c");
 }

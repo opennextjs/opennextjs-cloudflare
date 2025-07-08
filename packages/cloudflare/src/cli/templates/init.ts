@@ -94,8 +94,9 @@ function initRuntime() {
 
 	Object.assign(globalThis, {
 		Request: CustomRequest,
-		__BUILD_TIMESTAMP_MS__: __BUILD_TIMESTAMP_MS__,
-		__NEXT_BASE_PATH__: __NEXT_BASE_PATH__,
+		__BUILD_TIMESTAMP_MS__,
+		__NEXT_BASE_PATH__,
+		__ASSETS_RUN_WORKER_FIRST__,
 		// The external middleware will use the convertTo function of the `edge` converter
 		// by default it will try to fetch the request, but since we are running everything in the same worker
 		// we need to use the request as is.
@@ -146,5 +147,7 @@ declare global {
 	var __BUILD_TIMESTAMP_MS__: number;
 	// Next basePath
 	var __NEXT_BASE_PATH__: string;
+	// Value of `run_worker_first` for the asset binding
+	var __ASSETS_RUN_WORKER_FIRST__: boolean | string[] | undefined;
 }
 /* eslint-enable no-var */

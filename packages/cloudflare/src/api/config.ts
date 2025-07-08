@@ -12,6 +12,8 @@ import type {
 	TagCache,
 } from "@opennextjs/aws/types/overrides";
 
+import assetResolver from "./overrides/asset-resolver/index.js";
+
 export type Override<T extends BaseOverride> = "dummy" | T | LazyLoadedOverride<T>;
 
 /**
@@ -102,6 +104,7 @@ export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNe
 				tagCache: resolveTagCache(tagCache),
 				queue: resolveQueue(queue),
 			},
+			assetResolver: () => assetResolver,
 		},
 	};
 }
