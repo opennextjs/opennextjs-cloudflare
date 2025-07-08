@@ -5,6 +5,7 @@ import { createMiddleware } from "@opennextjs/aws/build/createMiddleware.js";
 import * as buildHelper from "@opennextjs/aws/build/helper.js";
 import { printHeader } from "@opennextjs/aws/build/utils.js";
 import logger from "@opennextjs/aws/logger.js";
+import type { Unstable_Config } from "wrangler";
 
 import { OpenNextConfig } from "../../api/config.js";
 import type { ProjectOptions } from "../project-options.js";
@@ -30,10 +31,10 @@ import { getVersion } from "./utils/version.js";
 export async function build(
 	options: buildHelper.BuildOptions,
 	config: OpenNextConfig,
-	projectOpts: ProjectOptions
+	projectOpts: ProjectOptions,
+	wranglerConfig: Unstable_Config
 ): Promise<void> {
 	// Do not minify the code so that we can apply string replacement patch.
-	// Note that wrangler will still minify the bundle.
 	options.minify = false;
 
 	// Pre-build validation
@@ -65,7 +66,7 @@ export async function build(
 	compileEnvFiles(options);
 
 	// Compile workerd init
-	compileInit(options);
+	compileInit(options, wranglerConfig);
 
 	// Compile image helpers
 	compileImages(options);
