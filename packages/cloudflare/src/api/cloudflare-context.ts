@@ -68,6 +68,9 @@ declare global {
 
 		// The following variables must be provided when skew protection is enabled
 		// The name of the worker (as defined in the wrangler configuration)
+		// When a specific wrangler environment is used, it should be appended at the end:
+		// - Use `worker-name` when no wrangler environment is used
+		// - Use `worker-name-<environment>` when a wrangler environment is used via `wrangler --env=<environment>`
 		CF_WORKER_NAME?: string;
 		// The subdomain where the previews are deployed, i.e. `<version-name>.<domain>.workers.dev`
 		CF_PREVIEW_DOMAIN?: string;
