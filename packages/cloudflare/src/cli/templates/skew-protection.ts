@@ -31,7 +31,7 @@ export function maybeGetSkewProtectionResponse(request: Request): Promise<Respon
 		const url = new URL(request.url);
 
 		// Skew protection is only active for the latest version of the app served on a custom domain.
-		if (url.hostname === "localhost" || url.pathname.endsWith(".workers.dev")) {
+		if (url.hostname === "localhost" || url.hostname.endsWith(".workers.dev")) {
 			return undefined;
 		}
 
