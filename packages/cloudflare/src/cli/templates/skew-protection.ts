@@ -46,22 +46,23 @@ export function maybeGetSkewProtectionResponse(request: Request): Promise<Respon
 			? JSON.parse(process.env[DEPLOYMENT_MAPPING_ENV_NAME])
 			: {};
 
-		if (requestDeploymentId in mapping) {
-			const version = mapping[requestDeploymentId];
-
-			if (!version || version === CURRENT_VERSION_ID) {
-				return undefined;
-			}
-
-			const versionDomain = version.split("-")[0];
-			const hostname = `${versionDomain}-${process.env.CF_WORKER_NAME}.${process.env.CF_PREVIEW_DOMAIN}.workers.dev`;
-			url.hostname = hostname;
-			const requestToOlderDeployment = new Request(url!, request);
-
-			return fetch(requestToOlderDeployment);
+		if (!(requestDeploymentId in mapping)) {
+			// Unknown deployment id, serve the current version
+			return undefined;
 		}
 
-		return new Response("Bad Request", { status: 400 });
+		const version = mapping[requestDeploymentId];
+
+		if (!version || version === CURRENT_VERSION_ID) {
+			return undefined;
+		}
+
+		const versionDomain = version.split("-")[0];
+		const hostname = `${versionDomain}-${process.env.CF_WORKER_NAME}.${process.env.CF_PREVIEW_DOMAIN}.workers.dev`;
+		url.hostname = hostname;
+		const requestToOlderDeployment = new Request(url!, request);
+
+		return fetch(requestToOlderDeployment);
 	}
 }
 
