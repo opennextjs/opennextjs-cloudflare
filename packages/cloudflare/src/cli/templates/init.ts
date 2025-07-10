@@ -139,6 +139,11 @@ function populateProcessEnv(url: URL, env: CloudflareEnv) {
 	 * https://github.com/vercel/next.js/blob/6b1e48080e896e0d44a05fe009cb79d2d3f91774/packages/next/src/server/app-render/action-handler.ts#L307-L316
 	 */
 	process.env.__NEXT_PRIVATE_ORIGIN = url.origin;
+
+	// `__DEPLOYMENT_ID__` is a string (passed via ESBuild).
+	if (__DEPLOYMENT_ID__) {
+		process.env.DEPLOYMENT_ID = __DEPLOYMENT_ID__;
+	}
 }
 
 /* eslint-disable no-var */
@@ -149,5 +154,7 @@ declare global {
 	var __NEXT_BASE_PATH__: string;
 	// Value of `run_worker_first` for the asset binding
 	var __ASSETS_RUN_WORKER_FIRST__: boolean | string[] | undefined;
+	// Deployment ID
+	var __DEPLOYMENT_ID__: string;
 }
 /* eslint-enable no-var */

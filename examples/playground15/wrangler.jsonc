@@ -1,7 +1,7 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"main": ".open-next/worker.js",
-	"name": "api",
+	"name": "playground15",
 	"compatibility_date": "2024-12-30",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"assets": {
@@ -9,10 +9,10 @@
 		"binding": "ASSETS",
 		"run_worker_first": true
 	},
-	"kv_namespaces": [
+	"r2_buckets": [
 		{
-			"binding": "NEXT_INC_CACHE_KV",
-			"id": "<BINDING_ID>"
+			"binding": "NEXT_INC_CACHE_R2_BUCKET",
+			"bucket_name": "pg15"
 		}
 	],
 	"vars": {

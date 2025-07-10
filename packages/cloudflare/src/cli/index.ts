@@ -28,6 +28,7 @@ async function runCommand(args: Arguments) {
 	const require = createRequire(import.meta.url);
 	const openNextDistDir = path.dirname(require.resolve("@opennextjs/aws/index.js"));
 
+	// TODO: retrieve the compiled version if command != build
 	await createOpenNextConfigIfNotExistent(baseDir);
 	const { config, buildDir } = await compileOpenNextConfig(baseDir, undefined, {
 		compileEdge: true,
