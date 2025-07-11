@@ -28,10 +28,7 @@ test.describe("playground/cloudflare", () => {
 
 		test("400 when fetching an image disallowed by remotePatterns", async ({ page }) => {
 			const res = await page.request.get("/_next/image?url=https://avatars.githubusercontent.com/u/248817");
-			// The request should be blocked by either the remote patterns or the asset worker
-			const isBlockedByRemotePattern = res.status() === 400;
-			const isBlockedByAssetWorker = res.status() === 403;
-			expect(isBlockedByRemotePattern || isBlockedByAssetWorker).toBe(true);
+			expect(res.status()).toBe(400);
 		});
 	});
 
