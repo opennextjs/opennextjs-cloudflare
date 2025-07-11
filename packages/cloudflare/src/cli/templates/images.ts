@@ -84,6 +84,8 @@ export async function fetchImage(fetcher: Fetcher | undefined, imageUrl: string,
 		const [body1, body2] = imgResponse.body.tee();
 		const reader = body2.getReader({ mode: "byob" });
 		const { value } = await reader.read(new Uint8Array(buffer));
+		// Release resources by calling `reader.cancel()`
+		// `ctx.waitUntil` keeps the runtime running until the promise settles without having to wait here.
 		ctx.waitUntil(reader.cancel());
 
 		if (value) {
