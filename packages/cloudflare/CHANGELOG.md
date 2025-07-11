@@ -1,5 +1,17 @@
 # @opennextjs/cloudflare
 
+## 1.5.0
+
+### Minor Changes
+
+- [#768](https://github.com/opennextjs/opennextjs-cloudflare/pull/768) [`40f7e72`](https://github.com/opennextjs/opennextjs-cloudflare/commit/40f7e724e0e0326516be77b3ecea6842db4591bc) Thanks [@vicb](https://github.com/vicb)! - Add an asset resolver to support `run_worker_first=true`
+
+- [#746](https://github.com/opennextjs/opennextjs-cloudflare/pull/746) [`6d020fe`](https://github.com/opennextjs/opennextjs-cloudflare/commit/6d020fe230a0500c3dceeef4695edd21a450bded) Thanks [@vicb](https://github.com/vicb)! - feat: add support for experimental skew protection
+
+### Patch Changes
+
+- [#776](https://github.com/opennextjs/opennextjs-cloudflare/pull/776) [`bd448a8`](https://github.com/opennextjs/opennextjs-cloudflare/commit/bd448a83fbf5dd259160e1b24f31751bdbacb8e7) Thanks [@vicb](https://github.com/vicb)! - Add support for images CSP, disposition, and allow SVG
+
 ## 1.4.0
 
 ### Minor Changes
