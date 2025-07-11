@@ -1,5 +1,21 @@
 # @opennextjs/cloudflare
 
+## 1.5.1
+
+### Patch Changes
+
+- [#781](https://github.com/opennextjs/opennextjs-cloudflare/pull/781) [`e984e8f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e984e8f2e2627626377eee131f1b474697ee0d92) Thanks [@vicb](https://github.com/vicb)! - fallback to the upstream image content-type header
+
+- [#779](https://github.com/opennextjs/opennextjs-cloudflare/pull/779) [`224a2f0`](https://github.com/opennextjs/opennextjs-cloudflare/commit/224a2f05d720c51d507fc152e6fa01c6c26177c8) Thanks [@petebacondarwin](https://github.com/petebacondarwin)! - Ensure that the `cloudflare` library is available at runtime
+
+  Previously it was only a `devDependency` which meant it was missing in real life installations of the tool.
+
+  The error looked like:
+
+  ```text
+  Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'cloudflare' imported from @opennextjs/cloudflare/dist/cli/commands/skew-protection.js
+  ```
+
 ## 1.5.0
 
 ### Minor Changes
