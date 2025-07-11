@@ -92,6 +92,15 @@ export async function fetchImage(fetcher: Fetcher | undefined, imageUrl: string,
 			contentType = detectContentType(value);
 		}
 
+		if (!contentType) {
+			// Fallback to the sanitized upstream header when the type can not be detected
+			// https://github.com/vercel/next.js/blob/d76f0b1/packages/next/src/server/image-optimizer.ts#L748
+			const header = imgResponse.headers.get("content-type") ?? "";
+			if (header.startsWith("image/") && !header.includes(",")) {
+				contentType = header;
+			}
+		}
+
 		if (contentType && !(contentType === SVG && !__IMAGES_ALLOW_SVG__)) {
 			const headers = new Headers(imgResponse.headers);
 			headers.set("content-type", contentType);
