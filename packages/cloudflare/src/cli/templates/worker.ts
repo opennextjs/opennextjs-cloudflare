@@ -41,7 +41,7 @@ export default {
 			// Fallback for the Next default image loader.
 			if (url.pathname === `${globalThis.__NEXT_BASE_PATH__}/_next/image`) {
 				const imageUrl = url.searchParams.get("url") ?? "";
-				return fetchImage(env.ASSETS, imageUrl);
+				return await fetchImage(env.ASSETS, imageUrl, ctx);
 			}
 
 			// - `Request`s are handled by the Next server
