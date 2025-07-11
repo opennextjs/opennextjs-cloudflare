@@ -54,6 +54,7 @@
 	"dependencies": {
 		"@dotenvx/dotenvx": "catalog:",
 		"@opennextjs/aws": "3.7.0",
+		"cloudflare": "^4.4.1",
 		"enquirer": "^2.4.1",
 		"glob": "catalog:",
 		"ts-tqdm": "^0.8.6"
@@ -65,7 +66,6 @@
 		"@types/mock-fs": "catalog:",
 		"@types/node": "catalog:",
 		"@types/picomatch": "^4.0.0",
-		"cloudflare": "^4.4.1",
 		"diff": "^8.0.2",
 		"esbuild": "catalog:",
 		"eslint": "catalog:",
