@@ -79,10 +79,10 @@ export async function fetchImage(fetcher: Fetcher | undefined, imageUrl: string,
 
 	try {
 		let contentType: string | undefined;
-		// body1 is eventually used for the response
-		// body2 is used to detect the content type
-		const [body1, body2] = imgResponse.body.tee();
-		const reader = body2.getReader({ mode: "byob" });
+		// respBody is eventually used for the response
+		// contentBody is used to detect the content type
+		const [respBody, contentBody] = imgResponse.body.tee();
+		const reader = contentBody.getReader({ mode: "byob" });
 		const { value } = await reader.read(new Uint8Array(buffer));
 		// Release resources by calling `reader.cancel()`
 		// `ctx.waitUntil` keeps the runtime running until the promise settles without having to wait here.
@@ -106,8 +106,11 @@ export async function fetchImage(fetcher: Fetcher | undefined, imageUrl: string,
 			headers.set("content-type", contentType);
 			headers.set("content-disposition", __IMAGES_CONTENT_DISPOSITION__);
 			headers.set("content-security-policy", __IMAGES_CONTENT_SECURITY_POLICY__);
-			return new Response(body1, { ...imgResponse, headers });
+			return new Response(respBody, { ...imgResponse, headers });
 		}
+
+		// Cancel the unused stream
+		ctx.waitUntil(respBody.cancel());
 
 		return new Response('"url" parameter is valid but image type is not allowed', {
 			status: 400,
