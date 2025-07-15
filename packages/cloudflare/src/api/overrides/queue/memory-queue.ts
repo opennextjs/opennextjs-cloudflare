@@ -29,13 +29,15 @@ export class MemoryQueue implements Queue {
 
 		this.revalidatedPaths.add(MessageDeduplicationId);
 
+		let response: Response | undefined;
+
 		try {
 			const protocol = host.includes("localhost") ? "http" : "https";
 
 			// TODO: Drop the import - https://github.com/opennextjs/opennextjs-cloudflare/issues/361
 			// @ts-ignore
 			const manifest = await import("./.next/prerender-manifest.json");
-			const response = await service.fetch(`${protocol}://${host}${url}`, {
+			response = await service.fetch(`${protocol}://${host}${url}`, {
 				method: "HEAD",
 				headers: {
 					"x-prerender-revalidate": manifest.preview.previewModeId,
@@ -54,6 +56,12 @@ export class MemoryQueue implements Queue {
 			error(e);
 		} finally {
 			this.revalidatedPaths.delete(MessageDeduplicationId);
+			// Cancel the stream when it has not been consumed
+			try {
+				await response?.body?.cancel();
+			} catch {
+				// Ignore errors when the stream was actually consumed
+			}
 		}
 	}
 }

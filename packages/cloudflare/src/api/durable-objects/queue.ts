@@ -111,6 +111,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	}
 
 	async executeRevalidation(msg: QueueMessage) {
+		let response: Response | undefined;
 		try {
 			debug(`Revalidating ${msg.MessageBody.host}${msg.MessageBody.url}`);
 			const {
@@ -118,7 +119,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 			} = msg;
 			const protocol = host.includes("localhost") ? "http" : "https";
 
-			const response = await this.service.fetch(`${protocol}://${host}${url}`, {
+			response = await this.service.fetch(`${protocol}://${host}${url}`, {
 				method: "HEAD",
 				headers: {
 					// This is defined during build
@@ -177,6 +178,12 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 			error(e);
 		} finally {
 			this.ongoingRevalidations.delete(msg.MessageDeduplicationId);
+			// Cancel the stream when it has not been consumed
+			try {
+				await response?.body?.cancel();
+			} catch {
+				// Ignore errors when the stream was actually consumed
+			}
 		}
 	}
 

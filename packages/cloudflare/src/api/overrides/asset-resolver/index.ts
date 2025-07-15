@@ -36,6 +36,7 @@ const resolver: AssetResolver = {
 		});
 
 		if (response.status === 404) {
+			await response.body?.cancel();
 			return undefined;
 		}
 
