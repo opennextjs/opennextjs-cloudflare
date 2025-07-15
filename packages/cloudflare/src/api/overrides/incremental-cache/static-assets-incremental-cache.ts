@@ -34,7 +34,10 @@ class StaticAssetsIncrementalCache implements IncrementalCache {
 
 		try {
 			const response = await assets.fetch(this.getAssetUrl(key, cacheType));
-			if (!response.ok) return null;
+			if (!response.ok) {
+				await response.body?.cancel();
+				return null;
+			}
 
 			return {
 				value: await response.json(),

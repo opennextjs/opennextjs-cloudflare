@@ -54,8 +54,9 @@ export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[
 		return "missing-credentials";
 	}
 
+	let response: Response | undefined;
 	try {
-		const response = await fetch(
+		response = await fetch(
 			`https://api.cloudflare.com/client/v4/zones/${env.CACHE_PURGE_ZONE_ID}/purge_cache`,
 			{
 				headers: {
@@ -90,5 +91,12 @@ export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[
 	} catch (error) {
 		console.error("Error purging cache by tags:", error);
 		return "purge-failed";
+	} finally {
+		// Cancel the stream when it has not been consumed
+		try {
+			await response?.body?.cancel();
+		} catch {
+			// Ignore errors when the stream was actually consumed
+		}
 	}
 }
