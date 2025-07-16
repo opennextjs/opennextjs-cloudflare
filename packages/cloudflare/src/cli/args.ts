@@ -1,127 +1,118 @@
-import { mkdirSync, type Stats, statSync } from "node:fs";
-import { resolve } from "node:path";
-import type { ParseArgsConfig } from "node:util";
-import { parseArgs } from "node:util";
+import yargs from "yargs";
 
-import type { WranglerTarget } from "./utils/run-wrangler.js";
-import { getWranglerEnvironmentFlag, isWranglerTarget } from "./utils/run-wrangler.js";
+import { buildCommand } from "./commands/build.js";
+import { deployCommand } from "./commands/deploy.js";
+import { populateCacheCommand } from "./commands/populate-cache.js";
+import { previewCommand } from "./commands/preview.js";
+import { uploadCommand } from "./commands/upload.js";
 
-export type Arguments = (
-	| {
-			command: "build";
-			skipNextBuild: boolean;
-			skipWranglerConfigCheck: boolean;
-			minify: boolean;
-	  }
-	| {
-			command: "preview" | "deploy" | "upload";
-			passthroughArgs: string[];
-			cacheChunkSize?: number;
-	  }
-	| {
-			command: "populateCache";
-			target: WranglerTarget;
-			environment?: string;
-			cacheChunkSize?: number;
-	  }
-) & { outputDir?: string };
-
-// Config for parsing CLI arguments
-const config = {
-	allowPositionals: true,
-	strict: false,
-	options: {
-		skipBuild: { type: "boolean", short: "s", default: false },
-		output: { type: "string", short: "o" },
-		noMinify: { type: "boolean", default: false },
-		skipWranglerConfigCheck: { type: "boolean", default: false },
-		cacheChunkSize: { type: "string" },
-	},
-} as const satisfies ParseArgsConfig;
-
-export function getArgs(): Arguments {
-	const { positionals, values } = parseArgs(config);
-
-	const outputDir = typeof values.output === "string" ? resolve(values.output) : undefined;
-	if (outputDir) assertDirArg(outputDir, "output", true);
-
-	switch (positionals[0]) {
-		case "build":
-			return {
-				command: "build",
-				outputDir,
-				skipNextBuild:
-					!!values.skipBuild || ["1", "true", "yes"].includes(String(process.env.SKIP_NEXT_APP_BUILD)),
-				skipWranglerConfigCheck:
-					!!values.skipWranglerConfigCheck ||
-					["1", "true", "yes"].includes(String(process.env.SKIP_WRANGLER_CONFIG_CHECK)),
-				minify: !values.noMinify,
-			};
-		case "preview":
-		case "deploy":
-		case "upload":
-			return {
-				command: positionals[0],
-				outputDir,
-				passthroughArgs: getPassthroughArgs(process.argv, config),
-				...(values.cacheChunkSize && { cacheChunkSize: Number(values.cacheChunkSize) }),
-			};
-		case "populateCache":
-			if (!isWranglerTarget(positionals[1])) {
-				throw new Error(`Error: invalid target for populating the cache, expected 'local' | 'remote'`);
-			}
-			return {
-				command: "populateCache",
-				outputDir,
-				target: positionals[1],
-				environment: getWranglerEnvironmentFlag(process.argv),
-				...(values.cacheChunkSize && { cacheChunkSize: Number(values.cacheChunkSize) }),
-			};
-		default:
-			throw new Error(
-				"Error: invalid command, expected 'build' | 'preview' | 'deploy' | 'upload' | 'populateCache'"
-			);
-	}
+export function runCommand() {
+	return yargs(process.argv.slice(2))
+		.scriptName("opennextjs-cloudflare")
+		.parserConfiguration({ "unknown-options-as-args": true })
+		.command(
+			"build",
+			"Build an OpenNext Cloudflare worker",
+			(c) =>
+				withWranglerOptions(c)
+					.option("skipNextBuild", {
+						type: "boolean",
+						alias: ["skipBuild", "s"],
+						default: ["1", "true", "yes"].includes(String(process.env.SKIP_NEXT_APP_BUILD)),
+						desc: "Skip building the Next.js app",
+					})
+					.option("noMinify", {
+						type: "boolean",
+						alias: "s",
+						default: false,
+						desc: "Disable worker minification",
+					})
+					.option("skipWranglerConfigCheck", {
+						type: "boolean",
+						alias: "s",
+						default: ["1", "true", "yes"].includes(String(process.env.SKIP_WRANGLER_CONFIG_CHECK)),
+						desc: "Skip checking for a Wrangler config",
+					}),
+			(args) => buildCommand(withWranglerPassthroughArgs(args))
+		)
+		.command(
+			"preview",
+			"Preview a built OpenNext app with a Wrangler dev server",
+			(c) => withPopulateCacheOptions(c),
+			(args) => previewCommand(withWranglerPassthroughArgs(args))
+		)
+		.command(
+			"deploy",
+			"Deploy a built OpenNext app to Cloudflare Workers",
+			(c) => withPopulateCacheOptions(c),
+			(args) => deployCommand(withWranglerPassthroughArgs(args))
+		)
+		.command(
+			"upload",
+			"Upload a built OpenNext app to Cloudflare Workers",
+			(c) => withPopulateCacheOptions(c),
+			(args) => uploadCommand(withWranglerPassthroughArgs(args))
+		)
+		.command("populateCache", "Populate the cache for a built Next.js app", (c) =>
+			c
+				.command(
+					"local",
+					"Local dev server cache",
+					(c) => withPopulateCacheOptions(c),
+					(args) => populateCacheCommand("local", withWranglerPassthroughArgs(args))
+				)
+				.command(
+					"remote",
+					"Remote Cloudflare Worker cache",
+					(c) => withPopulateCacheOptions(c),
+					(args) => populateCacheCommand("remote", withWranglerPassthroughArgs(args))
+				)
+				.demandCommand(1, 1)
+		)
+		.demandCommand(1, 1)
+		.parse();
 }
 
-export function getPassthroughArgs<T extends ParseArgsConfig>(args: string[], { options = {} }: T) {
-	const passthroughArgs: string[] = [];
-
-	for (let i = 0; i < args.length; i++) {
-		if (args[i] === "--") {
-			passthroughArgs.push(...args.slice(i + 1));
-			return passthroughArgs;
-		}
-
-		// look for `--arg(=value)`, `-arg(=value)`
-		const [, name] = /^--?(\w[\w-]*)(=.+)?$/.exec(args[i]!) ?? [];
-		if (name && !(name in options)) {
-			passthroughArgs.push(args[i]!);
-
-			// Array args can have multiple values
-			// ref https://github.com/yargs/yargs-parser/blob/main/README.md#greedy-arrays
-			while (i < args.length - 1 && !args[i + 1]?.startsWith("-")) {
-				passthroughArgs.push(args[++i]!);
-			}
-		}
-	}
-
-	return passthroughArgs;
+function withWranglerOptions<T extends yargs.Argv>(args: T) {
+	return args
+		.options("config", {
+			type: "string",
+			alias: "c",
+			desc: "Wrangler config file path",
+		})
+		.options("env", {
+			type: "string",
+			alias: "e",
+			desc: "Wrangler environment",
+		});
 }
 
-function assertDirArg(path: string, argName?: string, make?: boolean) {
-	let dirStats: Stats;
-	try {
-		dirStats = statSync(path);
-	} catch {
-		if (!make) {
-			throw new Error(`Error: the provided${argName ? ` "${argName}"` : ""} input is not a valid path`);
-		}
-		mkdirSync(path);
-		return;
-	}
+function withPopulateCacheOptions<T extends yargs.Argv>(args: T) {
+	return withWranglerOptions(args).options("cacheChunkSize", {
+		type: "number",
+		default: 25,
+		desc: "Number of entries per chunk when populating the cache",
+	});
+}
 
-	if (!dirStats.isDirectory()) {
-		throw new Error(`Error: the provided${argName ? ` "${argName}"` : ""} input is not a directory`);
-	}
+function getWranglerArgs(args: {
+	_: (string | number)[];
+	config: string | undefined;
+	env: string | undefined;
+}): string[] {
+	return [
+		...(args.config ? ["--config", args.config] : []),
+		...(args.env ? ["--env", args.env] : []),
+		// Note: the first args in `_` will be the commands.
+		...args._.slice(args._[0] === "populateCache" ? 2 : 1).map((a) => `${a}`),
+	];
+}
+
+function withWranglerPassthroughArgs<
+	T extends yargs.ArgumentsCamelCase<{
+		config: string | undefined;
+		env: string | undefined;
+	}>,
+>(args: T) {
+	return { ...args, passthrough: getWranglerArgs(args) };
 }

@@ -57,7 +57,8 @@
 		"cloudflare": "^4.4.1",
 		"enquirer": "^2.4.1",
 		"glob": "catalog:",
-		"ts-tqdm": "^0.8.6"
+		"ts-tqdm": "^0.8.6",
+		"yargs": "catalog:"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "catalog:",
@@ -66,6 +67,7 @@
 		"@types/mock-fs": "catalog:",
 		"@types/node": "catalog:",
 		"@types/picomatch": "^4.0.0",
+		"@types/yargs": "catalog:",
 		"diff": "^8.0.2",
 		"esbuild": "catalog:",
 		"eslint": "catalog:",

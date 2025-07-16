@@ -1,19 +1,17 @@
-import { BuildOptions } from "@opennextjs/aws/build/helper.js";
-
-import type { OpenNextConfig } from "../../api/config.js";
-import { getWranglerEnvironmentFlag, runWrangler } from "../utils/run-wrangler.js";
+import { runWrangler } from "../utils/run-wrangler.js";
 import { populateCache } from "./populate-cache.js";
+import type { WithWranglerArgs } from "./setup-cli.js";
+import { setupCompiledAppCLI } from "./setup-cli.js";
 
-export async function preview(
-	options: BuildOptions,
-	config: OpenNextConfig,
-	previewOptions: { passthroughArgs: string[]; cacheChunkSize?: number }
-) {
-	await populateCache(options, config, {
+export async function previewCommand(args: WithWranglerArgs<{ cacheChunkSize: number }>) {
+	const { options, config, wranglerConfig } = await setupCompiledAppCLI("preview", args);
+
+	await populateCache(options, config, wranglerConfig, {
 		target: "local",
-		environment: getWranglerEnvironmentFlag(previewOptions.passthroughArgs),
-		cacheChunkSize: previewOptions.cacheChunkSize,
+		environment: args.env,
+		configPath: args.config,
+		cacheChunkSize: args.cacheChunkSize,
 	});
 
-	runWrangler(options, ["dev", ...previewOptions.passthroughArgs], { logging: "all" });
+	runWrangler(options, ["dev", ...args.passthrough], { logging: "all" });
 }
