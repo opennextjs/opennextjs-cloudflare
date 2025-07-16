@@ -78,12 +78,12 @@ function withWranglerOptions<T extends yargs.Argv>(args: T) {
 		.options("config", {
 			type: "string",
 			alias: "c",
-			desc: "Wrangler config file path",
+			desc: "Path to Wrangler configuration file",
 		})
 		.options("env", {
 			type: "string",
 			alias: "e",
-			desc: "Wrangler environment",
+			desc: "Wrangler environment to use for operations",
 		});
 }
 
