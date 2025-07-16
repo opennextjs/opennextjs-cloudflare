@@ -10,6 +10,16 @@ import { normalizePath } from "../../utils/normalize-path.js";
 export function patchInstrumentation(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
 	const builtInstrumentationPath = getBuiltInstrumentationPath(buildOpts);
 
+	updater.updateContent("patch-instrumentation-next15-4", [
+		{
+			field: {
+				filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/,
+				contentFilter: /async function getInstrumentationModule\(/,
+				callback: ({ contents }) => patchCode(contents, getNext154Rule(builtInstrumentationPath)),
+			},
+		},
+	]);
+
 	updater.updateContent("patch-instrumentation-next15", [
 		{
 			field: {
@@ -34,6 +44,29 @@ export function patchInstrumentation(updater: ContentUpdater, buildOpts: BuildOp
 		name: "patch-instrumentation",
 		setup() {},
 	};
+}
+
+export function getNext154Rule(builtInstrumentationPath: string | null) {
+	return `
+rule:
+  kind: function_declaration
+  any:
+    - has: {field: name, regex: ^getInstrumentationModule$}
+fix: |-
+  async function getInstrumentationModule(projectDir, distDir) {
+    if (cachedInstrumentationModule) {
+      return cachedInstrumentationModule;
+    }
+    try {
+      cachedInstrumentationModule = ${builtInstrumentationPath ? `require('${builtInstrumentationPath}')` : "null"};
+      return cachedInstrumentationModule;
+    } catch (err) {
+      if ((0, _iserror.default)(err) && err.code !== "ENOENT" && err.code !== "MODULE_NOT_FOUND" && err.code !== "ERR_MODULE_NOT_FOUND") {
+        throw err;
+      }
+    }
+  }
+`;
 }
 
 export function getNext15Rule(builtInstrumentationPath: string | null) {
