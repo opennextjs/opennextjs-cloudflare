@@ -12,7 +12,7 @@ import type {
 import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides.js";
 import { globSync } from "glob";
 import { tqdm } from "ts-tqdm";
-import { unstable_readConfig } from "wrangler";
+import type { Unstable_Config as WranglerConfig } from "wrangler";
 
 import {
 	BINDING_NAME as KV_CACHE_BINDING_NAME,
@@ -37,6 +37,8 @@ import { normalizePath } from "../build/utils/normalize-path.js";
 import type { WranglerTarget } from "../utils/run-wrangler.js";
 import { runWrangler } from "../utils/run-wrangler.js";
 import { getEnvFromPlatformProxy, quoteShellMeta } from "./helpers.js";
+import type { WithWranglerArgs } from "./setup-cli.js";
+import { setupCompiledAppCLI } from "./setup-cli.js";
 
 async function resolveCacheName(
 	value:
@@ -94,13 +96,19 @@ export function getCacheAssets(opts: BuildOptions): CacheAsset[] {
 	return assets;
 }
 
+type PopulateCacheOptions = {
+	target: WranglerTarget;
+	environment?: string;
+	configPath?: string;
+	cacheChunkSize?: number;
+};
+
 async function populateR2IncrementalCache(
 	options: BuildOptions,
-	populateCacheOptions: { target: WranglerTarget; environment?: string }
+	config: WranglerConfig,
+	populateCacheOptions: PopulateCacheOptions
 ) {
 	logger.info("\nPopulating R2 incremental cache...");
-
-	const config = unstable_readConfig({ env: populateCacheOptions.environment });
 
 	const binding = config.r2_buckets.find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
 	if (!binding) {
@@ -140,11 +148,10 @@ async function populateR2IncrementalCache(
 
 async function populateKVIncrementalCache(
 	options: BuildOptions,
-	populateCacheOptions: { target: WranglerTarget; environment?: string; cacheChunkSize?: number }
+	config: WranglerConfig,
+	populateCacheOptions: PopulateCacheOptions
 ) {
 	logger.info("\nPopulating KV incremental cache...");
-
-	const config = unstable_readConfig({ env: populateCacheOptions.environment });
 
 	const binding = config.kv_namespaces.find(({ binding }) => binding === KV_CACHE_BINDING_NAME);
 	if (!binding) {
@@ -190,11 +197,10 @@ async function populateKVIncrementalCache(
 
 function populateD1TagCache(
 	options: BuildOptions,
-	populateCacheOptions: { target: WranglerTarget; environment?: string }
+	config: WranglerConfig,
+	populateCacheOptions: PopulateCacheOptions
 ) {
 	logger.info("\nCreating D1 table if necessary...");
-
-	const config = unstable_readConfig({ env: populateCacheOptions.environment });
 
 	const binding = config.d1_databases.find(({ binding }) => binding === D1_TAG_BINDING_NAME);
 	if (!binding) {
@@ -229,7 +235,8 @@ function populateStaticAssetsIncrementalCache(options: BuildOptions) {
 export async function populateCache(
 	options: BuildOptions,
 	config: OpenNextConfig,
-	populateCacheOptions: { target: WranglerTarget; environment?: string; cacheChunkSize?: number }
+	wranglerConfig: WranglerConfig,
+	populateCacheOptions: PopulateCacheOptions
 ) {
 	const { incrementalCache, tagCache } = config.default.override ?? {};
 
@@ -242,10 +249,10 @@ export async function populateCache(
 		const name = await resolveCacheName(incrementalCache);
 		switch (name) {
 			case R2_CACHE_NAME:
-				await populateR2IncrementalCache(options, populateCacheOptions);
+				await populateR2IncrementalCache(options, wranglerConfig, populateCacheOptions);
 				break;
 			case KV_CACHE_NAME:
-				await populateKVIncrementalCache(options, populateCacheOptions);
+				await populateKVIncrementalCache(options, wranglerConfig, populateCacheOptions);
 				break;
 			case STATIC_ASSETS_CACHE_NAME:
 				populateStaticAssetsIncrementalCache(options);
@@ -259,10 +266,24 @@ export async function populateCache(
 		const name = await resolveCacheName(tagCache);
 		switch (name) {
 			case D1_TAG_NAME:
-				populateD1TagCache(options, populateCacheOptions);
+				populateD1TagCache(options, wranglerConfig, populateCacheOptions);
 				break;
 			default:
 				logger.info("Tag cache does not need populating");
 		}
 	}
+}
+
+export async function populateCacheCommand(
+	target: "local" | "remote",
+	args: WithWranglerArgs<{ cacheChunkSize: number }>
+) {
+	const { options, config, wranglerConfig } = await setupCompiledAppCLI("populate cache", args);
+
+	await populateCache(options, config, wranglerConfig, {
+		target,
+		environment: args.env,
+		configPath: args.config,
+		cacheChunkSize: args.cacheChunkSize,
+	});
 }
