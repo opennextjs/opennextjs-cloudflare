@@ -104,7 +104,7 @@ describe("getInstrumenationModule (Next154)", () => {
         return cachedInstrumentationModule;
       }
       try {
-        cachedInstrumentationModule = (0, _interopdefault.interopDefault)(await require(_nodepath.default.join(projectDir, distDir, "server", \`\${_constants.INSTRUMENTATION_HOOK_FILENAME}.js\`\)));
+        cachedInstrumentationModule = (0, _interopdefault.interopDefault)(await require(_nodepath.default.join(projectDir, distDir, "server", \`\${_constants.INSTRUMENTATION_HOOK_FILENAME}.js\`)));
         return cachedInstrumentationModule;
       } catch (err) {
         if ((0, _iserror.default)(err) && err.code !== "ENOENT" && err.code !== "MODULE_NOT_FOUND" && err.code !== "ERR_MODULE_NOT_FOUND") {
