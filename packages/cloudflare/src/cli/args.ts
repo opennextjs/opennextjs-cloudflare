@@ -23,13 +23,11 @@ export function runCommand() {
 					})
 					.option("noMinify", {
 						type: "boolean",
-						alias: "s",
 						default: false,
 						desc: "Disable worker minification",
 					})
 					.option("skipWranglerConfigCheck", {
 						type: "boolean",
-						alias: "s",
 						default: ["1", "true", "yes"].includes(String(process.env.SKIP_WRANGLER_CONFIG_CHECK)),
 						desc: "Skip checking for a Wrangler config",
 					}),
