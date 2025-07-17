@@ -22,7 +22,7 @@ catalog:
   eslint-plugin-import: ^2.31.0
   eslint-plugin-simple-import-sort: ^12.1.1
   eslint-plugin-unicorn: ^55.0.0
-  eslint: ^9.11.1
+  eslint: ^9.31.0
   glob: ^11.0.0
   globals: ^15.9.0
   mock-fs: ^5.4.1
@@ -32,7 +32,7 @@ catalog:
   react: ^18
   rimraf: ^6.0.1
   tsx: ^4.19.2
-  typescript-eslint: ^8.7.0
+  typescript-eslint: ^8.37.0
   typescript: ^5.7.3
   vitest: ^2.1.1
   wrangler: ^4.24.4
