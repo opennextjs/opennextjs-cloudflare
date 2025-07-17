@@ -13,6 +13,7 @@ import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides
 import { globSync } from "glob";
 import { tqdm } from "ts-tqdm";
 import type { Unstable_Config as WranglerConfig } from "wrangler";
+import type yargs from "yargs";
 
 import {
 	BINDING_NAME as KV_CACHE_BINDING_NAME,
@@ -38,7 +39,7 @@ import type { WranglerTarget } from "../utils/run-wrangler.js";
 import { runWrangler } from "../utils/run-wrangler.js";
 import { getEnvFromPlatformProxy, quoteShellMeta } from "./helpers.js";
 import type { WithWranglerArgs } from "./setup-cli.js";
-import { setupCompiledAppCLI } from "./setup-cli.js";
+import { setupCompiledAppCLI, withWranglerOptions, withWranglerPassthroughArgs } from "./setup-cli.js";
 
 async function resolveCacheName(
 	value:
@@ -285,5 +286,32 @@ export async function populateCacheCommand(
 		environment: args.env,
 		configPath: args.config,
 		cacheChunkSize: args.cacheChunkSize,
+	});
+}
+
+export function addPopulateCacheCommand<T extends yargs.Argv>(y: T) {
+	return y.command("populateCache", "Populate the cache for a built Next.js app", (c) =>
+		c
+			.command(
+				"local",
+				"Local dev server cache",
+				(c) => withPopulateCacheOptions(c),
+				(args) => populateCacheCommand("local", withWranglerPassthroughArgs(args))
+			)
+			.command(
+				"remote",
+				"Remote Cloudflare Worker cache",
+				(c) => withPopulateCacheOptions(c),
+				(args) => populateCacheCommand("remote", withWranglerPassthroughArgs(args))
+			)
+			.demandCommand(1, 1)
+	);
+}
+
+export function withPopulateCacheOptions<T extends yargs.Argv>(args: T) {
+	return withWranglerOptions(args).options("cacheChunkSize", {
+		type: "number",
+		default: 25,
+		desc: "Number of entries per chunk when populating the cache",
 	});
 }

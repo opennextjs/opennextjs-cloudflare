@@ -1,9 +1,11 @@
+import type yargs from "yargs";
+
 import { DEPLOYMENT_MAPPING_ENV_NAME } from "../templates/skew-protection.js";
 import { runWrangler } from "../utils/run-wrangler.js";
 import { getEnvFromPlatformProxy, quoteShellMeta } from "./helpers.js";
-import { populateCache } from "./populate-cache.js";
+import { populateCache, withPopulateCacheOptions } from "./populate-cache.js";
 import type { WithWranglerArgs } from "./setup-cli.js";
-import { setupCompiledAppCLI } from "./setup-cli.js";
+import { setupCompiledAppCLI, withWranglerPassthroughArgs } from "./setup-cli.js";
 import { getDeploymentMapping } from "./skew-protection.js";
 
 export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize: number }>) {
@@ -35,5 +37,14 @@ export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize: num
 		{
 			logging: "all",
 		}
+	);
+}
+
+export function addDeployCommand<T extends yargs.Argv>(y: T) {
+	return y.command(
+		"deploy",
+		"Deploy a built OpenNext app to Cloudflare Workers",
+		(c) => withPopulateCacheOptions(c),
+		(args) => deployCommand(withWranglerPassthroughArgs(args))
 	);
 }
