@@ -1,0 +1,24 @@
+name: Code checks
+
+on:
+  push:
+    branches: [main, experimental]
+  pull_request:
+
+jobs:
+  checks:
+    name: ${{ matrix.script }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        script: ["prettier:check", "lint:check", "ts:check", "test"]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        uses: ./.github/actions/install-dependencies
+
+      - name: ${{ matrix.script }}
+        run: pnpm run ${{ matrix.script }}

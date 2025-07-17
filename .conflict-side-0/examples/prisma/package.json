@@ -1,0 +1,34 @@
+{
+	"name": "prisma-next-app",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"dev": "next dev --turbopack",
+		"build": "next build",
+		"start": "next start",
+		"lint": "next lint",
+		"prepare:db": "npx prisma generate && wrangler d1 execute db --file populate.sql",
+		"build:worker": "pnpm prepare:db && pnpm opennextjs-cloudflare build",
+		"preview:worker": "pnpm opennextjs-cloudflare preview",
+		"preview": "pnpm build:worker && pnpm preview:worker",
+		"e2e": "playwright test -c e2e/playwright.config.ts",
+		"e2e:dev": "playwright test -c e2e/playwright.dev.config.ts",
+		"cf-typegen": "wrangler types --env-interface CloudflareEnv"
+	},
+	"dependencies": {
+		"@opennextjs/cloudflare": "workspace:*",
+		"@prisma/adapter-d1": "^6.7.0",
+		"@prisma/client": "^6.7.0",
+		"next": "catalog:e2e",
+		"react": "catalog:e2e",
+		"react-dom": "catalog:e2e"
+	},
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"@types/react": "catalog:e2e",
+		"@types/react-dom": "catalog:e2e",
+		"prisma": "^6.7.0",
+		"typescript": "catalog:",
+		"wrangler": "catalog:"
+	}
+}

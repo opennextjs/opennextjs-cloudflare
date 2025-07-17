@@ -1,0 +1,14 @@
+{
+	"name": "@opennextjs-cloudflare/benchmarking",
+	"private": true,
+	"type": "module",
+	"devDependencies": {
+		"tsx": "catalog:",
+		"@tsconfig/strictest": "catalog:",
+		"@types/node": "catalog:",
+		"ora": "^8.1.0"
+	},
+	"scripts": {
+		"benchmark": "tsx src/index.ts"
+	}
+}

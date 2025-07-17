@@ -1,0 +1,33 @@
+{
+	"name": "vercel-blog-starter",
+	"private": true,
+	"scripts": {
+		"dev": "next",
+		"build": "next build",
+		"start": "next start",
+		"build:worker": "pnpm opennextjs-cloudflare build",
+		"preview:worker": "pnpm opennextjs-cloudflare preview",
+		"preview": "pnpm build:worker && pnpm preview:worker"
+	},
+	"dependencies": {
+		"classnames": "^2.5.1",
+		"date-fns": "^3.6.0",
+		"gray-matter": "^4.0.3",
+		"next": "catalog:",
+		"react": "catalog:",
+		"react-dom": "catalog:",
+		"remark": "^15.0.1",
+		"remark-html": "^16.0.1"
+	},
+	"devDependencies": {
+		"@opennextjs/cloudflare": "workspace:*",
+		"@types/node": "catalog:",
+		"@types/react": "catalog:",
+		"@types/react-dom": "catalog:",
+		"autoprefixer": "^10.4.19",
+		"postcss": "^8.4.38",
+		"tailwindcss": "^3.4.4",
+		"typescript": "catalog:",
+		"wrangler": "catalog:"
+	}
+}

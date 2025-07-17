@@ -1,0 +1,104 @@
+import { expect, test } from "vitest";
+
+import { computePatchDiff } from "../../utils/test-patch.js";
+import { rule } from "./use-cache.js";
+
+const code = `"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+0 && (module.exports = {
+    bindSnapshot: null,
+    createAsyncLocalStorage: null,
+    createSnapshot: null
+});
+function _export(target, all) {
+    for(var name in all)Object.defineProperty(target, name, {
+        enumerable: true,
+        get: all[name]
+    });
+}
+_export(exports, {
+    bindSnapshot: function() {
+        return bindSnapshot;
+    },
+    createAsyncLocalStorage: function() {
+        return createAsyncLocalStorage;
+    },
+    createSnapshot: function() {
+        return createSnapshot;
+    }
+});
+const sharedAsyncLocalStorageNotAvailableError = Object.defineProperty(new Error('Invariant: AsyncLocalStorage accessed in runtime where it is not available'), "__NEXT_ERROR_CODE", {
+    value: "E504",
+    enumerable: false,
+    configurable: true
+});
+class FakeAsyncLocalStorage {
+    disable() {
+        throw sharedAsyncLocalStorageNotAvailableError;
+    }
+    getStore() {
+        // This fake implementation of AsyncLocalStorage always returns \`undefined\`.
+        return undefined;
+    }
+    run() {
+        throw sharedAsyncLocalStorageNotAvailableError;
+    }
+    exit() {
+        throw sharedAsyncLocalStorageNotAvailableError;
+    }
+    enterWith() {
+        throw sharedAsyncLocalStorageNotAvailableError;
+    }
+    static bind(fn) {
+        return fn;
+    }
+}
+const maybeGlobalAsyncLocalStorage = typeof globalThis !== 'undefined' && globalThis.AsyncLocalStorage;
+function createAsyncLocalStorage() {
+    if (maybeGlobalAsyncLocalStorage) {
+        return new maybeGlobalAsyncLocalStorage();
+    }
+    return new FakeAsyncLocalStorage();
+}
+function bindSnapshot(fn) {
+    if (maybeGlobalAsyncLocalStorage) {
+        return maybeGlobalAsyncLocalStorage.bind(fn);
+    }
+    return FakeAsyncLocalStorage.bind(fn);
+}
+function createSnapshot() {
+    if (maybeGlobalAsyncLocalStorage) {
+        return maybeGlobalAsyncLocalStorage.snapshot();
+    }
+    return function(fn, ...args) {
+        return fn(...args);
+    };
+}
+
+//# sourceMappingURL=async-local-storage.js.map
+`;
+
+test("patch the createSnapshot function", () => {
+	expect(computePatchDiff("async-local-storage.js", code, rule)).toMatchInlineSnapshot(`
+    "Index: async-local-storage.js
+    ===================================================================
+    --- async-local-storage.js
+    +++ async-local-storage.js
+    @@ -63,11 +63,9 @@
+         }
+         return FakeAsyncLocalStorage.bind(fn);
+     }
+     function createSnapshot() {
+    -    if (maybeGlobalAsyncLocalStorage) {
+    -        return maybeGlobalAsyncLocalStorage.snapshot();
+    -    }
+    +    // Ignored snapshot
+         return function(fn, ...args) {
+             return fn(...args);
+         };
+     }
+    "
+  `);
+});
