@@ -64,7 +64,7 @@ function loadManifest($PATH, $$$ARGS) {
 		fix: `
 function loadManifest($PATH, $$$ARGS) {
  if ($PATH === "/.next/BUILD_ID") {
-  return process.env.__NEXT_BUILD_ID;
+  return process.env.NEXT_BUILD_ID;
 	}
   $PATH = $PATH.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
   ${returnManifests}
