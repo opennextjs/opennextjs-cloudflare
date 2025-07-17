@@ -147,7 +147,7 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
 			"process.env.TURBOPACK": "false",
 			// This define should be safe to use for Next 14.2+, earlier versions (13.5 and less) will cause trouble
 			"process.env.__NEXT_EXPERIMENTAL_REACT": `${needsExperimentalReact(nextConfig)}`,
-			"process.env__NEXT_BUILD_ID": JSON.stringify(loadBuildId(baseManifestPath)),
+			"process.env.__NEXT_BUILD_ID": JSON.stringify(loadBuildId(baseManifestPath)),
 		},
 		banner: {
 			// We need to import them here, assigning them to `globalThis` does not work because node:timers use `globalThis` and thus create an infinite loop
