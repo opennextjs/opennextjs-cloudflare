@@ -112,5 +112,5 @@ function withWranglerPassthroughArgs<
 		env: string | undefined;
 	}>,
 >(args: T) {
-	return { ...args, passthrough: getWranglerArgs(args) };
+	return { ...args, wranglerArgs: getWranglerArgs(args) };
 }

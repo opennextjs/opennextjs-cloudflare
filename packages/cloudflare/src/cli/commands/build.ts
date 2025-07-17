@@ -5,7 +5,7 @@ import { createOpenNextConfigIfNotExistent } from "../build/utils/create-config-
 import { setupCLI } from "./setup-cli.js";
 
 export async function buildCommand(args: {
-	passthrough: string[];
+	wranglerArgs: string[];
 	config: string | undefined;
 	env: string | undefined;
 	skipNextBuild: boolean;

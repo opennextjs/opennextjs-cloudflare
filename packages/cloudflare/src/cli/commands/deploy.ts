@@ -27,7 +27,7 @@ export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize: num
 		options,
 		[
 			"deploy",
-			...args.passthrough,
+			...args.wranglerArgs,
 			...(deploymentMapping
 				? [`--var ${DEPLOYMENT_MAPPING_ENV_NAME}:${quoteShellMeta(JSON.stringify(deploymentMapping))}`]
 				: []),

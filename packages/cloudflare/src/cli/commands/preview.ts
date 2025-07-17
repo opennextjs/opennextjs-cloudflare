@@ -13,5 +13,5 @@ export async function previewCommand(args: WithWranglerArgs<{ cacheChunkSize: nu
 		cacheChunkSize: args.cacheChunkSize,
 	});
 
-	runWrangler(options, ["dev", ...args.passthrough], { logging: "all" });
+	runWrangler(options, ["dev", ...args.wranglerArgs], { logging: "all" });
 }

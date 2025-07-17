@@ -11,7 +11,7 @@ import { OpenNextConfig } from "../../api/config.js";
 import { ensureCloudflareConfig } from "../build/utils/index.js";
 
 export type WithWranglerArgs<T = unknown> = T & {
-	passthrough: string[];
+	wranglerArgs: string[];
 	config: string | undefined;
 	env: string | undefined;
 };
