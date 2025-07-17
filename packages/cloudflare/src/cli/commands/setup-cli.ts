@@ -18,6 +18,14 @@ export type WithWranglerArgs<T = unknown> = T & {
 
 const nextAppDir = process.cwd();
 
+/**
+ * Setup the CLI, print necessary messages, and retrieve various options and configs.
+ *
+ * @param command
+ * @param args
+ * @param getOpenNextConfig - Function that resolves to a config file
+ * @returns CLI options, OpenNext config, and Wrangler config
+ */
 export async function setupCLI(
 	command: string,
 	args: WithWranglerArgs,
@@ -43,6 +51,13 @@ export async function setupCLI(
 	return { options, config, wranglerConfig, baseDir };
 }
 
+/**
+ * Setup the CLI, print necessary messages, and resolve the compiled OpenNext config.
+ *
+ * @param command
+ * @param args
+ * @returns CLI config
+ */
 export function setupCompiledAppCLI(command: string, args: WithWranglerArgs) {
 	return setupCLI(command, args, async (baseDir) => {
 		const configPath = path.join(baseDir, ".open-next/.build/open-next.config.edge.mjs");
