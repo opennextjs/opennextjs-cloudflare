@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
+import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
 import { normalizePath } from "../../utils/normalize-path.js";
 
@@ -13,7 +14,12 @@ export function patchInstrumentation(updater: ContentUpdater, buildOpts: BuildOp
 	updater.updateContent("patch-instrumentation-next15-4", [
 		{
 			field: {
-				filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/,
+				filter: getCrossPlatformPathRegex(
+					String.raw`/server/lib/router-utils/instrumentation-globals.external\.js$`,
+					{
+						escape: false,
+					}
+				),
 				contentFilter: /async function getInstrumentationModule\(/,
 				callback: ({ contents }) => patchCode(contents, getNext154Rule(builtInstrumentationPath)),
 			},
@@ -49,23 +55,29 @@ export function patchInstrumentation(updater: ContentUpdater, buildOpts: BuildOp
 export function getNext154Rule(builtInstrumentationPath: string | null) {
 	return `
 rule:
-  kind: function_declaration
-  any:
-    - has: {field: name, regex: ^getInstrumentationModule$}
+  kind: expression_statement
+  has:
+    kind: assignment_expression
+    all:
+      - has: {kind: identifier, pattern: cachedInstrumentationModule}
+    has:
+      kind: call_expression
+      all:
+        - has: {kind: arguments, regex: _constants.INSTRUMENTATION_HOOK_FILENAME}
+  inside:
+    kind: try_statement
+    stopBy: end
+    has:
+      all:
+        - has: {kind: return_statement, pattern: return cachedInstrumentationModule}
+    inside:
+      kind: statement_block
+      inside:
+        kind: function_declaration
+        all:
+         - has: {field: name, pattern: getInstrumentationModule}
 fix: |-
-  async function getInstrumentationModule(projectDir, distDir) {
-    if (cachedInstrumentationModule) {
-      return cachedInstrumentationModule;
-    }
-    try {
       cachedInstrumentationModule = ${builtInstrumentationPath ? `require('${builtInstrumentationPath}')` : "null"};
-      return cachedInstrumentationModule;
-    } catch (err) {
-      if ((0, _iserror.default)(err) && err.code !== "ENOENT" && err.code !== "MODULE_NOT_FOUND" && err.code !== "ERR_MODULE_NOT_FOUND") {
-        throw err;
-      }
-    }
-  }
 `;
 }
 

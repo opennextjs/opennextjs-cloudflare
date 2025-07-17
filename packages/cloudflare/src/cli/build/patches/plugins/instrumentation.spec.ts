@@ -117,18 +117,18 @@ describe("getInstrumenationModule (Next154)", () => {
 	test("patch when an instrumentation file is not present", async () => {
 		expect(patchCode(code, getNext154Rule(null))).toMatchInlineSnapshot(`
 			"async function getInstrumentationModule(projectDir, distDir) {
-			  if (cachedInstrumentationModule) {
-			    return cachedInstrumentationModule;
-			  }
-			  try {
-			    cachedInstrumentationModule = null;
-			    return cachedInstrumentationModule;
-			  } catch (err) {
-			    if ((0, _iserror.default)(err) && err.code !== "ENOENT" && err.code !== "MODULE_NOT_FOUND" && err.code !== "ERR_MODULE_NOT_FOUND") {
-			      throw err;
+			      if (cachedInstrumentationModule) {
+			        return cachedInstrumentationModule;
+			      }
+			      try {
+			        cachedInstrumentationModule = null;
+			        return cachedInstrumentationModule;
+			      } catch (err) {
+			        if ((0, _iserror.default)(err) && err.code !== "ENOENT" && err.code !== "MODULE_NOT_FOUND" && err.code !== "ERR_MODULE_NOT_FOUND") {
+			          throw err;
+			        }
+			      }
 			    }
-			  }
-			}
 			  "
 		`);
 	});
@@ -136,18 +136,18 @@ describe("getInstrumenationModule (Next154)", () => {
 	test("patch when an instrumentation file is present", async () => {
 		expect(patchCode(code, getNext154Rule("/_file_exists_/instrumentation.js"))).toMatchInlineSnapshot(`
 			"async function getInstrumentationModule(projectDir, distDir) {
-			  if (cachedInstrumentationModule) {
-			    return cachedInstrumentationModule;
-			  }
-			  try {
-			    cachedInstrumentationModule = require('/_file_exists_/instrumentation.js');
-			    return cachedInstrumentationModule;
-			  } catch (err) {
-			    if ((0, _iserror.default)(err) && err.code !== "ENOENT" && err.code !== "MODULE_NOT_FOUND" && err.code !== "ERR_MODULE_NOT_FOUND") {
-			      throw err;
+			      if (cachedInstrumentationModule) {
+			        return cachedInstrumentationModule;
+			      }
+			      try {
+			        cachedInstrumentationModule = require('/_file_exists_/instrumentation.js');
+			        return cachedInstrumentationModule;
+			      } catch (err) {
+			        if ((0, _iserror.default)(err) && err.code !== "ENOENT" && err.code !== "MODULE_NOT_FOUND" && err.code !== "ERR_MODULE_NOT_FOUND") {
+			          throw err;
+			        }
+			      }
 			    }
-			  }
-			}
 			  "
 		`);
 	});
