@@ -27,7 +27,7 @@ export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize: num
 		options,
 		[
 			"versions upload",
-			...args.passthrough,
+			...args.wranglerArgs,
 			...(deploymentMapping
 				? [`--var ${DEPLOYMENT_MAPPING_ENV_NAME}:${quoteShellMeta(JSON.stringify(deploymentMapping))}`]
 				: []),
