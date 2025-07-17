@@ -6,6 +6,7 @@ import { normalizeOptions } from "@opennextjs/aws/build/helper.js";
 import { printHeader, showWarningOnWindows } from "@opennextjs/aws/build/utils.js";
 import logger from "@opennextjs/aws/logger.js";
 import { unstable_readConfig } from "wrangler";
+import type yargs from "yargs";
 
 import { OpenNextConfig } from "../../api/config.js";
 import { ensureCloudflareConfig } from "../build/utils/index.js";
@@ -72,4 +73,40 @@ export function setupCompiledAppCLI(command: string, args: WithWranglerArgs) {
 		// Note: buildDir is not used when an app is already compiled.
 		return { config, buildDir: baseDir };
 	});
+}
+
+export function withWranglerOptions<T extends yargs.Argv>(args: T) {
+	return args
+		.options("config", {
+			type: "string",
+			alias: "c",
+			desc: "Path to Wrangler configuration file",
+		})
+		.options("env", {
+			type: "string",
+			alias: "e",
+			desc: "Wrangler environment to use for operations",
+		});
+}
+
+function getWranglerArgs(args: {
+	_: (string | number)[];
+	config: string | undefined;
+	env: string | undefined;
+}): string[] {
+	return [
+		...(args.config ? ["--config", args.config] : []),
+		...(args.env ? ["--env", args.env] : []),
+		// Note: the first args in `_` will be the commands.
+		...args._.slice(args._[0] === "populateCache" ? 2 : 1).map((a) => `${a}`),
+	];
+}
+
+export function withWranglerPassthroughArgs<
+	T extends yargs.ArgumentsCamelCase<{
+		config: string | undefined;
+		env: string | undefined;
+	}>,
+>(args: T) {
+	return { ...args, wranglerArgs: getWranglerArgs(args) };
 }
