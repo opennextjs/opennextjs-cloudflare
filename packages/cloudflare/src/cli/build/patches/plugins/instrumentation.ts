@@ -20,7 +20,7 @@ export function patchInstrumentation(updater: ContentUpdater, buildOpts: BuildOp
 						escape: false,
 					}
 				),
-				contentFilter: /async function getInstrumentationModule\(/,
+				contentFilter: /getInstrumentationModule\(/,
 				callback: ({ contents }) => patchCode(contents, getNext154Rule(builtInstrumentationPath)),
 			},
 		},
