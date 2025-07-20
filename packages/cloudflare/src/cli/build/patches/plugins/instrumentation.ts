@@ -59,23 +59,16 @@ rule:
   has:
     kind: assignment_expression
     all:
-      - has: {kind: identifier, pattern: cachedInstrumentationModule}
-    has:
-      kind: call_expression
-      all:
-        - has: {kind: arguments, regex: _constants.INSTRUMENTATION_HOOK_FILENAME}
+      - has: { pattern: "cachedInstrumentationModule" }
+      - has: { kind: call_expression, regex: "INSTRUMENTATION_HOOK_FILENAME"}
   inside:
     kind: try_statement
     stopBy: end
-    has:
-      all:
-        - has: {kind: return_statement, pattern: return cachedInstrumentationModule}
+    has: { regex: "return cachedInstrumentationModule" }
     inside:
-      kind: statement_block
-      inside:
-        kind: function_declaration
-        all:
-         - has: {field: name, pattern: getInstrumentationModule}
+      kind: function_declaration
+      stopBy: end
+      has: { field: name, pattern: getInstrumentationModule }
 fix: |-
       cachedInstrumentationModule = ${builtInstrumentationPath ? `require('${builtInstrumentationPath}')` : "null"};
 `;
