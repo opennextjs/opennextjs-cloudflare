@@ -39,7 +39,9 @@ async function getLoadManifestRule(buildOpts: BuildOptions) {
 	const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts));
 	const dotNextDir = join(baseDir, ".next");
 
-	const manifests = await glob(join(dotNextDir, "**/*-manifest.json"), { windowsPathsNoEscape: true });
+	const manifests = await glob(join(dotNextDir, "**/{*-manifest,required-server-files}.json"), {
+		windowsPathsNoEscape: true,
+	});
 
 	const returnManifests = (
 		await Promise.all(
@@ -62,6 +64,9 @@ function loadManifest($PATH, $$$ARGS) {
 		fix: `
 function loadManifest($PATH, $$$ARGS) {
   $PATH = $PATH.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
+  if ($PATH === "/.next/BUILD_ID") {
+  return process.env.NEXT_BUILD_ID;
+	}
   ${returnManifests}
   throw new Error(\`Unexpected loadManifest(\${$PATH}) call!\`);
 }`,

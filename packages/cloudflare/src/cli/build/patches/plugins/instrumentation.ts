@@ -4,11 +4,27 @@ import { join } from "node:path";
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
+import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
 import { normalizePath } from "../../utils/normalize-path.js";
 
 export function patchInstrumentation(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
 	const builtInstrumentationPath = getBuiltInstrumentationPath(buildOpts);
+
+	updater.updateContent("patch-instrumentation-next15-4", [
+		{
+			field: {
+				filter: getCrossPlatformPathRegex(
+					String.raw`/server/lib/router-utils/instrumentation-globals.external\.js$`,
+					{
+						escape: false,
+					}
+				),
+				contentFilter: /getInstrumentationModule\(/,
+				callback: ({ contents }) => patchCode(contents, getNext154Rule(builtInstrumentationPath)),
+			},
+		},
+	]);
 
 	updater.updateContent("patch-instrumentation-next15", [
 		{
@@ -34,6 +50,28 @@ export function patchInstrumentation(updater: ContentUpdater, buildOpts: BuildOp
 		name: "patch-instrumentation",
 		setup() {},
 	};
+}
+
+export function getNext154Rule(builtInstrumentationPath: string | null) {
+	return `
+rule:
+  kind: expression_statement
+  has:
+    kind: assignment_expression
+    all:
+      - has: { pattern: "cachedInstrumentationModule" }
+      - has: { kind: call_expression, regex: "INSTRUMENTATION_HOOK_FILENAME"}
+  inside:
+    kind: try_statement
+    stopBy: end
+    has: { regex: "return cachedInstrumentationModule" }
+    inside:
+      kind: function_declaration
+      stopBy: end
+      has: { field: name, pattern: getInstrumentationModule }
+fix: |-
+      cachedInstrumentationModule = ${builtInstrumentationPath ? `require('${builtInstrumentationPath}')` : "null"};
+`;
 }
 
 export function getNext15Rule(builtInstrumentationPath: string | null) {

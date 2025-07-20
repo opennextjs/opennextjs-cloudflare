@@ -1,7 +1,7 @@
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import { describe, expect, test } from "vitest";
 
-import { getNext14Rule, getNext15Rule } from "./instrumentation.js";
+import { getNext14Rule, getNext15Rule, getNext154Rule } from "./instrumentation.js";
 
 describe("LoadInstrumentationModule (Next15)", () => {
 	const code = `
@@ -94,5 +94,61 @@ describe("prepareImpl (Next14)", () => {
             }
           "
     `);
+	});
+});
+
+describe("getInstrumenationModule (Next15.4)", () => {
+	const code = `
+    async function getInstrumentationModule(projectDir, distDir) {
+      if (cachedInstrumentationModule) {
+        return cachedInstrumentationModule;
+      }
+      try {
+        cachedInstrumentationModule = (0, _interopdefault.interopDefault)(await require(_nodepath.default.join(projectDir, distDir, "server", \`\${_constants.INSTRUMENTATION_HOOK_FILENAME}.js\`)));
+        return cachedInstrumentationModule;
+      } catch (err) {
+        if ((0, _iserror.default)(err) && err.code !== "ENOENT" && err.code !== "MODULE_NOT_FOUND" && err.code !== "ERR_MODULE_NOT_FOUND") {
+          throw err;
+        }
+      }
+    }
+  `;
+
+	test("patch when an instrumentation file is not present", async () => {
+		expect(patchCode(code, getNext154Rule(null))).toMatchInlineSnapshot(`
+			"async function getInstrumentationModule(projectDir, distDir) {
+			      if (cachedInstrumentationModule) {
+			        return cachedInstrumentationModule;
+			      }
+			      try {
+			        cachedInstrumentationModule = null;
+			        return cachedInstrumentationModule;
+			      } catch (err) {
+			        if ((0, _iserror.default)(err) && err.code !== "ENOENT" && err.code !== "MODULE_NOT_FOUND" && err.code !== "ERR_MODULE_NOT_FOUND") {
+			          throw err;
+			        }
+			      }
+			    }
+			  "
+		`);
+	});
+
+	test("patch when an instrumentation file is present", async () => {
+		expect(patchCode(code, getNext154Rule("/_file_exists_/instrumentation.js"))).toMatchInlineSnapshot(`
+			"async function getInstrumentationModule(projectDir, distDir) {
+			      if (cachedInstrumentationModule) {
+			        return cachedInstrumentationModule;
+			      }
+			      try {
+			        cachedInstrumentationModule = require('/_file_exists_/instrumentation.js');
+			        return cachedInstrumentationModule;
+			      } catch (err) {
+			        if ((0, _iserror.default)(err) && err.code !== "ENOENT" && err.code !== "MODULE_NOT_FOUND" && err.code !== "ERR_MODULE_NOT_FOUND") {
+			          throw err;
+			        }
+			      }
+			    }
+			  "
+		`);
 	});
 });
