@@ -97,7 +97,7 @@ describe("prepareImpl (Next14)", () => {
 	});
 });
 
-describe("getInstrumenationModule (Next154)", () => {
+describe("getInstrumenationModule (Next15.4)", () => {
 	const code = `
     async function getInstrumentationModule(projectDir, distDir) {
       if (cachedInstrumentationModule) {
