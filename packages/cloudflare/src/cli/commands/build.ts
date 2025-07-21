@@ -1,26 +1,35 @@
-import { compileOpenNextConfig } from "@opennextjs/aws/build/compileConfig.js";
 import type yargs from "yargs";
 
 import { build as buildImpl } from "../build/build.js";
-import { createOpenNextConfigIfNotExistent } from "../build/utils/create-config-files.js";
 import type { WithWranglerArgs } from "./setup-cli.js";
 import { setupCLI, withWranglerOptions, withWranglerPassthroughArgs } from "./setup-cli.js";
 
+/**
+ * Implementation of the `opennextjs-clouflare build` command.
+ *
+ * @param args
+ */
 async function buildCommand(
 	args: WithWranglerArgs<{
 		skipNextBuild: boolean;
 		noMinify: boolean;
 		skipWranglerConfigCheck: boolean;
 	}>
-) {
-	const { options, config, wranglerConfig, baseDir } = await setupCLI("build", args, async (baseDir) => {
-		await createOpenNextConfigIfNotExistent(baseDir);
-		return compileOpenNextConfig(baseDir, undefined, { compileEdge: true });
+): Promise<void> {
+	const { options, config, wranglerConfig, baseDir } = await setupCLI({
+		command: "build",
+		shouldCompileConfig: true,
+		args,
 	});
 
-	return buildImpl(options, config, { ...args, minify: !args.noMinify, sourceDir: baseDir }, wranglerConfig);
+	await buildImpl(options, config, { ...args, minify: !args.noMinify, sourceDir: baseDir }, wranglerConfig);
 }
 
+/**
+ * Add the `build` command to yargs configuration.
+ *
+ * Consumes 1 positional parameter.
+ */
 export function addBuildCommand<T extends yargs.Argv>(y: T) {
 	return y.command(
 		"build",

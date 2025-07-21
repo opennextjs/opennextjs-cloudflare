@@ -5,11 +5,16 @@ import { runWrangler } from "../utils/run-wrangler.js";
 import { getEnvFromPlatformProxy, quoteShellMeta } from "./helpers.js";
 import { populateCache, withPopulateCacheOptions } from "./populate-cache.js";
 import type { WithWranglerArgs } from "./setup-cli.js";
-import { setupCompiledAppCLI, withWranglerPassthroughArgs } from "./setup-cli.js";
+import { setupCLI, withWranglerPassthroughArgs } from "./setup-cli.js";
 import { getDeploymentMapping } from "./skew-protection.js";
 
-export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize: number }>) {
-	const { options, config, wranglerConfig } = await setupCompiledAppCLI("upload", args);
+/**
+ * Implementation of the `opennextjs-clouflare upload` command.
+ *
+ * @param args
+ */
+export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize: number }>): Promise<void> {
+	const { options, config, wranglerConfig } = await setupCLI({ command: "upload", args });
 
 	const envVars = await getEnvFromPlatformProxy({
 		configPath: args.configPath,
@@ -38,6 +43,11 @@ export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize: num
 	);
 }
 
+/**
+ * Add the `upload` command to yargs configuration.
+ *
+ * Consumes 1 positional parameter.
+ */
 export function addUploadCommand<T extends yargs.Argv>(y: T) {
 	return y.command(
 		"upload",

@@ -39,7 +39,7 @@ import type { WranglerTarget } from "../utils/run-wrangler.js";
 import { runWrangler } from "../utils/run-wrangler.js";
 import { getEnvFromPlatformProxy, quoteShellMeta } from "./helpers.js";
 import type { WithWranglerArgs } from "./setup-cli.js";
-import { setupCompiledAppCLI, withWranglerOptions, withWranglerPassthroughArgs } from "./setup-cli.js";
+import { setupCLI, withWranglerOptions, withWranglerPassthroughArgs } from "./setup-cli.js";
 
 async function resolveCacheName(
 	value:
@@ -275,11 +275,16 @@ export async function populateCache(
 	}
 }
 
-export async function populateCacheCommand(
+/**
+ * Implementation of the `opennextjs-clouflare populateCache` command.
+ *
+ * @param args
+ */
+async function populateCacheCommand(
 	target: "local" | "remote",
 	args: WithWranglerArgs<{ cacheChunkSize: number }>
 ) {
-	const { options, config, wranglerConfig } = await setupCompiledAppCLI("populate cache", args);
+	const { options, config, wranglerConfig } = await setupCLI({ command: "populate cache", args });
 
 	await populateCache(options, config, wranglerConfig, {
 		target,
@@ -289,6 +294,11 @@ export async function populateCacheCommand(
 	});
 }
 
+/**
+ * Add the `populateCache` command to yargs configuration, with nested commands for `local` and `remote`.
+ *
+ * Consumes 2 positional parameters.
+ */
 export function addPopulateCacheCommand<T extends yargs.Argv>(y: T) {
 	return y.command("populateCache", "Populate the cache for a built Next.js app", (c) =>
 		c
