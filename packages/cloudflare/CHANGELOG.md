@@ -1,5 +1,17 @@
 # @opennextjs/cloudflare
 
+## 1.5.2
+
+### Patch Changes
+
+- [#785](https://github.com/opennextjs/opennextjs-cloudflare/pull/785) [`e0f39b6`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e0f39b6215bd58c8135c028578ae3f5dd2f05c7f) Thanks [@vicb](https://github.com/vicb)! - Cancel the unused stream (body)
+
+- [#789](https://github.com/opennextjs/opennextjs-cloudflare/pull/789) [`040731c`](https://github.com/opennextjs/opennextjs-cloudflare/commit/040731c56e5e96d6da31b393db1e074ce6524dae) Thanks [@vicb](https://github.com/vicb)! - cancel the body stream when unconsumed
+
+- [#795](https://github.com/opennextjs/opennextjs-cloudflare/pull/795) [`d18cd9d`](https://github.com/opennextjs/opennextjs-cloudflare/commit/d18cd9d2071248ebe5560599f88fa0552940d77a) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix(patches): Update patchInstrumentation and loadManifest to work with Next 15.4
+
+- [#800](https://github.com/opennextjs/opennextjs-cloudflare/pull/800) [`a3e7551`](https://github.com/opennextjs/opennextjs-cloudflare/commit/a3e7551cc0684a36bbe9547c43ec1da2640f13a6) Thanks [@vicb](https://github.com/vicb)! - wrangler should not load .env files
+
 ## 1.5.1
 
 ### Patch Changes
