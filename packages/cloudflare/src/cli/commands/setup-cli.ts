@@ -60,6 +60,12 @@ export async function setupCLI({ command, shouldCompileConfig, args }: Options) 
 	return { options, config, wranglerConfig, baseDir };
 }
 
+/**
+ * Compiles an OpenNext config, or reads the pre-compiled config.
+ *
+ * @param opts whether the config should be compiled, and the base directory.
+ * @returns OpenNext config.
+ */
 async function getOpenNextConfig(opts: {
 	shouldCompileConfig?: boolean;
 	baseDir: string;
@@ -84,7 +90,7 @@ async function getOpenNextConfig(opts: {
 }
 
 /**
- * Add flags for the wrangler config path and environment to the yargs configuration.
+ * Adds flags for the wrangler config path and environment to the yargs configuration.
  */
 export function withWranglerOptions<T extends yargs.Argv>(args: T) {
 	return args
