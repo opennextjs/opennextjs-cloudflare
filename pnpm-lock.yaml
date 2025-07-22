@@ -40,8 +40,8 @@ catalogs:
       specifier: ^0.25.4
       version: 0.25.4
     eslint:
-      specifier: ^9.11.1
-      version: 9.11.1
+      specifier: ^9.31.0
+      version: 9.31.0
     eslint-plugin-import:
       specifier: ^2.31.0
       version: 2.31.0
@@ -651,7 +651,7 @@ importers:
         version: 18.3.0
       eslint:
         specifier: 'catalog:'
-        version: 9.11.1(jiti@1.21.6)
+        version: 9.31.0(jiti@1.21.6)
       typescript:
         specifier: 'catalog:'
         version: 5.7.3
@@ -1091,16 +1091,16 @@ importers:
         version: 0.25.4
       eslint:
         specifier: 'catalog:'
-        version: 9.11.1(jiti@1.21.6)
+        version: 9.31.0(jiti@1.21.6)
       eslint-plugin-import:
         specifier: 'catalog:'
-        version: 2.31.0(@typescript-eslint/parser@8.7.0(eslint@9.11.1(jiti@1.21.6))(typescript@5.7.3))(eslint-import-resolver-typescript@3.6.3)(eslint@9.11.1(jiti@1.21.6))
+        version: 2.31.0(@typescript-eslint/parser@8.37.0(eslint@9.31.0(jiti@1.21.6))(typescript@5.7.3))(eslint@9.31.0(jiti@1.21.6))
       eslint-plugin-simple-import-sort:
         specifier: 'catalog:'
-        version: 12.1.1(eslint@9.11.1(jiti@1.21.6))
+        version: 12.1.1(eslint@9.31.0(jiti@1.21.6))
       eslint-plugin-unicorn:
         specifier: 'catalog:'
-        version: 55.0.0(eslint@9.11.1(jiti@1.21.6))
+        version: 55.0.0(eslint@9.31.0(jiti@1.21.6))
       globals:
         specifier: 'catalog:'
         version: 15.9.0
@@ -1121,7 +1121,7 @@ importers:
         version: 5.7.3
       typescript-eslint:
         specifier: 'catalog:'
-        version: 8.7.0(eslint@9.11.1(jiti@1.21.6))(typescript@5.7.3)
+        version: 8.37.0(eslint@9.31.0(jiti@1.21.6))(typescript@5.7.3)
       vitest:
         specifier: 'catalog:'
         version: 2.1.1(@edge-runtime/vm@3.2.0)(@types/node@22.2.0)(terser@5.16.9)
@@ -16701,18 +16701,18 @@ snapshots:
       string.prototype.matchall: 4.0.12
       string.prototype.repeat: 1.0.0
 
-  eslint-plugin-simple-import-sort@12.1.1(eslint@9.11.1(jiti@1.21.6)):
+  eslint-plugin-simple-import-sort@12.1.1(eslint@9.31.0(jiti@1.21.6)):
     dependencies:
-      eslint: 9.11.1(jiti@1.21.6)
+      eslint: 9.31.0(jiti@1.21.6)
 
-  eslint-plugin-unicorn@55.0.0(eslint@9.11.1(jiti@1.21.6)):
+  eslint-plugin-unicorn@55.0.0(eslint@9.31.0(jiti@1.21.6)):
     dependencies:
       '@babel/helper-validator-identifier': 7.27.1
-      '@eslint-community/eslint-utils': 4.7.0(eslint@9.11.1(jiti@1.21.6))
+      '@eslint-community/eslint-utils': 4.7.0(eslint@9.31.0(jiti@1.21.6))
       ci-info: 4.2.0
       clean-regexp: 1.0.0
       core-js-compat: 3.42.0
-      eslint: 9.11.1(jiti@1.21.6)
+      eslint: 9.31.0(jiti@1.21.6)
       esquery: 1.6.0
       globals: 15.9.0
       indent-string: 4.0.0
@@ -20567,12 +20567,13 @@ snapshots:
       possible-typed-array-names: 1.1.0
       reflect.getprototypeof: 1.0.10
 
-  typescript-eslint@8.7.0(eslint@9.11.1(jiti@1.21.6))(typescript@5.7.3):
+  typescript-eslint@8.37.0(eslint@9.31.0(jiti@1.21.6))(typescript@5.7.3):
     dependencies:
-      '@typescript-eslint/eslint-plugin': 8.7.0(@typescript-eslint/parser@8.7.0(eslint@9.11.1(jiti@1.21.6))(typescript@5.7.3))(eslint@9.11.1(jiti@1.21.6))(typescript@5.7.3)
-      '@typescript-eslint/parser': 8.7.0(eslint@9.11.1(jiti@1.21.6))(typescript@5.7.3)
-      '@typescript-eslint/utils': 8.7.0(eslint@9.11.1(jiti@1.21.6))(typescript@5.7.3)
-    optionalDependencies:
+      '@typescript-eslint/eslint-plugin': 8.37.0(@typescript-eslint/parser@8.37.0(eslint@9.31.0(jiti@1.21.6))(typescript@5.7.3))(eslint@9.31.0(jiti@1.21.6))(typescript@5.7.3)
+      '@typescript-eslint/parser': 8.37.0(eslint@9.31.0(jiti@1.21.6))(typescript@5.7.3)
+      '@typescript-eslint/typescript-estree': 8.37.0(typescript@5.7.3)
+      '@typescript-eslint/utils': 8.37.0(eslint@9.31.0(jiti@1.21.6))(typescript@5.7.3)
+      eslint: 9.31.0(jiti@1.21.6)
       typescript: 5.7.3
     transitivePeerDependencies:
       - supports-color
