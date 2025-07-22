@@ -276,7 +276,7 @@ export async function populateCache(
 }
 
 /**
- * Implementation of the `opennextjs-clouflare populateCache` command.
+ * Implementation of the `opennextjs-cloudflare populateCache` command.
  *
  * @param args
  */

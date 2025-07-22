@@ -34,7 +34,7 @@ type Options = {
  * - Initialises the OpenNext options.
  * - Reads the Wrangler config.
  *
- * @param command
+ * @param command The CLI command being executed (`build`, `deploy`, ...)
  * @param shouldCompileConfig
  * @param args
  * @returns CLI options, OpenNext config, and Wrangler config.

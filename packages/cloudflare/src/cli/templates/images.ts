@@ -218,7 +218,6 @@ export function detectContentType(buffer: Uint8Array) {
 	}
 }
 
-/* eslint-disable no-var */
 declare global {
 	var __IMAGES_REMOTE_PATTERNS__: RemotePattern[];
 	var __IMAGES_LOCAL_PATTERNS__: LocalPattern[];
@@ -226,4 +225,3 @@ declare global {
 	var __IMAGES_CONTENT_SECURITY_POLICY__: string;
 	var __IMAGES_CONTENT_DISPOSITION__: string;
 }
-/* eslint-enable no-var */

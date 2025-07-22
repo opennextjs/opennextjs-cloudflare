@@ -6,7 +6,7 @@ import type { WithWranglerArgs } from "./setup-cli.js";
 import { setupCLI, withWranglerPassthroughArgs } from "./setup-cli.js";
 
 /**
- * Implementation of the `opennextjs-clouflare preview` command.
+ * Implementation of the `opennextjs-cloudflare preview` command.
  *
  * @param args
  */

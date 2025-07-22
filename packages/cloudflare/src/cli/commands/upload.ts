@@ -9,7 +9,7 @@ import { setupCLI, withWranglerPassthroughArgs } from "./setup-cli.js";
 import { getDeploymentMapping } from "./skew-protection.js";
 
 /**
- * Implementation of the `opennextjs-clouflare upload` command.
+ * Implementation of the `opennextjs-cloudflare upload` command.
  *
  * @param args
  */

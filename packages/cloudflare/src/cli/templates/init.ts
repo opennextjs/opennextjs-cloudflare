@@ -146,7 +146,6 @@ function populateProcessEnv(url: URL, env: CloudflareEnv) {
 	}
 }
 
-/* eslint-disable no-var */
 declare global {
 	// Build timestamp
 	var __BUILD_TIMESTAMP_MS__: number;
@@ -157,4 +156,3 @@ declare global {
 	// Deployment ID
 	var __DEPLOYMENT_ID__: string;
 }
-/* eslint-enable no-var */
