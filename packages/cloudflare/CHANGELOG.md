@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.5.3
+
+### Patch Changes
+
+- [#804](https://github.com/opennextjs/opennextjs-cloudflare/pull/804) [`72d8d5b`](https://github.com/opennextjs/opennextjs-cloudflare/commit/72d8d5b71852d5e85e56dc5f7ac749b2a1e8d7ca) Thanks [@alex-all3dp](https://github.com/alex-all3dp)! - Fix missing SQL parameter bindings in D1NextModeTagCache.getLastRevalidated()
+
 ## 1.5.2
 
 ### Patch Changes
