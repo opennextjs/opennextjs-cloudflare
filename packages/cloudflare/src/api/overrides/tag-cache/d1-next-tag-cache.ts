@@ -21,6 +21,7 @@ export class D1NextModeTagCache implements NextModeTagCache {
 				.prepare(
 					`SELECT MAX(revalidatedAt) AS time FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")})`
 				)
+				.bind(...tags.map((tag) => this.getCacheKey(tag)))
 				.run();
 
 			if (result.results.length === 0) return 0;
