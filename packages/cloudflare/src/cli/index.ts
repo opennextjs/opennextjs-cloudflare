@@ -9,15 +9,15 @@ import { addPreviewCommand } from "./commands/preview.js";
 import { addUploadCommand } from "./commands/upload.js";
 
 export function runCommand() {
-	let y = yargs(process.argv.slice(2))
+	const y = yargs(process.argv.slice(2))
 		.scriptName("opennextjs-cloudflare")
 		.parserConfiguration({ "unknown-options-as-args": true });
 
-	y = addBuildCommand(y);
-	y = addPreviewCommand(y);
-	y = addDeployCommand(y);
-	y = addUploadCommand(y);
-	y = addPopulateCacheCommand(y);
+	addBuildCommand(y);
+	addPreviewCommand(y);
+	addDeployCommand(y);
+	addUploadCommand(y);
+	addPopulateCacheCommand(y);
 
 	return y.demandCommand(1, 1).parse();
 }
