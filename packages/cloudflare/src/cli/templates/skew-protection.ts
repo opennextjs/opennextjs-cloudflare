@@ -62,7 +62,11 @@ export function maybeGetSkewProtectionResponse(request: Request): Promise<Respon
 		url.hostname = hostname;
 		const requestToOlderDeployment = new Request(url!, request);
 
-		return fetch(requestToOlderDeployment);
+		// Remove the origin header to prevent an error with POST requests
+		const headers = new Headers(request.headers);
+		headers.delete("origin");
+
+		return fetch(requestToOlderDeployment, { headers });
 	}
 }
 
