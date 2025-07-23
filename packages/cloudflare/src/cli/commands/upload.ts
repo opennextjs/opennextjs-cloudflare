@@ -4,15 +4,15 @@ import { DEPLOYMENT_MAPPING_ENV_NAME } from "../templates/skew-protection.js";
 import { runWrangler } from "../utils/run-wrangler.js";
 import { getEnvFromPlatformProxy, quoteShellMeta } from "./helpers.js";
 import { populateCache, withPopulateCacheOptions } from "./populate-cache.js";
-import type { WithWranglerArgs } from "./setup-cli.js";
+import { getDeploymentMapping } from "./skew-protection.js";
+import type { WithWranglerArgs } from "./utils.js";
 import {
 	getNormalizedOptions,
 	printHeaders,
 	readWranglerConfig,
 	retrieveCompiledConfig,
 	withWranglerPassthroughArgs,
-} from "./setup-cli.js";
-import { getDeploymentMapping } from "./skew-protection.js";
+} from "./utils.js";
 
 /**
  * Implementation of the `opennextjs-cloudflare upload` command.

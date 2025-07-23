@@ -38,7 +38,7 @@ import { normalizePath } from "../build/utils/normalize-path.js";
 import type { WranglerTarget } from "../utils/run-wrangler.js";
 import { runWrangler } from "../utils/run-wrangler.js";
 import { getEnvFromPlatformProxy, quoteShellMeta } from "./helpers.js";
-import type { WithWranglerArgs } from "./setup-cli.js";
+import type { WithWranglerArgs } from "./utils.js";
 import {
 	getNormalizedOptions,
 	printHeaders,
@@ -46,7 +46,7 @@ import {
 	retrieveCompiledConfig,
 	withWranglerOptions,
 	withWranglerPassthroughArgs,
-} from "./setup-cli.js";
+} from "./utils.js";
 
 async function resolveCacheName(
 	value:

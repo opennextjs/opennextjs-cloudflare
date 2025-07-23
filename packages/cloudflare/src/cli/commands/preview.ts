@@ -2,14 +2,14 @@ import type yargs from "yargs";
 
 import { runWrangler } from "../utils/run-wrangler.js";
 import { populateCache, withPopulateCacheOptions } from "./populate-cache.js";
-import type { WithWranglerArgs } from "./setup-cli.js";
+import type { WithWranglerArgs } from "./utils.js";
 import {
 	getNormalizedOptions,
 	printHeaders,
 	readWranglerConfig,
 	retrieveCompiledConfig,
 	withWranglerPassthroughArgs,
-} from "./setup-cli.js";
+} from "./utils.js";
 
 /**
  * Implementation of the `opennextjs-cloudflare preview` command.
