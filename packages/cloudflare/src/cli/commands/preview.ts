@@ -3,7 +3,13 @@ import type yargs from "yargs";
 import { runWrangler } from "../utils/run-wrangler.js";
 import { populateCache, withPopulateCacheOptions } from "./populate-cache.js";
 import type { WithWranglerArgs } from "./setup-cli.js";
-import { setupCLI, withWranglerPassthroughArgs } from "./setup-cli.js";
+import {
+	getNormalizedOptions,
+	printHeaders,
+	readWranglerConfig,
+	retrieveCompiledConfig,
+	withWranglerPassthroughArgs,
+} from "./setup-cli.js";
 
 /**
  * Implementation of the `opennextjs-cloudflare preview` command.
@@ -11,7 +17,12 @@ import { setupCLI, withWranglerPassthroughArgs } from "./setup-cli.js";
  * @param args
  */
 export async function previewCommand(args: WithWranglerArgs<{ cacheChunkSize: number }>): Promise<void> {
-	const { options, config, wranglerConfig } = await setupCLI({ command: "preview", args });
+	printHeaders("preview");
+
+	const { config } = await retrieveCompiledConfig();
+	const options = getNormalizedOptions(config);
+
+	const wranglerConfig = readWranglerConfig(args);
 
 	await populateCache(options, config, wranglerConfig, {
 		target: "local",

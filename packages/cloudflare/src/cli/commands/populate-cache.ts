@@ -39,7 +39,14 @@ import type { WranglerTarget } from "../utils/run-wrangler.js";
 import { runWrangler } from "../utils/run-wrangler.js";
 import { getEnvFromPlatformProxy, quoteShellMeta } from "./helpers.js";
 import type { WithWranglerArgs } from "./setup-cli.js";
-import { setupCLI, withWranglerOptions, withWranglerPassthroughArgs } from "./setup-cli.js";
+import {
+	getNormalizedOptions,
+	printHeaders,
+	readWranglerConfig,
+	retrieveCompiledConfig,
+	withWranglerOptions,
+	withWranglerPassthroughArgs,
+} from "./setup-cli.js";
 
 async function resolveCacheName(
 	value:
@@ -284,7 +291,12 @@ async function populateCacheCommand(
 	target: "local" | "remote",
 	args: WithWranglerArgs<{ cacheChunkSize: number }>
 ) {
-	const { options, config, wranglerConfig } = await setupCLI({ command: "populate cache", args });
+	printHeaders(`populate cache - ${target}`);
+
+	const { config } = await retrieveCompiledConfig();
+	const options = getNormalizedOptions(config);
+
+	const wranglerConfig = readWranglerConfig(args);
 
 	await populateCache(options, config, wranglerConfig, {
 		target,

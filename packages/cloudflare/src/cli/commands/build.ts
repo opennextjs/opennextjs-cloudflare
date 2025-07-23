@@ -2,7 +2,15 @@ import type yargs from "yargs";
 
 import { build as buildImpl } from "../build/build.js";
 import type { WithWranglerArgs } from "./setup-cli.js";
-import { setupCLI, withWranglerOptions, withWranglerPassthroughArgs } from "./setup-cli.js";
+import {
+	compileConfig,
+	getNormalizedOptions,
+	nextAppDir,
+	printHeaders,
+	readWranglerConfig,
+	withWranglerOptions,
+	withWranglerPassthroughArgs,
+} from "./setup-cli.js";
 
 /**
  * Implementation of the `opennextjs-cloudflare build` command.
@@ -16,13 +24,19 @@ async function buildCommand(
 		skipWranglerConfigCheck: boolean;
 	}>
 ): Promise<void> {
-	const { options, config, wranglerConfig, baseDir } = await setupCLI({
-		command: "build",
-		shouldCompileConfig: true,
-		args,
-	});
+	printHeaders("build");
 
-	await buildImpl(options, config, { ...args, minify: !args.noMinify, sourceDir: baseDir }, wranglerConfig);
+	const { config, buildDir } = await compileConfig();
+	const options = getNormalizedOptions(config, buildDir);
+
+	const wranglerConfig = readWranglerConfig(args);
+
+	await buildImpl(
+		options,
+		config,
+		{ ...args, minify: !args.noMinify, sourceDir: nextAppDir },
+		wranglerConfig
+	);
 }
 
 /**

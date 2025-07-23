@@ -9,7 +9,7 @@ import logger from "@opennextjs/aws/logger.js";
 import { unstable_readConfig } from "wrangler";
 import type yargs from "yargs";
 
-import { OpenNextConfig } from "../../api/config.js";
+import type { OpenNextConfig } from "../../api/config.js";
 import { createOpenNextConfigIfNotExistent, ensureCloudflareConfig } from "../build/utils/index.js";
 
 export type WithWranglerArgs<T = unknown> = T & {
@@ -19,64 +19,40 @@ export type WithWranglerArgs<T = unknown> = T & {
 	env: string | undefined;
 };
 
-const nextAppDir = process.cwd();
-
-type Options = {
-	command: string;
-	shouldCompileConfig?: boolean;
-	args: WithWranglerArgs;
-};
+export const nextAppDir = process.cwd();
 
 /**
- * Sets up the CLI and returns config information:
- * - Prints necessary header messages and warnings,
- * - Retrieves the OpenNext config and validates it.
- * - Initialises the OpenNext options.
- * - Reads the Wrangler config.
+ * Print headers and warnings for the CLI.
  *
- * @param command The CLI command being executed (`build`, `deploy`, ...)
- * @param shouldCompileConfig
- * @param args
- * @returns CLI options, OpenNext config, and Wrangler config.
+ * @param command
  */
-export async function setupCLI({ command, shouldCompileConfig, args }: Options) {
+export function printHeaders(command: string) {
 	printHeader(`Cloudflare ${command}`);
 
 	showWarningOnWindows();
-
-	const baseDir = nextAppDir;
-	const require = createRequire(import.meta.url);
-	const openNextDistDir = path.dirname(require.resolve("@opennextjs/aws/index.js"));
-
-	const { config, buildDir } = await getOpenNextConfig({ shouldCompileConfig, baseDir });
-	ensureCloudflareConfig(config);
-
-	// Initialize options
-	const options = normalizeOptions(config, openNextDistDir, buildDir);
-	logger.setLevel(options.debug ? "debug" : "info");
-
-	const wranglerConfig = unstable_readConfig({ env: args.env, config: args.configPath });
-
-	return { options, config, wranglerConfig, baseDir };
 }
 
 /**
- * Compiles an OpenNext config, or reads the pre-compiled config.
+ * Compile the OpenNext config, and ensure it is for Cloudflare.
  *
- * @param opts whether the config should be compiled, and the base directory.
  * @returns OpenNext config.
  */
-async function getOpenNextConfig(opts: {
-	shouldCompileConfig?: boolean;
-	baseDir: string;
-}): Promise<{ config: OpenNextConfig; buildDir: string }> {
-	if (opts.shouldCompileConfig) {
-		await createOpenNextConfigIfNotExistent(opts.baseDir);
+export async function compileConfig() {
+	await createOpenNextConfigIfNotExistent(nextAppDir);
 
-		return compileOpenNextConfig(opts.baseDir, undefined, { compileEdge: true });
-	}
+	const { config, buildDir } = await compileOpenNextConfig(nextAppDir, undefined, { compileEdge: true });
+	ensureCloudflareConfig(config);
 
-	const configPath = path.join(opts.baseDir, ".open-next/.build/open-next.config.edge.mjs");
+	return { config, buildDir };
+}
+
+/**
+ * Retrieve a compiled OpenNext config, and ensure it is for Cloudflare.
+ *
+ * @returns OpenNext config.
+ */
+export async function retrieveCompiledConfig() {
+	const configPath = path.join(nextAppDir, ".open-next/.build/open-next.config.edge.mjs");
 
 	if (!existsSync(configPath)) {
 		logger.error("Could not find compiled Open Next config");
@@ -84,9 +60,36 @@ async function getOpenNextConfig(opts: {
 	}
 
 	const config = await import(configPath).then((mod) => mod.default);
+	ensureCloudflareConfig(config);
 
-	// Note: buildDir is not used when an app is already compiled.
-	return { config, buildDir: opts.baseDir };
+	return { config };
+}
+
+/**
+ * Normalize the OpenNext options and set the logging level.
+ *
+ * @param config
+ * @param buildDir Directory to use when building the application
+ * @returns Normalized options.
+ */
+export function getNormalizedOptions(config: OpenNextConfig, buildDir = nextAppDir) {
+	const require = createRequire(import.meta.url);
+	const openNextDistDir = path.dirname(require.resolve("@opennextjs/aws/index.js"));
+
+	const options = normalizeOptions(config, openNextDistDir, buildDir);
+	logger.setLevel(options.debug ? "debug" : "info");
+
+	return options;
+}
+
+/**
+ * Read the Wrangler config.
+ *
+ * @param args Wrangler environment and config path.
+ * @returns Wrangler config.
+ */
+export function readWranglerConfig(args: WithWranglerArgs) {
+	return unstable_readConfig({ env: args.env, config: args.configPath });
 }
 
 /**

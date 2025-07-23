@@ -5,7 +5,13 @@ import { runWrangler } from "../utils/run-wrangler.js";
 import { getEnvFromPlatformProxy, quoteShellMeta } from "./helpers.js";
 import { populateCache, withPopulateCacheOptions } from "./populate-cache.js";
 import type { WithWranglerArgs } from "./setup-cli.js";
-import { setupCLI, withWranglerPassthroughArgs } from "./setup-cli.js";
+import {
+	getNormalizedOptions,
+	printHeaders,
+	readWranglerConfig,
+	retrieveCompiledConfig,
+	withWranglerPassthroughArgs,
+} from "./setup-cli.js";
 import { getDeploymentMapping } from "./skew-protection.js";
 
 /**
@@ -14,7 +20,12 @@ import { getDeploymentMapping } from "./skew-protection.js";
  * @param args
  */
 export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize: number }>): Promise<void> {
-	const { options, config, wranglerConfig } = await setupCLI({ command: "upload", args });
+	printHeaders("upload");
+
+	const { config } = await retrieveCompiledConfig();
+	const options = getNormalizedOptions(config);
+
+	const wranglerConfig = readWranglerConfig(args);
 
 	const envVars = await getEnvFromPlatformProxy({
 		configPath: args.configPath,
