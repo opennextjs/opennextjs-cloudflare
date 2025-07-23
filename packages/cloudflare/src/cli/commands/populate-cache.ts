@@ -12,7 +12,8 @@ import type {
 import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides.js";
 import { globSync } from "glob";
 import { tqdm } from "ts-tqdm";
-import { unstable_readConfig } from "wrangler";
+import type { Unstable_Config as WranglerConfig } from "wrangler";
+import type yargs from "yargs";
 
 import {
 	BINDING_NAME as KV_CACHE_BINDING_NAME,
@@ -37,6 +38,15 @@ import { normalizePath } from "../build/utils/normalize-path.js";
 import type { WranglerTarget } from "../utils/run-wrangler.js";
 import { runWrangler } from "../utils/run-wrangler.js";
 import { getEnvFromPlatformProxy, quoteShellMeta } from "./helpers.js";
+import type { WithWranglerArgs } from "./utils.js";
+import {
+	getNormalizedOptions,
+	printHeaders,
+	readWranglerConfig,
+	retrieveCompiledConfig,
+	withWranglerOptions,
+	withWranglerPassthroughArgs,
+} from "./utils.js";
 
 async function resolveCacheName(
 	value:
@@ -94,13 +104,19 @@ export function getCacheAssets(opts: BuildOptions): CacheAsset[] {
 	return assets;
 }
 
+type PopulateCacheOptions = {
+	target: WranglerTarget;
+	environment?: string;
+	configPath?: string;
+	cacheChunkSize?: number;
+};
+
 async function populateR2IncrementalCache(
 	options: BuildOptions,
-	populateCacheOptions: { target: WranglerTarget; environment?: string }
+	config: WranglerConfig,
+	populateCacheOptions: PopulateCacheOptions
 ) {
 	logger.info("\nPopulating R2 incremental cache...");
-
-	const config = unstable_readConfig({ env: populateCacheOptions.environment });
 
 	const binding = config.r2_buckets.find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
 	if (!binding) {
@@ -140,11 +156,10 @@ async function populateR2IncrementalCache(
 
 async function populateKVIncrementalCache(
 	options: BuildOptions,
-	populateCacheOptions: { target: WranglerTarget; environment?: string; cacheChunkSize?: number }
+	config: WranglerConfig,
+	populateCacheOptions: PopulateCacheOptions
 ) {
 	logger.info("\nPopulating KV incremental cache...");
-
-	const config = unstable_readConfig({ env: populateCacheOptions.environment });
 
 	const binding = config.kv_namespaces.find(({ binding }) => binding === KV_CACHE_BINDING_NAME);
 	if (!binding) {
@@ -190,11 +205,10 @@ async function populateKVIncrementalCache(
 
 function populateD1TagCache(
 	options: BuildOptions,
-	populateCacheOptions: { target: WranglerTarget; environment?: string }
+	config: WranglerConfig,
+	populateCacheOptions: PopulateCacheOptions
 ) {
 	logger.info("\nCreating D1 table if necessary...");
-
-	const config = unstable_readConfig({ env: populateCacheOptions.environment });
 
 	const binding = config.d1_databases.find(({ binding }) => binding === D1_TAG_BINDING_NAME);
 	if (!binding) {
@@ -229,7 +243,8 @@ function populateStaticAssetsIncrementalCache(options: BuildOptions) {
 export async function populateCache(
 	options: BuildOptions,
 	config: OpenNextConfig,
-	populateCacheOptions: { target: WranglerTarget; environment?: string; cacheChunkSize?: number }
+	wranglerConfig: WranglerConfig,
+	populateCacheOptions: PopulateCacheOptions
 ) {
 	const { incrementalCache, tagCache } = config.default.override ?? {};
 
@@ -242,10 +257,10 @@ export async function populateCache(
 		const name = await resolveCacheName(incrementalCache);
 		switch (name) {
 			case R2_CACHE_NAME:
-				await populateR2IncrementalCache(options, populateCacheOptions);
+				await populateR2IncrementalCache(options, wranglerConfig, populateCacheOptions);
 				break;
 			case KV_CACHE_NAME:
-				await populateKVIncrementalCache(options, populateCacheOptions);
+				await populateKVIncrementalCache(options, wranglerConfig, populateCacheOptions);
 				break;
 			case STATIC_ASSETS_CACHE_NAME:
 				populateStaticAssetsIncrementalCache(options);
@@ -259,10 +274,66 @@ export async function populateCache(
 		const name = await resolveCacheName(tagCache);
 		switch (name) {
 			case D1_TAG_NAME:
-				populateD1TagCache(options, populateCacheOptions);
+				populateD1TagCache(options, wranglerConfig, populateCacheOptions);
 				break;
 			default:
 				logger.info("Tag cache does not need populating");
 		}
 	}
+}
+
+/**
+ * Implementation of the `opennextjs-cloudflare populateCache` command.
+ *
+ * @param args
+ */
+async function populateCacheCommand(
+	target: "local" | "remote",
+	args: WithWranglerArgs<{ cacheChunkSize: number }>
+) {
+	printHeaders(`populate cache - ${target}`);
+
+	const { config } = await retrieveCompiledConfig();
+	const options = getNormalizedOptions(config);
+
+	const wranglerConfig = readWranglerConfig(args);
+
+	await populateCache(options, config, wranglerConfig, {
+		target,
+		environment: args.env,
+		configPath: args.configPath,
+		cacheChunkSize: args.cacheChunkSize,
+	});
+}
+
+/**
+ * Add the `populateCache` command to yargs configuration, with nested commands for `local` and `remote`.
+ *
+ * Consumes 2 positional parameters.
+ */
+export function addPopulateCacheCommand<T extends yargs.Argv>(y: T) {
+	return y.command("populateCache", "Populate the cache for a built Next.js app", (c) =>
+		c
+			.command(
+				"local",
+				"Local dev server cache",
+				(c) => withPopulateCacheOptions(c),
+				(args) => populateCacheCommand("local", withWranglerPassthroughArgs(args))
+			)
+			.command(
+				"remote",
+				"Remote Cloudflare Worker cache",
+				(c) => withPopulateCacheOptions(c),
+				(args) => populateCacheCommand("remote", withWranglerPassthroughArgs(args))
+			)
+			.demandCommand(1, 1)
+	);
+}
+
+export function withPopulateCacheOptions<T extends yargs.Argv>(args: T) {
+	return withWranglerOptions(args).options("cacheChunkSize", {
+		type: "number",
+		default: 25,
+		desc: "Number of entries per chunk when populating the cache",
+	});
 }

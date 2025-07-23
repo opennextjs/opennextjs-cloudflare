@@ -1,35 +1,51 @@
-import { BuildOptions } from "@opennextjs/aws/build/helper.js";
+import type yargs from "yargs";
 
-import type { OpenNextConfig } from "../../api/config.js";
 import { DEPLOYMENT_MAPPING_ENV_NAME } from "../templates/skew-protection.js";
-import { getWranglerEnvironmentFlag, runWrangler } from "../utils/run-wrangler.js";
+import { runWrangler } from "../utils/run-wrangler.js";
 import { getEnvFromPlatformProxy, quoteShellMeta } from "./helpers.js";
-import { populateCache } from "./populate-cache.js";
+import { populateCache, withPopulateCacheOptions } from "./populate-cache.js";
 import { getDeploymentMapping } from "./skew-protection.js";
+import type { WithWranglerArgs } from "./utils.js";
+import {
+	getNormalizedOptions,
+	printHeaders,
+	readWranglerConfig,
+	retrieveCompiledConfig,
+	withWranglerPassthroughArgs,
+} from "./utils.js";
 
-export async function deploy(
-	options: BuildOptions,
-	config: OpenNextConfig,
-	deployOptions: { passthroughArgs: string[]; cacheChunkSize?: number }
-) {
+/**
+ * Implementation of the `opennextjs-cloudflare deploy` command.
+ *
+ * @param args
+ */
+export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize: number }>): Promise<void> {
+	printHeaders("deploy");
+
+	const { config } = await retrieveCompiledConfig();
+	const options = getNormalizedOptions(config);
+
+	const wranglerConfig = readWranglerConfig(args);
+
 	const envVars = await getEnvFromPlatformProxy({
-		// TODO: Pass the configPath, update everywhere applicable
-		environment: getWranglerEnvironmentFlag(deployOptions.passthroughArgs),
+		configPath: args.configPath,
+		environment: args.env,
 	});
 
 	const deploymentMapping = await getDeploymentMapping(options, config, envVars);
 
-	await populateCache(options, config, {
+	await populateCache(options, config, wranglerConfig, {
 		target: "remote",
-		environment: getWranglerEnvironmentFlag(deployOptions.passthroughArgs),
-		cacheChunkSize: deployOptions.cacheChunkSize,
+		environment: args.env,
+		configPath: args.configPath,
+		cacheChunkSize: args.cacheChunkSize,
 	});
 
 	runWrangler(
 		options,
 		[
 			"deploy",
-			...deployOptions.passthroughArgs,
+			...args.wranglerArgs,
 			...(deploymentMapping
 				? [`--var ${DEPLOYMENT_MAPPING_ENV_NAME}:${quoteShellMeta(JSON.stringify(deploymentMapping))}`]
 				: []),
@@ -37,5 +53,19 @@ export async function deploy(
 		{
 			logging: "all",
 		}
+	);
+}
+
+/**
+ * Add the `deploy` command to yargs configuration.
+ *
+ * Consumes 1 positional parameter.
+ */
+export function addDeployCommand<T extends yargs.Argv>(y: T) {
+	return y.command(
+		"deploy",
+		"Deploy a built OpenNext app to Cloudflare Workers",
+		(c) => withPopulateCacheOptions(c),
+		(args) => deployCommand(withWranglerPassthroughArgs(args))
 	);
 }

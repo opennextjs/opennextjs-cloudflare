@@ -70,9 +70,7 @@ export function maybeGetSkewProtectionResponse(request: Request): Promise<Respon
 	}
 }
 
-/* eslint-disable no-var */
 declare global {
 	// Replaced at build time with the value from Open Next config
 	var __SKEW_PROTECTION_ENABLED__: boolean;
 }
-/* eslint-enable no-var */
