@@ -1,5 +1,15 @@
 # @opennextjs/cloudflare
 
+## 1.6.0
+
+### Minor Changes
+
+- [#791](https://github.com/opennextjs/opennextjs-cloudflare/pull/791) [`b158e8b`](https://github.com/opennextjs/opennextjs-cloudflare/commit/b158e8b18b2c51005bd8f3929d2b9eaf58ee6e2f) Thanks [@james-elicx](https://github.com/james-elicx)! - refactor: use yargs for the cli
+
+### Patch Changes
+
+- [#810](https://github.com/opennextjs/opennextjs-cloudflare/pull/810) [`fdfa5af`](https://github.com/opennextjs/opennextjs-cloudflare/commit/fdfa5af6b7d5102ce31f436ef1f8ac910312e26f) Thanks [@vicb](https://github.com/vicb)! - fix skew protection handling of POST requests
+
 ## 1.5.3
 
 ### Patch Changes
