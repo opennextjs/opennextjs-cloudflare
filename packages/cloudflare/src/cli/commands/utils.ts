@@ -55,7 +55,7 @@ export async function retrieveCompiledConfig() {
 	const configPath = path.join(nextAppDir, ".open-next/.build/open-next.config.edge.mjs");
 
 	if (!existsSync(configPath)) {
-		logger.error("Could not find compiled Open Next config");
+		logger.error("Could not find compiled Open Next config, did you run the build command?");
 		process.exit(1);
 	}
 
