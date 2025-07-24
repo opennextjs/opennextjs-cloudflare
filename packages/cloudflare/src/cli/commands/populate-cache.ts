@@ -154,12 +154,6 @@ async function populateR2IncrementalCache(
 				environment: undefined,
 				logging: "error",
 			}
-			// Incorrect type for the 'cacheExpiry' field on 'HttpMetadata': the provided value is not of type 'date'.
-			{
-				target: populateCacheOptions.target,
-				configPath: populateCacheOptions.configPath,
-				logging: "error",
-			}
 		);
 	}
 	logger.info(`Successfully populated cache with ${assets.length} assets`);
