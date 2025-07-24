@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.6.1
+
+### Patch Changes
+
+- [#814](https://github.com/opennextjs/opennextjs-cloudflare/pull/814) [`89ce96b`](https://github.com/opennextjs/opennextjs-cloudflare/commit/89ce96b773a0a4a23f095e26d6c2403ea47eb69c) Thanks [@james-elicx](https://github.com/james-elicx)! - fix: wrangler config not passed to cache population
+
 ## 1.6.0
 
 ### Minor Changes
