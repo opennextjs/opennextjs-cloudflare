@@ -11,6 +11,7 @@ export type WranglerTarget = "local" | "remote";
 type WranglerOptions = {
 	target?: WranglerTarget;
 	environment?: string;
+	configPath?: string;
 	logging?: "all" | "error";
 };
 
@@ -65,6 +66,7 @@ export function runWrangler(options: BuildOptions, args: string[], wranglerOpts:
 				[
 					...args,
 					wranglerOpts.environment && `--env ${wranglerOpts.environment}`,
+					wranglerOpts.configPath && `--config ${wranglerOpts.configPath}`,
 					wranglerOpts.target === "remote" && "--remote",
 					wranglerOpts.target === "local" && "--local",
 				].filter((v): v is string => !!v)

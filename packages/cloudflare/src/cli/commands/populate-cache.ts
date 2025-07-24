@@ -146,9 +146,14 @@ async function populateR2IncrementalCache(
 				quoteShellMeta(normalizePath(path.join(bucket, cacheKey))),
 				`--file ${quoteShellMeta(fullPath)}`,
 			],
-			// NOTE: R2 does not support the environment flag and results in the following error:
-			// Incorrect type for the 'cacheExpiry' field on 'HttpMetadata': the provided value is not of type 'date'.
-			{ target: populateCacheOptions.target, logging: "error" }
+			{
+				target: populateCacheOptions.target,
+				configPath: populateCacheOptions.configPath,
+				// R2 does not support the environment flag and results in the following error:
+				// Incorrect type for the 'cacheExpiry' field on 'HttpMetadata': the provided value is not of type 'date'.
+				environment: undefined,
+				logging: "error",
+			}
 		);
 	}
 	logger.info(`Successfully populated cache with ${assets.length} assets`);
@@ -193,7 +198,9 @@ async function populateKVIncrementalCache(
 		writeFileSync(chunkPath, JSON.stringify(kvMapping));
 
 		runWrangler(options, ["kv bulk put", quoteShellMeta(chunkPath), `--binding ${KV_CACHE_BINDING_NAME}`], {
-			...populateCacheOptions,
+			target: populateCacheOptions.target,
+			environment: populateCacheOptions.environment,
+			configPath: populateCacheOptions.configPath,
 			logging: "error",
 		});
 
@@ -222,7 +229,12 @@ function populateD1TagCache(
 			D1_TAG_BINDING_NAME,
 			`--command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);"`,
 		],
-		{ ...populateCacheOptions, logging: "error" }
+		{
+			target: populateCacheOptions.target,
+			environment: populateCacheOptions.environment,
+			configPath: populateCacheOptions.configPath,
+			logging: "error",
+		}
 	);
 
 	logger.info("\nSuccessfully created D1 table");
