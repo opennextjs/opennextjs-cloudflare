@@ -1,4 +1,5 @@
 import logger from "@opennextjs/aws/logger.js";
+import type { ExternalMiddlewareConfig } from "@opennextjs/aws/types/open-next.js";
 
 import type { OpenNextConfig } from "../../../api/config.js";
 
@@ -8,6 +9,9 @@ import type { OpenNextConfig } from "../../../api/config.js";
  * @param config OpenNext configuration.
  */
 export function ensureCloudflareConfig(config: OpenNextConfig) {
+	const mwIsMiddlewareExternal = config.middleware?.external === true;
+	const mwConfig = mwIsMiddlewareExternal ? (config.middleware as ExternalMiddlewareConfig) : undefined;
+
 	const requirements = {
 		// Check for the default function
 		dftUseCloudflareWrapper: config.default?.override?.wrapper === "cloudflare-node",
@@ -24,10 +28,10 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
 			config.default?.override?.queue === "direct" ||
 			typeof config.default?.override?.queue === "function",
 		// Check for the middleware function
-		mwIsMiddlewareExternal: config.middleware?.external === true,
-		mwUseCloudflareWrapper: config.middleware?.override?.wrapper === "cloudflare-edge",
-		mwUseEdgeConverter: config.middleware?.override?.converter === "edge",
-		mwUseFetchProxy: config.middleware?.override?.proxyExternalRequest === "fetch",
+		mwIsMiddlewareExternal,
+		mwUseCloudflareWrapper: mwConfig?.override?.wrapper === "cloudflare-edge",
+		mwUseEdgeConverter: mwConfig?.override?.converter === "edge",
+		mwUseFetchProxy: mwConfig?.override?.proxyExternalRequest === "fetch",
 		hasCryptoExternal: config.edgeExternals?.includes("node:crypto"),
 	};
 

@@ -1041,8 +1041,8 @@ importers:
         specifier: 'catalog:'
         version: 1.31.0
       '@opennextjs/aws':
-        specifier: 3.7.0
-        version: 3.7.0
+        specifier: 3.7.1
+        version: 3.7.1
       cloudflare:
         specifier: ^4.4.1
         version: 4.4.1
@@ -3769,8 +3769,8 @@ packages:
   '@octokit/types@13.10.0':
     resolution: {integrity: sha512-ifLaO34EbbPj0Xgro4G5lP5asESjwHracYJvVaPIyXMuiuXLlhic3S47cBdTb+jfODkTE5YtGCLt3Ay3+J97sA==}
 
-  '@opennextjs/aws@3.7.0':
-    resolution: {integrity: sha512-JXUZice+CedEQW20hnBVqzBEj+jfr4Oe2LVYSE4RNKdfHVIeYG+WJAop14TxRJ+NugKWGcJx6opf944l+ZG7XQ==}
+  '@opennextjs/aws@3.7.1':
+    resolution: {integrity: sha512-ryV5cQucSJDU0TF3+Jzqn9g0/+zhUZgjNopSnchPvH0SxSAbKkNaNH7SlnWBhykjusqHaFzQ8dfEjcjAq7TJSQ==}
     hasBin: true
 
   '@opentelemetry/api@1.9.0':
@@ -9805,7 +9805,7 @@ snapshots:
       '@aws-crypto/sha256-js': 3.0.0
       '@aws-crypto/supports-web-crypto': 3.0.0
       '@aws-crypto/util': 3.0.0
-      '@aws-sdk/types': 3.775.0
+      '@aws-sdk/types': 3.840.0
       '@aws-sdk/util-locate-window': 3.693.0
       '@aws-sdk/util-utf8-browser': 3.259.0
       tslib: 1.14.1
@@ -9823,7 +9823,7 @@ snapshots:
   '@aws-crypto/sha256-js@3.0.0':
     dependencies:
       '@aws-crypto/util': 3.0.0
-      '@aws-sdk/types': 3.775.0
+      '@aws-sdk/types': 3.840.0
       tslib: 1.14.1
 
   '@aws-crypto/sha256-js@5.2.0':
@@ -9842,7 +9842,7 @@ snapshots:
 
   '@aws-crypto/util@3.0.0':
     dependencies:
-      '@aws-sdk/types': 3.775.0
+      '@aws-sdk/types': 3.840.0
       '@aws-sdk/util-utf8-browser': 3.259.0
       tslib: 1.14.1
 
@@ -13002,7 +13002,7 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 24.2.0
 
-  '@opennextjs/aws@3.7.0':
+  '@opennextjs/aws@3.7.1':
     dependencies:
       '@ast-grep/napi': 0.35.0
       '@aws-sdk/client-cloudfront': 3.398.0
@@ -17008,7 +17008,7 @@ snapshots:
       accepts: 2.0.0
       body-parser: 2.2.0
       content-disposition: 1.0.0
-      content-type: 1.0.4
+      content-type: 1.0.5
       cookie: 0.7.1
       cookie-signature: 1.2.2
       debug: 4.3.6
@@ -20321,7 +20321,7 @@ snapshots:
   terser@5.16.9:
     dependencies:
       '@jridgewell/source-map': 0.3.6
-      acorn: 8.14.1
+      acorn: 8.15.0
       commander: 2.20.3
       source-map-support: 0.5.21
 
