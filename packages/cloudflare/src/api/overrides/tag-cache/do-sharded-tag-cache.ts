@@ -429,7 +429,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 		return this.localCache;
 	}
 
-	private getCacheUrlKey(doId: DOId, tag: string) {
+	getCacheUrlKey(doId: DOId, tag: string) {
 		return `http://local.cache/shard/${doId.shardId}?tag=${encodeURIComponent(tag)}`;
 	}
 
