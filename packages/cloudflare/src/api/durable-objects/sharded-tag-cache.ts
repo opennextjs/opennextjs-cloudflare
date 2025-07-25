@@ -50,4 +50,14 @@ export class DOShardedTagCache extends DurableObject<CloudflareEnv> {
 			);
 		});
 	}
+
+	async getRevalidationTimes(tags: string[]): Promise<Record<string, number>> {
+		const result = this.sql
+			.exec(
+				`SELECT tag, revalidatedAt FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")})`,
+				...tags
+			)
+			.toArray();
+		return Object.fromEntries(result.map((row) => [row.tag, row.revalidatedAt]));
+	}
 }
