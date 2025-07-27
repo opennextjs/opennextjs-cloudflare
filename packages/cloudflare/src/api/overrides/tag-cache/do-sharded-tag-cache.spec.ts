@@ -212,7 +212,7 @@ describe("DOShardedTagCache", () => {
 
 		it("should return false if stub return false", async () => {
 			const cache = shardedDOTagCache();
-			cache.getFromRegionalCache = vi.fn().mockResolvedValueOnce([])
+			cache.getFromRegionalCache = vi.fn().mockResolvedValueOnce([]);
 			hasBeenRevalidatedMock.mockImplementationOnce(() => false);
 			const result = await cache.hasBeenRevalidated(["tag1"], 123456);
 			expect(cache.getFromRegionalCache).toHaveBeenCalled();
@@ -257,7 +257,7 @@ describe("DOShardedTagCache", () => {
 		it("should try to put the result in the cache if it was not revalidated", async () => {
 			const cache = shardedDOTagCache();
 			cache.getFromRegionalCache = vi.fn().mockResolvedValueOnce([]);
-			cache.putToRegionalCache = vi.fn()
+			cache.putToRegionalCache = vi.fn();
 			hasBeenRevalidatedMock.mockImplementationOnce(() => false);
 			const result = await cache.hasBeenRevalidated(["tag1"], 123456);
 			expect(result).toBe(false);
@@ -367,14 +367,14 @@ describe("DOShardedTagCache", () => {
 				numberOfReplicas: 1,
 				shardType: "hard",
 			});
-			expect(await cache.getFromRegionalCache({ doId, tags: ["tag1"] })).toEqual([])
+			expect(await cache.getFromRegionalCache({ doId, tags: ["tag1"] })).toEqual([]);
 		});
 
 		it("should call .match on the cache", async () => {
 			// @ts-expect-error - Defined on cloudfare context
 			globalThis.caches = {
 				open: vi.fn().mockResolvedValue({
-					match: vi.fn().mockResolvedValue(new Response('1234567')),
+					match: vi.fn().mockResolvedValue(new Response("1234567")),
 				}),
 			};
 			const cache = shardedDOTagCache({ baseShardSize: 4, regionalCache: true });
@@ -404,9 +404,7 @@ describe("DOShardedTagCache", () => {
 				numberOfReplicas: 1,
 				shardType: "hard",
 			});
-			expect(cache.getCacheUrlKey(doId2, "tag1")).toBe(
-				"http://local.cache/shard/tag-hard;shard-1?tag=tag1"
-			);
+			expect(cache.getCacheUrlKey(doId2, "tag1")).toBe("http://local.cache/shard/tag-hard;shard-1?tag=tag1");
 		});
 	});
 

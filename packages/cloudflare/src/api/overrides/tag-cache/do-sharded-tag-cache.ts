@@ -197,23 +197,23 @@ class ShardedDOTagCache implements NextModeTagCache {
 		// If we have regional replication enabled, we need to further duplicate the shards in all the regions
 		const regionalReplicasInAllRegions = generateAllReplicas
 			? regionalReplicas.flatMap(({ doId, tag }) => {
-				return AVAILABLE_REGIONS.map((region) => {
-					return {
-						doId: new DOId({
-							baseShardId: doId.options.baseShardId,
-							numberOfReplicas: numReplicas,
-							shardType,
-							replicaId: doId.replicaId,
-							region,
-						}),
-						tag,
-					};
-				});
-			})
+					return AVAILABLE_REGIONS.map((region) => {
+						return {
+							doId: new DOId({
+								baseShardId: doId.options.baseShardId,
+								numberOfReplicas: numReplicas,
+								shardType,
+								replicaId: doId.replicaId,
+								region,
+							}),
+							tag,
+						};
+					});
+				})
 			: regionalReplicas.map(({ doId, tag }) => {
-				doId.region = this.getClosestRegion();
-				return { doId, tag };
-			});
+					doId.region = this.getClosestRegion();
+					return { doId, tag };
+				});
 		return regionalReplicasInAllRegions;
 	}
 
@@ -286,9 +286,9 @@ class ShardedDOTagCache implements NextModeTagCache {
 		return !db || isDisabled
 			? { isDisabled: true as const }
 			: {
-				isDisabled: false as const,
-				db,
-			};
+					isDisabled: false as const,
+					db,
+				};
 	}
 
 	async getLastRevalidated(tags: string[]): Promise<number> {
@@ -311,15 +311,10 @@ class ShardedDOTagCache implements NextModeTagCache {
 					const stub = this.getDurableObjectStub(doId);
 					const lastRevalidated = await stub.getLastRevalidated(filteredTags);
 
-					const result = Math.max(
-						...cachedValue.map((item) => item.time),
-						lastRevalidated
-					);
+					const result = Math.max(...cachedValue.map((item) => item.time), lastRevalidated);
 
 					// We then need to populate the regional cache with the missing tags
-					getCloudflareContext().ctx.waitUntil(
-						this.putToRegionalCache({ doId, tags }, stub)
-					);
+					getCloudflareContext().ctx.waitUntil(this.putToRegionalCache({ doId, tags }, stub));
 
 					return result;
 				})
@@ -402,9 +397,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 			await stub.writeTags(tags, lastModified);
 			// Depending on the shards and the tags, deleting from the regional cache will not work for every tag
 			// We also need to delete both cache
-			await Promise.all([
-				this.deleteRegionalCache({ doId, tags }),
-			]);
+			await Promise.all([this.deleteRegionalCache({ doId, tags })]);
 		} catch (e) {
 			error("Error while writing tags", e);
 			if (retryNumber >= this.maxWriteRetries) {
@@ -432,9 +425,6 @@ class ShardedDOTagCache implements NextModeTagCache {
 	getCacheUrlKey(doId: DOId, tag: string) {
 		return `http://local.cache/shard/${doId.shardId}?tag=${encodeURIComponent(tag)}`;
 	}
-
-
-
 
 	/**
 	 * Get the last revalidation time for the tags from the regional cache
@@ -477,16 +467,20 @@ class ShardedDOTagCache implements NextModeTagCache {
 				if (lastRevalidated === undefined) return; // Should we store something in the cache if the tag is not found ?
 				const cacheKey = this.getCacheUrlKey(optsKey.doId, tag);
 				debugCache("Putting to regional cache", { cacheKey, lastRevalidated });
-				await cache.put(cacheKey, new Response(lastRevalidated.toString(), {
-					status: 200, headers: {
-						"cache-control": `max-age=${this.opts.regionalCacheTtlSec ?? 5}`,
-						...(tags.length > 0
-							? {
-								"cache-tag": tags.join(","),
-							}
-							: {})
-					}
-				}));
+				await cache.put(
+					cacheKey,
+					new Response(lastRevalidated.toString(), {
+						status: 200,
+						headers: {
+							"cache-control": `max-age=${this.opts.regionalCacheTtlSec ?? 5}`,
+							...(tags.length > 0
+								? {
+										"cache-tag": tags.join(","),
+									}
+								: {}),
+						},
+					})
+				);
 			})
 		);
 	}
