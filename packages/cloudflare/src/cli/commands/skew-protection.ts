@@ -45,17 +45,22 @@ const MS_PER_DAY = 24 * 3600 * 1000;
  *
  * @param options Build options
  * @param config OpenNext config
- * @param envVars Environment variables
+ * @param workerEnvVars Worker Environment variables (taken from the wrangler config files)
  * @returns Deployment mapping or undefined
  */
 export async function getDeploymentMapping(
 	options: BuildOptions,
 	config: OpenNextConfig,
-	envVars: WorkerEnvVar
+	workerEnvVars: WorkerEnvVar
 ): Promise<Record<string, string> | undefined> {
 	if (config.cloudflare?.skewProtection?.enabled !== true) {
 		return undefined;
 	}
+
+	// Note that `process.env` is spread after `workerEnvVars` since we do want
+	// system environment variables to take precedence over the variables defined
+	// in the wrangler config files
+	const envVars = { ...workerEnvVars, ...process.env };
 
 	const nextConfig = loadConfig(path.join(options.appBuildOutputPath, ".next"));
 	const deploymentId = nextConfig.deploymentId;
