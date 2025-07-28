@@ -5,9 +5,12 @@ import shardedDOTagCache, { AVAILABLE_REGIONS, DOId } from "./do-sharded-tag-cac
 const hasBeenRevalidatedMock = vi.fn();
 const writeTagsMock = vi.fn();
 const idFromNameMock = vi.fn();
-const getMock = vi
-	.fn()
-	.mockReturnValue({ hasBeenRevalidated: hasBeenRevalidatedMock, writeTags: writeTagsMock });
+const getRevalidationTimesMock = vi.fn();
+const getMock = vi.fn().mockReturnValue({
+	hasBeenRevalidated: hasBeenRevalidatedMock,
+	writeTags: writeTagsMock,
+	getRevalidationTimes: getRevalidationTimesMock,
+});
 const waitUntilMock = vi.fn().mockImplementation(async (fn) => fn());
 globalThis.continent = undefined;
 const sendDLQMock = vi.fn();
@@ -386,6 +389,165 @@ describe("DOShardedTagCache", () => {
 			const cacheResult = await cache.getFromRegionalCache({ doId, tags: ["tag1"] });
 			expect(cacheResult.length).toBe(1);
 			expect(cacheResult[0]).toEqual({ tag: "tag1", time: 1234567 });
+			// @ts-expect-error - Defined on cloudfare context
+			globalThis.caches = undefined;
+		});
+	});
+
+	describe("putToRegionalCache", () => {
+		it("should return early if regional cache is disabled", async () => {
+			const cache = shardedDOTagCache();
+			const doId = new DOId({
+				baseShardId: "shard-1",
+				numberOfReplicas: 1,
+				shardType: "hard",
+			});
+			await cache.putToRegionalCache({ doId, tags: ["tag1"] }, getMock());
+			expect(getRevalidationTimesMock).not.toHaveBeenCalled();
+		});
+
+		it("should put the tags in the regional cache if the tags exists in the DO", async () => {
+			const putMock = vi.fn();
+			// @ts-expect-error - Defined on cloudfare context
+			globalThis.caches = {
+				open: vi.fn().mockResolvedValue({
+					put: putMock,
+				}),
+			};
+			const cache = shardedDOTagCache({ baseShardSize: 4, regionalCache: true });
+			const doId = new DOId({
+				baseShardId: "shard-1",
+				numberOfReplicas: 1,
+				shardType: "hard",
+			});
+
+			getRevalidationTimesMock.mockResolvedValueOnce({ tag1: 123456 });
+
+			await cache.putToRegionalCache({ doId, tags: ["tag1"] }, getMock());
+
+			expect(getRevalidationTimesMock).toHaveBeenCalledWith(["tag1"]);
+			expect(putMock).toHaveBeenCalledWith(
+				"http://local.cache/shard/tag-hard;shard-1?tag=tag1",
+				expect.any(Response)
+			);
+			// @ts-expect-error - Defined on cloudfare context
+			globalThis.caches = undefined;
+		});
+
+		it("should not put the tags in the regional cache if the tags does not exists in the DO", async () => {
+			const putMock = vi.fn();
+			// @ts-expect-error - Defined on cloudfare context
+			globalThis.caches = {
+				open: vi.fn().mockResolvedValue({
+					put: putMock,
+				}),
+			};
+			const cache = shardedDOTagCache({ baseShardSize: 4, regionalCache: true });
+			const doId = new DOId({
+				baseShardId: "shard-1",
+				numberOfReplicas: 1,
+				shardType: "hard",
+			});
+
+			getRevalidationTimesMock.mockResolvedValueOnce({});
+
+			await cache.putToRegionalCache({ doId, tags: ["tag1"] }, getMock());
+
+			expect(getRevalidationTimesMock).toHaveBeenCalledWith(["tag1"]);
+			expect(putMock).not.toHaveBeenCalled();
+			// @ts-expect-error - Defined on cloudfare context
+			globalThis.caches = undefined;
+		});
+
+		it("should put multiple tags in the regional cache", async () => {
+			const putMock = vi.fn();
+			// @ts-expect-error - Defined on cloudfare context
+			globalThis.caches = {
+				open: vi.fn().mockResolvedValue({
+					put: putMock,
+				}),
+			};
+			const cache = shardedDOTagCache({ baseShardSize: 4, regionalCache: true });
+			const doId = new DOId({
+				baseShardId: "shard-1",
+				numberOfReplicas: 1,
+				shardType: "hard",
+			});
+
+			getRevalidationTimesMock.mockResolvedValueOnce({ tag1: 123456, tag2: 654321 });
+
+			await cache.putToRegionalCache({ doId, tags: ["tag1", "tag2"] }, getMock());
+
+			expect(getRevalidationTimesMock).toHaveBeenCalledWith(["tag1", "tag2"]);
+			expect(putMock).toHaveBeenCalledWith(
+				"http://local.cache/shard/tag-hard;shard-1?tag=tag1",
+				expect.any(Response)
+			);
+			expect(putMock).toHaveBeenCalledWith(
+				"http://local.cache/shard/tag-hard;shard-1?tag=tag2",
+				expect.any(Response)
+			);
+			// @ts-expect-error - Defined on cloudfare context
+			globalThis.caches = undefined;
+		});
+
+		it("should put missing tag in the regional cache if `regionalCacheDangerouslyPersistMissingTags` is true", async () => {
+			const putMock = vi.fn();
+			// @ts-expect-error - Defined on cloudfare context
+			globalThis.caches = {
+				open: vi.fn().mockResolvedValue({
+					put: putMock,
+				}),
+			};
+			const cache = shardedDOTagCache({
+				baseShardSize: 4,
+				regionalCache: true,
+				regionalCacheDangerouslyPersistMissingTags: true,
+			});
+			const doId = new DOId({
+				baseShardId: "shard-1",
+				numberOfReplicas: 1,
+				shardType: "hard",
+			});
+
+			getRevalidationTimesMock.mockResolvedValueOnce({});
+
+			await cache.putToRegionalCache({ doId, tags: ["tag1"] }, getMock());
+
+			expect(getRevalidationTimesMock).toHaveBeenCalledWith(["tag1"]);
+			expect(putMock).toHaveBeenCalledWith(
+				"http://local.cache/shard/tag-hard;shard-1?tag=tag1",
+				expect.any(Response)
+			);
+			// @ts-expect-error - Defined on cloudfare context
+			globalThis.caches = undefined;
+		});
+
+		it("should not put missing tag in the regional cache if `regionalCacheDangerouslyPersistMissingTags` is false", async () => {
+			const putMock = vi.fn();
+			// @ts-expect-error - Defined on cloudfare context
+			globalThis.caches = {
+				open: vi.fn().mockResolvedValue({
+					put: putMock,
+				}),
+			};
+			const cache = shardedDOTagCache({
+				baseShardSize: 4,
+				regionalCache: true,
+				regionalCacheDangerouslyPersistMissingTags: false,
+			});
+			const doId = new DOId({
+				baseShardId: "shard-1",
+				numberOfReplicas: 1,
+				shardType: "hard",
+			});
+
+			getRevalidationTimesMock.mockResolvedValueOnce({});
+
+			await cache.putToRegionalCache({ doId, tags: ["tag1"] }, getMock());
+
+			expect(getRevalidationTimesMock).toHaveBeenCalledWith(["tag1"]);
+			expect(putMock).not.toHaveBeenCalled();
 			// @ts-expect-error - Defined on cloudfare context
 			globalThis.caches = undefined;
 		});

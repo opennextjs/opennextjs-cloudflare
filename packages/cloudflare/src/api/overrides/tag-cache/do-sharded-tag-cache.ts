@@ -50,6 +50,14 @@ interface ShardedDOTagCacheOptions {
 	regionalCacheTtlSec?: number;
 
 	/**
+	 * Whether to persist missing tags in the regional cache.
+	 * This is dangerous if you don't invalidate the Cache API when you revalidate tags as you could end up storing stale data in the data cache.
+	 *
+	 * @default false
+	 */
+	regionalCacheDangerouslyPersistMissingTags?: boolean;
+
+	/**
 	 * Enable shard replication to handle higher load.
 	 *
 	 * By default shards are not replicated (`numberOfSoftReplicas = 1` or `numberOfHardReplicas = 1`).
@@ -465,8 +473,15 @@ class ShardedDOTagCache implements NextModeTagCache {
 		const tagsLastRevalidated = await stub.getRevalidationTimes(tags);
 		await Promise.all(
 			tags.map(async (tag) => {
-				const lastRevalidated = tagsLastRevalidated[tag];
-				if (lastRevalidated === undefined) return; // Should we store something in the cache if the tag is not found ?
+				let lastRevalidated = tagsLastRevalidated[tag];
+				if (lastRevalidated === undefined) {
+					if (this.opts.regionalCacheDangerouslyPersistMissingTags) {
+						lastRevalidated = 0; // If the tag is not found, we set it to 0 as it means it has never been revalidated before.
+					} else {
+						debugCache("Tag not found in revalidation times", { tag, optsKey });
+						return; // If the tag is not found, we skip it
+					}
+				}
 				const cacheKey = this.getCacheUrlKey(optsKey.doId, tag);
 				debugCache("Putting to regional cache", { cacheKey, lastRevalidated });
 				await cache.put(
