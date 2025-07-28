@@ -2,4 +2,4 @@
 "@opennextjs/cloudflare": patch
 ---
 
-fix `deploy` command not taking into account environment variables
+fix `deploy` and `upload` commands not taking into account environment variables
