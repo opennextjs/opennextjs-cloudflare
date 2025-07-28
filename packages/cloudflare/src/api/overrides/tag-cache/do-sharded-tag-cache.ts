@@ -306,7 +306,9 @@ class ShardedDOTagCache implements NextModeTagCache {
 						return Math.max(...cachedValue.map((item) => item.time));
 					}
 					// Otherwise we need to check the durable object on the ones that were not found in the cache
-					const filteredTags = tags.filter((tag) => !cachedValue.some((item) => item.tag === tag));
+					const filteredTags = deduplicatedTags.filter(
+						(tag) => !cachedValue.some((item) => item.tag === tag)
+					);
 
 					const stub = this.getDurableObjectStub(doId);
 					const lastRevalidated = await stub.getLastRevalidated(filteredTags);
