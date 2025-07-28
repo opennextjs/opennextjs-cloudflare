@@ -27,12 +27,10 @@ export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize: num
 
 	const wranglerConfig = readWranglerConfig(args);
 
-	const platformProxyEnvVars = await getEnvFromPlatformProxy({
+	const envVars = await getEnvFromPlatformProxy({
 		configPath: args.configPath,
 		environment: args.env,
 	});
-
-	const envVars = { ...platformProxyEnvVars, ...process.env };
 
 	const deploymentMapping = await getDeploymentMapping(options, config, envVars);
 
