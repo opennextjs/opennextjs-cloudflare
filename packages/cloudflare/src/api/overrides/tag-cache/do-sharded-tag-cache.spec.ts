@@ -6,13 +6,11 @@ const hasBeenRevalidatedMock = vi.fn();
 const writeTagsMock = vi.fn();
 const idFromNameMock = vi.fn();
 const getRevalidationTimesMock = vi.fn();
-const getMock = vi
-	.fn()
-	.mockReturnValue({
-		hasBeenRevalidated: hasBeenRevalidatedMock,
-		writeTags: writeTagsMock,
-		getRevalidationTimes: getRevalidationTimesMock,
-	});
+const getMock = vi.fn().mockReturnValue({
+	hasBeenRevalidated: hasBeenRevalidatedMock,
+	writeTags: writeTagsMock,
+	getRevalidationTimes: getRevalidationTimesMock,
+});
 const waitUntilMock = vi.fn().mockImplementation(async (fn) => fn());
 globalThis.continent = undefined;
 const sendDLQMock = vi.fn();
