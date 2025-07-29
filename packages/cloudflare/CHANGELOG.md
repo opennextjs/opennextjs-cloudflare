@@ -1,5 +1,19 @@
 # @opennextjs/cloudflare
 
+## 1.6.2
+
+### Patch Changes
+
+- [#820](https://github.com/opennextjs/opennextjs-cloudflare/pull/820) [`c202302`](https://github.com/opennextjs/opennextjs-cloudflare/commit/c2023029d680ded87c01d0fd5cc324124f30fa3f) Thanks [@conico974](https://github.com/conico974)! - Fix regional cache for the DOShardedTagCache
+
+- [#818](https://github.com/opennextjs/opennextjs-cloudflare/pull/818) [`be6a492`](https://github.com/opennextjs/opennextjs-cloudflare/commit/be6a49224ef85d89486240bb8491031ae5d27a20) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - fix `deploy` and `upload` commands not taking into account environment variables
+
+- [#825](https://github.com/opennextjs/opennextjs-cloudflare/pull/825) [`3de7962`](https://github.com/opennextjs/opennextjs-cloudflare/commit/3de79624b63358af0881c21f1f93bbed1d9ca983) Thanks [@conico974](https://github.com/conico974)! - Add an option to persist missing tags in the regional tag cache
+
+- [#816](https://github.com/opennextjs/opennextjs-cloudflare/pull/816) [`c46eeee`](https://github.com/opennextjs/opennextjs-cloudflare/commit/c46eeee8f70032708f71dfb37a40fe8b1b805507) Thanks [@vicb](https://github.com/vicb)! - bump @opennextjs/aws to 3.7.1
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v3.7.1>
+
 ## 1.6.1
 
 ### Patch Changes
