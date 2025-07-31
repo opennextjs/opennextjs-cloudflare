@@ -13,36 +13,30 @@ export function patchInstrumentation(updater: ContentUpdater, buildOpts: BuildOp
 
 	updater.updateContent("patch-instrumentation-next15-4", [
 		{
-			field: {
-				filter: getCrossPlatformPathRegex(
-					String.raw`/server/lib/router-utils/instrumentation-globals.external\.js$`,
-					{
-						escape: false,
-					}
-				),
-				contentFilter: /getInstrumentationModule\(/,
-				callback: ({ contents }) => patchCode(contents, getNext154Rule(builtInstrumentationPath)),
-			},
+			filter: getCrossPlatformPathRegex(
+				String.raw`/server/lib/router-utils/instrumentation-globals.external\.js$`,
+				{
+					escape: false,
+				}
+			),
+			contentFilter: /getInstrumentationModule\(/,
+			callback: ({ contents }) => patchCode(contents, getNext154Rule(builtInstrumentationPath)),
 		},
 	]);
 
 	updater.updateContent("patch-instrumentation-next15", [
 		{
-			field: {
-				filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/,
-				contentFilter: /async loadInstrumentationModule\(/,
-				callback: ({ contents }) => patchCode(contents, getNext15Rule(builtInstrumentationPath)),
-			},
+			filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/,
+			contentFilter: /async loadInstrumentationModule\(/,
+			callback: ({ contents }) => patchCode(contents, getNext15Rule(builtInstrumentationPath)),
 		},
 	]);
 
 	updater.updateContent("patch-instrumentation-next14", [
 		{
-			field: {
-				filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/,
-				contentFilter: /async prepareImpl\(/,
-				callback: ({ contents }) => patchCode(contents, getNext14Rule(builtInstrumentationPath)),
-			},
+			filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/,
+			contentFilter: /async prepareImpl\(/,
+			callback: ({ contents }) => patchCode(contents, getNext14Rule(builtInstrumentationPath)),
 		},
 	]);
 

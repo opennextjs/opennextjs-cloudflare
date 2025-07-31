@@ -13,11 +13,9 @@ import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 export function inlineFindDir(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
 	return updater.updateContent("inline-find-dir", [
 		{
-			field: {
-				filter: getCrossPlatformPathRegex(String.raw`/next/dist/lib/find-pages-dir\.js$`, { escape: false }),
-				contentFilter: /function findDir\(/,
-				callback: async ({ contents }) => patchCode(contents, await getRule(buildOpts)),
-			},
+			filter: getCrossPlatformPathRegex(String.raw`/next/dist/lib/find-pages-dir\.js$`, { escape: false }),
+			contentFilter: /function findDir\(/,
+			callback: async ({ contents }) => patchCode(contents, await getRule(buildOpts)),
 		},
 	]);
 }

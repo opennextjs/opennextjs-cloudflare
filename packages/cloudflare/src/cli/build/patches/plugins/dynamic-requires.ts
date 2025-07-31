@@ -45,22 +45,18 @@ function getRequires(idVariable: string, files: string[], serverDir: string) {
 export function inlineDynamicRequires(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
 	updater.updateContent("inline-node-module-loader", [
 		{
-			field: {
-				filter: getCrossPlatformPathRegex(String.raw`/module-loader/node-module-loader\.js$`, {
-					escape: false,
-				}),
-				contentFilter: /class NodeModuleLoader {/,
-				callback: async ({ contents }) => patchCode(contents, await getNodeModuleLoaderRule(buildOpts)),
-			},
+			filter: getCrossPlatformPathRegex(String.raw`/module-loader/node-module-loader\.js$`, {
+				escape: false,
+			}),
+			contentFilter: /class NodeModuleLoader {/,
+			callback: async ({ contents }) => patchCode(contents, await getNodeModuleLoaderRule(buildOpts)),
 		},
 	]);
 	updater.updateContent("inline-require-page", [
 		{
-			field: {
-				filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/require\.js$`, { escape: false }),
-				contentFilter: /function requirePage\(/,
-				callback: async ({ contents }) => patchCode(contents, await getRequirePageRule(buildOpts)),
-			},
+			filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/require\.js$`, { escape: false }),
+			contentFilter: /function requirePage\(/,
+			callback: async ({ contents }) => patchCode(contents, await getRequirePageRule(buildOpts)),
 		},
 	]);
 	return { name: "inline-dynamic-requires", setup() {} };
