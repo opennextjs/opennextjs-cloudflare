@@ -18,16 +18,14 @@ import { normalizePath } from "../../utils/normalize-path.js";
 export function inlineLoadManifest(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
 	return updater.updateContent("inline-load-manifest", [
 		{
-			field: {
-				filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/load-manifest(\.external)?\.js$`, {
-					escape: false,
-				}),
-				contentFilter: /function loadManifest\(/,
-				callback: async ({ contents }) => {
-					contents = await patchCode(contents, await getLoadManifestRule(buildOpts));
-					contents = await patchCode(contents, await getEvalManifestRule(buildOpts));
-					return contents;
-				},
+			filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/load-manifest(\.external)?\.js$`, {
+				escape: false,
+			}),
+			contentFilter: /function loadManifest\(/,
+			callback: async ({ contents }) => {
+				contents = await patchCode(contents, await getLoadManifestRule(buildOpts));
+				contents = await patchCode(contents, await getEvalManifestRule(buildOpts));
+				return contents;
 			},
 		},
 	]);

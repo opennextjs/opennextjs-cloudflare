@@ -21,14 +21,12 @@ export function patchResolveCache(updater: ContentUpdater, buildOpts: BuildOptio
 
 	return updater.updateContent("patch-resolve-cache", [
 		{
-			field: {
-				filter: getCrossPlatformPathRegex(indexPath),
-				contentFilter: /cacheHandlerPath/,
-				callback: async ({ contents }) => {
-					contents = patchCode(contents, cacheHandlerRule);
-					contents = patchCode(contents, compositeCacheHandlerRule);
-					return contents;
-				},
+			filter: getCrossPlatformPathRegex(indexPath),
+			contentFilter: /cacheHandlerPath/,
+			callback: async ({ contents }) => {
+				contents = patchCode(contents, cacheHandlerRule);
+				contents = patchCode(contents, compositeCacheHandlerRule);
+				return contents;
 			},
 		},
 	]);

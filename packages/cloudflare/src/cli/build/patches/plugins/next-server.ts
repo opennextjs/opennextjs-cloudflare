@@ -19,28 +19,26 @@ import { normalizePath } from "../../utils/index.js";
 export function patchNextServer(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
 	return updater.updateContent("next-server", [
 		{
-			field: {
-				filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/next-server\.js$`, {
-					escape: false,
-				}),
-				contentFilter: /getBuildId\(/,
-				callback: async ({ contents }) => {
-					const { outputDir } = buildOpts;
+			filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/next-server\.js$`, {
+				escape: false,
+			}),
+			contentFilter: /getBuildId\(/,
+			callback: async ({ contents }) => {
+				const { outputDir } = buildOpts;
 
-					contents = patchCode(contents, buildIdRule);
+				contents = patchCode(contents, buildIdRule);
 
-					const outputPath = path.join(outputDir, "server-functions/default");
-					const cacheHandler = path.join(outputPath, getPackagePath(buildOpts), "cache.cjs");
-					contents = patchCode(contents, createCacheHandlerRule(cacheHandler));
+				const outputPath = path.join(outputDir, "server-functions/default");
+				const cacheHandler = path.join(outputPath, getPackagePath(buildOpts), "cache.cjs");
+				contents = patchCode(contents, createCacheHandlerRule(cacheHandler));
 
-					const composableCacheHandler = path.join(
-						outputPath,
-						getPackagePath(buildOpts),
-						"composable-cache.cjs"
-					);
-					contents = patchCode(contents, createComposableCacheHandlersRule(composableCacheHandler));
-					return contents;
-				},
+				const composableCacheHandler = path.join(
+					outputPath,
+					getPackagePath(buildOpts),
+					"composable-cache.cjs"
+				);
+				contents = patchCode(contents, createComposableCacheHandlersRule(composableCacheHandler));
+				return contents;
 			},
 		},
 	]);
