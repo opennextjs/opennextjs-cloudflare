@@ -47,15 +47,15 @@ export function patchRouteModules(updater: ContentUpdater, buildOpts: BuildOptio
 export function getIncrementalCacheRule(handlerPath: string) {
 	return `
 rule:
-  pattern: "let $A, { cacheHandler: $B } = $C"
+  pattern: "let $CACHE_HANDLER, { cacheHandler: $HANDLER_PATH } = $C"
   inside:
     kind: method_definition
     has:
       field: name
-      regex: getIncrementalCache
+      regex: ^getIncrementalCache$
     stopBy: end
 fix: |-
-  const $B = null;
-  $A = require('${normalizePath(handlerPath)}').default;
+  const $HANDLER_PATH = null;
+  $CACHE_HANDLER = require('${normalizePath(handlerPath)}').default;
 `;
 }
