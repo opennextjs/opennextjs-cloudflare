@@ -83,7 +83,7 @@ export async function build(
 
 	await compileDurableObjects(options);
 
-	await bundleServer(options);
+	await bundleServer(options, projectOpts);
 
 	if (!projectOpts.skipWranglerConfigCheck) {
 		await createWranglerConfigIfNotExistent(projectOpts);
