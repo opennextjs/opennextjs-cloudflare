@@ -1,5 +1,19 @@
 # @opennextjs/cloudflare
 
+## 1.6.3
+
+### Patch Changes
+
+- [#828](https://github.com/opennextjs/opennextjs-cloudflare/pull/828) [`d00b3a1`](https://github.com/opennextjs/opennextjs-cloudflare/commit/d00b3a13e42e65aad76fba41774815726422cc39) Thanks [@vicb](https://github.com/vicb)! - bump @opennextjs/aws to 3.7.2
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v3.7.2>
+
+- [#830](https://github.com/opennextjs/opennextjs-cloudflare/pull/830) [`daf36fa`](https://github.com/opennextjs/opennextjs-cloudflare/commit/daf36faf91fa764b36fd1a4db39aa1e25e968518) Thanks [@vicb](https://github.com/vicb)! - detect more image types
+
+  Sync of <https://github.com/vercel/next.js/pull/82118>
+
+- [#832](https://github.com/opennextjs/opennextjs-cloudflare/pull/832) [`67e71b9`](https://github.com/opennextjs/opennextjs-cloudflare/commit/67e71b9f3aa55222df44296353025c4d19f38ecb) Thanks [@vicb](https://github.com/vicb)! - fix: --noMinify stop minifying the bundle
+
 ## 1.6.2
 
 ### Patch Changes
