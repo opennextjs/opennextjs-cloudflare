@@ -1,6 +1,6 @@
 /**
  * Patch for `next/src/server/route-modules/route-module.ts`
- * https://github.com/vercel/next.js/blob/c8c9bef3a1dd1a95434c1865dbd7f69985ea7d54/packages/next/src/server/route-modules/route-module.ts#L389-L437
+ * https://github.com/vercel/next.js/blob/c8c9bef/packages/next/src/server/route-modules/route-module.ts#L389-L437
  *
  * Patch getIncrementalCache to use a string literal for the cache handler path
  *
