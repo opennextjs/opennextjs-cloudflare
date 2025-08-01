@@ -8,6 +8,7 @@ import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
 import { build, type Plugin } from "esbuild";
 
 import { getOpenNextConfig } from "../../api/config.js";
+import type { ProjectOptions } from "../project-options.js";
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
 import { inlineDynamicRequires } from "./patches/plugins/dynamic-requires.js";
@@ -44,7 +45,7 @@ const optionalDependencies = [
 /**
  * Bundle the Open Next server.
  */
-export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
+export async function bundleServer(buildOpts: BuildOptions, projectOpts: ProjectOptions): Promise<void> {
 	copyPackageCliFiles(packageDistDir, buildOpts);
 
 	const { appPath, outputDir, monorepoRoot, debug } = buildOpts;
@@ -76,9 +77,9 @@ export async function bundleServer(buildOpts: BuildOptions): Promise<void> {
 		format: "esm",
 		target: "esnext",
 		// Minify code as much as possible but stay safe by not renaming identifiers
-		minifyWhitespace: !debug,
+		minifyWhitespace: projectOpts.minify && !debug,
 		minifyIdentifiers: false,
-		minifySyntax: !debug,
+		minifySyntax: projectOpts.minify && !debug,
 		legalComments: "none",
 		metafile: true,
 		// Next traces files using the default conditions from `nft` (`node`, `require`, `import` and `default`)
