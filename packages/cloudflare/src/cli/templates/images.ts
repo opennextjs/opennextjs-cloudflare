@@ -93,12 +93,16 @@ export async function fetchImage(fetcher: Fetcher | undefined, imageUrl: string,
 		}
 
 		if (!contentType) {
-			// Fallback to the sanitized upstream header when the type can not be detected
+			// Fallback to upstream header when the type can not be detected
 			// https://github.com/vercel/next.js/blob/d76f0b1/packages/next/src/server/image-optimizer.ts#L748
-			const header = imgResponse.headers.get("content-type") ?? "";
-			if (header.startsWith("image/") && !header.includes(",")) {
-				contentType = header;
-			}
+			contentType = imgResponse.headers.get("content-type") ?? "";
+		}
+
+		// Sanitize the content type:
+		// - Accept images only
+		// - Reject multiple content types
+		if (!contentType.startsWith("image/") || contentType.includes(",")) {
+			contentType = undefined;
 		}
 
 		if (contentType && !(contentType === SVG && !__IMAGES_ALLOW_SVG__)) {
@@ -167,12 +171,17 @@ const AVIF = "image/avif";
 const WEBP = "image/webp";
 const PNG = "image/png";
 const JPEG = "image/jpeg";
+const JXL = "image/jxl";
+const JP2 = "image/jp2";
+const HEIC = "image/heic";
 const GIF = "image/gif";
 const SVG = "image/svg+xml";
 const ICO = "image/x-icon";
 const ICNS = "image/x-icns";
 const TIFF = "image/tiff";
 const BMP = "image/bmp";
+// pdf will be rejected (not an `image/...` type)
+const PDF = "application/pdf";
 
 /**
  * Detects the content type by looking at the first few bytes of a file
@@ -215,6 +224,25 @@ export function detectContentType(buffer: Uint8Array) {
 	}
 	if ([0x42, 0x4d].every((b, i) => buffer[i] === b)) {
 		return BMP;
+	}
+	if ([0xff, 0x0a].every((b, i) => buffer[i] === b)) {
+		return JXL;
+	}
+	if (
+		[0x00, 0x00, 0x00, 0x0c, 0x4a, 0x58, 0x4c, 0x20, 0x0d, 0x0a, 0x87, 0x0a].every((b, i) => buffer[i] === b)
+	) {
+		return JXL;
+	}
+	if ([0, 0, 0, 0, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63].every((b, i) => !b || buffer[i] === b)) {
+		return HEIC;
+	}
+	if ([0x25, 0x50, 0x44, 0x46, 0x2d].every((b, i) => buffer[i] === b)) {
+		return PDF;
+	}
+	if (
+		[0x00, 0x00, 0x00, 0x0c, 0x6a, 0x50, 0x20, 0x20, 0x0d, 0x0a, 0x87, 0x0a].every((b, i) => buffer[i] === b)
+	) {
+		return JP2;
 	}
 }
 
