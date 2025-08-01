@@ -52,7 +52,7 @@ rule:
     kind: method_definition
     has:
       field: name
-      regex: ^getIncrementalCache$
+      regex: getIncrementalCache
     stopBy: end
 fix: |-
   const $B = null;
