@@ -93,12 +93,16 @@ export async function fetchImage(fetcher: Fetcher | undefined, imageUrl: string,
 		}
 
 		if (!contentType) {
-			// Fallback to the sanitized upstream header when the type can not be detected
+			// Fallback to upstream header when the type can not be detected
 			// https://github.com/vercel/next.js/blob/d76f0b1/packages/next/src/server/image-optimizer.ts#L748
-			const header = imgResponse.headers.get("content-type") ?? "";
-			if (header.startsWith("image/") && !header.includes(",")) {
-				contentType = header;
-			}
+			contentType = imgResponse.headers.get("content-type") ?? "";
+		}
+
+		// Sanitize the content type:
+		// - Accept images only
+		// - Reject multiple content types
+		if (!contentType.startsWith("image/") || contentType.includes(",")) {
+			contentType = undefined;
 		}
 
 		if (contentType && !(contentType === SVG && !__IMAGES_ALLOW_SVG__)) {
@@ -176,6 +180,7 @@ const ICO = "image/x-icon";
 const ICNS = "image/x-icns";
 const TIFF = "image/tiff";
 const BMP = "image/bmp";
+// pdf will be rejected (not an `image/...` type)
 const PDF = "application/pdf";
 
 /**
