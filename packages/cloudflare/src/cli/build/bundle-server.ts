@@ -149,6 +149,8 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			"process.env.TURBOPACK": "false",
 			// This define should be safe to use for Next 14.2+, earlier versions (13.5 and less) will cause trouble
 			"process.env.__NEXT_EXPERIMENTAL_REACT": `${needsExperimentalReact(nextConfig)}`,
+			// Fix `res.validate` in Next 15.4 (together with the `route-module` patch)
+			"process.env.__NEXT_TRUST_HOST_HEADER": "true",
 		},
 		banner: {
 			// We need to import them here, assigning them to `globalThis` does not work because node:timers use `globalThis` and thus create an infinite loop

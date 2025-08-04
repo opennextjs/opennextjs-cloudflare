@@ -29,6 +29,7 @@ export function patchRouteModules(updater: ContentUpdater, buildOpts: BuildOptio
 				const outputPath = path.join(outputDir, "server-functions/default");
 				const cacheHandler = path.join(outputPath, getPackagePath(buildOpts), "cache.cjs");
 				contents = patchCode(contents, getIncrementalCacheRule(cacheHandler));
+				contents = patchCode(contents, forceTrustHostHeader);
 				return contents;
 			},
 		},
@@ -59,3 +60,26 @@ fix: |-
   let $CACHE_HANDLER = require('${normalizePath(handlerPath)}').default;
 `;
 }
+
+/**
+ * Force trustHostHeader to be true for revalidation
+ */
+export const forceTrustHostHeader = `
+rule:
+  pattern: async function $FN($$$ARGS) { $$$BODY }
+  all:
+    - has:
+        pattern: if ($CONTEXT.trustHostHeader) { $$$_ }
+        stopBy: end
+    - has:
+        regex: "^x-vercel-protection-bypass$"
+        stopBy: end
+    - has:
+        regex: "Invariant: missing internal"
+        stopBy: end
+fix: |-
+    async function $FN($$$ARGS) {
+      $CONTEXT.trustHostHeader = true;
+      $$$BODY
+    }
+`;

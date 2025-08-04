@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 
 import { computePatchDiff } from "../../utils/test-patch.js";
-import { getIncrementalCacheRule } from "./route-module.js";
+import { forceTrustHostHeader, getIncrementalCacheRule } from "./route-module.js";
 
 const code = `class n9 {
     constructor({ userland: e10, definition: t10, distDir: r10, projectDir: n10 }) {
@@ -377,6 +377,54 @@ test("patch the createSnapshot function", () => {
 		         let { formatDynamicImportPath: e11 } = r("./dist/esm/lib/format-dynamic-import-path.js");
 		         i2 = rn(await n5(e11(this.distDir, a2)));
 		         }
+		"
+	`);
+});
+
+test("force trustHostHeader to true", () => {
+	const code = `
+async function e9(e, t, r, n) {
+    o.push("x-vercel-protection-bypass");
+    try {
+        if (n.trustHostHeader) {
+            let n = await fetch(\`https://\${r.headers.host}\${e}\`, {
+                    method: "HEAD",
+                    headers: s
+                });
+        } else {
+            throw Object.defineProperty(Error("Invariant: missing internal router-server-methods this is an internal bug"), "__NEXT_ERROR_CODE", {
+            value: "E676",
+            enumerable: !1,
+            configurable: !0
+        })
+    }
+    } catch (t) {
+        throw Object.defineProperty(Error(\`Failed to revalidate \${e}: \${e4(t)?t.message:t}\`), "__NEXT_ERROR_CODE", {
+            value: "E240",
+            enumerable: !1,
+            configurable: !0
+        })
+    }
+}
+`;
+
+	expect(computePatchDiff("pages-api.runtime.prod.js", code, forceTrustHostHeader)).toMatchInlineSnapshot(`
+		"Index: pages-api.runtime.prod.js
+		===================================================================
+		--- pages-api.runtime.prod.js
+		+++ pages-api.runtime.prod.js
+		@@ -1,8 +1,7 @@
+		-
+		-async function e9(e, t, r, n) {
+		-    o.push("x-vercel-protection-bypass");
+		-    try {
+		+async function e9(e,t,r,n) {
+		+  n.trustHostHeader = true;
+		+  o.push("x-vercel-protection-bypass");try {
+		         if (n.trustHostHeader) {
+		             let n = await fetch(\`https://\${r.headers.host}\${e}\`, {
+		                     method: "HEAD",
+		                     headers: s
 		"
 	`);
 });
