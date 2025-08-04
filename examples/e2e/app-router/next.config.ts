@@ -59,6 +59,11 @@ const nextConfig: NextConfig = {
 				basePath: false,
 				locale: false,
 			},
+			{
+				source: "/next-config-redirect-encoding",
+				destination: "/config-redirect/dest",
+				permanent: false,
+			},
 		];
 	},
 	async headers() {
