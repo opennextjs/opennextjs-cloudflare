@@ -15,7 +15,7 @@
 	},
 	"dependencies": {
 		"@opennextjs/cloudflare": "workspace:*",
-		"next": "15.4.0-canary.14",
+		"next": "15.4.2-canary.29",
 		"react": "catalog:e2e",
 		"react-dom": "catalog:e2e"
 	},

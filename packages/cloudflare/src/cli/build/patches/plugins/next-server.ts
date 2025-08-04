@@ -38,11 +38,27 @@ export function patchNextServer(updater: ContentUpdater, buildOpts: BuildOptions
 					"composable-cache.cjs"
 				);
 				contents = patchCode(contents, createComposableCacheHandlersRule(composableCacheHandler));
+
+				// Node middleware are not supported on Cloudflare yet
+				contents = patchCode(contents, disableNodeMiddlewareRule);
+
 				return contents;
 			},
 		},
 	]);
 }
+
+// Do not try to load Node middlewares
+export const disableNodeMiddlewareRule = `
+rule:
+  pattern:
+    selector: method_definition
+    context: "class { async loadNodeMiddleware($$$PARAMS) { $$$_ } }"
+fix: |-
+  async loadNodeMiddleware($$$PARAMS) {
+    // patched by open next
+  }
+`;
 
 export const buildIdRule = `
 rule:
