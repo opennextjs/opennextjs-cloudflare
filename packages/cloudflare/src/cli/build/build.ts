@@ -97,13 +97,4 @@ function ensureNextjsVersionSupported(options: buildHelper.BuildOptions) {
 		logger.error("Next.js version unsupported, please upgrade to version 14.2 or greater.");
 		process.exit(1);
 	}
-	// TODO: remove when 15.4 is supported
-	// Note: `e2e/experimental` is on 15.4.0-canary.14 which works
-	if (
-		!options.appPath.endsWith("opennextjs-cloudflare/examples/e2e/experimental") &&
-		buildHelper.compareSemver(options.nextVersion, ">=", "15.4.0")
-	) {
-		logger.error("Next.js version unsupported, the latest supported version is 15.3");
-		process.exit(1);
-	}
 }

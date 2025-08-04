@@ -62,8 +62,8 @@ function loadManifest($PATH, $$$ARGS) {
 		fix: `
 function loadManifest($PATH, $$$ARGS) {
   $PATH = $PATH.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
-  if ($PATH === "/.next/BUILD_ID") {
-  return process.env.NEXT_BUILD_ID;
+  if ($PATH.endsWith(".next/BUILD_ID")) {
+    return process.env.NEXT_BUILD_ID;
 	}
   ${returnManifests}
   throw new Error(\`Unexpected loadManifest(\${$PATH}) call!\`);

@@ -1,7 +1,12 @@
 import { describe, expect, test } from "vitest";
 
 import { computePatchDiff } from "../../utils/test-patch.js";
-import { buildIdRule, createCacheHandlerRule, createComposableCacheHandlersRule } from "./next-server.js";
+import {
+	buildIdRule,
+	createCacheHandlerRule,
+	createComposableCacheHandlersRule,
+	disableNodeMiddlewareRule,
+} from "./next-server.js";
 
 describe("Next Server", () => {
 	const nextServerCode = `
@@ -84,6 +89,22 @@ class NextNodeServer extends _baseserver.default {
             app: (0, _findpagesdir.findDir)(dir, "app") ? true : false,
             pages: (0, _findpagesdir.findDir)(dir, "pages") ? true : false
         };
+    }
+    async loadNodeMiddleware() {
+        if (!process.env.NEXT_MINIMAL) {
+            try {
+                var _functionsConfig_functions;
+                const functionsConfig = this.renderOpts.dev ? {} : require((0, _path.join)(this.distDir, 'server', _constants.FUNCTIONS_CONFIG_MANIFEST));
+                if (this.renderOpts.dev || (functionsConfig == null ? void 0 : (_functionsConfig_functions = functionsConfig.functions) == null ? void 0 : _functionsConfig_functions['/_middleware'])) {
+                    // if used with top level await, this will be a promise
+                    return require((0, _path.join)(this.distDir, 'server', 'middleware.js'));
+                }
+            } catch (err) {
+                if ((0, _iserror.default)(err) && err.code !== 'ENOENT' && err.code !== 'MODULE_NOT_FOUND') {
+                    throw err;
+                }
+            }
+        }
     }
     // ...
 }`;
@@ -186,5 +207,47 @@ class NextNodeServer extends _baseserver.default {
                if (!(0, _handlers.initializeCacheHandlers)()) return;
       "
     `);
+	});
+
+	test("disable node middleware", () => {
+		expect(computePatchDiff("next-server.js", nextServerCode, disableNodeMiddlewareRule))
+			.toMatchInlineSnapshot(`
+			"Index: next-server.js
+			===================================================================
+			--- next-server.js
+			+++ next-server.js
+			@@ -1,5 +1,4 @@
+			-
+			 class NextNodeServer extends _baseserver.default {
+			     constructor(options){
+			         // Initialize super class
+			         super(options);
+			@@ -79,21 +78,8 @@
+			             pages: (0, _findpagesdir.findDir)(dir, "pages") ? true : false
+			         };
+			     }
+			     async loadNodeMiddleware() {
+			-        if (!process.env.NEXT_MINIMAL) {
+			-            try {
+			-                var _functionsConfig_functions;
+			-                const functionsConfig = this.renderOpts.dev ? {} : require((0, _path.join)(this.distDir, 'server', _constants.FUNCTIONS_CONFIG_MANIFEST));
+			-                if (this.renderOpts.dev || (functionsConfig == null ? void 0 : (_functionsConfig_functions = functionsConfig.functions) == null ? void 0 : _functionsConfig_functions['/_middleware'])) {
+			-                    // if used with top level await, this will be a promise
+			-                    return require((0, _path.join)(this.distDir, 'server', 'middleware.js'));
+			-                }
+			-            } catch (err) {
+			-                if ((0, _iserror.default)(err) && err.code !== 'ENOENT' && err.code !== 'MODULE_NOT_FOUND') {
+			-                    throw err;
+			-                }
+			-            }
+			-        }
+			-    }
+			+  // patched by open next
+			+}
+			     // ...
+			 }
+			\\ No newline at end of file
+			"
+		`);
 	});
 });

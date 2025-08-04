@@ -22,6 +22,7 @@ import { patchPagesRouterContext } from "./patches/plugins/pages-router-context.
 import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations.js";
 import { fixRequire } from "./patches/plugins/require.js";
 import { shimRequireHook } from "./patches/plugins/require-hook.js";
+import { patchRouteModules } from "./patches/plugins/route-module.js";
 import { setWranglerExternal } from "./patches/plugins/wrangler-external.js";
 import { copyPackageCliFiles, needsExperimentalReact, normalizePath } from "./utils/index.js";
 
@@ -103,6 +104,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			inlineFindDir(updater, buildOpts),
 			inlineLoadManifest(updater, buildOpts),
 			patchNextServer(updater, buildOpts),
+			patchRouteModules(updater, buildOpts),
 			patchDepdDeprecations(updater),
 			patchResolveCache(updater, buildOpts),
 			// Apply updater updates, must be the last plugin
@@ -147,6 +149,8 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			"process.env.TURBOPACK": "false",
 			// This define should be safe to use for Next 14.2+, earlier versions (13.5 and less) will cause trouble
 			"process.env.__NEXT_EXPERIMENTAL_REACT": `${needsExperimentalReact(nextConfig)}`,
+			// Fix `res.validate` in Next 15.4 (together with the `route-module` patch)
+			"process.env.__NEXT_TRUST_HOST_HEADER": "true",
 		},
 		banner: {
 			// We need to import them here, assigning them to `globalThis` does not work because node:timers use `globalThis` and thus create an infinite loop

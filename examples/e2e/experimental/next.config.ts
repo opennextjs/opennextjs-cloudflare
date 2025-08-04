@@ -12,11 +12,7 @@ const nextConfig: NextConfig = {
 		ignoreBuildErrors: true,
 	},
 	experimental: {
-		ppr: "incremental",
-		// Node middleware is not supported yet in cloudflare
-		// See https://github.com/opennextjs/opennextjs-cloudflare/issues/617
-		// nodeMiddleware: true,
-		dynamicIO: true,
+		cacheComponents: true,
 	},
 };
 
