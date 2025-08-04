@@ -18,7 +18,7 @@ import { normalizePath } from "../../utils/index.js";
 export function patchRouteModules(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
 	return updater.updateContent("route-module", [
 		{
-			filter: getCrossPlatformPathRegex(String.raw`/next/dist/compiled/next-server/.*\.runtime\.prod\.js$`, {
+			filter: getCrossPlatformPathRegex(String.raw`/next/dist/compiled/next-server/.*?\.runtime\.prod\.js$`, {
 				escape: false,
 			}),
 			versions: ">=15.4.0",
