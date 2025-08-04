@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.6.5
+
+### Patch Changes
+
+- [#843](https://github.com/opennextjs/opennextjs-cloudflare/pull/843) [`10fc603`](https://github.com/opennextjs/opennextjs-cloudflare/commit/10fc603062564ee37c738a396a205cdb59687685) Thanks [@vicb](https://github.com/vicb)! - perf: drop the babel dependency
+
 ## 1.6.4
 
 ### Patch Changes
