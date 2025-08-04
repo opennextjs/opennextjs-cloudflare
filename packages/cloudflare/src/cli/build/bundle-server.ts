@@ -16,6 +16,7 @@ import { inlineFindDir } from "./patches/plugins/find-dir.js";
 import { patchInstrumentation } from "./patches/plugins/instrumentation.js";
 import { inlineLoadManifest } from "./patches/plugins/load-manifest.js";
 import { patchNextServer } from "./patches/plugins/next-server.js";
+import { patchNodeEnvironment } from "./patches/plugins/node-environment.js";
 import { patchResolveCache } from "./patches/plugins/open-next.js";
 import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
 import { patchPagesRouterContext } from "./patches/plugins/pages-router-context.js";
@@ -107,6 +108,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			patchRouteModules(updater, buildOpts),
 			patchDepdDeprecations(updater),
 			patchResolveCache(updater, buildOpts),
+			patchNodeEnvironment(updater),
 			// Apply updater updates, must be the last plugin
 			updater.plugin,
 		] as Plugin[],
