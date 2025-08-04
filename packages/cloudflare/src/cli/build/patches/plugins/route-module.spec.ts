@@ -372,7 +372,7 @@ test("patch the createSnapshot function", () => {
 		     {
 		-        let i2, { cacheHandler: a2 } = t10;
 		+        const a2 = null;
-		+i2 = require('.open-next/server-functions/default/cache.cjs').default;
+		+let i2 = require('.open-next/server-functions/default/cache.cjs').default;
 		         if (a2) {
 		         let { formatDynamicImportPath: e11 } = r("./dist/esm/lib/format-dynamic-import-path.js");
 		         i2 = rn(await n5(e11(this.distDir, a2)));

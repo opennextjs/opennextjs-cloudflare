@@ -56,6 +56,6 @@ rule:
     stopBy: end
 fix: |-
   const $HANDLER_PATH = null;
-  $CACHE_HANDLER = require('${normalizePath(handlerPath)}').default;
+  let $CACHE_HANDLER = require('${normalizePath(handlerPath)}').default;
 `;
 }
