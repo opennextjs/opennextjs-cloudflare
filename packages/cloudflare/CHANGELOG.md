@@ -1,5 +1,15 @@
 # @opennextjs/cloudflare
 
+## 1.6.4
+
+### Patch Changes
+
+- [#838](https://github.com/opennextjs/opennextjs-cloudflare/pull/838) [`90f451d`](https://github.com/opennextjs/opennextjs-cloudflare/commit/90f451db6597062eeca13f6b8913dd91ca39d0c3) Thanks [@conico974](https://github.com/conico974)! - bump @opennextjs/aws to 3.7.4
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v3.7.4>
+
+- [#833](https://github.com/opennextjs/opennextjs-cloudflare/pull/833) [`c9705e5`](https://github.com/opennextjs/opennextjs-cloudflare/commit/c9705e5bf44e00996c19cf146e0f56a28936c1fa) Thanks [@sommeeeer](https://github.com/sommeeeer)! - Update the patches to support Next.js 15.4"
+
 ## 1.6.3
 
 ### Patch Changes
