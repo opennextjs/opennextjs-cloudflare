@@ -206,6 +206,7 @@ async function generateBundle(
 		awsPatches.patchNextServer,
 		awsPatches.patchEnvVars,
 		awsPatches.patchBackgroundRevalidation,
+		awsPatches.patchNodeEnvironment,
 		// Cloudflare specific patches
 		patchResRevalidate,
 		patchUseCacheIO,
