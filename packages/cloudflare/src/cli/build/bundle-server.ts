@@ -21,6 +21,7 @@ import { patchResolveCache } from "./patches/plugins/open-next.js";
 import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
 import { patchPagesRouterContext } from "./patches/plugins/pages-router-context.js";
 import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations.js";
+import { patchFromNodeRequest } from "./patches/plugins/patch-from-node-request.js";
 import { fixRequire } from "./patches/plugins/require.js";
 import { shimRequireHook } from "./patches/plugins/require-hook.js";
 import { patchRouteModules } from "./patches/plugins/route-module.js";
@@ -109,6 +110,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			patchDepdDeprecations(updater),
 			patchResolveCache(updater, buildOpts),
 			patchNodeEnvironment(updater),
+			patchFromNodeRequest(updater),
 			// Apply updater updates, must be the last plugin
 			updater.plugin,
 		] as Plugin[],

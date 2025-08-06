@@ -31,7 +31,7 @@ export async function runWithCloudflareRequestContext(
 ): Promise<Response> {
 	init(request, env);
 
-	return cloudflareContextALS.run({ env, ctx, cf: request.cf }, handler);
+	return cloudflareContextALS.run({ env, ctx, cf: request.cf, abortSignal: request.signal }, handler);
 }
 
 let initialized = false;
