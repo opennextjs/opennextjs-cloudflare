@@ -36,4 +36,10 @@ export default [
 			"import/no-duplicates": "error",
 		},
 	},
+	{
+		files: ["src/**/*.ts"],
+		rules: {
+			"import/extensions": ["error", "always", { checkTypeImports: true }],
+		},
+	},
 ];

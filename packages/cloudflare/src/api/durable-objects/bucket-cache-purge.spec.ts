@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import * as internal from "../overrides/internal";
-import { BucketCachePurge } from "./bucket-cache-purge";
+import * as internal from "../overrides/internal.js";
+import { BucketCachePurge } from "./bucket-cache-purge.js";
 
 vi.mock("cloudflare:workers", () => ({
 	DurableObject: class {

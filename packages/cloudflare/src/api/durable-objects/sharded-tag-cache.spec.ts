@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { DOShardedTagCache } from "./sharded-tag-cache";
+import { DOShardedTagCache } from "./sharded-tag-cache.js";
 
 vi.mock("cloudflare:workers", () => ({
 	DurableObject: class {

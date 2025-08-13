@@ -1,11 +1,11 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import type { BuildOptions } from "@opennextjs/aws/build/helper";
+import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import mockFs from "mock-fs";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
-import { getCacheAssets } from "./populate-cache";
+import { getCacheAssets } from "./populate-cache.js";
 
 describe("getCacheAssets", () => {
 	beforeAll(() => {

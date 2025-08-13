@@ -1,5 +1,5 @@
 import { debug, error, warn } from "@opennextjs/aws/adapters/logger.js";
-import type { QueueMessage } from "@opennextjs/aws/types/overrides";
+import type { QueueMessage } from "@opennextjs/aws/types/overrides.js";
 import {
 	FatalError,
 	IgnorableError,

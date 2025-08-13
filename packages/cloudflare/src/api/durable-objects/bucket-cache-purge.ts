@@ -1,6 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 
-import { internalPurgeCacheByTags } from "../overrides/internal";
+import { internalPurgeCacheByTags } from "../overrides/internal.js";
 
 const DEFAULT_BUFFER_TIME_IN_SECONDS = 5;
 // https://developers.cloudflare.com/cache/how-to/purge-cache/#hostname-tag-prefix-url-and-purge-everything-limits

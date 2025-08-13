@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import shardedDOTagCache, { AVAILABLE_REGIONS, DOId } from "./do-sharded-tag-cache";
+import shardedDOTagCache, { AVAILABLE_REGIONS, DOId } from "./do-sharded-tag-cache.js";
 
 const hasBeenRevalidatedMock = vi.fn();
 const writeTagsMock = vi.fn();

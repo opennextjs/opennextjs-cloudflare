@@ -1,6 +1,6 @@
-import type { CDNInvalidationHandler } from "@opennextjs/aws/types/overrides";
+import type { CDNInvalidationHandler } from "@opennextjs/aws/types/overrides.js";
 
-import { getCloudflareContext } from "../../cloudflare-context";
+import { getCloudflareContext } from "../../cloudflare-context.js";
 import { debugCache, internalPurgeCacheByTags } from "../internal.js";
 
 interface PurgeOptions {

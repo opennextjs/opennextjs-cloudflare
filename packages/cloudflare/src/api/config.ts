@@ -1,16 +1,16 @@
-import type { BuildOptions } from "@opennextjs/aws/build/helper";
+import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import {
 	BaseOverride,
 	LazyLoadedOverride,
 	OpenNextConfig as AwsOpenNextConfig,
 	type RoutePreloadingBehavior,
-} from "@opennextjs/aws/types/open-next";
+} from "@opennextjs/aws/types/open-next.js";
 import type {
 	CDNInvalidationHandler,
 	IncrementalCache,
 	Queue,
 	TagCache,
-} from "@opennextjs/aws/types/overrides";
+} from "@opennextjs/aws/types/overrides.js";
 
 import assetResolver from "./overrides/asset-resolver/index.js";
 
