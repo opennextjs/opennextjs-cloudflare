@@ -38,6 +38,15 @@ type Options = {
 	 * @default `false` for the `short-lived` mode, and `true` for the `long-lived` mode.
 	 */
 	shouldLazilyUpdateOnCacheHit?: boolean;
+
+	/**
+	 * Whether on cache hits the tagCache should be skipped or not. Skipping the tagCache allows requests to be
+	 * handled faster, the downside of this is that you need to make sure that the cache gets correctly purged
+	 * either by enabling the auto cache purging feature or doing that manually.
+	 *
+	 * @default `true` is the auto cache purging is enabled, `false` otherwise.
+	 */
+	bypassTagCacheOnCacheHit?: boolean;
 };
 
 interface PutToCacheInput {
@@ -63,6 +72,7 @@ class RegionalCache implements IncrementalCache {
 		}
 		this.name = this.store.name;
 		this.opts.shouldLazilyUpdateOnCacheHit ??= this.opts.mode === "long-lived";
+		this.opts.bypassTagCacheOnCacheHit ??= getCloudflareContext().env.NEXT_CACHE_DO_PURGE ? true : false;
 	}
 
 	async get<CacheType extends CacheEntryType = "cache">(
@@ -103,7 +113,7 @@ class RegionalCache implements IncrementalCache {
 				this.putToCache({ key, cacheType, entry: { value, lastModified } })
 			);
 
-			return { value, lastModified, shouldBypassTagCache: true };
+			return { value, lastModified, shouldBypassTagCache: this.opts.bypassTagCacheOnCacheHit };
 		} catch (e) {
 			error("Failed to get from regional cache", e);
 			return null;
