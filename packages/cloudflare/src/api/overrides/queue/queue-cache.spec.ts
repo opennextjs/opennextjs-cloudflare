@@ -1,4 +1,4 @@
-import type { Queue } from "@opennextjs/aws/types/overrides";
+import type { Queue } from "@opennextjs/aws/types/overrides.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import queueCache from "./queue-cache.js";

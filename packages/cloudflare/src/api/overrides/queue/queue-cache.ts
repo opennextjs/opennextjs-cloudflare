@@ -1,5 +1,5 @@
 import { error } from "@opennextjs/aws/adapters/logger.js";
-import type { Queue, QueueMessage } from "@opennextjs/aws/types/overrides";
+import type { Queue, QueueMessage } from "@opennextjs/aws/types/overrides.js";
 
 interface QueueCachingOptions {
 	/**

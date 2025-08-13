@@ -1,4 +1,4 @@
-import type { Queue, QueueMessage } from "@opennextjs/aws/types/overrides";
+import type { Queue, QueueMessage } from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";

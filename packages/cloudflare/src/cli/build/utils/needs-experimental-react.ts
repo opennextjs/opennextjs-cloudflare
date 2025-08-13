@@ -1,4 +1,4 @@
-import type { NextConfig } from "@opennextjs/aws/types/next-types";
+import type { NextConfig } from "@opennextjs/aws/types/next-types.js";
 
 // Not sure if this should be upstreamed to aws
 // Adding more stuff there make typing incorrect actually, these properties are never undefined as long as it is the right version of next

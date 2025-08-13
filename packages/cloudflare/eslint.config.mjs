@@ -39,7 +39,7 @@ export default [
 	{
 		files: ["src/**/*.ts"],
 		rules: {
-			"import/extensions": ["error", "always"],
+			"import/extensions": ["error", "always", { checkTypeImports: true }],
 		},
 	},
 ];
