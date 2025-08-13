@@ -5,7 +5,7 @@ import { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import mockFs from "mock-fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { patchVercelOgLibrary } from "./patch-vercel-og-library";
+import { patchVercelOgLibrary } from "./patch-vercel-og-library.js";
 
 const nodeModulesVercelOgDir = "node_modules/.pnpm/next@14.2.11/node_modules/next/dist/compiled/@vercel/og";
 const nextServerOgNftPath = "examples/api/.next/server/app/og/route.js.nft.json";

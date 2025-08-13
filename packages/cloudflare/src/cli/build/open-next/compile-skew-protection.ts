@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { build } from "esbuild";
 
-import type { OpenNextConfig } from "../../../api";
+import type { OpenNextConfig } from "../../../api/index.js";
 
 export async function compileSkewProtection(options: BuildOptions, config: OpenNextConfig) {
 	const currentDir = path.join(path.dirname(fileURLToPath(import.meta.url)));

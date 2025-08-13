@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { DOQueueHandler } from "./queue";
+import { DOQueueHandler } from "./queue.js";
 
 vi.mock("cloudflare:workers", () => ({
 	DurableObject: class {

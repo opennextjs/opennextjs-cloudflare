@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { transformBuildCondition, transformPackageJson } from "./workerd";
+import { transformBuildCondition, transformPackageJson } from "./workerd.js";
 
 describe("transformBuildCondition", () => {
 	test("top level", () => {

@@ -1,7 +1,7 @@
-import { NextModeTagCache } from "@opennextjs/aws/types/overrides";
+import { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { softTagFilter, withFilter } from "./tag-cache-filter";
+import { softTagFilter, withFilter } from "./tag-cache-filter.js";
 
 const mockedTagCache = {
 	name: "mocked",

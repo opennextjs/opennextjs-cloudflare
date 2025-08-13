@@ -4,9 +4,9 @@ import type { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
 import type { OpenNextConfig } from "../../../api/config.js";
-import { getCloudflareContext } from "../../cloudflare-context";
+import { getCloudflareContext } from "../../cloudflare-context.js";
 import { DOShardedTagCache } from "../../durable-objects/sharded-tag-cache.js";
-import { debugCache, purgeCacheByTags } from "../internal";
+import { debugCache, purgeCacheByTags } from "../internal.js";
 
 export const DEFAULT_WRITE_RETRIES = 3;
 export const DEFAULT_NUM_SHARDS = 4;

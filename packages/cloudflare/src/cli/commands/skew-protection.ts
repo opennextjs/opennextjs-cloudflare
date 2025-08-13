@@ -28,11 +28,11 @@ import { loadConfig } from "@opennextjs/aws/adapters/config/util.js";
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import logger from "@opennextjs/aws/logger.js";
 import { Cloudflare, NotFoundError } from "cloudflare";
-import type { VersionGetResponse } from "cloudflare/resources/workers/scripts/versions";
+import type { VersionGetResponse } from "cloudflare/resources/workers/scripts/versions.js";
 
-import type { OpenNextConfig } from "../../api";
+import type { OpenNextConfig } from "../../api/index.js";
 import { CURRENT_VERSION_ID, DEPLOYMENT_MAPPING_ENV_NAME } from "../templates/skew-protection.js";
-import type { WorkerEnvVar } from "./helpers.js";
+import type { WorkerEnvVar } from "./helpers";
 
 /** Maximum number of versions to list */
 const MAX_NUMBER_OF_VERSIONS = 20;

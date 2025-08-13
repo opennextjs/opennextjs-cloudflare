@@ -1,7 +1,7 @@
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import { describe, expect, it } from "vitest";
 
-import { vercelOgFallbackFontRule, vercelOgImportRule } from "./vercel-og";
+import { vercelOgFallbackFontRule, vercelOgImportRule } from "./vercel-og.js";
 
 describe("vercelOgImportRule", () => {
 	it("should rewrite a node import to an edge import", () => {

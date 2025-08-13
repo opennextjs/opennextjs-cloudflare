@@ -4,7 +4,7 @@ import {
 	LazyLoadedOverride,
 	OpenNextConfig as AwsOpenNextConfig,
 	type RoutePreloadingBehavior,
-} from "@opennextjs/aws/types/open-next";
+} from "@opennextjs/aws/types/open-next.js";
 import type {
 	CDNInvalidationHandler,
 	IncrementalCache,
