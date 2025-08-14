@@ -72,7 +72,17 @@ class RegionalCache implements IncrementalCache {
 		}
 		this.name = this.store.name;
 		this.opts.shouldLazilyUpdateOnCacheHit ??= this.opts.mode === "long-lived";
-		this.opts.bypassTagCacheOnCacheHit ??= getCloudflareContext().env.NEXT_CACHE_DO_PURGE ? true : false;
+	}
+
+	get #bypassTagCacheOnCacheHit(): boolean {
+		if (this.opts.bypassTagCacheOnCacheHit) {
+			// If the bypassTagCacheOnCacheHit option is set we return that one
+			return this.opts.bypassTagCacheOnCacheHit;
+		}
+
+		// Otherwise we default to wether the automatic cache purging is enabled or not
+		const hasAutomaticCachePurging = !!getCloudflareContext().env.NEXT_CACHE_DO_PURGE;
+		return hasAutomaticCachePurging;
 	}
 
 	async get<CacheType extends CacheEntryType = "cache">(
@@ -113,7 +123,7 @@ class RegionalCache implements IncrementalCache {
 				this.putToCache({ key, cacheType, entry: { value, lastModified } })
 			);
 
-			return { value, lastModified, shouldBypassTagCache: this.opts.bypassTagCacheOnCacheHit };
+			return { value, lastModified, shouldBypassTagCache: this.#bypassTagCacheOnCacheHit };
 		} catch (e) {
 			error("Failed to get from regional cache", e);
 			return null;
