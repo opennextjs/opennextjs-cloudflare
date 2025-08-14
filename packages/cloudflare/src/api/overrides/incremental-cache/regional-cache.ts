@@ -44,7 +44,7 @@ type Options = {
 	 * handled faster, the downside of this is that you need to make sure that the cache gets correctly purged
 	 * either by enabling the auto cache purging feature or doing that manually.
 	 *
-	 * @default `true` is the auto cache purging is enabled, `false` otherwise.
+	 * @default `true` if the auto cache purging is enabled, `false` otherwise.
 	 */
 	bypassTagCacheOnCacheHit?: boolean;
 };
