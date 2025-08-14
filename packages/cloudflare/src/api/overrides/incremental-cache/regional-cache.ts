@@ -75,7 +75,7 @@ class RegionalCache implements IncrementalCache {
 	}
 
 	get #bypassTagCacheOnCacheHit(): boolean {
-		if (this.opts.bypassTagCacheOnCacheHit) {
+		if (this.opts.bypassTagCacheOnCacheHit !== undefined) {
 			// If the bypassTagCacheOnCacheHit option is set we return that one
 			return this.opts.bypassTagCacheOnCacheHit;
 		}
