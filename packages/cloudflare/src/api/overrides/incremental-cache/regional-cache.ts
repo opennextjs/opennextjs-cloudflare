@@ -80,7 +80,7 @@ class RegionalCache implements IncrementalCache {
 			return this.opts.bypassTagCacheOnCacheHit;
 		}
 
-		// Otherwise we default to wether the automatic cache purging is enabled or not
+		// Otherwise we default to whether the automatic cache purging is enabled or not
 		const hasAutomaticCachePurging = !!getCloudflareContext().env.NEXT_CACHE_DO_PURGE;
 		return hasAutomaticCachePurging;
 	}
