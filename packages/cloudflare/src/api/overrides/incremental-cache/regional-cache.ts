@@ -111,7 +111,10 @@ class RegionalCache implements IncrementalCache {
 					);
 				}
 
-				return cachedResponse.json();
+				return {
+					...cachedResponse.json(),
+					shouldBypassTagCache: this.#bypassTagCacheOnCacheHit,
+				};
 			}
 
 			const rawEntry = await this.store.get(key, cacheType);
