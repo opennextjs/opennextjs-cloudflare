@@ -126,7 +126,7 @@ class RegionalCache implements IncrementalCache {
 				this.putToCache({ key, cacheType, entry: { value, lastModified } })
 			);
 
-			return { value, lastModified, shouldBypassTagCache: this.#bypassTagCacheOnCacheHit };
+			return { value, lastModified };
 		} catch (e) {
 			error("Failed to get from regional cache", e);
 			return null;
