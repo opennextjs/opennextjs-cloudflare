@@ -28,6 +28,16 @@
 			"import": "./dist/api/*.js",
 			"types": "./dist/api/*.d.ts",
 			"default": "./dist/api/*.js"
+		},
+		"./lib/*": {
+			"import": "./dist/api/*.js",
+			"types": "./dist/api/*.d.ts",
+			"default": "./dist/api/*.js"
+		},
+		"./cli/*": {
+			"import": "./dist/cli/*.js",
+			"types": "./dist/cli/*.d.ts",
+			"default": "./dist/cli/*.js"
 		}
 	},
 	"files": [
