@@ -38,6 +38,15 @@ type Options = {
 	 * @default `false` for the `short-lived` mode, and `true` for the `long-lived` mode.
 	 */
 	shouldLazilyUpdateOnCacheHit?: boolean;
+
+	/**
+	 * Whether on cache hits the tagCache should be skipped or not. Skipping the tagCache allows requests to be
+	 * handled faster, the downside of this is that you need to make sure that the cache gets correctly purged
+	 * either by enabling the auto cache purging feature or doing that manually.
+	 *
+	 * @default `true` if the auto cache purging is enabled, `false` otherwise.
+	 */
+	bypassTagCacheOnCacheHit?: boolean;
 };
 
 interface PutToCacheInput {
@@ -63,6 +72,17 @@ class RegionalCache implements IncrementalCache {
 		}
 		this.name = this.store.name;
 		this.opts.shouldLazilyUpdateOnCacheHit ??= this.opts.mode === "long-lived";
+	}
+
+	get #bypassTagCacheOnCacheHit(): boolean {
+		if (this.opts.bypassTagCacheOnCacheHit !== undefined) {
+			// If the bypassTagCacheOnCacheHit option is set we return that one
+			return this.opts.bypassTagCacheOnCacheHit;
+		}
+
+		// Otherwise we default to whether the automatic cache purging is enabled or not
+		const hasAutomaticCachePurging = !!getCloudflareContext().env.NEXT_CACHE_DO_PURGE;
+		return hasAutomaticCachePurging;
 	}
 
 	async get<CacheType extends CacheEntryType = "cache">(
@@ -91,7 +111,12 @@ class RegionalCache implements IncrementalCache {
 					);
 				}
 
-				return cachedResponse.json();
+				const responseJson: Record<string, unknown> = await cachedResponse.json();
+
+				return {
+					...responseJson,
+					shouldBypassTagCache: this.#bypassTagCacheOnCacheHit,
+				};
 			}
 
 			const rawEntry = await this.store.get(key, cacheType);
