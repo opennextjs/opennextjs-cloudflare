@@ -47,6 +47,9 @@ export async function build(
 	logger.info(`@opennextjs/cloudflare version: ${cloudflare}`);
 	logger.info(`@opennextjs/aws version: ${aws}`);
 
+	// Clean the output directory before building the Next app.
+	buildHelper.initOutputDir(options);
+
 	if (projectOpts.skipNextBuild) {
 		logger.warn("Skipping Next.js build");
 	} else {
@@ -58,7 +61,6 @@ export async function build(
 
 	// Generate deployable bundle
 	printHeader("Generating bundle");
-	buildHelper.initOutputDir(options);
 
 	compileCache(options);
 	compileEnvFiles(options);
