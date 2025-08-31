@@ -7,7 +7,7 @@
 		"build": "next build",
 		"start": "next start",
 		"lint": "next lint",
-		"build:worker": "pnpm opennextjs-cloudflare build",
+		"build:worker": "pnpm opennextjs-cloudflare build --openNextConfigPath=./.custom-config/my-opennext-config.ts",
 		"preview:worker": "pnpm opennextjs-cloudflare preview",
 		"preview": "pnpm build:worker && pnpm preview:worker",
 		"e2e": "playwright test -c e2e/playwright.config.ts"

@@ -37,10 +37,10 @@ export function printHeaders(command: string) {
  *
  * @returns OpenNext config.
  */
-export async function compileConfig() {
-	await createOpenNextConfigIfNotExistent(nextAppDir);
+export async function compileConfig(configPath: string) {
+	await createOpenNextConfigIfNotExistent(configPath, nextAppDir);
 
-	const { config, buildDir } = await compileOpenNextConfig(nextAppDir, undefined, { compileEdge: true });
+	const { config, buildDir } = await compileOpenNextConfig(nextAppDir, configPath, { compileEdge: true });
 	ensureCloudflareConfig(config);
 
 	return { config, buildDir };
