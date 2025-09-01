@@ -54,7 +54,7 @@ export default {
 			// @ts-expect-error: resolved by wrangler build
 			const { handler } = await import("./server-functions/default/handler.mjs");
 
-			return handler(reqOrResp, env, ctx);
+			return handler(reqOrResp, env, ctx, request.signal);
 		});
 	},
 } satisfies ExportedHandler<CloudflareEnv>;

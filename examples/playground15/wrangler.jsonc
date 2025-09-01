@@ -3,7 +3,7 @@
 	"main": ".open-next/worker.js",
 	"name": "playground15",
 	"compatibility_date": "2024-12-30",
-	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public", "enable_request_signal"],
 	"assets": {
 		"directory": ".open-next/assets",
 		"binding": "ASSETS",
@@ -17,5 +17,32 @@
 	],
 	"vars": {
 		"hello": "Hello World from the cloudflare context!"
-	}
+	},
+	"services": [
+		{
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "playground15"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "NEXT_CACHE_DO_QUEUE",
+				"class_name": "DOQueueHandler"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["DOQueueHandler"]
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "NEXT_TAG_CACHE_D1",
+			"database_id": "db_id",
+			"database_name": "db_name"
+		}
+	]
 }
