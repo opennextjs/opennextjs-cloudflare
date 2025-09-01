@@ -158,4 +158,4 @@ rule:
               kind: property_identifier
               regex: ^attachRequestMeta$
 fix:
-  req[Symbol.for("NextInternalRequestMeta")]?.initURL ?? initUrl`;
+  'req[Symbol.for("NextInternalRequestMeta")]?.initProtocol === "http:" && initUrl.startsWith("https://") ? "http://" + initUrl.slice(8) : initUrl'`;
