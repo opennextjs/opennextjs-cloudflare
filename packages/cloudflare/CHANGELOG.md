@@ -1,5 +1,59 @@
 # @opennextjs/cloudflare
 
+## 1.7.0
+
+### Minor Changes
+
+- [#848](https://github.com/opennextjs/opennextjs-cloudflare/pull/848) [`f80c801`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f80c8019ab1536b6cf4ba4d3c5a82b57d6716537) Thanks [@sommeeeer](https://github.com/sommeeeer)! - Ensure that the initial request.signal is passed to the wrapper
+
+  `request.signal.onabort` is now supported in route handlers. It requires that the signal from the original worker's request is passed to the handler. It will then pass along that `AbortSignal` through the `streamCreator` in the wrapper. This signal will destroy the response sent to NextServer when a client aborts, thus triggering the signal in the route handler.
+
+  See the changelog in Cloudflare [here](https://developers.cloudflare.com/changelog/2025-05-22-handle-request-cancellation/).
+
+  **Note:**
+  If you have a custom worker, you must update your code to pass the original `request.signal` to the handler. You also need to enable the compatibility flag `enable_request_signal` to use this feature.
+
+  For example:
+
+  ```js
+  // Before:
+  return handler(reqOrResp, env, ctx);
+
+  // After:
+  return handler(reqOrResp, env, ctx, request.signal);
+  ```
+
+- [#850](https://github.com/opennextjs/opennextjs-cloudflare/pull/850) [`ce5c7b4`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ce5c7b417d44ead633128e676bb0971ad68040ba) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - Add option for regional cache to skip tagCache on cache hits
+
+  When the tag regional cache finds a value in the incremental cache, checking such value in the tagCache can be skipped, this helps reducing response times at the tradeoff that the user needs to either use the automatic cache purging or manually purge the cache when appropriate. For this the `bypassTagCacheOnCacheHit` option is being added to the `RegionalCache` class.
+
+  Example:
+
+  ```js
+  import { defineCloudflareConfig } from "@opennextjs/cloudflare";
+  import d1NextTagCache from "@opennextjs/cloudflare/overrides/tag-cache/d1-next-tag-cache";
+  import memoryQueue from "@opennextjs/cloudflare/overrides/queue/memory-queue";
+  import r2IncrementalCache from "@opennextjs/cloudflare/overrides/incremental-cache/r2-incremental-cache";
+  import { withRegionalCache } from "@opennextjs/cloudflare/overrides/incremental-cache/regional-cache";
+
+  export default defineCloudflareConfig({
+  	incrementalCache: withRegionalCache(r2IncrementalCache, {
+  		mode: "long-lived",
+  		bypassTagCacheOnCacheHit: true,
+  	}),
+  	tagCache: d1NextTagCache,
+  	queue: memoryQueue,
+  });
+  ```
+
+### Patch Changes
+
+- [#858](https://github.com/opennextjs/opennextjs-cloudflare/pull/858) [`7233c03`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7233c035c132b0642e8a891d9b3ff3a3c739be5e) Thanks [@vicb](https://github.com/vicb)! - bump @opennextjs/aws to 3.7.6
+
+  See the changes at <https://github.com/opennextjs/opennextjs-aws/compare/v3.7.4...v3.7.6>
+
+- [#857](https://github.com/opennextjs/opennextjs-cloudflare/pull/857) [`b8b38ee`](https://github.com/opennextjs/opennextjs-cloudflare/commit/b8b38ee8af25bb76cf41fa208cc25ed5cafda851) Thanks [@vicb](https://github.com/vicb)! - Clean output directory before `next build`
+
 ## 1.6.5
 
 ### Patch Changes
