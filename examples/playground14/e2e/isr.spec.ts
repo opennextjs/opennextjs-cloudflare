@@ -1,6 +1,4 @@
 import { test, expect, type APIResponse } from "@playwright/test";
-import type { BinaryLike } from "node:crypto";
-import { createHash } from "node:crypto";
 
 test.describe("playground/isr", () => {
 	test("Generated pages exist", async ({ page }) => {

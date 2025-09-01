@@ -42,6 +42,8 @@ export function patchNextServer(updater: ContentUpdater, buildOpts: BuildOptions
 				// Node middleware are not supported on Cloudflare yet
 				contents = patchCode(contents, disableNodeMiddlewareRule);
 
+				contents = patchCode(contents, attachRequestMetaRule);
+
 				return contents;
 			},
 		},
@@ -118,3 +120,42 @@ fix: |-
   globalThis[handlersSetSymbol] = new Set(globalThis[handlersMapSymbol].values());
 `;
 }
+
+/**
+ *
+ * https://github.com/vercel/next.js/blob/ea08bf27/packages/next/src/server/next-server.ts#L1916-L1923
+ *
+ * initUrl will always be with `https` cause this.fetchHostname && this.port is undefined in our case.
+ * this.nextConfig.experimental.trustHostHeader is also true.
+ *
+ * Callstack: handleRequest-> handleRequestImpl -> attachRequestMeta
+ *
+ * We actually set this `initURL` already in nextServer.getRequestHandlerWithMetadata(metadata) as seen here:
+ * https://github.com/opennextjs/opennextjs-aws/blob/fe913bb/packages/open-next/src/core/requestHandler.ts#L259
+ *
+ */
+export const attachRequestMetaRule = `
+rule:
+  kind: identifier
+  regex: ^initUrl$
+  inside:
+    kind: arguments
+    all:
+      - has: {kind: identifier, regex: ^req$}
+      - has: {kind: string, regex: initURL}
+    inside:
+      kind: call_expression
+      all:
+        - has: {kind: parenthesized_expression, regex: '0'}
+        - has: { regex: _requestmeta.addRequestMeta}
+      inside:
+        kind: expression_statement
+        inside:
+          kind: statement_block
+          inside:
+            kind: method_definition
+            has:
+              kind: property_identifier
+              regex: ^attachRequestMeta$
+fix:
+  req[Symbol.for("NextInternalRequestMeta")]?.initURL ?? initUrl`;
