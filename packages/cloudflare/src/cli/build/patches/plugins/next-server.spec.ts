@@ -329,7 +329,7 @@ class NextNodeServer extends _baseserver.default {
 			         // When there are hostname and port we build an absolute URL
 			         const initUrl = this.fetchHostname && this.port ? \`\${protocol}://\${this.fetchHostname}:\${this.port}\${req.url}\` : this.nextConfig.experimental.trustHostHeader ? \`https://\${req.headers.host || "localhost"}\${req.url}\` : req.url;
 			-        (0, _requestmeta.addRequestMeta)(req, 'initURL', initUrl);
-			+        (0, _requestmeta.addRequestMeta)(req, 'initURL', req[Symbol.for("NextInternalRequestMeta")]?.initURL ?? initUrl);
+			+        (0, _requestmeta.addRequestMeta)(req, 'initURL', req[Symbol.for("NextInternalRequestMeta")]?.initProtocol === "http:" && initUrl.startsWith("https://") ? \`http://\${initUrl.slice(8)}\`: initUrl);
 			         (0, _requestmeta.addRequestMeta)(req, 'initQuery', {
 			             ...parsedUrl.query
 			         });
