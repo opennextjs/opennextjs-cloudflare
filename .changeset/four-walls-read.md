@@ -8,10 +8,9 @@ Ensure that the initial request.signal is passed to the wrapper
 
 See the changelog in Cloudflare [here](https://developers.cloudflare.com/changelog/2025-05-22-handle-request-cancellation/).
 
-You also need to enable the compatibility flag `enable_request_signal` to use this feature.
-
 **Note:**  
-If you have a custom worker, you must update your code to pass the original `request.signal` to the handler. You also need to enable the compatibility flag:
+If you have a custom worker, you must update your code to pass the original `request.signal` to the handler. You also need to enable the compatibility flag `enable_request_signal` to use this feature.
+
 For example:
 
 ```js
