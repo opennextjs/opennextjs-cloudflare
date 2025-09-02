@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 1.7.1
+
+### Patch Changes
+
+- [#865](https://github.com/opennextjs/opennextjs-cloudflare/pull/865) [`f1e9457`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f1e9457ec10e8809ea195ff3328de27a89c1977c) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: Ensure request.url reflects the actual host protocol in route handlers
+
+- [#867](https://github.com/opennextjs/opennextjs-cloudflare/pull/867) [`2c1de0b`](https://github.com/opennextjs/opennextjs-cloudflare/commit/2c1de0b8d231ba2024145b4275ba2ae4b32b636a) Thanks [@vicb](https://github.com/vicb)! - Log cache purge errors as errors
+
 ## 1.7.0
 
 ### Minor Changes
