@@ -42,6 +42,8 @@ export function patchNextServer(updater: ContentUpdater, buildOpts: BuildOptions
 				// Node middleware are not supported on Cloudflare yet
 				contents = patchCode(contents, disableNodeMiddlewareRule);
 
+				contents = patchCode(contents, attachRequestMetaRule);
+
 				return contents;
 			},
 		},
@@ -118,3 +120,48 @@ fix: |-
   globalThis[handlersSetSymbol] = new Set(globalThis[handlersMapSymbol].values());
 `;
 }
+
+/**
+ * `attachRequestMeta` sets `initUrl` to always be with `https` cause this.fetchHostname && this.port is undefined in our case.
+ * this.nextConfig.experimental.trustHostHeader is also true.
+ *
+ * This patch checks if the original protocol was "http:" and rewrites the `initUrl` to reflect the actual host protocol.
+ * It will make `request.url` in route handlers end up with the correct protocol.
+ *
+ * Note: We cannot use the already defined `initURL` we passed in as requestMetaData to NextServer's request handler as pages router
+ * data routes would fail. It would miss the `_next/data` part in the path in that case.
+ *
+ * Therefor we just replace the protocol if necessary in the value from this template string:
+ * https://github.com/vercel/next.js/blob/ea08bf27/packages/next/src/server/next-server.ts#L1920
+ *
+ * Affected lines:
+ * https://github.com/vercel/next.js/blob/ea08bf27/packages/next/src/server/next-server.ts#L1916-L1923
+ *
+ * Callstack: handleRequest-> handleRequestImpl -> attachRequestMeta
+ *
+ */
+export const attachRequestMetaRule = `
+rule:
+  kind: identifier
+  regex: ^initUrl$
+  inside:
+    kind: arguments
+    all:
+      - has: {kind: identifier, regex: ^req$}
+      - has: {kind: string, regex: initURL}
+    inside:
+      kind: call_expression
+      all:
+        - has: {kind: parenthesized_expression, regex: '0'}
+        - has: { regex: _requestmeta.addRequestMeta}
+      inside:
+        kind: expression_statement
+        inside:
+          kind: statement_block
+          inside:
+            kind: method_definition
+            has:
+              kind: property_identifier
+              regex: ^attachRequestMeta$
+fix:
+  'req[Symbol.for("NextInternalRequestMeta")]?.initProtocol === "http:" && initUrl.startsWith("https://") ? \`http://\${initUrl.slice(8)}\`: initUrl'`;

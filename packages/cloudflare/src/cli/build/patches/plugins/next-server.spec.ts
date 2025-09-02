@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { computePatchDiff } from "../../utils/test-patch.js";
 import {
+	attachRequestMetaRule,
 	buildIdRule,
 	createCacheHandlerRule,
 	createComposableCacheHandlersRule,
@@ -104,6 +105,64 @@ class NextNodeServer extends _baseserver.default {
                     throw err;
                 }
             }
+        }
+    }
+    getPrerenderManifest() {
+        var _this_renderOpts, _this_serverOptions;
+        if (this._cachedPreviewManifest) {
+            return this._cachedPreviewManifest;
+        }
+        if (((_this_renderOpts = this.renderOpts) == null ? void 0 : _this_renderOpts.dev) || ((_this_serverOptions = this.serverOptions) == null ? void 0 : _this_serverOptions.dev) || process.env.NODE_ENV === 'development' || process.env.NEXT_PHASE === _constants.PHASE_PRODUCTION_BUILD) {
+            this._cachedPreviewManifest = {
+                version: 4,
+                routes: {},
+                dynamicRoutes: {},
+                notFoundRoutes: [],
+                preview: {
+                    previewModeId: require('crypto').randomBytes(16).toString('hex'),
+                    previewModeSigningKey: require('crypto').randomBytes(32).toString('hex'),
+                    previewModeEncryptionKey: require('crypto').randomBytes(32).toString('hex')
+                }
+            };
+            return this._cachedPreviewManifest;
+        }
+        this._cachedPreviewManifest = (0, _loadmanifest.loadManifest)((0, _path.join)(this.distDir, _constants.PRERENDER_MANIFEST));
+        return this._cachedPreviewManifest;
+    }
+    getRoutesManifest() {
+        return (0, _tracer.getTracer)().trace(_constants2.NextNodeServerSpan.getRoutesManifest, ()=>{
+            const manifest = (0, _loadmanifest.loadManifest)((0, _path.join)(this.distDir, _constants.ROUTES_MANIFEST));
+            let rewrites = manifest.rewrites ?? {
+                beforeFiles: [],
+                afterFiles: [],
+                fallback: []
+            };
+            if (Array.isArray(rewrites)) {
+                rewrites = {
+                    beforeFiles: [],
+                    afterFiles: rewrites,
+                    fallback: []
+                };
+            }
+            return {
+                ...manifest,
+                rewrites
+            };
+        });
+    }
+    attachRequestMeta(req, parsedUrl, isUpgradeReq) {
+        var _req_headers_xforwardedproto;
+        // Injected in base-server.ts
+        const protocol = ((_req_headers_xforwardedproto = req.headers['x-forwarded-proto']) == null ? void 0 : _req_headers_xforwardedproto.includes('https')) ? 'https' : 'http';
+        // When there are hostname and port we build an absolute URL
+        const initUrl = this.fetchHostname && this.port ? \`\${protocol}://\${this.fetchHostname}:\${this.port}\${req.url}\` : this.nextConfig.experimental.trustHostHeader ? \`https://\${req.headers.host || "localhost"}\${req.url}\` : req.url;
+        (0, _requestmeta.addRequestMeta)(req, 'initURL', initUrl);
+        (0, _requestmeta.addRequestMeta)(req, 'initQuery', {
+            ...parsedUrl.query
+        });
+        (0, _requestmeta.addRequestMeta)(req, 'initProtocol', protocol);
+        if (!isUpgradeReq) {
+            (0, _requestmeta.addRequestMeta)(req, 'clonableBody', (0, _bodystreams.getCloneableBody)(req.originalRequest));
         }
     }
     // ...
@@ -212,6 +271,48 @@ class NextNodeServer extends _baseserver.default {
 	test("disable node middleware", () => {
 		expect(computePatchDiff("next-server.js", nextServerCode, disableNodeMiddlewareRule))
 			.toMatchInlineSnapshot(`
+				"Index: next-server.js
+				===================================================================
+				--- next-server.js
+				+++ next-server.js
+				@@ -1,5 +1,4 @@
+				-
+				 class NextNodeServer extends _baseserver.default {
+				     constructor(options){
+				         // Initialize super class
+				         super(options);
+				@@ -79,23 +78,10 @@
+				             pages: (0, _findpagesdir.findDir)(dir, "pages") ? true : false
+				         };
+				     }
+				     async loadNodeMiddleware() {
+				-        if (!process.env.NEXT_MINIMAL) {
+				-            try {
+				-                var _functionsConfig_functions;
+				-                const functionsConfig = this.renderOpts.dev ? {} : require((0, _path.join)(this.distDir, 'server', _constants.FUNCTIONS_CONFIG_MANIFEST));
+				-                if (this.renderOpts.dev || (functionsConfig == null ? void 0 : (_functionsConfig_functions = functionsConfig.functions) == null ? void 0 : _functionsConfig_functions['/_middleware'])) {
+				-                    // if used with top level await, this will be a promise
+				-                    return require((0, _path.join)(this.distDir, 'server', 'middleware.js'));
+				-                }
+				-            } catch (err) {
+				-                if ((0, _iserror.default)(err) && err.code !== 'ENOENT' && err.code !== 'MODULE_NOT_FOUND') {
+				-                    throw err;
+				-                }
+				-            }
+				-        }
+				-    }
+				+  // patched by open next
+				+}
+				     getPrerenderManifest() {
+				         var _this_renderOpts, _this_serverOptions;
+				         if (this._cachedPreviewManifest) {
+				             return this._cachedPreviewManifest;
+				"
+			`);
+	});
+
+	test("attachRequestMeta", () => {
+		expect(computePatchDiff("next-server.js", nextServerCode, attachRequestMetaRule)).toMatchInlineSnapshot(`
 			"Index: next-server.js
 			===================================================================
 			--- next-server.js
@@ -222,31 +323,17 @@ class NextNodeServer extends _baseserver.default {
 			     constructor(options){
 			         // Initialize super class
 			         super(options);
-			@@ -79,21 +78,8 @@
-			             pages: (0, _findpagesdir.findDir)(dir, "pages") ? true : false
-			         };
-			     }
-			     async loadNodeMiddleware() {
-			-        if (!process.env.NEXT_MINIMAL) {
-			-            try {
-			-                var _functionsConfig_functions;
-			-                const functionsConfig = this.renderOpts.dev ? {} : require((0, _path.join)(this.distDir, 'server', _constants.FUNCTIONS_CONFIG_MANIFEST));
-			-                if (this.renderOpts.dev || (functionsConfig == null ? void 0 : (_functionsConfig_functions = functionsConfig.functions) == null ? void 0 : _functionsConfig_functions['/_middleware'])) {
-			-                    // if used with top level await, this will be a promise
-			-                    return require((0, _path.join)(this.distDir, 'server', 'middleware.js'));
-			-                }
-			-            } catch (err) {
-			-                if ((0, _iserror.default)(err) && err.code !== 'ENOENT' && err.code !== 'MODULE_NOT_FOUND') {
-			-                    throw err;
-			-                }
-			-            }
-			-        }
-			-    }
-			+  // patched by open next
-			+}
-			     // ...
-			 }
-			\\ No newline at end of file
+			@@ -143,9 +142,9 @@
+			         // Injected in base-server.ts
+			         const protocol = ((_req_headers_xforwardedproto = req.headers['x-forwarded-proto']) == null ? void 0 : _req_headers_xforwardedproto.includes('https')) ? 'https' : 'http';
+			         // When there are hostname and port we build an absolute URL
+			         const initUrl = this.fetchHostname && this.port ? \`\${protocol}://\${this.fetchHostname}:\${this.port}\${req.url}\` : this.nextConfig.experimental.trustHostHeader ? \`https://\${req.headers.host || "localhost"}\${req.url}\` : req.url;
+			-        (0, _requestmeta.addRequestMeta)(req, 'initURL', initUrl);
+			+        (0, _requestmeta.addRequestMeta)(req, 'initURL', req[Symbol.for("NextInternalRequestMeta")]?.initProtocol === "http:" && initUrl.startsWith("https://") ? \`http://\${initUrl.slice(8)}\`: initUrl);
+			         (0, _requestmeta.addRequestMeta)(req, 'initQuery', {
+			             ...parsedUrl.query
+			         });
+			         (0, _requestmeta.addRequestMeta)(req, 'initProtocol', protocol);
 			"
 		`);
 	});
