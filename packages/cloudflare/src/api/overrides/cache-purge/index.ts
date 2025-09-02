@@ -1,3 +1,4 @@
+import { error } from "@opennextjs/aws/adapters/logger.js";
 import type { CDNInvalidationHandler } from "@opennextjs/aws/types/overrides.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
@@ -19,7 +20,7 @@ export const purgeCache = ({ type = "direct" }: PurgeOptions) => {
 			} else {
 				const durableObject = env.NEXT_CACHE_DO_PURGE;
 				if (!durableObject) {
-					debugCache("cdnInvalidation", "No durable object found. Skipping cache purge.");
+					error("Purge cache: NEXT_CACHE_DO_PURGE not found. Skipping cache purge.");
 					return;
 				}
 				const id = durableObject.idFromName("cache-purge");

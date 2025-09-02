@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import { error } from "@opennextjs/aws/adapters/logger.js";
 import type { CacheEntryType, CacheValue } from "@opennextjs/aws/types/overrides.js";
 
 import { getCloudflareContext } from "../cloudflare-context.js";
@@ -50,7 +51,7 @@ export async function purgeCacheByTags(tags: string[]) {
 export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[]) {
 	if (!env.CACHE_PURGE_ZONE_ID && !env.CACHE_PURGE_API_TOKEN) {
 		// THIS IS A NO-OP
-		debugCache("purgeCacheByTags", "No cache zone ID or API token provided. Skipping cache purge.");
+		error("No cache zone ID or API token provided. Skipping cache purge.");
 		return "missing-credentials";
 	}
 
@@ -71,7 +72,7 @@ export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[
 		);
 		if (response.status === 429) {
 			// Rate limit exceeded
-			debugCache("purgeCacheByTags", "Rate limit exceeded. Skipping cache purge.");
+			error("purgeCacheByTags: Rate limit exceeded. Skipping cache purge.");
 			return "rate-limit-exceeded";
 		}
 		const bodyResponse = (await response.json()) as {
@@ -79,9 +80,8 @@ export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[
 			errors: Array<{ code: number; message: string }>;
 		};
 		if (!bodyResponse.success) {
-			debugCache(
-				"purgeCacheByTags",
-				"Cache purge failed. Errors:",
+			error(
+				"purgeCacheByTags: Cache purge failed. Errors:",
 				bodyResponse.errors.map((error) => `${error.code}: ${error.message}`)
 			);
 			return "purge-failed";

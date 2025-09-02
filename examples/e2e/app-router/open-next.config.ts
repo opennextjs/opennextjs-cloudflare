@@ -20,7 +20,8 @@ export default defineCloudflareConfig({
 			},
 		},
 	}),
-	cachePurge: purgeCache({ type: "durableObject" }),
+	// `CACHE_PURGE_ZONE_ID` and `CACHE_PURGE_API_TOKEN` are required to enable cache purge
+	// cachePurge: purgeCache({ type: "durableObject" }),
 	enableCacheInterception: true,
 	queue: queueCache(doQueue),
 });

@@ -56,10 +56,10 @@ declare global {
 		// This can be safely used if you don't use an eventually consistent incremental cache (i.e. R2 without the regional cache for example)
 		NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE?: string;
 
-		// Below are the optional env variables for purging the cache
-		// Durable Object namespace to use for the durable object cache purge
+		// Below are the env variables to use for purging the cache
+		// Durable Object namespace to use for the durable object cache purge (not needed in direct mode)
 		NEXT_CACHE_DO_PURGE?: DurableObjectNamespace<BucketCachePurge>;
-		// The amount of time in seconds that the cache purge will wait before purging the cache
+		// The amount of time in seconds that the cache purge will wait before purging the cache (not needed in direct mode)
 		NEXT_CACHE_DO_PURGE_BUFFER_TIME_IN_SECONDS?: string;
 		// The zone ID to use for the cache purge https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/
 		CACHE_PURGE_ZONE_ID?: string;
