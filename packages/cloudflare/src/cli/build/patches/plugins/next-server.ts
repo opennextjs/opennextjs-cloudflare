@@ -122,16 +122,22 @@ fix: |-
 }
 
 /**
- *
- * https://github.com/vercel/next.js/blob/ea08bf27/packages/next/src/server/next-server.ts#L1916-L1923
- *
- * initUrl will always be with `https` cause this.fetchHostname && this.port is undefined in our case.
+ * `attachRequestMeta` sets `initUrl` to always be with `https` cause this.fetchHostname && this.port is undefined in our case.
  * this.nextConfig.experimental.trustHostHeader is also true.
  *
- * Callstack: handleRequest-> handleRequestImpl -> attachRequestMeta
+ * This patch checks if the original protocol was "http:" and rewrites the `initUrl` to reflect the actual host protocol.
+ * It will make `request.url` in route handlers end up with the correct protocol.
  *
- * We actually set this `initURL` already in nextServer.getRequestHandlerWithMetadata(metadata) as seen here:
- * https://github.com/opennextjs/opennextjs-aws/blob/fe913bb/packages/open-next/src/core/requestHandler.ts#L259
+ * Note: We cannot use the already defined `initURL` we passed in as requestMetaData to NextServer's request handler as pages router
+ * data routes would fail. It would miss the `_next/data` part in the path in that case.
+ *
+ * Therefor we just replace the protocol if necessary in the value from this template string:
+ * https://github.com/vercel/next.js/blob/ea08bf27/packages/next/src/server/next-server.ts#L1920
+ *
+ * Affected lines:
+ * https://github.com/vercel/next.js/blob/ea08bf27/packages/next/src/server/next-server.ts#L1916-L1923
+ *
+ * Callstack: handleRequest-> handleRequestImpl -> attachRequestMeta
  *
  */
 export const attachRequestMetaRule = `
