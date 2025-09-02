@@ -2,4 +2,4 @@
 "@opennextjs/cloudflare": patch
 ---
 
-add(patch): Ensure request.url is with correct protocol in route handlers
+fix: Ensure request.url reflects the actual host protocol in route handlers
