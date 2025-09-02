@@ -16,6 +16,7 @@ export type WithWranglerArgs<T = unknown> = T & {
 	// Array of arguments that can be given to wrangler commands, including the `--config` and `--env` args.
 	wranglerArgs: string[];
 	configPath: string | undefined;
+	config: string | undefined;
 	env: string | undefined;
 };
 
@@ -97,12 +98,17 @@ export function readWranglerConfig(args: WithWranglerArgs) {
  */
 export function withWranglerOptions<T extends yargs.Argv>(args: T) {
 	return args
-		.options("configPath", {
+		.option("config", {
 			type: "string",
-			alias: ["config", "c"],
+			alias: "c",
 			desc: "Path to Wrangler configuration file",
 		})
-		.options("env", {
+		.option("configPath", {
+			type: "string",
+			desc: "Path to Wrangler configuration file",
+			deprecated: true,
+		})
+		.option("env", {
 			type: "string",
 			alias: "e",
 			desc: "Wrangler environment to use for operations",
@@ -114,13 +120,21 @@ export function withWranglerOptions<T extends yargs.Argv>(args: T) {
  * @param args
  * @returns An array of arguments that can be given to wrangler commands, including the `--config` and `--env` args.
  */
-function getWranglerArgs(args: {
-	_: (string | number)[];
-	configPath: string | undefined;
-	env: string | undefined;
-}): string[] {
+function getWranglerArgs(args: Omit<WithWranglerArgs<{ _: (string | number)[] }>, "wranglerArgs">): string[] {
+	if (args.configPath) {
+		logger.warn("The `--configPath` flag is deprecated, please use `--config` instead.");
+
+		if (args.config) {
+			logger.error(
+				"Multiple config flags found. Please use the `--config` flag for your Wrangler config path."
+			);
+			process.exit(1);
+		}
+	}
+
 	return [
 		...(args.configPath ? ["--config", args.configPath] : []),
+		...(args.config ? ["--config", args.config] : []),
 		...(args.env ? ["--env", args.env] : []),
 		// Note: the first args in `_` will be the commands.
 		...args._.slice(args._[0] === "populateCache" ? 2 : 1).map((a) => `${a}`),
@@ -133,10 +147,7 @@ function getWranglerArgs(args: {
  * @returns The inputted args, and an array of arguments that can be given to wrangler commands, including the `--config` and `--env` args.
  */
 export function withWranglerPassthroughArgs<
-	T extends yargs.ArgumentsCamelCase<{
-		configPath: string | undefined;
-		env: string | undefined;
-	}>,
+	T extends yargs.ArgumentsCamelCase<Omit<WithWranglerArgs, "wranglerArgs">>,
 >(args: T) {
 	return { ...args, wranglerArgs: getWranglerArgs(args) };
 }
