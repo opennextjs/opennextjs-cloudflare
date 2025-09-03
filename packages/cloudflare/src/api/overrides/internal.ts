@@ -49,7 +49,7 @@ export async function purgeCacheByTags(tags: string[]) {
 }
 
 export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[]) {
-	if (!env.CACHE_PURGE_ZONE_ID && !env.CACHE_PURGE_API_TOKEN) {
+	if (!env.CACHE_PURGE_ZONE_ID || !env.CACHE_PURGE_API_TOKEN) {
 		// THIS IS A NO-OP
 		error("No cache zone ID or API token provided. Skipping cache purge.");
 		return "missing-credentials";
