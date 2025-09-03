@@ -15,8 +15,7 @@ import { createOpenNextConfigIfNotExistent, ensureCloudflareConfig } from "../bu
 export type WithWranglerArgs<T = unknown> = T & {
 	// Array of arguments that can be given to wrangler commands, including the `--config` and `--env` args.
 	wranglerArgs: string[];
-	configPath: string | undefined;
-	config: string | undefined;
+	wranglerConfigPath: string | undefined;
 	env: string | undefined;
 };
 
@@ -90,7 +89,7 @@ export function getNormalizedOptions(config: OpenNextConfig, buildDir = nextAppD
  * @returns Wrangler config.
  */
 export function readWranglerConfig(args: WithWranglerArgs) {
-	return unstable_readConfig({ env: args.env, config: args.configPath });
+	return unstable_readConfig({ env: args.env, config: args.wranglerConfigPath });
 }
 
 /**
@@ -115,12 +114,18 @@ export function withWranglerOptions<T extends yargs.Argv>(args: T) {
 		});
 }
 
+type WranglerInputArgs = {
+	configPath: string | undefined;
+	config: string | undefined;
+	env: string | undefined;
+};
+
 /**
  *
  * @param args
  * @returns An array of arguments that can be given to wrangler commands, including the `--config` and `--env` args.
  */
-function getWranglerArgs(args: Omit<WithWranglerArgs<{ _: (string | number)[] }>, "wranglerArgs">): string[] {
+function getWranglerArgs(args: WranglerInputArgs & { _: (string | number)[] }): string[] {
 	if (args.configPath) {
 		logger.warn("The `--configPath` flag is deprecated, please use `--config` instead.");
 
@@ -146,8 +151,12 @@ function getWranglerArgs(args: Omit<WithWranglerArgs<{ _: (string | number)[] }>
  * @param args
  * @returns The inputted args, and an array of arguments that can be given to wrangler commands, including the `--config` and `--env` args.
  */
-export function withWranglerPassthroughArgs<
-	T extends yargs.ArgumentsCamelCase<Omit<WithWranglerArgs, "wranglerArgs">>,
->(args: T) {
-	return { ...args, wranglerArgs: getWranglerArgs(args) };
+export function withWranglerPassthroughArgs<T extends yargs.ArgumentsCamelCase<WranglerInputArgs>>(
+	args: T
+): WithWranglerArgs<T> {
+	return {
+		...args,
+		wranglerConfigPath: args.config ?? args.configPath,
+		wranglerArgs: getWranglerArgs(args),
+	};
 }

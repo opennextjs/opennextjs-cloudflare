@@ -107,7 +107,7 @@ export function getCacheAssets(opts: BuildOptions): CacheAsset[] {
 type PopulateCacheOptions = {
 	target: WranglerTarget;
 	environment?: string;
-	configPath?: string;
+	wranglerConfigPath?: string;
 	cacheChunkSize?: number;
 };
 
@@ -148,7 +148,7 @@ async function populateR2IncrementalCache(
 			],
 			{
 				target: populateCacheOptions.target,
-				configPath: populateCacheOptions.configPath,
+				configPath: populateCacheOptions.wranglerConfigPath,
 				// R2 does not support the environment flag and results in the following error:
 				// Incorrect type for the 'cacheExpiry' field on 'HttpMetadata': the provided value is not of type 'date'.
 				environment: undefined,
@@ -200,7 +200,7 @@ async function populateKVIncrementalCache(
 		runWrangler(options, ["kv bulk put", quoteShellMeta(chunkPath), `--binding ${KV_CACHE_BINDING_NAME}`], {
 			target: populateCacheOptions.target,
 			environment: populateCacheOptions.environment,
-			configPath: populateCacheOptions.configPath,
+			configPath: populateCacheOptions.wranglerConfigPath,
 			logging: "error",
 		});
 
@@ -232,7 +232,7 @@ function populateD1TagCache(
 		{
 			target: populateCacheOptions.target,
 			environment: populateCacheOptions.environment,
-			configPath: populateCacheOptions.configPath,
+			configPath: populateCacheOptions.wranglerConfigPath,
 			logging: "error",
 		}
 	);
@@ -313,7 +313,7 @@ async function populateCacheCommand(
 	await populateCache(options, config, wranglerConfig, {
 		target,
 		environment: args.env,
-		configPath: args.configPath,
+		wranglerConfigPath: args.wranglerConfigPath,
 		cacheChunkSize: args.cacheChunkSize,
 	});
 }
