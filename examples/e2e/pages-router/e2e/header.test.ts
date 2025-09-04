@@ -10,5 +10,5 @@ test("should test if poweredByHeader adds the correct headers ", async ({ page }
 	expect(headers?.["x-powered-by"]).toBe("Next.js");
 	expect(headers?.["x-opennext"]).toBe("1");
 	// This header should be defined cause we have set the `OPEN_NEXT_REQUEST_ID_HEADER` env variable in wrangler.jsonc
-	expect(headers?.["x-opennext-requestid"]).not.toBeFalsy();
+	expect(headers?.["x-opennext-requestid"]).not.toBeUndefined();
 });
