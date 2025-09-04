@@ -33,14 +33,27 @@ export function printHeaders(command: string) {
 }
 
 /**
- * Compile the OpenNext config, and ensure it is for Cloudflare.
+ * Compile the OpenNext config.
  *
+ * When users do not specify a custom config file (using `----openNextConfigPath`),
+ * the CLI will offer to create one.
+ *
+ * When users specify a custom config file but it doesn't exist, we throw an Error.
+ *
+ * @param configPath Optional path to the config file. Absolute or relative to cwd.
  * @returns OpenNext config.
  */
-export async function compileConfig(configPath: string) {
-	await createOpenNextConfigIfNotExistent(configPath, nextAppDir);
+export async function compileConfig(configPath: string | undefined) {
+	if (configPath && !existsSync(configPath)) {
+		throw new Error(`Custom config file not found at ${configPath}`);
+	}
 
-	const { config, buildDir } = await compileOpenNextConfig(nextAppDir, configPath, { compileEdge: true });
+	if (!configPath) {
+		configPath = await createOpenNextConfigIfNotExistent(nextAppDir);
+	}
+
+	// TODO: remove the hack passing the `configPath` as the `baseDir` when https://github.com/opennextjs/opennextjs-aws/pull/972 is merged
+	const { config, buildDir } = await compileOpenNextConfig(configPath, "", { compileEdge: true });
 	ensureCloudflareConfig(config);
 
 	return { config, buildDir };

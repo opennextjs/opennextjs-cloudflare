@@ -22,7 +22,7 @@ async function buildCommand(
 		skipNextBuild: boolean;
 		noMinify: boolean;
 		skipWranglerConfigCheck: boolean;
-		openNextConfigPath: string;
+		openNextConfigPath: string | undefined;
 	}>
 ): Promise<void> {
 	printHeaders("build");
@@ -69,8 +69,7 @@ export function addBuildCommand<T extends yargs.Argv>(y: T) {
 				})
 				.option("openNextConfigPath", {
 					type: "string",
-					default: "open-next.config.ts",
-					desc: "Path to OpenNext configuration file, relative to the source directory",
+					desc: "Path to the OpenNext configuration file",
 				}),
 		(args) => buildCommand(withWranglerPassthroughArgs(args))
 	);

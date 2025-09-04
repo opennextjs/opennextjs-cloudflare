@@ -88,28 +88,27 @@ export async function getLatestCompatDate(): Promise<string | undefined> {
 }
 
 /**
- * Creates a config file for the user if it doesn't exist, but only after asking for the user's confirmation.
+ * Creates a `open-next.config.ts` file for the user if it doesn't exist, but only after asking for the user's confirmation.
  *
  * If the user refuses an error is thrown (since the file is mandatory).
  *
- * @param configPath The path to the config file, relative to the source directory
  * @param sourceDir The source directory for the project
+ * @return The path to the created source file
  */
-export async function createOpenNextConfigIfNotExistent(
-	configPath: string,
-	sourceDir: string
-): Promise<void> {
-	const openNextConfigPath = join(sourceDir, configPath);
+export async function createOpenNextConfigIfNotExistent(sourceDir: string): Promise<string> {
+	const openNextConfigPath = join(sourceDir, "open-next.config.ts");
 
 	if (!existsSync(openNextConfigPath)) {
 		const answer = await askConfirmation(
-			`Missing required \`${configPath}\` file, do you want to create one?`
+			"Missing required `open-next.config.ts` file, do you want to create one?"
 		);
 
 		if (!answer) {
-			throw new Error(`The \`${configPath}\` file is required, aborting!`);
+			throw new Error("The `open-next.config.ts` file is required, aborting!");
 		}
 
 		cpSync(join(getPackageTemplatesDirPath(), "open-next.config.ts"), openNextConfigPath);
 	}
+
+	return openNextConfigPath;
 }
