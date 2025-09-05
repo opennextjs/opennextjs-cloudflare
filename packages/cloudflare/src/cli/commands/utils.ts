@@ -35,7 +35,7 @@ export function printHeaders(command: string) {
 /**
  * Compile the OpenNext config.
  *
- * When users do not specify a custom config file (using `----openNextConfigPath`),
+ * When users do not specify a custom config file (using `--openNextConfigPath`),
  * the CLI will offer to create one.
  *
  * When users specify a custom config file but it doesn't exist, we throw an Error.
