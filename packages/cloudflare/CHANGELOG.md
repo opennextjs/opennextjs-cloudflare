@@ -1,5 +1,17 @@
 # @opennextjs/cloudflare
 
+## 1.8.0
+
+### Minor Changes
+
+- [#862](https://github.com/opennextjs/opennextjs-cloudflare/pull/862) [`728ad99`](https://github.com/opennextjs/opennextjs-cloudflare/commit/728ad9901a2ed57a0aae33f5d460bf5d0f32b5bb) Thanks [@james-elicx](https://github.com/james-elicx)! - feat: support for a custom OpenNext config path with the `--openNextConfigPath` flag
+
+### Patch Changes
+
+- [#872](https://github.com/opennextjs/opennextjs-cloudflare/pull/872) [`dc76d6e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/dc76d6e7b62a5e33488b47aba62f8573bf3ab49f) Thanks [@alex-all3dp](https://github.com/alex-all3dp)! - Fix check for missing CACHE_PURGE_ZONE_ID
+
+- [#862](https://github.com/opennextjs/opennextjs-cloudflare/pull/862) [`728ad99`](https://github.com/opennextjs/opennextjs-cloudflare/commit/728ad9901a2ed57a0aae33f5d460bf5d0f32b5bb) Thanks [@james-elicx](https://github.com/james-elicx)! - refactor: deprecate usage of the `--configPath` flag for the Wrangler config, in favour of the `--config` flag.
+
 ## 1.7.1
 
 ### Patch Changes
