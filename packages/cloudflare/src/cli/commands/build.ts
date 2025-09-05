@@ -22,11 +22,12 @@ async function buildCommand(
 		skipNextBuild: boolean;
 		noMinify: boolean;
 		skipWranglerConfigCheck: boolean;
+		openNextConfigPath: string | undefined;
 	}>
 ): Promise<void> {
 	printHeaders("build");
 
-	const { config, buildDir } = await compileConfig();
+	const { config, buildDir } = await compileConfig(args.openNextConfigPath);
 	const options = getNormalizedOptions(config, buildDir);
 
 	const wranglerConfig = readWranglerConfig(args);
@@ -65,6 +66,10 @@ export function addBuildCommand<T extends yargs.Argv>(y: T) {
 					type: "boolean",
 					default: ["1", "true", "yes"].includes(String(process.env.SKIP_WRANGLER_CONFIG_CHECK)),
 					desc: "Skip checking for a Wrangler config",
+				})
+				.option("openNextConfigPath", {
+					type: "string",
+					desc: "Path to the OpenNext configuration file",
 				}),
 		(args) => buildCommand(withWranglerPassthroughArgs(args))
 	);

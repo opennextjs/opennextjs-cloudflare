@@ -93,8 +93,9 @@ export async function getLatestCompatDate(): Promise<string | undefined> {
  * If the user refuses an error is thrown (since the file is mandatory).
  *
  * @param sourceDir The source directory for the project
+ * @return The path to the created source file
  */
-export async function createOpenNextConfigIfNotExistent(sourceDir: string): Promise<void> {
+export async function createOpenNextConfigIfNotExistent(sourceDir: string): Promise<string> {
 	const openNextConfigPath = join(sourceDir, "open-next.config.ts");
 
 	if (!existsSync(openNextConfigPath)) {
@@ -108,4 +109,6 @@ export async function createOpenNextConfigIfNotExistent(sourceDir: string): Prom
 
 		cpSync(join(getPackageTemplatesDirPath(), "open-next.config.ts"), openNextConfigPath);
 	}
+
+	return openNextConfigPath;
 }

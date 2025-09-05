@@ -15,7 +15,7 @@ import { createOpenNextConfigIfNotExistent, ensureCloudflareConfig } from "../bu
 export type WithWranglerArgs<T = unknown> = T & {
 	// Array of arguments that can be given to wrangler commands, including the `--config` and `--env` args.
 	wranglerArgs: string[];
-	configPath: string | undefined;
+	wranglerConfigPath: string | undefined;
 	env: string | undefined;
 };
 
@@ -33,14 +33,27 @@ export function printHeaders(command: string) {
 }
 
 /**
- * Compile the OpenNext config, and ensure it is for Cloudflare.
+ * Compile the OpenNext config.
  *
+ * When users do not specify a custom config file (using `--openNextConfigPath`),
+ * the CLI will offer to create one.
+ *
+ * When users specify a custom config file but it doesn't exist, we throw an Error.
+ *
+ * @param configPath Optional path to the config file. Absolute or relative to cwd.
  * @returns OpenNext config.
  */
-export async function compileConfig() {
-	await createOpenNextConfigIfNotExistent(nextAppDir);
+export async function compileConfig(configPath: string | undefined) {
+	if (configPath && !existsSync(configPath)) {
+		throw new Error(`Custom config file not found at ${configPath}`);
+	}
 
-	const { config, buildDir } = await compileOpenNextConfig(nextAppDir, undefined, { compileEdge: true });
+	if (!configPath) {
+		configPath = await createOpenNextConfigIfNotExistent(nextAppDir);
+	}
+
+	// TODO: remove the hack passing the `configPath` as the `baseDir` when https://github.com/opennextjs/opennextjs-aws/pull/972 is merged
+	const { config, buildDir } = await compileOpenNextConfig(configPath, "", { compileEdge: true });
 	ensureCloudflareConfig(config);
 
 	return { config, buildDir };
@@ -89,7 +102,7 @@ export function getNormalizedOptions(config: OpenNextConfig, buildDir = nextAppD
  * @returns Wrangler config.
  */
 export function readWranglerConfig(args: WithWranglerArgs) {
-	return unstable_readConfig({ env: args.env, config: args.configPath });
+	return unstable_readConfig({ env: args.env, config: args.wranglerConfigPath });
 }
 
 /**
@@ -97,30 +110,49 @@ export function readWranglerConfig(args: WithWranglerArgs) {
  */
 export function withWranglerOptions<T extends yargs.Argv>(args: T) {
 	return args
-		.options("configPath", {
+		.option("config", {
 			type: "string",
-			alias: ["config", "c"],
+			alias: "c",
 			desc: "Path to Wrangler configuration file",
 		})
-		.options("env", {
+		.option("configPath", {
+			type: "string",
+			desc: "Path to Wrangler configuration file",
+			deprecated: true,
+		})
+		.option("env", {
 			type: "string",
 			alias: "e",
 			desc: "Wrangler environment to use for operations",
 		});
 }
 
+type WranglerInputArgs = {
+	configPath: string | undefined;
+	config: string | undefined;
+	env: string | undefined;
+};
+
 /**
  *
  * @param args
  * @returns An array of arguments that can be given to wrangler commands, including the `--config` and `--env` args.
  */
-function getWranglerArgs(args: {
-	_: (string | number)[];
-	configPath: string | undefined;
-	env: string | undefined;
-}): string[] {
+function getWranglerArgs(args: WranglerInputArgs & { _: (string | number)[] }): string[] {
+	if (args.configPath) {
+		logger.warn("The `--configPath` flag is deprecated, please use `--config` instead.");
+
+		if (args.config) {
+			logger.error(
+				"Multiple config flags found. Please use the `--config` flag for your Wrangler config path."
+			);
+			process.exit(1);
+		}
+	}
+
 	return [
 		...(args.configPath ? ["--config", args.configPath] : []),
+		...(args.config ? ["--config", args.config] : []),
 		...(args.env ? ["--env", args.env] : []),
 		// Note: the first args in `_` will be the commands.
 		...args._.slice(args._[0] === "populateCache" ? 2 : 1).map((a) => `${a}`),
@@ -132,11 +164,12 @@ function getWranglerArgs(args: {
  * @param args
  * @returns The inputted args, and an array of arguments that can be given to wrangler commands, including the `--config` and `--env` args.
  */
-export function withWranglerPassthroughArgs<
-	T extends yargs.ArgumentsCamelCase<{
-		configPath: string | undefined;
-		env: string | undefined;
-	}>,
->(args: T) {
-	return { ...args, wranglerArgs: getWranglerArgs(args) };
+export function withWranglerPassthroughArgs<T extends yargs.ArgumentsCamelCase<WranglerInputArgs>>(
+	args: T
+): WithWranglerArgs<T> {
+	return {
+		...args,
+		wranglerConfigPath: args.config ?? args.configPath,
+		wranglerArgs: getWranglerArgs(args),
+	};
 }

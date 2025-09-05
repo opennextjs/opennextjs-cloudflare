@@ -28,7 +28,7 @@ export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize: num
 	const wranglerConfig = readWranglerConfig(args);
 
 	const envVars = await getEnvFromPlatformProxy({
-		configPath: args.configPath,
+		configPath: args.wranglerConfigPath,
 		environment: args.env,
 	});
 
@@ -37,7 +37,7 @@ export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize: num
 	await populateCache(options, config, wranglerConfig, {
 		target: "remote",
 		environment: args.env,
-		configPath: args.configPath,
+		wranglerConfigPath: args.wranglerConfigPath,
 		cacheChunkSize: args.cacheChunkSize,
 	});
 
