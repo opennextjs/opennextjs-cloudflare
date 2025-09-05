@@ -19,5 +19,8 @@
 			"binding": "WORKER_SELF_REFERENCE",
 			"service": "pages-router"
 		}
-	]
+	],
+	"vars": {
+		"OPEN_NEXT_REQUEST_ID_HEADER": "true"
+	}
 }
