@@ -97,6 +97,7 @@ function initRuntime() {
 		__BUILD_TIMESTAMP_MS__,
 		__NEXT_BASE_PATH__,
 		__ASSETS_RUN_WORKER_FIRST__,
+		__TRAILING_SLASH__,
 		// The external middleware will use the convertTo function of the `edge` converter
 		// by default it will try to fetch the request, but since we are running everything in the same worker
 		// we need to use the request as is.
@@ -155,4 +156,6 @@ declare global {
 	var __ASSETS_RUN_WORKER_FIRST__: boolean | string[] | undefined;
 	// Deployment ID
 	var __DEPLOYMENT_ID__: string;
+	// Next trailingSlash config
+	var __TRAILING_SLASH__: boolean;
 }
