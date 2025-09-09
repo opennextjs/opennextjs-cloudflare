@@ -31,3 +31,5 @@ export const purgeCache = ({ type = "direct" }: PurgeOptions) => {
 		},
 	} satisfies CDNInvalidationHandler;
 };
+
+export default purgeCache;
