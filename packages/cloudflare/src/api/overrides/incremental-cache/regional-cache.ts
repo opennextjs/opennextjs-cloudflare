@@ -97,7 +97,8 @@ class RegionalCache implements IncrementalCache {
 	}
 
 	get #hasAutomaticCachePurging() {
-		const cdnInvalidation = globalThis.openNextConfig.default?.override?.cdnInvalidation;
+		// The `?` is required at `openNextConfig?` or the Open Next build fails because of a type error
+		const cdnInvalidation = globalThis.openNextConfig?.default?.override?.cdnInvalidation;
 
 		return cdnInvalidation !== undefined && cdnInvalidation !== "dummy";
 	}
