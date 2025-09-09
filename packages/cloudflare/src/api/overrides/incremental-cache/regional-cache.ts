@@ -81,8 +81,13 @@ class RegionalCache implements IncrementalCache {
 		}
 
 		// Otherwise we default to whether the automatic cache purging is enabled or not
-		const hasAutomaticCachePurging = !!getCloudflareContext().env.NEXT_CACHE_DO_PURGE;
-		return hasAutomaticCachePurging;
+		return this.#hasAutomaticCachePurging;
+	}
+
+	get #hasAutomaticCachePurging() {
+		const cdnInvalidation = globalThis.openNextConfig.default?.override?.cdnInvalidation;
+
+		return cdnInvalidation !== undefined && cdnInvalidation !== "dummy";
 	}
 
 	async get<CacheType extends CacheEntryType = "cache">(
