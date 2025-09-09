@@ -58,7 +58,16 @@ interface PutToCacheInput {
 }
 
 /**
- * Wrapper adding a regional cache on an `IncrementalCache` implementation
+ * Wrapper adding a regional cache on an `IncrementalCache` implementation.
+ *
+ * Using a the `RegionalCache` does not directly improves the performance much.
+ * However it allows bypassing the tag cache (see `bypassTagCacheOnCacheHit`) on hits.
+ * That's where bigger perf gain happens.
+ *
+ * We recommend using cache purge.
+ * When cache purge is not enabled, there is a possibility that the Cache API (local to a Data Center)
+ * is out of sync with the cache store (i.e. R2). That's why when cache purge is not enabled the Cache
+ * API is refreshed from the cache store on cache hits (for the long-lived mode).
  */
 class RegionalCache implements IncrementalCache {
 	public name: string;
