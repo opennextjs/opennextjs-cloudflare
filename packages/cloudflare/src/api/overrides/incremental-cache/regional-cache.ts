@@ -87,7 +87,7 @@ class RegionalCache implements IncrementalCache {
 	get #hasAutomaticCachePurging() {
 		const cdnInvalidation = globalThis.openNextConfig.default?.override?.cdnInvalidation;
 
-		return !(cdnInvalidation === undefined || cdnInvalidation === "dummy");
+		return cdnInvalidation !== undefined && cdnInvalidation !== "dummy";
 	}
 
 	async get<CacheType extends CacheEntryType = "cache">(
