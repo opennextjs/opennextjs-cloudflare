@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.8.2
+
+### Patch Changes
+
+- [#883](https://github.com/opennextjs/opennextjs-cloudflare/pull/883) [`bf1a6f6`](https://github.com/opennextjs/opennextjs-cloudflare/commit/bf1a6f6c578934203cec83b50c65713b810f378a) Thanks [@vicb](https://github.com/vicb)! - fix: type error during build
+
 ## 1.8.1
 
 ### Patch Changes
