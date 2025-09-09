@@ -1,9 +1,9 @@
 import { initOpenNextCloudflareForDev, getDeploymentId } from "@opennextjs/cloudflare";
+import { NextConfig } from "next";
 
 initOpenNextCloudflareForDev();
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
 	typescript: { ignoreBuildErrors: true },
 	eslint: { ignoreDuringBuilds: true },
 	experimental: {
@@ -11,6 +11,7 @@ const nextConfig = {
 		serverSourceMaps: true,
 	},
 	deploymentId: getDeploymentId(),
+	trailingSlash: true,
 };
 
 export default nextConfig;
