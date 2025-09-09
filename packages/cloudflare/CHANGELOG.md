@@ -1,5 +1,15 @@
 # @opennextjs/cloudflare
 
+## 1.8.1
+
+### Patch Changes
+
+- [#878](https://github.com/opennextjs/opennextjs-cloudflare/pull/878) [`23b67ce`](https://github.com/opennextjs/opennextjs-cloudflare/commit/23b67ce1d828498dcef89551b256dd0e8551199b) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: Respect trailing slash config for \_next/image route in worker
+
+- [#882](https://github.com/opennextjs/opennextjs-cloudflare/pull/882) [`a6283af`](https://github.com/opennextjs/opennextjs-cloudflare/commit/a6283af5e0a70889a0dba1a0c7a8829184b2e7ae) Thanks [@vicb](https://github.com/vicb)! - perf: skip lazy update on cache hit when cache purge is enabled
+
+- [#881](https://github.com/opennextjs/opennextjs-cloudflare/pull/881) [`9a746d2`](https://github.com/opennextjs/opennextjs-cloudflare/commit/9a746d27e5712766516ac048bf6f73a1e9b7f5fd) Thanks [@vicb](https://github.com/vicb)! - fix: detection of cache purge
+
 ## 1.8.0
 
 ### Minor Changes
