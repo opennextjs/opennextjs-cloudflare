@@ -17,6 +17,7 @@ export async function compileInit(options: BuildOptions, wranglerConfig: Unstabl
 	const nextConfig = loadConfig(path.join(options.appBuildOutputPath, ".next"));
 	const basePath = nextConfig.basePath ?? "";
 	const deploymentId = nextConfig.deploymentId ?? "";
+	const trailingSlash = nextConfig.trailingSlash ?? false;
 
 	await build({
 		entryPoints: [initPath],
@@ -31,6 +32,7 @@ export async function compileInit(options: BuildOptions, wranglerConfig: Unstabl
 			__NEXT_BASE_PATH__: JSON.stringify(basePath),
 			__ASSETS_RUN_WORKER_FIRST__: JSON.stringify(wranglerConfig.assets?.run_worker_first ?? false),
 			__DEPLOYMENT_ID__: JSON.stringify(deploymentId),
+			__TRAILING_SLASH__: JSON.stringify(trailingSlash),
 		},
 	});
 }
