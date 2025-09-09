@@ -35,14 +35,16 @@ type Options = {
 	 * Whether the regional cache entry should be updated in the background or not when it experiences
 	 * a cache hit.
 	 *
-	 * @default `false` for the `short-lived` mode, and `true` for the `long-lived` mode.
+	 * @default `true` in `long-lived` mode when cache purge is not used, `false` otherwise.
 	 */
 	shouldLazilyUpdateOnCacheHit?: boolean;
 
 	/**
 	 * Whether on cache hits the tagCache should be skipped or not. Skipping the tagCache allows requests to be
-	 * handled faster, the downside of this is that you need to make sure that the cache gets correctly purged
-	 * either by enabling the auto cache purging feature or doing that manually.
+	 * handled faster,
+	 *
+	 * Note: When this is enabled, make sure that the cache gets purged
+	 *       either by enabling the auto cache purging feature or manually.
 	 *
 	 * @default `true` if the auto cache purging is enabled, `false` otherwise.
 	 */
@@ -71,7 +73,8 @@ class RegionalCache implements IncrementalCache {
 			throw new Error("The KV incremental cache does not need a regional cache.");
 		}
 		this.name = this.store.name;
-		this.opts.shouldLazilyUpdateOnCacheHit ??= this.opts.mode === "long-lived";
+		this.opts.shouldLazilyUpdateOnCacheHit ??=
+			this.opts.mode === "long-lived" && !this.#hasAutomaticCachePurging;
 	}
 
 	get #bypassTagCacheOnCacheHit(): boolean {
@@ -103,7 +106,8 @@ class RegionalCache implements IncrementalCache {
 			if (cachedResponse) {
 				debugCache("Get - cached response");
 
-				// Re-fetch from the store and update the regional cache in the background
+				// Re-fetch from the store and update the regional cache in the background.
+				// Note: this is only useful when the Cache API is not purged automatically.
 				if (this.opts.shouldLazilyUpdateOnCacheHit) {
 					getCloudflareContext().ctx.waitUntil(
 						this.store.get(key, cacheType).then(async (rawEntry) => {
