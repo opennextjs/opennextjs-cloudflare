@@ -109,6 +109,7 @@ type PopulateCacheOptions = {
 	environment?: string;
 	wranglerConfigPath?: string;
 	cacheChunkSize?: number;
+	shouldUsePreviewNamespace?: boolean;
 };
 
 async function populateR2IncrementalCache(
@@ -197,12 +198,21 @@ async function populateKVIncrementalCache(
 
 		writeFileSync(chunkPath, JSON.stringify(kvMapping));
 
-		runWrangler(options, ["kv bulk put", quoteShellMeta(chunkPath), `--binding ${KV_CACHE_BINDING_NAME}`], {
-			target: populateCacheOptions.target,
-			environment: populateCacheOptions.environment,
-			configPath: populateCacheOptions.wranglerConfigPath,
-			logging: "error",
-		});
+		runWrangler(
+			options,
+			[
+				"kv bulk put",
+				quoteShellMeta(chunkPath),
+				`--binding ${KV_CACHE_BINDING_NAME}`,
+				...(populateCacheOptions.shouldUsePreviewNamespace ? ["--preview"] : ["--preview false"]),
+			],
+			{
+				target: populateCacheOptions.target,
+				environment: populateCacheOptions.environment,
+				configPath: populateCacheOptions.wranglerConfigPath,
+				logging: "error",
+			}
+		);
 
 		rmSync(chunkPath);
 	}
@@ -228,6 +238,7 @@ function populateD1TagCache(
 			"d1 execute",
 			D1_TAG_BINDING_NAME,
 			`--command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);"`,
+			...(populateCacheOptions.shouldUsePreviewNamespace ? ["--preview"] : ["--preview false"]),
 		],
 		{
 			target: populateCacheOptions.target,
