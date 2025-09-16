@@ -49,6 +49,7 @@ export function addPreviewCommand<T extends yargs.Argv>(y: T) {
 		(c) =>
 			withPopulateCacheOptions(c).option("remote", {
 				type: "boolean",
+				alias: "r",
 				default: false,
 				desc: "Run on the global Cloudflare network with access to production resources",
 			}),
