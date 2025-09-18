@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 1.8.3
+
+### Patch Changes
+
+- [#892](https://github.com/opennextjs/opennextjs-cloudflare/pull/892) [`1ee505f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/1ee505f7d89c91d51576edd7d9cbfc768ece8af3) Thanks [@vicb](https://github.com/vicb)! - Bump @opennextjs/aws to 3.7.7
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v3.7.7>
+
 ## 1.8.2
 
 ### Patch Changes
