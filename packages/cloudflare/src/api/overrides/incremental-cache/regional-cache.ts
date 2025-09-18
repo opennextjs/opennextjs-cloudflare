@@ -173,7 +173,7 @@ class RegionalCache implements IncrementalCache {
 				},
 			});
 		} catch (e) {
-			error(`Failed to get from regional cache`, e);
+			error(`Failed to set the regional cache`, e);
 		}
 	}
 
