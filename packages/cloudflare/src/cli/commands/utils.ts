@@ -52,8 +52,7 @@ export async function compileConfig(configPath: string | undefined) {
 		configPath = await createOpenNextConfigIfNotExistent(nextAppDir);
 	}
 
-	// TODO: remove the hack passing the `configPath` as the `baseDir` when https://github.com/opennextjs/opennextjs-aws/pull/972 is merged
-	const { config, buildDir } = await compileOpenNextConfig(configPath, "", { compileEdge: true });
+	const { config, buildDir } = await compileOpenNextConfig(configPath, { compileEdge: true });
 	ensureCloudflareConfig(config);
 
 	return { config, buildDir };
