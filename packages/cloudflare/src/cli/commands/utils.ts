@@ -170,7 +170,7 @@ export function withWranglerPassthroughArgs<T extends yargs.ArgumentsCamelCase<W
 	args: T
 ): WithWranglerArgs<T> {
 	const wranglerConfigPath = args.config ?? (args.configPath ? [args.configPath] : undefined);
-	if (wranglerConfigPath && wranglerConfigPath?.length > 1) {
+	if (wranglerConfigPath && wranglerConfigPath.length > 1) {
 		logger.info("Multiple Wrangler config paths found, first config assumed as opennext config.");
 	}
 
