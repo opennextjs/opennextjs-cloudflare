@@ -27,7 +27,7 @@ export async function previewCommand(args: WithWranglerArgs<{ cacheChunkSize: nu
 	await populateCache(options, config, wranglerConfig, {
 		target: "local",
 		environment: args.env,
-		wranglerConfigPath: args.wranglerConfigPath,
+		wranglerConfigPath: args.nextjsWranglerConfigPath,
 		cacheChunkSize: args.cacheChunkSize,
 	});
 

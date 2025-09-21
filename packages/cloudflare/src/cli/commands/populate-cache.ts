@@ -313,7 +313,7 @@ async function populateCacheCommand(
 	await populateCache(options, config, wranglerConfig, {
 		target,
 		environment: args.env,
-		wranglerConfigPath: args.wranglerConfigPath,
+		wranglerConfigPath: args.nextjsWranglerConfigPath,
 		cacheChunkSize: args.cacheChunkSize,
 	});
 }
