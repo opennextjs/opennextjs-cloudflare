@@ -105,10 +105,28 @@ export function getCacheAssets(opts: BuildOptions): CacheAsset[] {
 }
 
 type PopulateCacheOptions = {
+	/**
+	 * Whether to populate the local or remote cache.
+	 */
 	target: WranglerTarget;
+	/**
+	 * Wrangler environment to use.
+	 */
 	environment?: string;
+	/**
+	 * Path to the Wrangler config file.
+	 */
 	wranglerConfigPath?: string;
+	/**
+	 * Chunk sizes to use when populating KV cache. Ignored for R2.
+	 *
+	 * @default 25 for KV
+	 */
 	cacheChunkSize?: number;
+	/**
+	 * Instructs Wrangler to use the preview namespace or ID defined in the Wrangler config for the remote target.
+	 */
+	shouldUsePreviewId: boolean;
 };
 
 async function populateR2IncrementalCache(
@@ -197,12 +215,21 @@ async function populateKVIncrementalCache(
 
 		writeFileSync(chunkPath, JSON.stringify(kvMapping));
 
-		runWrangler(options, ["kv bulk put", quoteShellMeta(chunkPath), `--binding ${KV_CACHE_BINDING_NAME}`], {
-			target: populateCacheOptions.target,
-			environment: populateCacheOptions.environment,
-			configPath: populateCacheOptions.wranglerConfigPath,
-			logging: "error",
-		});
+		runWrangler(
+			options,
+			[
+				"kv bulk put",
+				quoteShellMeta(chunkPath),
+				`--binding ${KV_CACHE_BINDING_NAME}`,
+				`--preview ${populateCacheOptions.shouldUsePreviewId}`,
+			],
+			{
+				target: populateCacheOptions.target,
+				environment: populateCacheOptions.environment,
+				configPath: populateCacheOptions.wranglerConfigPath,
+				logging: "error",
+			}
+		);
 
 		rmSync(chunkPath);
 	}
@@ -228,6 +255,7 @@ function populateD1TagCache(
 			"d1 execute",
 			D1_TAG_BINDING_NAME,
 			`--command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);"`,
+			`--preview ${populateCacheOptions.shouldUsePreviewId}`,
 		],
 		{
 			target: populateCacheOptions.target,
@@ -301,7 +329,7 @@ export async function populateCache(
  */
 async function populateCacheCommand(
 	target: "local" | "remote",
-	args: WithWranglerArgs<{ cacheChunkSize: number }>
+	args: WithWranglerArgs<{ cacheChunkSize?: number }>
 ) {
 	printHeaders(`populate cache - ${target}`);
 
@@ -315,6 +343,7 @@ async function populateCacheCommand(
 		environment: args.env,
 		wranglerConfigPath: args.wranglerConfigPath,
 		cacheChunkSize: args.cacheChunkSize,
+		shouldUsePreviewId: false,
 	});
 }
 
@@ -345,7 +374,6 @@ export function addPopulateCacheCommand<T extends yargs.Argv>(y: T) {
 export function withPopulateCacheOptions<T extends yargs.Argv>(args: T) {
 	return withWranglerOptions(args).options("cacheChunkSize", {
 		type: "number",
-		default: 25,
 		desc: "Number of entries per chunk when populating the cache",
 	});
 }

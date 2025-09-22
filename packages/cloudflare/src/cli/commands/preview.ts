@@ -16,7 +16,9 @@ import {
  *
  * @param args
  */
-export async function previewCommand(args: WithWranglerArgs<{ cacheChunkSize: number }>): Promise<void> {
+export async function previewCommand(
+	args: WithWranglerArgs<{ cacheChunkSize?: number; remote: boolean }>
+): Promise<void> {
 	printHeaders("preview");
 
 	const { config } = await retrieveCompiledConfig();
@@ -25,10 +27,11 @@ export async function previewCommand(args: WithWranglerArgs<{ cacheChunkSize: nu
 	const wranglerConfig = readWranglerConfig(args);
 
 	await populateCache(options, config, wranglerConfig, {
-		target: "local",
+		target: args.remote ? "remote" : "local",
 		environment: args.env,
 		wranglerConfigPath: args.wranglerConfigPath,
 		cacheChunkSize: args.cacheChunkSize,
+		shouldUsePreviewId: args.remote,
 	});
 
 	runWrangler(options, ["dev", ...args.wranglerArgs], { logging: "all" });
@@ -43,7 +46,13 @@ export function addPreviewCommand<T extends yargs.Argv>(y: T) {
 	return y.command(
 		"preview",
 		"Preview a built OpenNext app with a Wrangler dev server",
-		(c) => withPopulateCacheOptions(c),
+		(c) =>
+			withPopulateCacheOptions(c).option("remote", {
+				type: "boolean",
+				alias: "r",
+				default: false,
+				desc: "Run on the global Cloudflare network with access to production resources",
+			}),
 		(args) => previewCommand(withWranglerPassthroughArgs(args))
 	);
 }

@@ -130,6 +130,7 @@ type WranglerInputArgs = {
 	configPath: string | undefined;
 	config: string | undefined;
 	env: string | undefined;
+	remote?: boolean | undefined;
 };
 
 /**
@@ -153,6 +154,7 @@ function getWranglerArgs(args: WranglerInputArgs & { _: (string | number)[] }): 
 		...(args.configPath ? ["--config", args.configPath] : []),
 		...(args.config ? ["--config", args.config] : []),
 		...(args.env ? ["--env", args.env] : []),
+		...(args.remote ? ["--remote"] : []),
 		// Note: the first args in `_` will be the commands.
 		...args._.slice(args._[0] === "populateCache" ? 2 : 1).map((a) => `${a}`),
 	];

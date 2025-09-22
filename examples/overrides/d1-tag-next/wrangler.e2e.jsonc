@@ -15,12 +15,14 @@
 		{
 			"binding": "NEXT_INC_CACHE_KV",
 			"id": "<BINDING_ID>",
+			"preview_id": "<BINDING_ID>",
 		},
 	],
 	"d1_databases": [
 		{
 			"binding": "NEXT_TAG_CACHE_D1",
 			"database_id": "NEXT_TAG_CACHE_D1",
+			"preview_database_id": "NEXT_TAG_CACHE_D1",
 			"database_name": "NEXT_TAG_CACHE_D1",
 		},
 	],
