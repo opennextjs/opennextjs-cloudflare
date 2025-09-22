@@ -17,7 +17,7 @@ import {
  * @param args
  */
 export async function previewCommand(
-	args: WithWranglerArgs<{ cacheChunkSize: number; remote: boolean }>
+	args: WithWranglerArgs<{ cacheChunkSize?: number; remote: boolean }>
 ): Promise<void> {
 	printHeaders("preview");
 

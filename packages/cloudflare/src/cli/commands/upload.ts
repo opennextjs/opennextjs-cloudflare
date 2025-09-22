@@ -19,7 +19,7 @@ import {
  *
  * @param args
  */
-export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize: number }>): Promise<void> {
+export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize?: number }>): Promise<void> {
 	printHeaders("upload");
 
 	const { config } = await retrieveCompiledConfig();

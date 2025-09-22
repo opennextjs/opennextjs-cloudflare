@@ -120,13 +120,11 @@ type PopulateCacheOptions = {
 	/**
 	 * Chunk sizes to use when populating KV cache. Ignored for R2.
 	 *
-	 * @default 25
+	 * @default 25 for KV
 	 */
-	cacheChunkSize: number;
+	cacheChunkSize?: number;
 	/**
 	 * Instructs Wrangler to use the preview namespace or ID defined in the Wrangler config for the remote target.
-	 *
-	 * @default false
 	 */
 	shouldUsePreviewId: boolean;
 };
@@ -331,7 +329,7 @@ export async function populateCache(
  */
 async function populateCacheCommand(
 	target: "local" | "remote",
-	args: WithWranglerArgs<{ cacheChunkSize: number }>
+	args: WithWranglerArgs<{ cacheChunkSize?: number }>
 ) {
 	printHeaders(`populate cache - ${target}`);
 
@@ -376,7 +374,6 @@ export function addPopulateCacheCommand<T extends yargs.Argv>(y: T) {
 export function withPopulateCacheOptions<T extends yargs.Argv>(args: T) {
 	return withWranglerOptions(args).options("cacheChunkSize", {
 		type: "number",
-		default: 25,
 		desc: "Number of entries per chunk when populating the cache",
 	});
 }
