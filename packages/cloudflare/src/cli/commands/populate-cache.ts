@@ -105,11 +105,30 @@ export function getCacheAssets(opts: BuildOptions): CacheAsset[] {
 }
 
 type PopulateCacheOptions = {
+	/**
+	 * Whether to populate the local or remote cache.
+	 */
 	target: WranglerTarget;
+	/**
+	 * Wrangler environment to use.
+	 */
 	environment?: string;
+	/**
+	 * Path to the Wrangler config file.
+	 */
 	wranglerConfigPath?: string;
-	cacheChunkSize?: number;
-	shouldUsePreviewNamespace?: boolean;
+	/**
+	 * Chunk sizes to use when populating KV cache. Ignored for R2.
+	 *
+	 * @default 25
+	 */
+	cacheChunkSize: number;
+	/**
+	 * Instructs Wrangler to use the preview namespace or ID defined in the Wrangler config for the remote target.
+	 *
+	 * @default false
+	 */
+	shouldUsePreviewId: boolean;
 };
 
 async function populateR2IncrementalCache(
@@ -204,7 +223,7 @@ async function populateKVIncrementalCache(
 				"kv bulk put",
 				quoteShellMeta(chunkPath),
 				`--binding ${KV_CACHE_BINDING_NAME}`,
-				...(populateCacheOptions.shouldUsePreviewNamespace ? ["--preview"] : ["--preview false"]),
+				`--preview ${populateCacheOptions.shouldUsePreviewId}`,
 			],
 			{
 				target: populateCacheOptions.target,
@@ -238,7 +257,7 @@ function populateD1TagCache(
 			"d1 execute",
 			D1_TAG_BINDING_NAME,
 			`--command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);"`,
-			...(populateCacheOptions.shouldUsePreviewNamespace ? ["--preview"] : ["--preview false"]),
+			`--preview ${populateCacheOptions.shouldUsePreviewId}`,
 		],
 		{
 			target: populateCacheOptions.target,
@@ -326,6 +345,7 @@ async function populateCacheCommand(
 		environment: args.env,
 		wranglerConfigPath: args.wranglerConfigPath,
 		cacheChunkSize: args.cacheChunkSize,
+		shouldUsePreviewId: false,
 	});
 }
 

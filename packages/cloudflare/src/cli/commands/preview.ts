@@ -31,7 +31,7 @@ export async function previewCommand(
 		environment: args.env,
 		wranglerConfigPath: args.wranglerConfigPath,
 		cacheChunkSize: args.cacheChunkSize,
-		shouldUsePreviewNamespace: args.remote,
+		shouldUsePreviewId: args.remote,
 	});
 
 	runWrangler(options, ["dev", ...args.wranglerArgs], { logging: "all" });

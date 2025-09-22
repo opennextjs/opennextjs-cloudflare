@@ -39,6 +39,7 @@ export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize: num
 		environment: args.env,
 		wranglerConfigPath: args.wranglerConfigPath,
 		cacheChunkSize: args.cacheChunkSize,
+		shouldUsePreviewId: false,
 	});
 
 	runWrangler(
