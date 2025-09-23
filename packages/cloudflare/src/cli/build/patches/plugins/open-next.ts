@@ -45,3 +45,32 @@ rule:
 fix: |-
   var composableCacheHandlerPath = "";
 `;
+
+export function patchSetWorkingDirectory(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
+	const { outputDir } = buildOpts;
+	const packagePath = getPackagePath(buildOpts);
+	const outputPath = path.join(outputDir, "server-functions/default");
+
+	const indexPath = path.relative(
+		buildOpts.appBuildOutputPath,
+		path.join(outputPath, packagePath, `index.mjs`)
+	);
+
+	return updater.updateContent("do-not-set-working-directory", [
+		{
+			filter: getCrossPlatformPathRegex(indexPath),
+			contentFilter: /function setNextjsServerWorkingDirectory\(/,
+			callback: async ({ contents }) => patchCode(contents, workingDirectoryRule),
+		},
+	]);
+}
+
+// `setNextjsServerWorkingDirectory` calls `process.chdir("")` which errors because the directory does not exists
+// See https://github.com/opennextjs/opennextjs-cloudflare/issues/899
+export const workingDirectoryRule = `
+rule:
+  pattern: function setNextjsServerWorkingDirectory() { $$$BODY }
+fix: |-
+    function setNextjsServerWorkingDirectory() {
+    }
+`;
