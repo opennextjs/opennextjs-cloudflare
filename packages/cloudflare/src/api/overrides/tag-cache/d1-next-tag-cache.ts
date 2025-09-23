@@ -63,7 +63,7 @@ export class D1NextModeTagCache implements NextModeTagCache {
 		await db.batch(
 			tags.map((tag) =>
 				db
-					.prepare(`INSERT INTO revalidations (tag, revalidatedAt) VALUES (?, ?)`)
+					.prepare(`INSERT OR REPLACE INTO revalidations (tag, revalidatedAt) VALUES (?, ?)`)
 					.bind(this.getCacheKey(tag), Date.now())
 			)
 		);

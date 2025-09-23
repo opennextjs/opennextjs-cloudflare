@@ -254,7 +254,7 @@ function populateD1TagCache(
 		[
 			"d1 execute",
 			D1_TAG_BINDING_NAME,
-			`--command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);"`,
+			`--command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT PRIMARY KEY, revalidatedAt INTEGER);"`,
 			`--preview ${populateCacheOptions.shouldUsePreviewId}`,
 		],
 		{
