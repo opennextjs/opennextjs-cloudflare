@@ -1,5 +1,15 @@
 # @opennextjs/cloudflare
 
+## 1.8.5
+
+### Patch Changes
+
+- [#901](https://github.com/opennextjs/opennextjs-cloudflare/pull/901) [`17a4bea`](https://github.com/opennextjs/opennextjs-cloudflare/commit/17a4bea663ae158b6b4614595b3e5114ea613928) Thanks [@vicb](https://github.com/vicb)! - chore: bump wrangler to ^4.38.0
+
+- [#903](https://github.com/opennextjs/opennextjs-cloudflare/pull/903) [`7fced0f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7fced0fbabc6e1e45609b265a7cca4a58ba52324) Thanks [@vicb](https://github.com/vicb)! - fix: enable using workerd process v2
+
+  process v2 is an updated version of `node:process` active by default after 2025-09-15
+
 ## 1.8.4
 
 ### Patch Changes
