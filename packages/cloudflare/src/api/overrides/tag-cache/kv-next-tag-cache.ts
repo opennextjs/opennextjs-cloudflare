@@ -13,7 +13,7 @@ export const BINDING_NAME = "NEXT_TAG_CACHE_KV";
  *
  * Warning:
  * This implementation is considered experimental for now.
- * KV is eventually consistency and can take up to 60s to reflect the last write.
+ * KV is eventually consistent and can take up to 60s to reflect the last write.
  * This means that:
  * - revalidations can take up to 60s to apply
  * - when a page depends on multiple tags they can be inconsistent for up to 60s
