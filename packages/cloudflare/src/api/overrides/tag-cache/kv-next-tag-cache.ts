@@ -28,7 +28,6 @@ export class KVNextModeTagCache implements NextModeTagCache {
 			return 0;
 		}
 
-		console.log(`[KVNextModeTagCache] getLastRevalidated, tags=${tags}`);
 		try {
 			const keys = tags.map((tag) => this.getCacheKey(tag));
 			// Use the `json` type to get back numbers/null
