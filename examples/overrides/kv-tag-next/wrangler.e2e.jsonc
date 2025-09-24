@@ -1,0 +1,25 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"main": ".open-next/worker.js",
+	"name": "ssg-app",
+	"compatibility_date": "2025-02-04",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS",
+	},
+	"vars": {
+		"APP_VERSION": "1.2.345",
+	},
+	"kv_namespaces": [
+		{
+			"binding": "NEXT_INC_CACHE_KV",
+			"id": "INC-CACHE",
+			"preview_id": "<BINDING_ID>",
+		},
+		{
+			"binding": "NEXT_TAG_CACHE_KV",
+			"id": "TAG-CACHE",
+		},
+	],
+}

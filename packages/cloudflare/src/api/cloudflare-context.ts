@@ -33,6 +33,9 @@ declare global {
 		// D1 db used for the tag cache
 		NEXT_TAG_CACHE_D1?: D1Database;
 
+		// KV used for the tag cache
+		NEXT_TAG_CACHE_KV?: KVNamespace;
+
 		// Durables object namespace to use for the sharded tag cache
 		NEXT_TAG_CACHE_DO_SHARDED?: DurableObjectNamespace<DOShardedTagCache>;
 		// Queue of failed tag write

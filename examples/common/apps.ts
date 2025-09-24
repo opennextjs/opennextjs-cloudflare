@@ -16,6 +16,7 @@ const apps = [
 	"experimental",
 	// overrides
 	"d1-tag-next",
+	"kv-tag-next",
 	"memory-queue",
 	"r2-incremental-cache",
 	"static-assets-incremental-cache",
