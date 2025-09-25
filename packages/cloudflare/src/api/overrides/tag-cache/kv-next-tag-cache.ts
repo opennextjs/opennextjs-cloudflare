@@ -16,7 +16,9 @@ export const BINDING_NAME = "NEXT_TAG_CACHE_KV";
  * KV is eventually consistent and can take up to 60s to reflect the last write.
  * This means that:
  * - revalidations can take up to 60s to apply
- * - when a page depends on multiple tags they can be inconsistent for up to 60s
+ * - when a page depends on multiple tags they can be inconsistent for up to 60s.
+ *   It also means that cached data could be outdated for one tag when other tags
+ *   are revalidated resulting in the page being generated based on outdated data.
  */
 export class KVNextModeTagCache implements NextModeTagCache {
 	readonly mode = "nextMode" as const;
