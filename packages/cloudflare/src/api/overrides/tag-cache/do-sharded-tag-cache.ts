@@ -6,7 +6,7 @@ import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 import { getCloudflareContext } from "../../cloudflare-context.js";
 import type { OpenNextConfig } from "../../config.js";
 import { DOShardedTagCache } from "../../durable-objects/sharded-tag-cache.js";
-import { debugCache, purgeCacheByTags } from "../internal.js";
+import { debugCache, isPurgeCacheEnabled, purgeCacheByTags } from "../internal.js";
 
 export const DEFAULT_WRITE_RETRIES = 3;
 export const DEFAULT_NUM_SHARDS = 4;
@@ -229,7 +229,9 @@ class ShardedDOTagCache implements NextModeTagCache {
 		);
 
 		// TODO: See https://github.com/opennextjs/opennextjs-aws/issues/986
-		await purgeCacheByTags(tags);
+		if (isPurgeCacheEnabled()) {
+			await purgeCacheByTags(tags);
+		}
 	}
 
 	/**

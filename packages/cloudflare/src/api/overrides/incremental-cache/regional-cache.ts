@@ -7,7 +7,7 @@ import {
 } from "@opennextjs/aws/types/overrides.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
-import { debugCache, FALLBACK_BUILD_ID, IncrementalCacheEntry } from "../internal.js";
+import { debugCache, FALLBACK_BUILD_ID, IncrementalCacheEntry, isPurgeCacheEnabled } from "../internal.js";
 import { NAME as KV_CACHE_NAME } from "./kv-incremental-cache.js";
 
 const ONE_MINUTE_IN_SECONDS = 60;
@@ -82,8 +82,7 @@ class RegionalCache implements IncrementalCache {
 			throw new Error("The KV incremental cache does not need a regional cache.");
 		}
 		this.name = this.store.name;
-		this.opts.shouldLazilyUpdateOnCacheHit ??=
-			this.opts.mode === "long-lived" && !this.#hasAutomaticCachePurging;
+		this.opts.shouldLazilyUpdateOnCacheHit ??= this.opts.mode === "long-lived" && !isPurgeCacheEnabled();
 	}
 
 	get #bypassTagCacheOnCacheHit(): boolean {
@@ -93,14 +92,7 @@ class RegionalCache implements IncrementalCache {
 		}
 
 		// Otherwise we default to whether the automatic cache purging is enabled or not
-		return this.#hasAutomaticCachePurging;
-	}
-
-	get #hasAutomaticCachePurging() {
-		// The `?` is required at `openNextConfig?` or the Open Next build fails because of a type error
-		const cdnInvalidation = globalThis.openNextConfig?.default?.override?.cdnInvalidation;
-
-		return cdnInvalidation !== undefined && cdnInvalidation !== "dummy";
+		return isPurgeCacheEnabled();
 	}
 
 	async get<CacheType extends CacheEntryType = "cache">(

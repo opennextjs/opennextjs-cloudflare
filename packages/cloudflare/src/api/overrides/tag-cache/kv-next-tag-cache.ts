@@ -2,7 +2,7 @@ import { error } from "@opennextjs/aws/adapters/logger.js";
 import type { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
-import { FALLBACK_BUILD_ID, purgeCacheByTags } from "../internal.js";
+import { FALLBACK_BUILD_ID, isPurgeCacheEnabled, purgeCacheByTags } from "../internal.js";
 
 export const NAME = "kv-next-mode-tag-cache";
 
@@ -65,7 +65,9 @@ export class KVNextModeTagCache implements NextModeTagCache {
 		);
 
 		// TODO: See https://github.com/opennextjs/opennextjs-aws/issues/986
-		await purgeCacheByTags(tags);
+		if (isPurgeCacheEnabled()) {
+			await purgeCacheByTags(tags);
+		}
 	}
 
 	/**
