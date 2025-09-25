@@ -3,8 +3,8 @@ import { generateShardId } from "@opennextjs/aws/core/routing/queue.js";
 import type { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
 import { IgnorableError } from "@opennextjs/aws/utils/error.js";
 
-import type { OpenNextConfig } from "../../../api/config.js";
 import { getCloudflareContext } from "../../cloudflare-context.js";
+import type { OpenNextConfig } from "../../config.js";
 import { DOShardedTagCache } from "../../durable-objects/sharded-tag-cache.js";
 import { debugCache, purgeCacheByTags } from "../internal.js";
 
@@ -227,6 +227,8 @@ class ShardedDOTagCache implements NextModeTagCache {
 				await this.performWriteTagsWithRetry(doId, tags, currentTime);
 			})
 		);
+
+		// TODO: See https://github.com/opennextjs/opennextjs-aws/issues/986
 		await purgeCacheByTags(tags);
 	}
 

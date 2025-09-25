@@ -1,12 +1,9 @@
-/**
- * Author: Copilot (Claude Sonnet 4)
- */
 import { error } from "@opennextjs/aws/adapters/logger.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
-import { debugCache, FALLBACK_BUILD_ID, purgeCacheByTags } from "../internal.js";
-import { BINDING_NAME, D1NextModeTagCache, NAME } from "./d1-next-tag-cache.js";
+import { FALLBACK_BUILD_ID, purgeCacheByTags } from "../internal.js";
+import { BINDING_NAME, KVNextModeTagCache, NAME } from "./kv-next-tag-cache.js";
 
 // Mock dependencies
 vi.mock("@opennextjs/aws/adapters/logger.js", () => ({
@@ -23,41 +20,31 @@ vi.mock("../internal.js", () => ({
 	purgeCacheByTags: vi.fn(),
 }));
 
-describe("D1NextModeTagCache", () => {
-	let tagCache: D1NextModeTagCache;
-	let mockDb: {
-		prepare: ReturnType<typeof vi.fn>;
-		batch: ReturnType<typeof vi.fn>;
+describe("KVNextModeTagCache", () => {
+	let tagCache: KVNextModeTagCache;
+	let mockKv: {
+		put: ReturnType<typeof vi.fn>;
+		get: ReturnType<typeof vi.fn>;
 	};
-	let mockPrepare: ReturnType<typeof vi.fn>;
-	let mockBind: ReturnType<typeof vi.fn>;
-	let mockRun: ReturnType<typeof vi.fn>;
-	let mockRaw: ReturnType<typeof vi.fn>;
-	let mockBatch: ReturnType<typeof vi.fn>;
+	let mockGet: ReturnType<typeof vi.fn>;
+	let mockPut: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 
 		// Setup mock database
-		mockRun = vi.fn();
-		mockRaw = vi.fn();
-		mockBind = vi.fn().mockReturnThis();
-		mockPrepare = vi.fn().mockReturnValue({
-			bind: mockBind,
-			run: mockRun,
-			raw: mockRaw,
-		});
-		mockBatch = vi.fn();
+		mockGet = vi.fn();
+		mockPut = vi.fn();
 
-		mockDb = {
-			prepare: mockPrepare,
-			batch: mockBatch,
+		mockKv = {
+			get: mockGet,
+			put: mockPut,
 		};
 
 		// Setup cloudflare context mock
 		vi.mocked(getCloudflareContext).mockReturnValue({
 			env: {
-				[BINDING_NAME]: mockDb,
+				[BINDING_NAME]: mockKv,
 			},
 		} as unknown as ReturnType<typeof getCloudflareContext>);
 
@@ -71,7 +58,7 @@ describe("D1NextModeTagCache", () => {
 		// Reset environment variables
 		vi.unstubAllEnvs();
 
-		tagCache = new D1NextModeTagCache();
+		tagCache = new KVNextModeTagCache();
 	});
 
 	describe("constructor and properties", () => {
@@ -90,10 +77,10 @@ describe("D1NextModeTagCache", () => {
 			const result = await tagCache.getLastRevalidated(["tag1", "tag2"]);
 
 			expect(result).toBe(0);
-			expect(mockPrepare).not.toHaveBeenCalled();
+			expect(mockGet).not.toHaveBeenCalled();
 		});
 
-		it("should return 0 when no database is available", async () => {
+		it("should return 0 when no KV is available", async () => {
 			vi.mocked(getCloudflareContext).mockReturnValue({
 				env: {},
 			} as ReturnType<typeof getCloudflareContext>);
@@ -101,38 +88,38 @@ describe("D1NextModeTagCache", () => {
 			const result = await tagCache.getLastRevalidated(["tag1", "tag2"]);
 
 			expect(result).toBe(0);
-			expect(debugCache).toHaveBeenCalledWith("No D1 database found");
+			expect(error).toHaveBeenCalledWith("No KV binding NEXT_TAG_CACHE_KV found");
 		});
 
 		it("should return the maximum revalidation time for given tags", async () => {
 			const mockTime = 1234567890;
-			mockRun.mockResolvedValue({
-				results: [{ time: mockTime }],
-			});
+			mockGet.mockResolvedValue(
+				new Map([
+					["tag1", mockTime],
+					["tag2", mockTime - 100],
+				])
+			);
 
 			const tags = ["tag1", "tag2"];
 			const result = await tagCache.getLastRevalidated(tags);
 
 			expect(result).toBe(mockTime);
-			expect(mockPrepare).toHaveBeenCalledWith(
-				"SELECT MAX(revalidatedAt) AS time FROM revalidations WHERE tag IN (?, ?)"
-			);
-			expect(mockBind).toHaveBeenCalledWith(`${FALLBACK_BUILD_ID}/tag1`, `${FALLBACK_BUILD_ID}/tag2`);
+			expect(mockGet).toHaveBeenCalledWith([`${FALLBACK_BUILD_ID}/tag1`, `${FALLBACK_BUILD_ID}/tag2`], {
+				type: "json",
+			});
 		});
 
 		it("should return 0 when no results are found", async () => {
-			mockRun.mockResolvedValue({
-				results: [],
-			});
+			mockGet.mockResolvedValue(new Map([["tag1", null]]));
 
 			const result = await tagCache.getLastRevalidated(["tag1"]);
 
 			expect(result).toBe(0);
 		});
 
-		it("should return 0 when database query throws an error", async () => {
+		it("should return 0 when KV get throws an error", async () => {
 			const mockError = new Error("Database error");
-			mockRun.mockRejectedValue(mockError);
+			mockGet.mockRejectedValue(mockError);
 
 			const result = await tagCache.getLastRevalidated(["tag1"]);
 
@@ -144,13 +131,11 @@ describe("D1NextModeTagCache", () => {
 			const customBuildId = "custom-build-id";
 			vi.stubEnv("NEXT_BUILD_ID", customBuildId);
 
-			mockRun.mockResolvedValue({
-				results: [{ time: 123 }],
-			});
+			mockGet.mockResolvedValue(new Map([["tag1", null]]));
 
 			await tagCache.getLastRevalidated(["tag1"]);
 
-			expect(mockBind).toHaveBeenCalledWith(`${customBuildId}/tag1`);
+			expect(mockGet).toHaveBeenCalledWith([`${customBuildId}/tag1`], { type: "json" });
 		});
 	});
 
@@ -163,10 +148,10 @@ describe("D1NextModeTagCache", () => {
 			const result = await tagCache.hasBeenRevalidated(["tag1"], 1000);
 
 			expect(result).toBe(false);
-			expect(mockPrepare).not.toHaveBeenCalled();
+			expect(mockGet).not.toHaveBeenCalled();
 		});
 
-		it("should return false when no database is available", async () => {
+		it("should return false when no KV is available", async () => {
 			vi.mocked(getCloudflareContext).mockReturnValue({
 				env: {},
 			} as ReturnType<typeof getCloudflareContext>);
@@ -177,44 +162,36 @@ describe("D1NextModeTagCache", () => {
 		});
 
 		it("should return true when tags have been revalidated after lastModified", async () => {
-			mockRaw.mockResolvedValue([{ "1": 1 }]); // Non-empty result
+			mockGet.mockResolvedValue(
+				new Map([
+					["tag1", 1000],
+					["tag2", null],
+				])
+			);
 
 			const tags = ["tag1", "tag2"];
-			const lastModified = 1000;
+			const lastModified = 500;
 			const result = await tagCache.hasBeenRevalidated(tags, lastModified);
 
 			expect(result).toBe(true);
-			expect(mockPrepare).toHaveBeenCalledWith(
-				"SELECT 1 FROM revalidations WHERE tag IN (?, ?) AND revalidatedAt > ? LIMIT 1"
-			);
-			expect(mockBind).toHaveBeenCalledWith(
-				`${FALLBACK_BUILD_ID}/tag1`,
-				`${FALLBACK_BUILD_ID}/tag2`,
-				lastModified
-			);
 		});
 
 		it("should return false when no tags have been revalidated", async () => {
-			mockRaw.mockResolvedValue([]); // Empty result
+			mockGet.mockResolvedValue(
+				new Map([
+					["tag1", null],
+					["tag2", null],
+				])
+			);
 
-			const result = await tagCache.hasBeenRevalidated(["tag1"], 1000);
+			const result = await tagCache.hasBeenRevalidated(["tag1", "tag2"], 1000);
 
 			expect(result).toBe(false);
 		});
 
-		it("should use current time as default when lastModified is not provided", async () => {
-			const currentTime = Date.now();
-			vi.spyOn(Date, "now").mockReturnValue(currentTime);
-			mockRaw.mockResolvedValue([]);
-
-			await tagCache.hasBeenRevalidated(["tag1"]);
-
-			expect(mockBind).toHaveBeenCalledWith(`${FALLBACK_BUILD_ID}/tag1`, currentTime);
-		});
-
-		it("should return false when database query throws an error", async () => {
+		it("should return false when KV get throws an error", async () => {
 			const mockError = new Error("Database error");
-			mockRaw.mockRejectedValue(mockError);
+			mockGet.mockRejectedValue(mockError);
 
 			const result = await tagCache.hasBeenRevalidated(["tag1"], 1000);
 
@@ -231,49 +208,38 @@ describe("D1NextModeTagCache", () => {
 
 			await tagCache.writeTags(["tag1", "tag2"]);
 
-			expect(mockBatch).not.toHaveBeenCalled();
+			expect(mockPut).not.toHaveBeenCalled();
 			expect(purgeCacheByTags).not.toHaveBeenCalled();
 		});
 
-		it("should do nothing when no database is available", async () => {
+		it("should do nothing when no KV is available", async () => {
 			vi.mocked(getCloudflareContext).mockReturnValue({
 				env: {},
 			} as ReturnType<typeof getCloudflareContext>);
 
 			await tagCache.writeTags(["tag1", "tag2"]);
 
-			expect(mockBatch).not.toHaveBeenCalled();
+			expect(mockPut).not.toHaveBeenCalled();
 			expect(purgeCacheByTags).not.toHaveBeenCalled();
 		});
 
 		it("should do nothing when tags array is empty", async () => {
 			await tagCache.writeTags([]);
 
-			expect(mockBatch).not.toHaveBeenCalled();
+			expect(mockPut).not.toHaveBeenCalled();
 			expect(purgeCacheByTags).not.toHaveBeenCalled();
 		});
 
-		it("should write tags to database and purge cache", async () => {
+		it("should write tags to KV and purge cache", async () => {
 			const currentTime = Date.now();
 			vi.spyOn(Date, "now").mockReturnValue(currentTime);
 
 			const tags = ["tag1", "tag2"];
 			await tagCache.writeTags(tags);
 
-			expect(mockBatch).toHaveBeenCalledWith([
-				expect.objectContaining({
-					bind: expect.any(Function),
-				}),
-				expect.objectContaining({
-					bind: expect.any(Function),
-				}),
-			]);
-
-			// Verify the prepared statements were created correctly
-			expect(mockPrepare).toHaveBeenCalledTimes(2);
-			expect(mockPrepare).toHaveBeenCalledWith(
-				"INSERT INTO revalidations (tag, revalidatedAt) VALUES (?, ?)"
-			);
+			expect(mockPut).toHaveBeenCalledTimes(2);
+			expect(mockPut).toHaveBeenCalledWith("fallback-build-id/tag1", String(currentTime));
+			expect(mockPut).toHaveBeenCalledWith("fallback-build-id/tag2", String(currentTime));
 
 			expect(purgeCacheByTags).toHaveBeenCalledWith(tags);
 		});
@@ -284,11 +250,8 @@ describe("D1NextModeTagCache", () => {
 
 			await tagCache.writeTags(["single-tag"]);
 
-			expect(mockBatch).toHaveBeenCalledWith([
-				expect.objectContaining({
-					bind: expect.any(Function),
-				}),
-			]);
+			expect(mockPut).toHaveBeenCalledTimes(1);
+			expect(mockPut).toHaveBeenCalledWith("fallback-build-id/single-tag", String(currentTime));
 
 			expect(purgeCacheByTags).toHaveBeenCalledWith(["single-tag"]);
 		});

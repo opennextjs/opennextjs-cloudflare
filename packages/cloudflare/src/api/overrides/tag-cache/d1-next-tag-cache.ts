@@ -1,7 +1,6 @@
 import { error } from "@opennextjs/aws/adapters/logger.js";
 import type { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
 
-import type { OpenNextConfig } from "../../../api/config.js";
 import { getCloudflareContext } from "../../cloudflare-context.js";
 import { debugCache, FALLBACK_BUILD_ID, purgeCacheByTags } from "../internal.js";
 
@@ -28,9 +27,9 @@ export class D1NextModeTagCache implements NextModeTagCache {
 			// We only care about the most recent revalidation
 			return (result.results[0]?.time ?? 0) as number;
 		} catch (e) {
-			error(e);
 			// By default we don't want to crash here, so we return false
 			// We still log the error though so we can debug it
+			error(e);
 			return 0;
 		}
 	}
@@ -57,7 +56,6 @@ export class D1NextModeTagCache implements NextModeTagCache {
 
 	async writeTags(tags: string[]): Promise<void> {
 		const { isDisabled, db } = this.getConfig();
-		// TODO: Remove `tags.length === 0` when https://github.com/opennextjs/opennextjs-aws/pull/828 is used
 		if (isDisabled || tags.length === 0) return Promise.resolve();
 
 		await db.batch(
@@ -67,6 +65,8 @@ export class D1NextModeTagCache implements NextModeTagCache {
 					.bind(this.getCacheKey(tag), Date.now())
 			)
 		);
+
+		// TODO: See https://github.com/opennextjs/opennextjs-aws/issues/986
 		await purgeCacheByTags(tags);
 	}
 
@@ -75,8 +75,7 @@ export class D1NextModeTagCache implements NextModeTagCache {
 
 		if (!db) debugCache("No D1 database found");
 
-		const isDisabled = !!(globalThis as unknown as { openNextConfig: OpenNextConfig }).openNextConfig
-			.dangerous?.disableTagCache;
+		const isDisabled = Boolean(globalThis.openNextConfig.dangerous?.disableTagCache);
 
 		return !db || isDisabled
 			? { isDisabled: true as const }
