@@ -32,6 +32,13 @@ export function computeCacheKey(key: string, options: KeyOptions) {
 	return `${prefix}/${buildId}/${hash}.${cacheType}`.replace(/\/+/g, "/");
 }
 
+export function isPurgeCacheEnabled(): boolean {
+	// The `?` is required at `openNextConfig?` or the Open Next build fails because of a type error
+	const cdnInvalidation = globalThis.openNextConfig?.default?.override?.cdnInvalidation;
+
+	return cdnInvalidation !== undefined && cdnInvalidation !== "dummy";
+}
+
 export async function purgeCacheByTags(tags: string[]) {
 	const { env } = getCloudflareContext();
 	// We have a durable object for purging cache

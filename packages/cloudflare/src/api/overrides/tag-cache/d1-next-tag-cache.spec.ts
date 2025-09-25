@@ -21,6 +21,7 @@ vi.mock("../internal.js", () => ({
 	debugCache: vi.fn(),
 	FALLBACK_BUILD_ID: "fallback-build-id",
 	purgeCacheByTags: vi.fn(),
+	isPurgeCacheEnabled: () => true,
 }));
 
 describe("D1NextModeTagCache", () => {
