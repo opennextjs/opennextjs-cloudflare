@@ -65,6 +65,8 @@ export class D1NextModeTagCache implements NextModeTagCache {
 					.bind(this.getCacheKey(tag), Date.now())
 			)
 		);
+
+		// TODO: See https://github.com/opennextjs/opennextjs-aws/issues/986
 		await purgeCacheByTags(tags);
 	}
 

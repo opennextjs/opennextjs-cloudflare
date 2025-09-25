@@ -63,6 +63,8 @@ export class KVNextModeTagCache implements NextModeTagCache {
 				await kv.put(this.getCacheKey(tag), timeMs);
 			})
 		);
+
+		// TODO: See https://github.com/opennextjs/opennextjs-aws/issues/986
 		await purgeCacheByTags(tags);
 	}
 

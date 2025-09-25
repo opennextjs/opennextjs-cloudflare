@@ -227,6 +227,8 @@ class ShardedDOTagCache implements NextModeTagCache {
 				await this.performWriteTagsWithRetry(doId, tags, currentTime);
 			})
 		);
+
+		// TODO: See https://github.com/opennextjs/opennextjs-aws/issues/986
 		await purgeCacheByTags(tags);
 	}
 
