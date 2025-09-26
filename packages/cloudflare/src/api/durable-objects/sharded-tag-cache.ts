@@ -1,5 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 
+import { debugCache } from "../overrides/internal.js";
+
 export class DOShardedTagCache extends DurableObject<CloudflareEnv> {
 	sql: SqlStorage;
 
@@ -19,9 +21,10 @@ export class DOShardedTagCache extends DurableObject<CloudflareEnv> {
 					...tags
 				)
 				.toArray();
-			if (result.length === 0) return 0;
-			// We only care about the most recent revalidation
-			return result[0]?.time as number;
+
+			const timeMs = (result[0]?.time ?? 0) as number;
+			debugCache("DOShardedTagCache", `getLastRevalidated tags=${tags} -> time=${timeMs}`);
+			return timeMs;
 		} catch (e) {
 			console.error(e);
 			// By default we don't want to crash here, so we return 0
@@ -30,18 +33,22 @@ export class DOShardedTagCache extends DurableObject<CloudflareEnv> {
 	}
 
 	async hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean> {
-		return (
+		const revalidated =
 			this.sql
 				.exec(
 					`SELECT 1 FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")}) AND revalidatedAt > ? LIMIT 1`,
 					...tags,
 					lastModified ?? Date.now()
 				)
-				.toArray().length > 0
-		);
+				.toArray().length > 0;
+
+		debugCache("DOShardedTagCache", `hasBeenRevalidated tags=${tags} -> revalidated=${revalidated}`);
+		return revalidated;
 	}
 
 	async writeTags(tags: string[], lastModified: number): Promise<void> {
+		debugCache("DOShardedTagCache", `writeTags tags=${tags} time=${lastModified}`);
+
 		tags.forEach((tag) => {
 			this.sql.exec(
 				`INSERT OR REPLACE INTO revalidations (tag, revalidatedAt) VALUES (?, ?)`,

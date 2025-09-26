@@ -30,7 +30,7 @@ class StaticAssetsIncrementalCache implements IncrementalCache {
 		const assets = getCloudflareContext().env.ASSETS;
 		if (!assets) throw new IgnorableError("No Static Assets");
 
-		debugCache(`Get ${key}`);
+		debugCache("StaticAssetsIncrementalCache", `get ${key}`);
 
 		try {
 			const response = await assets.fetch(this.getAssetUrl(key, cacheType));
@@ -49,12 +49,16 @@ class StaticAssetsIncrementalCache implements IncrementalCache {
 		}
 	}
 
-	async set(): Promise<void> {
-		error("Failed to set to read-only cache");
+	async set<CacheType extends CacheEntryType = "cache">(
+		key: string,
+		_value: CacheValue<CacheType>,
+		cacheType?: CacheType
+	): Promise<void> {
+		error(`StaticAssetsIncrementalCache: Failed to set to read-only cache key=${key} type=${cacheType}`);
 	}
 
 	async delete(): Promise<void> {
-		error("Failed to delete from read-only cache");
+		error("StaticAssetsIncrementalCache: Failed to delete from read-only cache");
 	}
 
 	protected getAssetUrl(key: string, cacheType?: CacheEntryType): string {

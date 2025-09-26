@@ -33,7 +33,7 @@ class R2IncrementalCache implements IncrementalCache {
 		const r2 = getCloudflareContext().env[BINDING_NAME];
 		if (!r2) throw new IgnorableError("No R2 bucket");
 
-		debugCache(`Get ${key}`);
+		debugCache("R2IncrementalCache", `get ${key}`);
 
 		try {
 			const r2Object = await r2.get(this.getR2Key(key, cacheType));
@@ -57,7 +57,7 @@ class R2IncrementalCache implements IncrementalCache {
 		const r2 = getCloudflareContext().env[BINDING_NAME];
 		if (!r2) throw new IgnorableError("No R2 bucket");
 
-		debugCache(`Set ${key}`);
+		debugCache("R2IncrementalCache", `set ${key}`);
 
 		try {
 			await r2.put(this.getR2Key(key, cacheType), JSON.stringify(value));
@@ -70,7 +70,7 @@ class R2IncrementalCache implements IncrementalCache {
 		const r2 = getCloudflareContext().env[BINDING_NAME];
 		if (!r2) throw new IgnorableError("No R2 bucket");
 
-		debugCache(`Delete ${key}`);
+		debugCache("R2IncrementalCache", `delete ${key}`);
 
 		try {
 			await r2.delete(this.getR2Key(key));

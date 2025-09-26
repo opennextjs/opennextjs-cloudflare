@@ -2,7 +2,7 @@ import { error } from "@opennextjs/aws/adapters/logger.js";
 import type { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
-import { FALLBACK_BUILD_ID, isPurgeCacheEnabled, purgeCacheByTags } from "../internal.js";
+import { debugCache, FALLBACK_BUILD_ID, isPurgeCacheEnabled, purgeCacheByTags } from "../internal.js";
 
 export const NAME = "kv-next-mode-tag-cache";
 
@@ -37,7 +37,9 @@ export class KVNextModeTagCache implements NextModeTagCache {
 
 			const revalidations = [...result.values()].filter((v) => v != null);
 
-			return revalidations.length === 0 ? 0 : Math.max(...revalidations);
+			const timeMs = revalidations.length === 0 ? 0 : Math.max(...revalidations);
+			debugCache("KVNextModeTagCache", `getLastRevalidated tags=${tags} -> time=${timeMs}`);
+			return timeMs;
 		} catch (e) {
 			// By default we don't want to crash here, so we return false
 			// We still log the error though so we can debug it
@@ -47,7 +49,12 @@ export class KVNextModeTagCache implements NextModeTagCache {
 	}
 
 	async hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean> {
-		return (await this.getLastRevalidated(tags)) > (lastModified ?? Date.now());
+		const revalidated = (await this.getLastRevalidated(tags)) > (lastModified ?? Date.now());
+		debugCache(
+			"KVNextModeTagCache",
+			`hasBeenRevalidated tags=${tags} lastModified=${lastModified} -> ${revalidated}`
+		);
+		return revalidated;
 	}
 
 	async writeTags(tags: string[]): Promise<void> {
@@ -56,13 +63,15 @@ export class KVNextModeTagCache implements NextModeTagCache {
 			return Promise.resolve();
 		}
 
-		const timeMs = String(Date.now());
+		const nowMs = Date.now();
 
 		await Promise.all(
 			tags.map(async (tag) => {
-				await kv.put(this.getCacheKey(tag), timeMs);
+				await kv.put(this.getCacheKey(tag), String(nowMs));
 			})
 		);
+
+		debugCache("KVNextModeTagCache", `writeTags tags=${tags} time=${nowMs}`);
 
 		// TODO: See https://github.com/opennextjs/opennextjs-aws/issues/986
 		if (isPurgeCacheEnabled()) {
