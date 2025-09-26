@@ -38,7 +38,7 @@ export class KVNextModeTagCache implements NextModeTagCache {
 			const revalidations = [...result.values()].filter((v) => v != null);
 
 			const timeMs = revalidations.length === 0 ? 0 : Math.max(...revalidations);
-			debugCache("KVNextModeTagCache", `getLastRevalidated tags=${tags} time=${timeMs}`);
+			debugCache("KVNextModeTagCache", `getLastRevalidated tags=${tags} -> time=${timeMs}`);
 			return timeMs;
 		} catch (e) {
 			// By default we don't want to crash here, so we return false

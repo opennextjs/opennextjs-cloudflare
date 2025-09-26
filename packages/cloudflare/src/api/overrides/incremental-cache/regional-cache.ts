@@ -107,7 +107,7 @@ class RegionalCache implements IncrementalCache {
 			const cachedResponse = await cache.match(urlKey);
 
 			if (cachedResponse) {
-				debugCache("RegionalCache", "get: cached response");
+				debugCache("RegionalCache", `get ${key} -> cached response`);
 
 				// Re-fetch from the store and update the regional cache in the background.
 				// Note: this is only useful when the Cache API is not purged automatically.
@@ -135,7 +135,7 @@ class RegionalCache implements IncrementalCache {
 			const { value, lastModified } = rawEntry ?? {};
 			if (!value || typeof lastModified !== "number") return null;
 
-			console.log("RegionalCache", `get, key = ${key} -> put to cache`);
+			console.log("RegionalCache", `get ${key} -> put to cache`);
 
 			// Update the locale cache after retrieving from the store.
 			getCloudflareContext().ctx.waitUntil(
@@ -155,7 +155,7 @@ class RegionalCache implements IncrementalCache {
 		cacheType?: CacheType
 	): Promise<void> {
 		try {
-			debugCache("RegionalCache", `set: key = ${key}`);
+			debugCache("RegionalCache", `set ${key}`);
 
 			await this.store.set(key, value, cacheType);
 
@@ -175,7 +175,7 @@ class RegionalCache implements IncrementalCache {
 	}
 
 	async delete(key: string): Promise<void> {
-		debugCache("RegionalCache", `delete: key = ${key}`);
+		debugCache("RegionalCache", `delete ${key}`);
 		try {
 			await this.store.delete(key);
 
