@@ -135,7 +135,7 @@ class RegionalCache implements IncrementalCache {
 			const { value, lastModified } = rawEntry ?? {};
 			if (!value || typeof lastModified !== "number") return null;
 
-			console.log("RegionalCache", `get ${key} -> put to cache`);
+			debugCache("RegionalCache", `get ${key} -> put to cache`);
 
 			// Update the locale cache after retrieving from the store.
 			getCloudflareContext().ctx.waitUntil(
