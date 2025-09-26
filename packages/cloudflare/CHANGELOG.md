@@ -1,5 +1,15 @@
 # @opennextjs/cloudflare
 
+## 1.9.0
+
+### Minor Changes
+
+- [#906](https://github.com/opennextjs/opennextjs-cloudflare/pull/906) [`dcc864d`](https://github.com/opennextjs/opennextjs-cloudflare/commit/dcc864d43558fd8a46dd7c19c10d132b5afc796b) Thanks [@vicb](https://github.com/vicb)! - feat: add an experimental KV based tag cache
+
+### Patch Changes
+
+- [#907](https://github.com/opennextjs/opennextjs-cloudflare/pull/907) [`ba4cac5`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ba4cac5f234555a21a0ad4a672905622f3eaf5b3) Thanks [@vicb](https://github.com/vicb)! - refactor: only try to purge the cache when invalidation is configured
+
 ## 1.8.5
 
 ### Patch Changes
