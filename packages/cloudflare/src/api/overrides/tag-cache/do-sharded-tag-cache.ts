@@ -140,7 +140,9 @@ class ShardedDOTagCache implements NextModeTagCache {
 					const cachedValue = await this.getFromRegionalCache({ doId, tags });
 					// If all the value were found in the regional cache, we can just return the max value
 					if (cachedValue.length === tags.length) {
-						return Math.max(...cachedValue.map((item) => item.time));
+						const timeMs = Math.max(...cachedValue.map((item) => item.time as number));
+						debugCache("ShardedDOTagCache", `getLastRevalidated tags=${tags} -> ${timeMs} (regional cache)`);
+						return timeMs;
 					}
 					// Otherwise we need to check the durable object on the ones that were not found in the cache
 					const filteredTags = deduplicatedTags.filter(
@@ -150,12 +152,13 @@ class ShardedDOTagCache implements NextModeTagCache {
 					const stub = this.getDurableObjectStub(doId);
 					const lastRevalidated = await stub.getLastRevalidated(filteredTags);
 
-					const result = Math.max(...cachedValue.map((item) => item.time), lastRevalidated);
+					const timeMs = Math.max(...cachedValue.map((item) => item.time), lastRevalidated);
 
 					// We then need to populate the regional cache with the missing tags
 					getCloudflareContext().ctx.waitUntil(this.putToRegionalCache({ doId, tags }, stub));
 
-					return result;
+					debugCache("ShardedDOTagCache", `getLastRevalidated tags=${tags} -> ${timeMs}`);
+					return timeMs;
 				})
 			);
 			return Math.max(...shardedTagRevalidationOutcomes);
@@ -187,6 +190,11 @@ class ShardedDOTagCache implements NextModeTagCache {
 					});
 
 					if (cacheHasBeenRevalidated) {
+						debugCache(
+							"ShardedDOTagCache",
+							`hasBeenRevalidated tags=${tags} at=${lastModified} -> true (regional cache)`
+						);
+
 						return true;
 					}
 					const stub = this.getDurableObjectStub(doId);
@@ -199,6 +207,11 @@ class ShardedDOTagCache implements NextModeTagCache {
 							this.putToRegionalCache({ doId, tags: remainingTags }, stub)
 						);
 					}
+
+					debugCache(
+						"ShardedDOTagCache",
+						`hasBeenRevalidated tags=${tags} at=${lastModified} -> ${_hasBeenRevalidated}`
+					);
 
 					return _hasBeenRevalidated;
 				})
@@ -219,12 +232,16 @@ class ShardedDOTagCache implements NextModeTagCache {
 	public async writeTags(tags: string[]): Promise<void> {
 		const { isDisabled } = this.getConfig();
 		if (isDisabled) return;
-		const shardedTagGroups = this.groupTagsByDO({ tags, generateAllReplicas: true });
+
 		// We want to use the same revalidation time for all tags
-		const currentTime = Date.now();
+		const nowMs = Date.now();
+
+		debugCache("ShardedDOTagCache", `writeTags tags=${tags} time=${nowMs}`);
+
+		const shardedTagGroups = this.groupTagsByDO({ tags, generateAllReplicas: true });
 		await Promise.all(
 			shardedTagGroups.map(async ({ doId, tags }) => {
-				await this.performWriteTagsWithRetry(doId, tags, currentTime);
+				await this.performWriteTagsWithRetry(doId, tags, nowMs);
 			})
 		);
 

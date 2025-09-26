@@ -23,9 +23,9 @@ export class D1NextModeTagCache implements NextModeTagCache {
 				.bind(...tags.map((tag) => this.getCacheKey(tag)))
 				.run();
 
-			if (result.results.length === 0) return 0;
-			// We only care about the most recent revalidation
-			return (result.results[0]?.time ?? 0) as number;
+			const timeMs = (result.results[0]?.time ?? 0) as number;
+			debugCache("D1NextModeTagCache", `getLastRevalidated tags=${tags} -> ${timeMs}`);
+			return timeMs;
 		} catch (e) {
 			// By default we don't want to crash here, so we return false
 			// We still log the error though so we can debug it
@@ -45,7 +45,12 @@ export class D1NextModeTagCache implements NextModeTagCache {
 				.bind(...tags.map((tag) => this.getCacheKey(tag)), lastModified ?? Date.now())
 				.raw();
 
-			return result.length > 0;
+			const revalidated = result.length > 0;
+			debugCache(
+				"D1NextModeTagCache",
+				`hasBeenRevalidated tags=${tags} at=${lastModified} -> ${revalidated}`
+			);
+			return revalidated;
 		} catch (e) {
 			error(e);
 			// By default we don't want to crash here, so we return false
@@ -58,13 +63,17 @@ export class D1NextModeTagCache implements NextModeTagCache {
 		const { isDisabled, db } = this.getConfig();
 		if (isDisabled || tags.length === 0) return Promise.resolve();
 
+		const nowMs = Date.now();
+
 		await db.batch(
 			tags.map((tag) =>
 				db
 					.prepare(`INSERT INTO revalidations (tag, revalidatedAt) VALUES (?, ?)`)
-					.bind(this.getCacheKey(tag), Date.now())
+					.bind(this.getCacheKey(tag), nowMs)
 			)
 		);
+
+		debugCache("D1NextModeTagCache", `writeTags tags=${tags} time=${nowMs}`);
 
 		// TODO: See https://github.com/opennextjs/opennextjs-aws/issues/986
 		if (isPurgeCacheEnabled()) {

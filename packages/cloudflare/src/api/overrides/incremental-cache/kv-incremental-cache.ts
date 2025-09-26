@@ -36,7 +36,7 @@ class KVIncrementalCache implements IncrementalCache {
 		const kv = getCloudflareContext().env[BINDING_NAME];
 		if (!kv) throw new IgnorableError("No KV Namespace");
 
-		debugCache(`Get ${key}`);
+		debugCache("KVIncrementalCache", `get ${key}`);
 
 		try {
 			const entry = await kv.get<IncrementalCacheEntry<CacheType>>(this.getKVKey(key, cacheType), "json");
@@ -66,7 +66,7 @@ class KVIncrementalCache implements IncrementalCache {
 		const kv = getCloudflareContext().env[BINDING_NAME];
 		if (!kv) throw new IgnorableError("No KV Namespace");
 
-		debugCache(`Set ${key}`);
+		debugCache("KVIncrementalCache", `set ${key}`);
 
 		try {
 			await kv.put(
@@ -89,7 +89,7 @@ class KVIncrementalCache implements IncrementalCache {
 		const kv = getCloudflareContext().env[BINDING_NAME];
 		if (!kv) throw new IgnorableError("No KV Namespace");
 
-		debugCache(`Delete ${key}`);
+		debugCache("KVIncrementalCache", `delete ${key}`);
 
 		try {
 			// Only cache that gets deleted is the ISR/SSG cache.
