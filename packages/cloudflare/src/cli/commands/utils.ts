@@ -15,7 +15,9 @@ import { createOpenNextConfigIfNotExistent, ensureCloudflareConfig } from "../bu
 export type WithWranglerArgs<T = unknown> = T & {
 	// Array of arguments that can be given to wrangler commands, including the `--config` and `--env` args.
 	wranglerArgs: string[];
-	wranglerConfigPath: string | undefined;
+	wranglerConfigPath: string[] | undefined;
+	// The first wrangler config path passed into the CLI, if any. Assumed to be the one used for OpenNext.
+	nextjsWranglerConfigPath: string | undefined;
 	env: string | undefined;
 };
 
@@ -101,7 +103,7 @@ export function getNormalizedOptions(config: OpenNextConfig, buildDir = nextAppD
  * @returns Wrangler config.
  */
 export function readWranglerConfig(args: WithWranglerArgs) {
-	return unstable_readConfig({ env: args.env, config: args.wranglerConfigPath });
+	return unstable_readConfig({ env: args.env, config: args.nextjsWranglerConfigPath });
 }
 
 /**
@@ -111,6 +113,7 @@ export function withWranglerOptions<T extends yargs.Argv>(args: T) {
 	return args
 		.option("config", {
 			type: "string",
+			array: true,
 			alias: "c",
 			desc: "Path to Wrangler configuration file",
 		})
@@ -128,7 +131,7 @@ export function withWranglerOptions<T extends yargs.Argv>(args: T) {
 
 type WranglerInputArgs = {
 	configPath: string | undefined;
-	config: string | undefined;
+	config: string[] | undefined;
 	env: string | undefined;
 	remote?: boolean | undefined;
 };
@@ -144,7 +147,7 @@ function getWranglerArgs(args: WranglerInputArgs & { _: (string | number)[] }): 
 
 		if (args.config) {
 			logger.error(
-				"Multiple config flags found. Please use the `--config` flag for your Wrangler config path."
+				"Duplicate config flags found. Unable to pass both `--config` and `--configPath`. Please use the `--config` flag for your Wrangler config path."
 			);
 			process.exit(1);
 		}
@@ -152,7 +155,7 @@ function getWranglerArgs(args: WranglerInputArgs & { _: (string | number)[] }): 
 
 	return [
 		...(args.configPath ? ["--config", args.configPath] : []),
-		...(args.config ? ["--config", args.config] : []),
+		...(args.config ? args.config.flatMap((c) => ["--config", c]) : []),
 		...(args.env ? ["--env", args.env] : []),
 		...(args.remote ? ["--remote"] : []),
 		// Note: the first args in `_` will be the commands.
@@ -168,9 +171,15 @@ function getWranglerArgs(args: WranglerInputArgs & { _: (string | number)[] }): 
 export function withWranglerPassthroughArgs<T extends yargs.ArgumentsCamelCase<WranglerInputArgs>>(
 	args: T
 ): WithWranglerArgs<T> {
+	const wranglerConfigPath = args.config ?? (args.configPath ? [args.configPath] : undefined);
+	if (wranglerConfigPath && wranglerConfigPath.length > 1) {
+		logger.info("Multiple Wrangler config paths found, first config assumed as opennext config.");
+	}
+
 	return {
 		...args,
-		wranglerConfigPath: args.config ?? args.configPath,
+		wranglerConfigPath,
+		nextjsWranglerConfigPath: wranglerConfigPath?.[0],
 		wranglerArgs: getWranglerArgs(args),
 	};
 }

@@ -29,7 +29,7 @@ export async function previewCommand(
 	await populateCache(options, config, wranglerConfig, {
 		target: args.remote ? "remote" : "local",
 		environment: args.env,
-		wranglerConfigPath: args.wranglerConfigPath,
+		wranglerConfigPath: args.nextjsWranglerConfigPath,
 		cacheChunkSize: args.cacheChunkSize,
 		shouldUsePreviewId: args.remote,
 	});
