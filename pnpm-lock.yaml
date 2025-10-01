@@ -1075,8 +1075,8 @@ importers:
         specifier: 'catalog:'
         version: 1.31.0
       '@opennextjs/aws':
-        specifier: 3.7.7
-        version: 3.7.7
+        specifier: 3.8.0
+        version: 3.8.0
       cloudflare:
         specifier: ^4.4.1
         version: 4.4.1
@@ -3811,8 +3811,8 @@ packages:
   '@octokit/types@13.10.0':
     resolution: {integrity: sha512-ifLaO34EbbPj0Xgro4G5lP5asESjwHracYJvVaPIyXMuiuXLlhic3S47cBdTb+jfODkTE5YtGCLt3Ay3+J97sA==}
 
-  '@opennextjs/aws@3.7.7':
-    resolution: {integrity: sha512-rkBpNfBsq3XvbBh+VcNI9dvs0UkuuJH5I7SvVdPx12LudiErShL/9RoA7iF9tpkfRizcwGRIhsedrHKmcs9kqw==}
+  '@opennextjs/aws@3.8.0':
+    resolution: {integrity: sha512-MIIAPuWNedAB59qMboGgIj1o1iCpIO4q1MkqfJG8LOdLeFfni6X+HSHKoEUnt9p3alsnI5r6VwpZBDlxvqWoCg==}
     hasBin: true
 
   '@opentelemetry/api@1.9.0':
@@ -12933,7 +12933,7 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 24.2.0
 
-  '@opennextjs/aws@3.7.7':
+  '@opennextjs/aws@3.8.0':
     dependencies:
       '@ast-grep/napi': 0.35.0
       '@aws-sdk/client-cloudfront': 3.398.0
