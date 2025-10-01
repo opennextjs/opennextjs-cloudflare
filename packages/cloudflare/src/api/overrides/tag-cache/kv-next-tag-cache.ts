@@ -26,7 +26,7 @@ export class KVNextModeTagCache implements NextModeTagCache {
 
 	async getLastRevalidated(tags: string[]): Promise<number> {
 		const kv = this.getKv();
-		if (!kv) {
+		if (!kv || tags.length === 0) {
 			return 0;
 		}
 
