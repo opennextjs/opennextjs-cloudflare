@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, Response as PwResponse } from "@playwright/test";
 import { validateMd5 } from "../../utils";
 
 /*
@@ -23,21 +23,37 @@ test("Middleware Rewrite", async ({ page }) => {
 });
 
 test("Middleware Rewrite External Image", async ({ page }) => {
-	await page.goto("/rewrite-external");
-	page.on("response", async (response) => {
-		expect(response.status()).toBe(200);
-		expect(response.headers()["content-type"]).toBe("image/png");
-		expect(response.headers()["cache-control"]).toBe("max-age=600");
-		const bodyBuffer = await response.body();
-		expect(validateMd5(bodyBuffer, OPENNEXT_PNG_MD5)).toBe(true);
+	let responsePromise = new Promise<PwResponse>((resolve) => {
+		page.on("response", async (resp) => {
+			resolve(resp);
+		});
 	});
+
+	await page.goto("/rewrite-external");
+
+	const response = await responsePromise;
+
+	expect(response.status()).toBe(200);
+	expect(response.headers()["content-type"]).toBe("image/png");
+	expect(response.headers()["cache-control"]).toBe("max-age=600");
+	const bodyBuffer = await response.body();
+	expect(validateMd5(bodyBuffer, OPENNEXT_PNG_MD5)).toBe(true);
 });
 
 test("Middleware Rewrite Status Code", async ({ page }) => {
+	// Need to set up the event before navigating to the page to avoid missing it
+	// We need to check the URL here also cause there will be multiple responses (i.e the fonts, css, js, etc)
+	const statusPromise = new Promise<number>((resolve) => {
+		page.on("response", async (response) => {
+			// `response.url()` will be the full URL including the host, so we need to check the pathname
+			if (new URL(response.url()).pathname === "/rewrite-status-code") {
+				resolve(response.status());
+			}
+		});
+	});
+
 	await page.goto("/rewrite-status-code");
 	const el = page.getByText("Rewritten Destination", { exact: true });
 	await expect(el).toBeVisible();
-	page.on("response", async (response) => {
-		expect(response.status()).toBe(403);
-	});
+	expect(statusPromise).resolves.toEqual(403);
 });
