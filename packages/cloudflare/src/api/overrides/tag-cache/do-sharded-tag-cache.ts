@@ -130,8 +130,9 @@ class ShardedDOTagCache implements NextModeTagCache {
 
 	public async getLastRevalidated(tags: string[]): Promise<number> {
 		const { isDisabled } = this.getConfig();
-		if (isDisabled) return 0;
-		if (tags.length === 0) return 0; // No tags to check
+		if (isDisabled || tags.length === 0) {
+			return 0;
+		}
 		const deduplicatedTags = Array.from(new Set(tags)); // We deduplicate the tags to avoid unnecessary requests
 		try {
 			const shardedTagGroups = this.groupTagsByDO({ tags: deduplicatedTags });
@@ -177,7 +178,9 @@ class ShardedDOTagCache implements NextModeTagCache {
 	 */
 	public async hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean> {
 		const { isDisabled } = this.getConfig();
-		if (isDisabled) return false;
+		if (isDisabled || tags.length === 0) {
+			return false;
+		}
 		try {
 			const shardedTagGroups = this.groupTagsByDO({ tags });
 			const shardedTagRevalidationOutcomes = await Promise.all(

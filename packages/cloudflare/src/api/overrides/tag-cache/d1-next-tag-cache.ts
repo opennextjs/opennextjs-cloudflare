@@ -14,7 +14,9 @@ export class D1NextModeTagCache implements NextModeTagCache {
 
 	async getLastRevalidated(tags: string[]): Promise<number> {
 		const { isDisabled, db } = this.getConfig();
-		if (isDisabled) return 0;
+		if (isDisabled || tags.length === 0) {
+			return 0;
+		}
 		try {
 			const result = await db
 				.prepare(
@@ -36,7 +38,9 @@ export class D1NextModeTagCache implements NextModeTagCache {
 
 	async hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean> {
 		const { isDisabled, db } = this.getConfig();
-		if (isDisabled) return false;
+		if (isDisabled || tags.length === 0) {
+			return false;
+		}
 		try {
 			const result = await db
 				.prepare(
