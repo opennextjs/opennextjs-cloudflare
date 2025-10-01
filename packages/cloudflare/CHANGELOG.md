@@ -1,5 +1,15 @@
 # @opennextjs/cloudflare
 
+## 1.9.1
+
+### Patch Changes
+
+- [#918](https://github.com/opennextjs/opennextjs-cloudflare/pull/918) [`eeb18bb`](https://github.com/opennextjs/opennextjs-cloudflare/commit/eeb18bb76de46c4d6e968952b0fe12e19eb8be94) Thanks [@vicb](https://github.com/vicb)! - refactor: account for empty tag list in tag cache
+
+- [#921](https://github.com/opennextjs/opennextjs-cloudflare/pull/921) [`07487a4`](https://github.com/opennextjs/opennextjs-cloudflare/commit/07487a4dda46321493371bd1588f84dbf5f466a9) Thanks [@vicb](https://github.com/vicb)! - bump `@opennextjs/aws` to 3.8.0
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v3.8.0>
+
 ## 1.9.0
 
 ### Minor Changes
