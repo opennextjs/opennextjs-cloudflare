@@ -25,6 +25,17 @@ export class KVNextModeTagCache implements NextModeTagCache {
 	readonly name = NAME;
 
 	async getLastRevalidated(tags: string[]): Promise<number> {
+		const timeMs = await this.#getLastRevalidated(tags);
+		debugCache("KVNextModeTagCache", `getLastRevalidated tags=${tags} -> time=${timeMs}`);
+		return timeMs;
+	}
+
+	/**
+	 * Implementation of `getLastRevalidated`.
+	 *
+	 * This implementation is separated so that `hasBeenRevalidated` do not include logs from `getLastRevalidated`.
+	 */
+	async #getLastRevalidated(tags: string[]): Promise<number> {
 		const kv = this.getKv();
 		if (!kv || tags.length === 0) {
 			return 0;
@@ -36,10 +47,7 @@ export class KVNextModeTagCache implements NextModeTagCache {
 			const result: Map<string, number | null> = await kv.get(keys, { type: "json" });
 
 			const revalidations = [...result.values()].filter((v) => v != null);
-
-			const timeMs = revalidations.length === 0 ? 0 : Math.max(...revalidations);
-			debugCache("KVNextModeTagCache", `getLastRevalidated tags=${tags} -> time=${timeMs}`);
-			return timeMs;
+			return revalidations.length === 0 ? 0 : Math.max(...revalidations);
 		} catch (e) {
 			// By default we don't want to crash here, so we return false
 			// We still log the error though so we can debug it
@@ -49,7 +57,7 @@ export class KVNextModeTagCache implements NextModeTagCache {
 	}
 
 	async hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean> {
-		const revalidated = (await this.getLastRevalidated(tags)) > (lastModified ?? Date.now());
+		const revalidated = (await this.#getLastRevalidated(tags)) > (lastModified ?? Date.now());
 		debugCache(
 			"KVNextModeTagCache",
 			`hasBeenRevalidated tags=${tags} lastModified=${lastModified} -> ${revalidated}`
