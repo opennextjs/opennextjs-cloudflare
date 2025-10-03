@@ -5,7 +5,7 @@ import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import mockFs from "mock-fs";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
-import { getCacheAssets, withPopulateCacheOptions } from "./populate-cache.js";
+import { getCacheAssets } from "./populate-cache.js";
 
 describe("getCacheAssets", () => {
 	beforeAll(() => {
@@ -66,25 +66,5 @@ describe("getCacheAssets", () => {
         },
       ]
     `);
-	});
-});
-
-describe("withPopulateCacheOptions", () => {
-	test("includes rcloneBatch option with correct defaults", () => {
-		interface MockYargs {
-			options: (name: string, config: Record<string, unknown>) => MockYargs;
-		}
-
-		const mockYargs: MockYargs = {
-			options: (name: string, config: Record<string, unknown>) => {
-				expect(name).toBeDefined();
-				expect(config).toBeDefined();
-				return mockYargs;
-			},
-		};
-
-		const result = withPopulateCacheOptions(mockYargs as never);
-
-		expect(result).toBe(mockYargs);
 	});
 });
