@@ -55,3 +55,54 @@ Deploy your application to production with the following:
   # or
   bun opennextjs-cloudflare build && bun opennextjs-cloudflare deploy
   ```
+
+## CLI Options
+
+### Batch Cache Population (rclone)
+
+The `--rcloneBatch` flag enables faster R2 cache uploads using rclone batch mode. This flag is supported by the following commands:
+
+- `populateCache` - Explicitly populate cache
+- `deploy` - Deploy and populate cache
+- `upload` - Upload version and populate cache
+- `preview` - Preview and populate cache
+
+**Usage:**
+
+```bash
+# Standalone cache population
+npx opennextjs-cloudflare populateCache local --rcloneBatch
+npx opennextjs-cloudflare populateCache remote --rcloneBatch
+
+# During deployment
+npx opennextjs-cloudflare deploy --rcloneBatch
+
+# During upload
+npx opennextjs-cloudflare upload --rcloneBatch
+
+# During preview
+npx opennextjs-cloudflare preview --rcloneBatch
+```
+
+**Requirements:**
+
+1. The `rclone.js` package (included as a dependency) provides the rclone binary automatically
+2. An rclone configuration file is required at `~/.config/rclone/rclone.conf` with your R2 credentials
+
+**rclone Configuration:**
+
+Create or update `~/.config/rclone/rclone.conf` with your R2 bucket configuration:
+
+```ini
+[r2]
+type = s3
+provider = Cloudflare
+access_key_id = YOUR_ACCESS_KEY_ID
+secret_access_key = YOUR_SECRET_ACCESS_KEY
+endpoint = https://YOUR_ACCOUNT_ID.r2.cloudflarestorage.com
+acl = private
+```
+
+See [Cloudflare's rclone documentation](https://developers.cloudflare.com/r2/examples/rclone/) for more details.
+
+**Default:** `false` (uses standard wrangler-based uploads)
