@@ -1,4 +1,5 @@
-import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
@@ -127,7 +128,53 @@ type PopulateCacheOptions = {
 	 * Instructs Wrangler to use the preview namespace or ID defined in the Wrangler config for the remote target.
 	 */
 	shouldUsePreviewId: boolean;
+	/**
+	 * Use rclone for batch uploading to R2 instead of individual wrangler uploads.
+	 *
+	 * @default false
+	 */
+	rcloneBatch?: boolean;
 };
+
+async function populateR2IncrementalCacheWithRclone(
+	options: BuildOptions,
+	bucket: string,
+	prefix: string | undefined,
+	assets: CacheAsset[]
+) {
+	logger.info("\nPopulating R2 incremental cache using rclone batch upload...");
+
+	// Create a staging dir with proper key paths
+	const stagingDir = path.join(options.outputDir, ".r2-staging");
+	rmSync(stagingDir, { recursive: true, force: true });
+	mkdirSync(stagingDir, { recursive: true });
+
+	for (const { fullPath, key, buildId, isFetch } of assets) {
+		const cacheKey = computeCacheKey(key, {
+			prefix,
+			buildId,
+			cacheType: isFetch ? "fetch" : "cache",
+		});
+		const destPath = path.join(stagingDir, cacheKey);
+		mkdirSync(path.dirname(destPath), { recursive: true });
+		copyFileSync(fullPath, destPath);
+	}
+
+	// Use rclone to sync the R2
+	const remote = `r2:${bucket}`;
+	const args = ["copy", stagingDir, remote, "--progress", "--transfers=32", "--checkers=16"];
+
+	const result = spawnSync("rclone", args, {
+		stdio: "inherit",
+		env: process.env,
+	});
+
+	if (result.status !== 0) {
+		throw new Error("rclone copy failed");
+	}
+
+	logger.info(`Successfully uploaded ${assets.length} assets to R2`);
+}
 
 async function populateR2IncrementalCache(
 	options: BuildOptions,
@@ -150,6 +197,10 @@ async function populateR2IncrementalCache(
 	const prefix = envVars[R2_CACHE_PREFIX_ENV_NAME];
 
 	const assets = getCacheAssets(options);
+
+	if (populateCacheOptions.rcloneBatch) {
+		return populateR2IncrementalCacheWithRclone(options, bucket, prefix, assets);
+	}
 
 	for (const { fullPath, key, buildId, isFetch } of tqdm(assets)) {
 		const cacheKey = computeCacheKey(key, {
@@ -329,7 +380,7 @@ export async function populateCache(
  */
 async function populateCacheCommand(
 	target: "local" | "remote",
-	args: WithWranglerArgs<{ cacheChunkSize?: number }>
+	args: WithWranglerArgs<{ cacheChunkSize?: number; rcloneBatch?: boolean }>
 ) {
 	printHeaders(`populate cache - ${target}`);
 
@@ -344,6 +395,7 @@ async function populateCacheCommand(
 		wranglerConfigPath: args.wranglerConfigPath,
 		cacheChunkSize: args.cacheChunkSize,
 		shouldUsePreviewId: false,
+		rcloneBatch: args.rcloneBatch,
 	});
 }
 
@@ -372,8 +424,14 @@ export function addPopulateCacheCommand<T extends yargs.Argv>(y: T) {
 }
 
 export function withPopulateCacheOptions<T extends yargs.Argv>(args: T) {
-	return withWranglerOptions(args).options("cacheChunkSize", {
-		type: "number",
-		desc: "Number of entries per chunk when populating the cache",
-	});
+	return withWranglerOptions(args)
+		.options("cacheChunkSize", {
+			type: "number",
+			desc: "Number of entries per chunk when populating the cache",
+		})
+		.options("rcloneBatch", {
+			type: "boolean",
+			desc: "Use rclone for batch uploading to R2 (faster for large caches)",
+			default: false,
+		});
 }
