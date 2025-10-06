@@ -17,7 +17,7 @@ import {
  * @param args
  */
 export async function previewCommand(
-	args: WithWranglerArgs<{ cacheChunkSize?: number; rcloneBatch?: boolean; remote: boolean }>
+	args: WithWranglerArgs<{ cacheChunkSize?: number; remote: boolean }>
 ): Promise<void> {
 	printHeaders("preview");
 
@@ -32,7 +32,6 @@ export async function previewCommand(
 		wranglerConfigPath: args.wranglerConfigPath,
 		cacheChunkSize: args.cacheChunkSize,
 		shouldUsePreviewId: args.remote,
-		rcloneBatch: args.rcloneBatch,
 	});
 
 	runWrangler(options, ["dev", ...args.wranglerArgs], { logging: "all" });

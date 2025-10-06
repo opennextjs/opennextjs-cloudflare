@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
@@ -128,52 +129,117 @@ type PopulateCacheOptions = {
 	 * Instructs Wrangler to use the preview namespace or ID defined in the Wrangler config for the remote target.
 	 */
 	shouldUsePreviewId: boolean;
-	/**
-	 * Use rclone for batch uploading to R2 instead of individual wrangler uploads.
-	 *
-	 * @default false
-	 */
-	rcloneBatch?: boolean;
 };
 
-async function populateR2IncrementalCacheWithRclone(
+/**
+ * Check if R2 credentials are available via environment variables for batch upload
+ */
+function hasR2EnvCredentials(): boolean {
+	return !!(process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_ACCOUNT_ID);
+}
+
+/**
+ * Create a temporary configuration file for batch upload from environment variables
+ * @returns Path to the temporary config file or null if env vars not available
+ */
+function createTempRcloneConfig(): string | null {
+	const accessKey = process.env.R2_ACCESS_KEY_ID;
+	const secretKey = process.env.R2_SECRET_ACCESS_KEY;
+	const accountId = process.env.R2_ACCOUNT_ID;
+
+	if (!accessKey || !secretKey || !accountId) {
+		return null;
+	}
+
+	const tempDir = tmpdir();
+	const tempConfigPath = path.join(tempDir, `rclone-config-${Date.now()}.conf`);
+
+	const configContent = `[r2]
+type = s3
+provider = Cloudflare
+access_key_id = ${accessKey}
+secret_access_key = ${secretKey}
+endpoint = https://${accountId}.r2.cloudflarestorage.com
+acl = private
+`;
+
+	/**
+	 * 0o600 is an octal number (the 0o prefix indicates octal in JavaScript)
+	 * that represents Unix file permissions:
+	 *
+	 * - 6 (owner): read (4) + write (2) = readable and writable by the file owner
+	 * - 0 (group): no permissions for the group
+	 * - 0 (others): no permissions for anyone else
+	 *
+	 * In symbolic notation, this is: rw-------
+	 */
+	writeFileSync(tempConfigPath, configContent, { mode: 0o600 });
+	return tempConfigPath;
+}
+
+/**
+ * Populate R2 incremental cache using batch upload for better performance
+ * Uses parallel transfers to significantly speed up cache population
+ */
+async function populateR2IncrementalCacheWithBatchUpload(
 	options: BuildOptions,
 	bucket: string,
 	prefix: string | undefined,
 	assets: CacheAsset[]
 ) {
-	logger.info("\nPopulating R2 incremental cache using rclone batch upload...");
+	logger.info("\nPopulating R2 incremental cache using batch upload...");
 
-	// Create a staging dir with proper key paths
-	const stagingDir = path.join(options.outputDir, ".r2-staging");
-	rmSync(stagingDir, { recursive: true, force: true });
-	mkdirSync(stagingDir, { recursive: true });
+	// Create temporary config from env vars - required for batch upload
+	const tempConfigPath = createTempRcloneConfig();
+	if (!tempConfigPath) {
+		throw new Error(
+			"R2 credentials not found. Please set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_ACCOUNT_ID environment variables to enable batch upload."
+		);
+	}
 
-	for (const { fullPath, key, buildId, isFetch } of assets) {
-		const cacheKey = computeCacheKey(key, {
-			prefix,
-			buildId,
-			cacheType: isFetch ? "fetch" : "cache",
+	const env = { ...process.env };
+	env.RCLONE_CONFIG = tempConfigPath;
+	logger.info("Using batch upload with R2 credentials from environment variables");
+
+	try {
+		// Create a staging dir with proper key paths
+		const stagingDir = path.join(options.outputDir, ".r2-staging");
+		rmSync(stagingDir, { recursive: true, force: true });
+		mkdirSync(stagingDir, { recursive: true });
+
+		for (const { fullPath, key, buildId, isFetch } of assets) {
+			const cacheKey = computeCacheKey(key, {
+				prefix,
+				buildId,
+				cacheType: isFetch ? "fetch" : "cache",
+			});
+			const destPath = path.join(stagingDir, cacheKey);
+			mkdirSync(path.dirname(destPath), { recursive: true });
+			copyFileSync(fullPath, destPath);
+		}
+
+		// Use rclone to sync the R2
+		const remote = `r2:${bucket}`;
+		const args = ["copy", stagingDir, remote, "--progress", "--transfers=32", "--checkers=16"];
+
+		const result = spawnSync("rclone", args, {
+			stdio: "inherit",
+			env,
 		});
-		const destPath = path.join(stagingDir, cacheKey);
-		mkdirSync(path.dirname(destPath), { recursive: true });
-		copyFileSync(fullPath, destPath);
+
+		if (result.status !== 0) {
+			throw new Error("Batch upload failed");
+		}
+
+		logger.info(`Successfully uploaded ${assets.length} assets to R2 using batch upload`);
+	} finally {
+		try {
+			// Cleanup temporary config file
+			rmSync(tempConfigPath);
+		} catch {
+			console.warn(`Failed to remove temporary config at ${tempConfigPath}`);
+		}
 	}
-
-	// Use rclone to sync the R2
-	const remote = `r2:${bucket}`;
-	const args = ["copy", stagingDir, remote, "--progress", "--transfers=32", "--checkers=16"];
-
-	const result = spawnSync("rclone", args, {
-		stdio: "inherit",
-		env: process.env,
-	});
-
-	if (result.status !== 0) {
-		throw new Error("rclone copy failed");
-	}
-
-	logger.info(`Successfully uploaded ${assets.length} assets to R2`);
 }
 
 async function populateR2IncrementalCache(
@@ -198,10 +264,23 @@ async function populateR2IncrementalCache(
 
 	const assets = getCacheAssets(options);
 
-	if (populateCacheOptions.rcloneBatch) {
-		return populateR2IncrementalCacheWithRclone(options, bucket, prefix, assets);
+	// Use batch upload if R2 credentials are available (optional but recommended)
+	const canUseBatchUpload = hasR2EnvCredentials();
+
+	if (canUseBatchUpload) {
+		try {
+			return await populateR2IncrementalCacheWithBatchUpload(options, bucket, prefix, assets);
+		} catch (error) {
+			logger.warn(`Batch upload failed: ${error instanceof Error ? error.message : error}`);
+			logger.info("Falling back to standard uploads...");
+		}
+	} else {
+		logger.info(
+			"Using standard cache uploads. For faster performance with large caches, set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_ACCOUNT_ID environment variables to enable batch upload."
+		);
 	}
 
+	// Standard upload fallback (using Wrangler)
 	for (const { fullPath, key, buildId, isFetch } of tqdm(assets)) {
 		const cacheKey = computeCacheKey(key, {
 			prefix,
@@ -380,7 +459,7 @@ export async function populateCache(
  */
 async function populateCacheCommand(
 	target: "local" | "remote",
-	args: WithWranglerArgs<{ cacheChunkSize?: number; rcloneBatch?: boolean }>
+	args: WithWranglerArgs<{ cacheChunkSize?: number }>
 ) {
 	printHeaders(`populate cache - ${target}`);
 
@@ -395,7 +474,6 @@ async function populateCacheCommand(
 		wranglerConfigPath: args.wranglerConfigPath,
 		cacheChunkSize: args.cacheChunkSize,
 		shouldUsePreviewId: false,
-		rcloneBatch: args.rcloneBatch,
 	});
 }
 
@@ -424,14 +502,8 @@ export function addPopulateCacheCommand<T extends yargs.Argv>(y: T) {
 }
 
 export function withPopulateCacheOptions<T extends yargs.Argv>(args: T) {
-	return withWranglerOptions(args)
-		.options("cacheChunkSize", {
-			type: "number",
-			desc: "Number of entries per chunk when populating the cache",
-		})
-		.options("rcloneBatch", {
-			type: "boolean",
-			desc: "Use rclone for batch uploading to R2 (faster for large caches)",
-			default: false,
-		});
+	return withWranglerOptions(args).options("cacheChunkSize", {
+		type: "number",
+		desc: "Number of entries per chunk when populating the cache",
+	});
 }

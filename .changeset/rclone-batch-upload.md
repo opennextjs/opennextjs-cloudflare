@@ -2,33 +2,41 @@
 "@opennextjs/cloudflare": minor
 ---
 
-feature: add --rcloneBatch flag for faster R2 cache uploads
+feature: optional batch upload for faster R2 cache population
 
-This adds a new optional `--rcloneBatch` flag that enables batch uploading to R2 using rclone instead of individual wrangler uploads. This significantly improves upload performance for large caches.
+This update adds optional batch upload support for R2 cache population, significantly improving upload performance for large caches when enabled via environment variables.
 
-**Supported commands:**
+**Key Changes:**
+
+1. **Optional Batch Upload**: Configure R2 credentials via environment variables to enable faster batch uploads:
+
+   - `R2_ACCESS_KEY_ID`
+   - `R2_SECRET_ACCESS_KEY`
+   - `R2_ACCOUNT_ID`
+
+2. **Automatic Detection**: When credentials are detected, batch upload is automatically used for better performance
+
+3. **Smart Fallback**: If credentials are not configured, the CLI falls back to standard Wrangler uploads with a helpful message about enabling batch upload for better performance
+
+**All deployment commands support batch upload:**
 
 - `populateCache` - Explicit cache population
 - `deploy` - Deploy with cache population
 - `upload` - Upload version with cache population
 - `preview` - Preview with cache population
 
-**Performance improvements:**
+**Performance Benefits (when batch upload is enabled):**
 
-- Creates staging directory with all cache files organized by R2 keys
-- Uses rclone's parallel transfer capabilities (32 transfers, 16 checkers)
-- Reduces API calls to Cloudflare
+- Parallel transfer capabilities (32 concurrent transfers)
+- Significantly faster for large caches
+- Reduced API calls to Cloudflare
 
 **Usage:**
 
 ```bash
-opennextjs-cloudflare deploy --rcloneBatch
-opennextjs-cloudflare populateCache remote --rcloneBatch
+# Enable batch upload by setting environment variables (recommended for large caches)
+export R2_ACCESS_KEY_ID=your_key
+export R2_SECRET_ACCESS_KEY=your_secret
+export R2_ACCOUNT_ID=your_account
+opennextjs-cloudflare deploy  # batch upload automatically used
 ```
-
-**Requirements:**
-
-- The `rclone.js` package (included as dependency) provides the binary
-- An rclone config file at `~/.config/rclone/rclone.conf` with R2 credentials (see README for setup instructions)
-
-The original wrangler-based upload remains the default behavior for backward compatibility.

@@ -19,9 +19,7 @@ import {
  *
  * @param args
  */
-export async function uploadCommand(
-	args: WithWranglerArgs<{ cacheChunkSize?: number; rcloneBatch?: boolean }>
-): Promise<void> {
+export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize?: number }>): Promise<void> {
 	printHeaders("upload");
 
 	const { config } = await retrieveCompiledConfig();
@@ -42,7 +40,6 @@ export async function uploadCommand(
 		wranglerConfigPath: args.wranglerConfigPath,
 		cacheChunkSize: args.cacheChunkSize,
 		shouldUsePreviewId: false,
-		rcloneBatch: args.rcloneBatch,
 	});
 
 	runWrangler(
