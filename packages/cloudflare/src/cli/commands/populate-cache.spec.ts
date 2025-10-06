@@ -80,7 +80,7 @@ vi.mock("./helpers.js", () => ({
 }));
 
 vi.mock("node:child_process", () => ({
-	spawnSync: vi.fn(() => ({ status: 0 })),
+	spawnSync: vi.fn(() => ({ status: 0, stderr: Buffer.from("") })),
 }));
 
 describe("populateCache", () => {
@@ -177,13 +177,72 @@ describe("populateCache", () => {
 			// Verify batch upload was used with correct parameters and temporary config
 			expect(spawnSync).toHaveBeenCalledWith(
 				"rclone",
-				expect.arrayContaining(["copy", expect.any(String), "r2:test-bucket"]),
+				expect.arrayContaining(["copy", expect.any(String), "r2:test-bucket", "--error-on-no-transfer"]),
 				expect.objectContaining({
+					stdio: ["inherit", "inherit", "pipe"],
 					env: expect.objectContaining({
 						RCLONE_CONFIG: expect.stringMatching(/rclone-config-\d+\.conf$/),
 					}),
 				})
 			);
 		});
+
+		test("handles rclone errors with status > 0", async () => {
+			const { runWrangler } = await import("../utils/run-wrangler.js");
+
+			// Set R2 credentials
+			vi.stubEnv("R2_ACCESS_KEY_ID", "test_access_key");
+			vi.stubEnv("R2_SECRET_ACCESS_KEY", "test_secret_key");
+			vi.stubEnv("R2_ACCOUNT_ID", "test_account_id");
+
+			setupMockFileSystem();
+
+			// Mock rclone failure without stderr output
+			vi.mocked(spawnSync).mockReturnValueOnce({
+				status: 7, // Fatal error exit code
+				stderr: "", // No stderr output
+			} as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+
+			vi.mocked(runWrangler).mockClear();
+
+			await populateCache(
+				createTestBuildOptions(),
+				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				createTestPopulateCacheOptions()
+			);
+
+			// Should fall back to standard upload when batch upload fails
+			expect(runWrangler).toHaveBeenCalled();
+		});
+	});
+
+	test("handles rclone errors with status = 0 and stderr output", async () => {
+		const { runWrangler } = await import("../utils/run-wrangler.js");
+
+		// Set R2 credentials
+		vi.stubEnv("R2_ACCESS_KEY_ID", "test_access_key");
+		vi.stubEnv("R2_SECRET_ACCESS_KEY", "test_secret_key");
+		vi.stubEnv("R2_ACCOUNT_ID", "test_account_id");
+
+		setupMockFileSystem();
+
+		// Mock rclone error in stderr
+		vi.mocked(spawnSync).mockReturnValueOnce({
+			status: 0, // non-error exit code
+			stderr: Buffer.from("ERROR : Failed to copy: AccessDenied: Access Denied (403)"),
+		} as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+
+		vi.mocked(runWrangler).mockClear();
+
+		await populateCache(
+			createTestBuildOptions(),
+			createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+			createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+			createTestPopulateCacheOptions()
+		);
+
+		// Should fall back to standard upload when batch upload fails
+		expect(runWrangler).toHaveBeenCalled();
 	});
 });

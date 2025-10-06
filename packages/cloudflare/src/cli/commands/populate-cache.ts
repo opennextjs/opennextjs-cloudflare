@@ -220,15 +220,25 @@ async function populateR2IncrementalCacheWithBatchUpload(
 
 		// Use rclone to sync the R2
 		const remote = `r2:${bucket}`;
-		const args = ["copy", stagingDir, remote, "--progress", "--transfers=32", "--checkers=16"];
+		const args = [
+			"copy",
+			stagingDir,
+			remote,
+			"--progress",
+			"--transfers=32",
+			"--checkers=16",
+			"--error-on-no-transfer", // Fail if no files transferred
+		];
 
 		const result = spawnSync("rclone", args, {
-			stdio: "inherit",
+			stdio: ["inherit", "inherit", "pipe"], // Capture stderr while showing stdout
 			env,
 		});
 
-		if (result.status !== 0) {
-			throw new Error("Batch upload failed");
+		// Check for errors in both exit code and stderr
+		const stderrOutput = result.stderr?.toString().trim();
+		if (result.status !== 0 || stderrOutput) {
+			throw new Error("Batch upload failed.");
 		}
 
 		logger.info(`Successfully uploaded ${assets.length} assets to R2 using batch upload`);
