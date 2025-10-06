@@ -60,7 +60,8 @@ Deploy your application to production with the following:
 
 ### Batch Cache Population (rclone)
 
-The `--rcloneBatch` flag enables faster R2 cache uploads using rclone batch mode. This flag is supported by the following commands:
+The `--rcloneBatch` flag enables faster R2 cache uploads using rclone batch mode.  
+This flag is supported by the following commands:
 
 - `populateCache` - Explicitly populate cache
 - `deploy` - Deploy and populate cache
