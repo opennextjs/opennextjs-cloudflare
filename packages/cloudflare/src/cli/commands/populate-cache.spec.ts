@@ -1,9 +1,10 @@
+import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import mockFs from "mock-fs";
-import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
 import { getCacheAssets, populateCache } from "./populate-cache.js";
 
@@ -83,119 +84,106 @@ vi.mock("node:child_process", () => ({
 }));
 
 describe("populateCache", () => {
-	describe("R2_CACHE_NAME", () => {
-		test("calls runWrangler when rcloneBatch is false", async () => {
-			const { runWrangler } = await import("../utils/run-wrangler.js");
+	// Test fixtures
+	const createTestBuildOptions = (): BuildOptions =>
+		({
+			outputDir: "/test/output",
+		}) as BuildOptions;
 
-			const buildOptions: BuildOptions = {
-				outputDir: "/test/output",
-			} as BuildOptions;
+	const createTestOpenNextConfig = () => ({
+		default: {
+			override: {
+				incrementalCache: "cf-r2-incremental-cache",
+			},
+		},
+	});
 
-			const openNextConfig = {
-				default: {
-					override: {
-						incrementalCache: "cf-r2-incremental-cache",
-					},
-				},
-			};
+	const createTestWranglerConfig = () => ({
+		r2_buckets: [
+			{
+				binding: "NEXT_INC_CACHE_R2_BUCKET",
+				bucket_name: "test-bucket",
+			},
+		],
+	});
 
-			const wranglerConfig = {
-				r2_buckets: [
-					{
-						binding: "NEXT_INC_CACHE_R2_BUCKET",
-						bucket_name: "test-bucket",
-					},
-				],
-			};
+	const createTestPopulateCacheOptions = () => ({
+		target: "local" as const,
+		shouldUsePreviewId: false,
+	});
 
-			const populateCacheOptions = {
-				target: "local" as const,
-				shouldUsePreviewId: false,
-				rcloneBatch: false,
-			};
-
-			vi.mocked(runWrangler).mockClear();
-
-			mockFs({
-				"/test/output": {
-					cache: {
-						buildID: {
-							path: {
-								to: {
-									"test.cache": JSON.stringify({ data: "test" }),
-								},
+	const setupMockFileSystem = () => {
+		mockFs({
+			"/test/output": {
+				cache: {
+					buildID: {
+						path: {
+							to: {
+								"test.cache": JSON.stringify({ data: "test" }),
 							},
 						},
 					},
 				},
-			});
+			},
+		});
+	};
 
-			// For this test we do not need whole configuration, just the part that is being used.
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			await populateCache(buildOptions, openNextConfig as any, wranglerConfig as any, populateCacheOptions);
-
-			expect(runWrangler).toHaveBeenCalled();
-
+	describe("R2 incremental cache", () => {
+		afterEach(() => {
 			mockFs.restore();
+			vi.unstubAllEnvs();
 		});
 
-		test("calls spawnSync with rclone when rcloneBatch is true", async () => {
-			const { spawnSync } = await import("node:child_process");
+		test("uses standard upload when R2 credentials are not provided", async () => {
+			const { runWrangler } = await import("../utils/run-wrangler.js");
 
-			const buildOptions: BuildOptions = {
-				outputDir: "/test/output",
-			} as BuildOptions;
+			// Ensure no batch upload credentials are set
+			vi.stubEnv("R2_ACCESS_KEY_ID", undefined);
+			vi.stubEnv("R2_SECRET_ACCESS_KEY", undefined);
+			vi.stubEnv("R2_ACCOUNT_ID", undefined);
 
-			const openNextConfig = {
-				default: {
-					override: {
-						incrementalCache: "cf-r2-incremental-cache",
-					},
-				},
-			};
+			setupMockFileSystem();
+			vi.mocked(runWrangler).mockClear();
 
-			const wranglerConfig = {
-				r2_buckets: [
-					{
-						binding: "NEXT_INC_CACHE_R2_BUCKET",
-						bucket_name: "test-bucket",
-					},
-				],
-			};
+			// Test uses partial types for simplicity - full config not needed
+			await populateCache(
+				createTestBuildOptions(),
+				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				createTestPopulateCacheOptions()
+			);
 
-			const populateCacheOptions = {
-				target: "local" as const,
-				shouldUsePreviewId: false,
-				rcloneBatch: true,
-			};
+			expect(runWrangler).toHaveBeenCalled();
+			expect(spawnSync).not.toHaveBeenCalled();
+		});
 
+		test("uses batch upload with temporary config when R2 credentials are provided", async () => {
+			// Set R2 credentials to enable batch upload
+			vi.stubEnv("R2_ACCESS_KEY_ID", "test_access_key");
+			vi.stubEnv("R2_SECRET_ACCESS_KEY", "test_secret_key");
+			vi.stubEnv("R2_ACCOUNT_ID", "test_account_id");
+
+			setupMockFileSystem();
 			vi.mocked(spawnSync).mockClear();
 
-			mockFs({
-				"/test/output": {
-					cache: {
-						buildID: {
-							path: {
-								to: {
-									"test.cache": JSON.stringify({ data: "test" }),
-								},
-							},
-						},
-					},
-				},
-			});
+			// Test uses partial types for simplicity - full config not needed
+			await populateCache(
+				createTestBuildOptions(),
+				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				createTestPopulateCacheOptions()
+			);
 
-			// For this test we do not need whole configuration, just the part that is being used.
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			await populateCache(buildOptions, openNextConfig as any, wranglerConfig as any, populateCacheOptions);
-
+			// Verify batch upload was used with correct parameters and temporary config
 			expect(spawnSync).toHaveBeenCalledWith(
 				"rclone",
 				expect.arrayContaining(["copy", expect.any(String), "r2:test-bucket"]),
-				expect.any(Object)
+				expect.objectContaining({
+					env: expect.objectContaining({
+						RCLONE_CONFIG: expect.stringMatching(/rclone-config-\d+\.conf$/),
+					}),
+				})
 			);
-
-			mockFs.restore();
 		});
 	});
 });
