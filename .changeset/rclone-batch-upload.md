@@ -40,3 +40,7 @@ export R2_SECRET_ACCESS_KEY=your_secret
 export R2_ACCOUNT_ID=your_account
 opennextjs-cloudflare deploy  # batch upload automatically used
 ```
+
+**Note:**
+
+You can follow documentation https://developers.cloudflare.com/r2/api/tokens/ for creating API tokens with appropriate permissions for R2 access.

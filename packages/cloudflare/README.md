@@ -66,6 +66,10 @@ export R2_SECRET_ACCESS_KEY=your_secret_access_key
 export R2_ACCOUNT_ID=your_account_id
 ```
 
+**Note:**
+
+You can follow documentation https://developers.cloudflare.com/r2/api/tokens/ for creating API tokens with appropriate permissions for R2 access.
+
 **Benefits:**
 
 - Significantly faster uploads for large caches using parallel transfers
