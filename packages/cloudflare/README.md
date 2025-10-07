@@ -58,12 +58,22 @@ Deploy your application to production with the following:
 
 ### Batch Cache Population (Optional, Recommended)
 
-For improved performance with large caches, you can enable batch upload by providing R2 credentials via environment variables:
+For improved performance with large caches, you can enable batch upload by providing R2 credentials via environment variables.
+
+You can either set environment variables directly:
 
 ```bash
 export R2_ACCESS_KEY_ID=your_access_key_id
 export R2_SECRET_ACCESS_KEY=your_secret_access_key
 export CLOUDFLARE_ACCOUNT_ID=your_account_id
+```
+
+Or create a `.env` file in your project root (automatically loaded by the CLI):
+
+```bash
+R2_ACCESS_KEY_ID=your_access_key_id
+R2_SECRET_ACCESS_KEY=your_secret_access_key
+CLOUDFLARE_ACCOUNT_ID=your_account_id
 ```
 
 **Note:**
