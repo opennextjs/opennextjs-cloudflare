@@ -12,7 +12,7 @@ This update adds optional batch upload support for R2 cache population, signific
 
    - `R2_ACCESS_KEY_ID`
    - `R2_SECRET_ACCESS_KEY`
-   - `CLOUDFLARE_ACCOUNT_ID`
+   - `CF_ACCOUNT_ID`
 
 2. **Automatic Detection**: When credentials are detected, batch upload is automatically used for better performance
 
@@ -38,7 +38,7 @@ You can set environment variables directly:
 ```bash
 export R2_ACCESS_KEY_ID=your_key
 export R2_SECRET_ACCESS_KEY=your_secret
-export CLOUDFLARE_ACCOUNT_ID=your_account
+export CF_ACCOUNT_ID=your_account
 opennextjs-cloudflare deploy  # batch upload automatically used
 ```
 
@@ -47,7 +47,7 @@ Or create a `.env` file in your project root (automatically loaded):
 ```bash
 R2_ACCESS_KEY_ID=your_key
 R2_SECRET_ACCESS_KEY=your_secret
-CLOUDFLARE_ACCOUNT_ID=your_account
+CF_ACCOUNT_ID=your_account
 ```
 
 **Note:**

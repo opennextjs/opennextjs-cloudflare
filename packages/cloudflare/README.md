@@ -65,7 +65,7 @@ You can either set environment variables directly:
 ```bash
 export R2_ACCESS_KEY_ID=your_access_key_id
 export R2_SECRET_ACCESS_KEY=your_secret_access_key
-export CLOUDFLARE_ACCOUNT_ID=your_account_id
+export CF_ACCOUNT_ID=your_account_id
 ```
 
 Or create a `.env` file in your project root (automatically loaded by the CLI):
@@ -73,7 +73,7 @@ Or create a `.env` file in your project root (automatically loaded by the CLI):
 ```bash
 R2_ACCESS_KEY_ID=your_access_key_id
 R2_SECRET_ACCESS_KEY=your_secret_access_key
-CLOUDFLARE_ACCOUNT_ID=your_account_id
+CF_ACCOUNT_ID=your_account_id
 ```
 
 **Note:**
