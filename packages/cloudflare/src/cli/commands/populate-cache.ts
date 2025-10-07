@@ -135,7 +135,7 @@ type PopulateCacheOptions = {
  * Check if R2 credentials are available via environment variables for batch upload
  */
 function hasR2EnvCredentials(): boolean {
-	return !!(process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_ACCOUNT_ID);
+	return !!(process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.CLOUDFLARE_ACCOUNT_ID);
 }
 
 /**
@@ -145,7 +145,7 @@ function hasR2EnvCredentials(): boolean {
 function createTempRcloneConfig(): string | null {
 	const accessKey = process.env.R2_ACCESS_KEY_ID;
 	const secretKey = process.env.R2_SECRET_ACCESS_KEY;
-	const accountId = process.env.R2_ACCOUNT_ID;
+	const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
 
 	if (!accessKey || !secretKey || !accountId) {
 		return null;
@@ -193,7 +193,7 @@ async function populateR2IncrementalCacheWithBatchUpload(
 	const tempConfigPath = createTempRcloneConfig();
 	if (!tempConfigPath) {
 		throw new Error(
-			"R2 credentials not found. Please set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_ACCOUNT_ID environment variables to enable batch upload."
+			"R2 credentials not found. Please set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and CLOUDFLARE_ACCOUNT_ID environment variables to enable batch upload."
 		);
 	}
 
@@ -286,7 +286,7 @@ async function populateR2IncrementalCache(
 		}
 	} else {
 		logger.info(
-			"Using standard cache uploads. For faster performance with large caches, set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_ACCOUNT_ID environment variables to enable batch upload."
+			"Using standard cache uploads. For faster performance with large caches, set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and CLOUDFLARE_ACCOUNT_ID environment variables to enable batch upload."
 		);
 	}
 

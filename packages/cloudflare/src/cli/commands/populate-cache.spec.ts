@@ -140,7 +140,7 @@ describe("populateCache", () => {
 			// Ensure no batch upload credentials are set
 			vi.stubEnv("R2_ACCESS_KEY_ID", undefined);
 			vi.stubEnv("R2_SECRET_ACCESS_KEY", undefined);
-			vi.stubEnv("R2_ACCOUNT_ID", undefined);
+			vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", undefined);
 
 			setupMockFileSystem();
 			vi.mocked(runWrangler).mockClear();
@@ -161,7 +161,7 @@ describe("populateCache", () => {
 			// Set R2 credentials to enable batch upload
 			vi.stubEnv("R2_ACCESS_KEY_ID", "test_access_key");
 			vi.stubEnv("R2_SECRET_ACCESS_KEY", "test_secret_key");
-			vi.stubEnv("R2_ACCOUNT_ID", "test_account_id");
+			vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "test_account_id");
 
 			setupMockFileSystem();
 			vi.mocked(spawnSync).mockClear();
@@ -193,7 +193,7 @@ describe("populateCache", () => {
 			// Set R2 credentials
 			vi.stubEnv("R2_ACCESS_KEY_ID", "test_access_key");
 			vi.stubEnv("R2_SECRET_ACCESS_KEY", "test_secret_key");
-			vi.stubEnv("R2_ACCOUNT_ID", "test_account_id");
+			vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "test_account_id");
 
 			setupMockFileSystem();
 
@@ -223,7 +223,7 @@ describe("populateCache", () => {
 		// Set R2 credentials
 		vi.stubEnv("R2_ACCESS_KEY_ID", "test_access_key");
 		vi.stubEnv("R2_SECRET_ACCESS_KEY", "test_secret_key");
-		vi.stubEnv("R2_ACCOUNT_ID", "test_account_id");
+		vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "test_account_id");
 
 		setupMockFileSystem();
 

@@ -63,7 +63,7 @@ For improved performance with large caches, you can enable batch upload by provi
 ```bash
 export R2_ACCESS_KEY_ID=your_access_key_id
 export R2_SECRET_ACCESS_KEY=your_secret_access_key
-export R2_ACCOUNT_ID=your_account_id
+export CLOUDFLARE_ACCOUNT_ID=your_account_id
 ```
 
 **Note:**
