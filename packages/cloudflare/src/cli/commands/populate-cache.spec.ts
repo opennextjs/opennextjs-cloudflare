@@ -134,7 +134,7 @@ describe("populateCache", () => {
 			vi.unstubAllEnvs();
 		});
 
-		test("uses standard upload when R2 credentials are not provided", async () => {
+		test("uses sequential upload when R2 credentials are not provided", async () => {
 			const { runWrangler } = await import("../utils/run-wrangler.js");
 
 			// Ensure no batch upload credentials are set
@@ -212,7 +212,7 @@ describe("populateCache", () => {
 				createTestPopulateCacheOptions()
 			);
 
-			// Should fall back to standard upload when batch upload fails
+			// Should fall back to sequential upload when batch upload fails
 			expect(runWrangler).toHaveBeenCalled();
 		});
 	});
