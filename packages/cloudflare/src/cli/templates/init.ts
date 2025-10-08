@@ -55,9 +55,9 @@ function init(request: Request, env: CloudflareEnv) {
 function initRuntime() {
 	// Some packages rely on `process.version` and `process.versions.node` (i.e. Jose@4)
 	// TODO: Remove when https://github.com/unjs/unenv/pull/493 is merged
-	Object.assign(process, { version: process.version || "v22.14.0" });
-	// @ts-expect-error Node type does not match workerd
-	Object.assign(process.versions, { node: "22.14.0", ...process.versions });
+	// @ts-expect-error Read-only property
+	process.version ??= "v22.14.0";
+	process.versions.node ??= "22.14.0";
 
 	globalThis.__dirname ??= "";
 	globalThis.__filename ??= "";
@@ -83,10 +83,12 @@ function initRuntime() {
 				delete (init as { cache: unknown }).cache;
 				// https://github.com/cloudflare/workerd/issues/2746
 				// https://github.com/cloudflare/workerd/issues/3245
-				Object.defineProperty(init, "body", {
-					// @ts-ignore
-					value: init.body instanceof stream.Readable ? ReadableStream.from(init.body) : init.body,
-				});
+				if (init.body instanceof stream.Readable) {
+					Object.defineProperty(init, "body", {
+						// @ts-ignore
+						value: ReadableStream.from(init.body),
+					});
+				}
 			}
 			super(input, init);
 		}
@@ -112,7 +114,9 @@ function initRuntime() {
  * - the origin resolver information
  */
 function populateProcessEnv(url: URL, env: CloudflareEnv) {
-	for (const [key, value] of Object.entries(env)) {
+	for (const key in env) {
+		// @ts-expect-error
+		const value = env[key];
 		if (typeof value === "string") {
 			process.env[key] = value;
 		}

@@ -13,6 +13,8 @@ export type LocalPattern = {
 	search?: string;
 };
 
+let NEXT_IMAGE_REGEXP: RegExp;
+
 /**
  * Fetches an images.
  *
@@ -27,17 +29,18 @@ export async function fetchImage(fetcher: Fetcher | undefined, imageUrl: string,
 
 	// Local
 	if (imageUrl.startsWith("/")) {
-		let pathname: string;
-		let url: URL;
-		try {
-			// We only need pathname and search
-			url = new URL(imageUrl, "http://n");
-			pathname = decodeURIComponent(url.pathname);
-		} catch {
+		// @ts-expect-error TS2339 Missing types for URL.parse
+		const url = URL.parse(imageUrl, "http://n");
+
+		if (url == null) {
 			return getUrlErrorResponse();
 		}
 
-		if (/\/_next\/image($|\/)/.test(pathname)) {
+		// This method will never throw because URL parser will handle invalid input.
+		const pathname = decodeURIComponent(url.pathname);
+
+		NEXT_IMAGE_REGEXP ??= /\/_next\/image($|\/)/;
+		if (NEXT_IMAGE_REGEXP.test(pathname)) {
 			return getUrlErrorResponse();
 		}
 
@@ -126,6 +129,8 @@ export async function fetchImage(fetcher: Fetcher | undefined, imageUrl: string,
 	}
 }
 
+const REGEXP_CACHE = new Map<string, RegExp>();
+
 export function matchRemotePattern(pattern: RemotePattern, url: URL): boolean {
 	// https://github.com/vercel/next.js/blob/d76f0b1/packages/next/src/shared/lib/match-remote-pattern.ts
 	if (
@@ -139,7 +144,16 @@ export function matchRemotePattern(pattern: RemotePattern, url: URL): boolean {
 		return false;
 	}
 
-	if (pattern.hostname === undefined || !new RegExp(pattern.hostname).test(url.hostname)) {
+	if (pattern.hostname === undefined) {
+		return false;
+	}
+
+	let hostnameRegex = REGEXP_CACHE.get(pattern.hostname);
+	if (!hostnameRegex) {
+		hostnameRegex = new RegExp(pattern.hostname);
+		REGEXP_CACHE.set(pattern.hostname, hostnameRegex);
+	}
+	if (!hostnameRegex.test(url.hostname)) {
 		return false;
 	}
 
@@ -148,7 +162,12 @@ export function matchRemotePattern(pattern: RemotePattern, url: URL): boolean {
 	}
 
 	// Should be the same as writeImagesManifest()
-	return new RegExp(pattern.pathname).test(url.pathname);
+	let pathnameRegex = REGEXP_CACHE.get(pattern.pathname);
+	if (!pathnameRegex) {
+		pathnameRegex = new RegExp(pattern.pathname);
+		REGEXP_CACHE.set(pattern.pathname, pathnameRegex);
+	}
+	return pathnameRegex.test(url.pathname);
 }
 
 export function matchLocalPattern(pattern: LocalPattern, url: URL): boolean {
@@ -157,7 +176,12 @@ export function matchLocalPattern(pattern: LocalPattern, url: URL): boolean {
 		return false;
 	}
 
-	return new RegExp(pattern.pathname).test(url.pathname);
+	let pathnameRegex = REGEXP_CACHE.get(pattern.pathname);
+	if (!pathnameRegex) {
+		pathnameRegex = new RegExp(pattern.pathname);
+		REGEXP_CACHE.set(pattern.pathname, pathnameRegex);
+	}
+	return pathnameRegex.test(url.pathname);
 }
 
 /**

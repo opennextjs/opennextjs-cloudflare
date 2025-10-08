@@ -5,8 +5,15 @@ import { parse } from "@dotenvx/dotenvx";
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 
 function readEnvFile(filePath: string) {
-	if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-		return parse(fs.readFileSync(filePath).toString());
+	// Rather than checking if the file exists, and it is a "file", reading it directly
+	// is faster because it makes less system calls even though we need to check the error.
+	try {
+		return parse(fs.readFileSync(filePath, "utf8"));
+	} catch (error: unknown) {
+		if ((error as Error & { code?: string }).code === "ENOENT") {
+			return;
+		}
+		throw error;
 	}
 }
 

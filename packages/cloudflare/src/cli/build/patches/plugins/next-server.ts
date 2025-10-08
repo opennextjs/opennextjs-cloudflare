@@ -17,6 +17,8 @@ import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import { normalizePath } from "../../utils/index.js";
 
 export function patchNextServer(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
+	const outputPath = path.join(buildOpts.outputDir, "server-functions/default");
+	const cacheHandler = path.join(outputPath, getPackagePath(buildOpts), "cache.cjs");
 	return updater.updateContent("next-server", [
 		{
 			filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/next-server\.js$`, {
@@ -24,12 +26,7 @@ export function patchNextServer(updater: ContentUpdater, buildOpts: BuildOptions
 			}),
 			contentFilter: /getBuildId\(/,
 			callback: async ({ contents }) => {
-				const { outputDir } = buildOpts;
-
 				contents = patchCode(contents, buildIdRule);
-
-				const outputPath = path.join(outputDir, "server-functions/default");
-				const cacheHandler = path.join(outputPath, getPackagePath(buildOpts), "cache.cjs");
 				contents = patchCode(contents, createCacheHandlerRule(cacheHandler));
 
 				const composableCacheHandler = path.join(
