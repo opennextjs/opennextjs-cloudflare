@@ -55,3 +55,36 @@ Deploy your application to production with the following:
   # or
   bun opennextjs-cloudflare build && bun opennextjs-cloudflare deploy
   ```
+
+### Batch Cache Population (Optional, Recommended)
+
+For improved performance with large caches, you can enable batch upload by providing R2 credentials via environment variables.
+
+You can either set environment variables directly:
+
+```bash
+export R2_ACCESS_KEY_ID=your_access_key_id
+export R2_SECRET_ACCESS_KEY=your_secret_access_key
+export CF_ACCOUNT_ID=your_account_id
+```
+
+Or create a `.env` file in your project root (automatically loaded by the CLI):
+
+```bash
+R2_ACCESS_KEY_ID=your_access_key_id
+R2_SECRET_ACCESS_KEY=your_secret_access_key
+CF_ACCOUNT_ID=your_account_id
+```
+
+**Note:**
+
+You can follow documentation https://developers.cloudflare.com/r2/api/tokens/ for creating API tokens with appropriate permissions for R2 access.
+
+**Benefits:**
+
+- Significantly faster uploads for large caches using parallel transfers
+- Reduced API calls to Cloudflare
+- Automatically enabled when credentials are provided
+
+**Fallback:**
+If these environment variables are not set, the CLI will use standard Wrangler uploads. Both methods work correctly - batch upload is simply faster for large caches.

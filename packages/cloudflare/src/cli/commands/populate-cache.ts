@@ -1,4 +1,6 @@
-import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
@@ -129,27 +131,142 @@ type PopulateCacheOptions = {
 	shouldUsePreviewId: boolean;
 };
 
-async function populateR2IncrementalCache(
+/**
+ * Get R2 credentials from environment variables
+ * @returns R2 credentials from environment variables or null if not set
+ */
+function getR2CredentialsFromEnv() {
+	const accessKey = process.env.R2_ACCESS_KEY_ID || null;
+	const secretKey = process.env.R2_SECRET_ACCESS_KEY || null;
+	const accountId = process.env.CF_ACCOUNT_ID || null;
+	return { accessKey, secretKey, accountId };
+}
+
+/**
+ * Create a temporary configuration file for batch upload from environment variables
+ * @returns Path to the temporary config file or null if env vars not available
+ */
+function createTempRcloneConfig(accessKey: string, secretKey: string, accountId: string): string | null {
+	const tempDir = tmpdir();
+	const tempConfigPath = path.join(tempDir, `rclone-config-${Date.now()}.conf`);
+
+	const configContent = `[r2]
+type = s3
+provider = Cloudflare
+access_key_id = ${accessKey}
+secret_access_key = ${secretKey}
+endpoint = https://${accountId}.r2.cloudflarestorage.com
+acl = private
+`;
+
+	/**
+	 * 0o600 is an octal number (the 0o prefix indicates octal in JavaScript)
+	 * that represents Unix file permissions:
+	 *
+	 * - 6 (owner): read (4) + write (2) = readable and writable by the file owner
+	 * - 0 (group): no permissions for the group
+	 * - 0 (others): no permissions for anyone else
+	 *
+	 * In symbolic notation, this is: rw-------
+	 */
+	writeFileSync(tempConfigPath, configContent, { mode: 0o600 });
+	return tempConfigPath;
+}
+
+/**
+ * Populate R2 incremental cache using batch upload for better performance
+ * Uses parallel transfers to significantly speed up cache population
+ */
+async function populateR2IncrementalCacheWithBatchUpload(
 	options: BuildOptions,
-	config: WranglerConfig,
+	bucket: string,
+	prefix: string | undefined,
+	assets: CacheAsset[]
+) {
+	// Ensure R2 credentials are available in env vars
+	const { accessKey, secretKey, accountId } = getR2CredentialsFromEnv();
+
+	if (!accessKey || !secretKey || !accountId) {
+		throw new Error(
+			"Please set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and CF_ACCOUNT_ID environment variables to enable faster batch upload."
+		);
+	}
+
+	logger.info("\nPopulating R2 incremental cache using batch upload...");
+
+	// Create temporary config from env vars - required for batch upload
+	const tempConfigPath = createTempRcloneConfig(accessKey, secretKey, accountId);
+	if (!tempConfigPath) {
+		throw new Error("Failed to create temporary rclone config for R2 batch upload.");
+	}
+
+	const env = { ...process.env };
+	env.RCLONE_CONFIG = tempConfigPath;
+	logger.info("Using batch upload with R2 credentials from environment variables");
+
+	try {
+		// Create a staging dir with proper key paths
+		const stagingDir = path.join(options.outputDir, ".r2-staging");
+		rmSync(stagingDir, { recursive: true, force: true });
+		mkdirSync(stagingDir, { recursive: true });
+
+		for (const { fullPath, key, buildId, isFetch } of assets) {
+			const cacheKey = computeCacheKey(key, {
+				prefix,
+				buildId,
+				cacheType: isFetch ? "fetch" : "cache",
+			});
+			const destPath = path.join(stagingDir, cacheKey);
+			mkdirSync(path.dirname(destPath), { recursive: true });
+			copyFileSync(fullPath, destPath);
+		}
+
+		// Use rclone to sync the R2
+		const remote = `r2:${bucket}`;
+		const args = [
+			"copy",
+			stagingDir,
+			remote,
+			"--progress",
+			"--transfers=32",
+			"--checkers=16",
+			"--error-on-no-transfer", // Fail if no files transferred
+		];
+
+		const result = spawnSync("rclone", args, {
+			stdio: ["inherit", "inherit", "pipe"], // Capture stderr while showing stdout
+			env,
+		});
+
+		// Check for errors in both exit code and stderr
+		const stderrOutput = result.stderr?.toString().trim();
+		if (result.status !== 0 || stderrOutput) {
+			throw new Error("Batch upload failed.");
+		}
+
+		logger.info(`Successfully uploaded ${assets.length} assets to R2 using batch upload`);
+	} finally {
+		try {
+			// Cleanup temporary config file
+			rmSync(tempConfigPath);
+		} catch {
+			console.warn(`Failed to remove temporary config at ${tempConfigPath}`);
+		}
+	}
+}
+
+/**
+ * Populate R2 incremental cache using sequential Wrangler uploads
+ * Falls back to this method when batch upload is not available or fails
+ */
+async function populateR2IncrementalCacheWithSequentialUpload(
+	options: BuildOptions,
+	bucket: string,
+	prefix: string | undefined,
+	assets: CacheAsset[],
 	populateCacheOptions: PopulateCacheOptions
 ) {
-	logger.info("\nPopulating R2 incremental cache...");
-
-	const binding = config.r2_buckets.find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
-	if (!binding) {
-		throw new Error(`No R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} found!`);
-	}
-
-	const bucket = binding.bucket_name;
-	if (!bucket) {
-		throw new Error(`R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} should have a 'bucket_name'`);
-	}
-
-	const envVars = await getEnvFromPlatformProxy(populateCacheOptions);
-	const prefix = envVars[R2_CACHE_PREFIX_ENV_NAME];
-
-	const assets = getCacheAssets(options);
+	logger.info("Using sequential cache uploads.");
 
 	for (const { fullPath, key, buildId, isFetch } of tqdm(assets)) {
 		const cacheKey = computeCacheKey(key, {
@@ -175,6 +292,46 @@ async function populateR2IncrementalCache(
 		);
 	}
 	logger.info(`Successfully populated cache with ${assets.length} assets`);
+}
+
+async function populateR2IncrementalCache(
+	options: BuildOptions,
+	config: WranglerConfig,
+	populateCacheOptions: PopulateCacheOptions
+) {
+	logger.info("\nPopulating R2 incremental cache...");
+
+	const binding = config.r2_buckets.find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
+	if (!binding) {
+		throw new Error(`No R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} found!`);
+	}
+
+	const bucket = binding.bucket_name;
+	if (!bucket) {
+		throw new Error(`R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} should have a 'bucket_name'`);
+	}
+
+	const envVars = await getEnvFromPlatformProxy(populateCacheOptions);
+	const prefix = envVars[R2_CACHE_PREFIX_ENV_NAME];
+
+	const assets = getCacheAssets(options);
+
+	try {
+		// Attempt batch upload first (using rclone)
+		return await populateR2IncrementalCacheWithBatchUpload(options, bucket, prefix, assets);
+	} catch (error) {
+		logger.warn(`Batch upload failed: ${error instanceof Error ? error.message : error}`);
+		logger.info("Falling back to sequential uploads...");
+
+		// Sequential upload fallback (using Wrangler)
+		return await populateR2IncrementalCacheWithSequentialUpload(
+			options,
+			bucket,
+			prefix,
+			assets,
+			populateCacheOptions
+		);
+	}
 }
 
 async function populateKVIncrementalCache(

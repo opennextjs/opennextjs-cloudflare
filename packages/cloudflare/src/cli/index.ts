@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import "./load-envs.js";
+
 import yargs from "yargs";
 
 import { addBuildCommand } from "./commands/build.js";
