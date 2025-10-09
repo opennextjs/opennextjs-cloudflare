@@ -28,7 +28,7 @@ export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 	const wranglerConfig = readWranglerConfig(args);
 
 	const envVars = await getEnvFromPlatformProxy({
-		configPath: args.wranglerConfigPath,
+		configPath: args.nextjsWranglerConfigPath,
 		environment: args.env,
 	});
 
@@ -37,7 +37,7 @@ export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 	await populateCache(options, config, wranglerConfig, {
 		target: "remote",
 		environment: args.env,
-		wranglerConfigPath: args.wranglerConfigPath,
+		wranglerConfigPath: args.nextjsWranglerConfigPath,
 		cacheChunkSize: args.cacheChunkSize,
 		shouldUsePreviewId: false,
 	});
