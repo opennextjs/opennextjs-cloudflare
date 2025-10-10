@@ -43,13 +43,13 @@ const MS_PER_DAY = 24 * 3600 * 1000;
 /**
  * Compute the deployment mapping for a deployment.
  *
- * @param options Build options
+ * @param buildOpts Build options
  * @param config OpenNext config
  * @param workerEnvVars Worker Environment variables (taken from the wrangler config files)
  * @returns Deployment mapping or undefined
  */
 export async function getDeploymentMapping(
-	options: BuildOptions,
+	buildOpts: BuildOptions,
 	config: OpenNextConfig,
 	workerEnvVars: WorkerEnvVar
 ): Promise<Record<string, string> | undefined> {
@@ -62,7 +62,7 @@ export async function getDeploymentMapping(
 	// in the wrangler config files
 	const envVars = { ...workerEnvVars, ...process.env };
 
-	const nextConfig = loadConfig(path.join(options.appBuildOutputPath, ".next"));
+	const nextConfig = loadConfig(path.join(buildOpts.appBuildOutputPath, ".next"));
 	const deploymentId = nextConfig.deploymentId;
 
 	if (!deploymentId) {
