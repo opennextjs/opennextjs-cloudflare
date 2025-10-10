@@ -5,6 +5,8 @@ export const DEPLOYMENT_MAPPING_ENV_NAME = "CF_DEPLOYMENT_MAPPING";
 /** Version used for the latest worker */
 export const CURRENT_VERSION_ID = "current";
 
+let deploymentMapping: Record<string, string>;
+
 /**
  * Routes the request to the requested deployment.
  *
@@ -42,16 +44,16 @@ export function maybeGetSkewProtectionResponse(request: Request): Promise<Respon
 			return undefined;
 		}
 
-		const mapping = process.env[DEPLOYMENT_MAPPING_ENV_NAME]
+		deploymentMapping ??= process.env[DEPLOYMENT_MAPPING_ENV_NAME]
 			? JSON.parse(process.env[DEPLOYMENT_MAPPING_ENV_NAME])
 			: {};
 
-		if (!(requestDeploymentId in mapping)) {
+		if (!(requestDeploymentId in deploymentMapping)) {
 			// Unknown deployment id, serve the current version
 			return undefined;
 		}
 
-		const version = mapping[requestDeploymentId];
+		const version = deploymentMapping[requestDeploymentId];
 
 		if (!version || version === CURRENT_VERSION_ID) {
 			return undefined;
