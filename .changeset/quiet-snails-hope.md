@@ -11,5 +11,5 @@ Recommended usage on CI:
 
 Recommended usage for local dev:
 
-- Add you secrets to either a `.dev.vars*` or `.env*` file (i.e. `CF_ACCOUNT_ID`)
+- Add your secrets to either a `.dev.vars*` or `.env*` file (i.e. `CF_ACCOUNT_ID`)
 - Add public values to the wrangler config `wrangler.jsonc` (i.e. `R2_CACHE_PREFIX_ENV_NAME`)
