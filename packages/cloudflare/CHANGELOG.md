@@ -1,5 +1,29 @@
 # @opennextjs/cloudflare
 
+## 1.10.0
+
+### Minor Changes
+
+- [#937](https://github.com/opennextjs/opennextjs-cloudflare/pull/937) [`32ba91a`](https://github.com/opennextjs/opennextjs-cloudflare/commit/32ba91a6d3fa6b9a8b2cd5a8c973c3b3eb1108f0) Thanks [@vicb](https://github.com/vicb)! - feat: retrieve CLI environment variables from `process.env` and `.env*` files
+
+  Recommended usage on CI:
+
+  - Add your secrets to `process.env` (i.e. `CF_ACCOUNT_ID`)
+  - Add public values to the wrangler config `wrangler.jsonc` (i.e. `R2_CACHE_PREFIX_ENV_NAME`)
+
+  Recommended usage for local dev:
+
+  - Add your secrets to either a `.dev.vars*` or `.env*` file (i.e. `CF_ACCOUNT_ID`)
+  - Add public values to the wrangler config `wrangler.jsonc` (i.e. `R2_CACHE_PREFIX_ENV_NAME`)
+
+### Patch Changes
+
+- [#941](https://github.com/opennextjs/opennextjs-cloudflare/pull/941) [`59f52e0`](https://github.com/opennextjs/opennextjs-cloudflare/commit/59f52e02f6592130b6ad82e06abe6f6ed5cb3456) Thanks [@vicb](https://github.com/vicb)! - bump `@opennextjs/aws` to 3.8.2
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v3.8.2>
+
+- [#939](https://github.com/opennextjs/opennextjs-cloudflare/pull/939) [`54c47e5`](https://github.com/opennextjs/opennextjs-cloudflare/commit/54c47e5bdca38410c6782f55f0e2ececd0010182) Thanks [@vicb](https://github.com/vicb)! - perf: low-hanging fruits
+
 ## 1.9.2
 
 ### Patch Changes
