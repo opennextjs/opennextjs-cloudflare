@@ -5,6 +5,7 @@ import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import type { Plugin } from "esbuild";
 
 export function shimRequireHook(options: BuildOptions): Plugin {
+	const emptyShimPath = join(options.outputDir, "cloudflare-templates/shims/empty.js");
 	return {
 		name: "replaceRelative",
 		setup(build) {
@@ -12,7 +13,7 @@ export function shimRequireHook(options: BuildOptions): Plugin {
 			build.onResolve(
 				{ filter: getCrossPlatformPathRegex(String.raw`^\./require-hook$`, { escape: false }) },
 				() => ({
-					path: join(options.outputDir, "cloudflare-templates/shims/empty.js"),
+					path: emptyShimPath,
 				})
 			);
 		},

@@ -13,6 +13,8 @@ export type LocalPattern = {
 	search?: string;
 };
 
+let NEXT_IMAGE_REGEXP: RegExp;
+
 /**
  * Fetches an images.
  *
@@ -27,17 +29,18 @@ export async function fetchImage(fetcher: Fetcher | undefined, imageUrl: string,
 
 	// Local
 	if (imageUrl.startsWith("/")) {
-		let pathname: string;
-		let url: URL;
-		try {
-			// We only need pathname and search
-			url = new URL(imageUrl, "http://n");
-			pathname = decodeURIComponent(url.pathname);
-		} catch {
+		// @ts-expect-error TS2339 Missing types for URL.parse
+		const url = URL.parse(imageUrl, "http://n");
+
+		if (url == null) {
 			return getUrlErrorResponse();
 		}
 
-		if (/\/_next\/image($|\/)/.test(pathname)) {
+		// This method will never throw because URL parser will handle invalid input.
+		const pathname = decodeURIComponent(url.pathname);
+
+		NEXT_IMAGE_REGEXP ??= /\/_next\/image($|\/)/;
+		if (NEXT_IMAGE_REGEXP.test(pathname)) {
 			return getUrlErrorResponse();
 		}
 
