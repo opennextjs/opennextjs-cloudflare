@@ -55,7 +55,7 @@ export async function getEnvFromPlatformProxy(options: GetPlatformProxyOptions, 
 
 	await proxy.dispose();
 
-	// 3. Apply vars from `.env*` files
+	// 3. Apply new vars from `.env*` files
 	let mode: "production" | "development" | "test" = "production";
 	if (envVars.NEXTJS_ENV === "development") {
 		mode = "development";
