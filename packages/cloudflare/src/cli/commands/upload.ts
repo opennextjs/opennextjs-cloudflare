@@ -23,27 +23,36 @@ export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 	printHeaders("upload");
 
 	const { config } = await retrieveCompiledConfig();
-	const options = getNormalizedOptions(config);
+	const buildOpts = getNormalizedOptions(config);
 
 	const wranglerConfig = readWranglerConfig(args);
 
-	const envVars = await getEnvFromPlatformProxy({
-		configPath: args.wranglerConfigPath,
-		environment: args.env,
-	});
+	const envVars = await getEnvFromPlatformProxy(
+		{
+			configPath: args.wranglerConfigPath,
+			environment: args.env,
+		},
+		buildOpts
+	);
 
-	const deploymentMapping = await getDeploymentMapping(options, config, envVars);
+	const deploymentMapping = await getDeploymentMapping(buildOpts, config, envVars);
 
-	await populateCache(options, config, wranglerConfig, {
-		target: "remote",
-		environment: args.env,
-		wranglerConfigPath: args.wranglerConfigPath,
-		cacheChunkSize: args.cacheChunkSize,
-		shouldUsePreviewId: false,
-	});
+	await populateCache(
+		buildOpts,
+		config,
+		wranglerConfig,
+		{
+			target: "remote",
+			environment: args.env,
+			wranglerConfigPath: args.wranglerConfigPath,
+			cacheChunkSize: args.cacheChunkSize,
+			shouldUsePreviewId: false,
+		},
+		envVars
+	);
 
 	runWrangler(
-		options,
+		buildOpts,
 		[
 			"versions upload",
 			...args.wranglerArgs,

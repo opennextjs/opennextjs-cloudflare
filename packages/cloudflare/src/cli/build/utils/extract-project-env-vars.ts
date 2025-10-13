@@ -6,7 +6,7 @@ import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 
 function readEnvFile(filePath: string) {
 	if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-		return parse(fs.readFileSync(filePath).toString());
+		return parse(fs.readFileSync(filePath, "utf-8"));
 	}
 }
 

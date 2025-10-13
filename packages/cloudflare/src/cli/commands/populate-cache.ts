@@ -39,7 +39,7 @@ import {
 import { normalizePath } from "../build/utils/normalize-path.js";
 import type { WranglerTarget } from "../utils/run-wrangler.js";
 import { runWrangler } from "../utils/run-wrangler.js";
-import { getEnvFromPlatformProxy, quoteShellMeta } from "./helpers.js";
+import { getEnvFromPlatformProxy, quoteShellMeta, type WorkerEnvVar } from "./helpers.js";
 import type { WithWranglerArgs } from "./utils.js";
 import {
 	getNormalizedOptions,
@@ -49,6 +49,81 @@ import {
 	withWranglerOptions,
 	withWranglerPassthroughArgs,
 } from "./utils.js";
+
+/**
+ * Implementation of the `opennextjs-cloudflare populateCache` command.
+ *
+ * @param args
+ */
+async function populateCacheCommand(
+	target: "local" | "remote",
+	args: WithWranglerArgs<{ cacheChunkSize?: number }>
+) {
+	printHeaders(`populate cache - ${target}`);
+
+	const { config } = await retrieveCompiledConfig();
+	const buildOpts = getNormalizedOptions(config);
+
+	const wranglerConfig = readWranglerConfig(args);
+	const envVars = await getEnvFromPlatformProxy(config, buildOpts);
+
+	await populateCache(
+		buildOpts,
+		config,
+		wranglerConfig,
+		{
+			target,
+			environment: args.env,
+			wranglerConfigPath: args.wranglerConfigPath,
+			cacheChunkSize: args.cacheChunkSize,
+			shouldUsePreviewId: false,
+		},
+		envVars
+	);
+}
+
+export async function populateCache(
+	buildOpts: BuildOptions,
+	config: OpenNextConfig,
+	wranglerConfig: WranglerConfig,
+	populateCacheOptions: PopulateCacheOptions,
+	envVars: WorkerEnvVar
+) {
+	const { incrementalCache, tagCache } = config.default.override ?? {};
+
+	if (!existsSync(buildOpts.outputDir)) {
+		logger.error("Unable to populate cache: Open Next build not found");
+		process.exit(1);
+	}
+
+	if (!config.dangerous?.disableIncrementalCache && incrementalCache) {
+		const name = await resolveCacheName(incrementalCache);
+		switch (name) {
+			case R2_CACHE_NAME:
+				await populateR2IncrementalCache(buildOpts, wranglerConfig, populateCacheOptions, envVars);
+				break;
+			case KV_CACHE_NAME:
+				await populateKVIncrementalCache(buildOpts, wranglerConfig, populateCacheOptions, envVars);
+				break;
+			case STATIC_ASSETS_CACHE_NAME:
+				populateStaticAssetsIncrementalCache(buildOpts);
+				break;
+			default:
+				logger.info("Incremental cache does not need populating");
+		}
+	}
+
+	if (!config.dangerous?.disableTagCache && !config.dangerous?.disableIncrementalCache && tagCache) {
+		const name = await resolveCacheName(tagCache);
+		switch (name) {
+			case D1_TAG_NAME:
+				populateD1TagCache(buildOpts, wranglerConfig, populateCacheOptions);
+				break;
+			default:
+				logger.info("Tag cache does not need populating");
+		}
+	}
+}
 
 async function resolveCacheName(
 	value:
@@ -133,12 +208,13 @@ type PopulateCacheOptions = {
 
 /**
  * Get R2 credentials from environment variables
+ * @param envVars Environment variables loaded from process.env, wrangler config, and .env files
  * @returns R2 credentials from environment variables or null if not set
  */
-function getR2CredentialsFromEnv() {
-	const accessKey = process.env.R2_ACCESS_KEY_ID || null;
-	const secretKey = process.env.R2_SECRET_ACCESS_KEY || null;
-	const accountId = process.env.CF_ACCOUNT_ID || null;
+function getR2CredentialsFromEnv(envVars: WorkerEnvVar) {
+	const accessKey = envVars.R2_ACCESS_KEY_ID || null;
+	const secretKey = envVars.R2_SECRET_ACCESS_KEY || null;
+	const accountId = envVars.CF_ACCOUNT_ID || null;
 	return { accessKey, secretKey, accountId };
 }
 
@@ -178,13 +254,14 @@ acl = private
  * Uses parallel transfers to significantly speed up cache population
  */
 async function populateR2IncrementalCacheWithBatchUpload(
-	options: BuildOptions,
+	buildOpts: BuildOptions,
 	bucket: string,
 	prefix: string | undefined,
-	assets: CacheAsset[]
+	assets: CacheAsset[],
+	envVars: WorkerEnvVar
 ) {
 	// Ensure R2 credentials are available in env vars
-	const { accessKey, secretKey, accountId } = getR2CredentialsFromEnv();
+	const { accessKey, secretKey, accountId } = getR2CredentialsFromEnv(envVars);
 
 	if (!accessKey || !secretKey || !accountId) {
 		throw new Error(
@@ -206,7 +283,7 @@ async function populateR2IncrementalCacheWithBatchUpload(
 
 	try {
 		// Create a staging dir with proper key paths
-		const stagingDir = path.join(options.outputDir, ".r2-staging");
+		const stagingDir = path.join(buildOpts.outputDir, ".r2-staging");
 		rmSync(stagingDir, { recursive: true, force: true });
 		mkdirSync(stagingDir, { recursive: true });
 
@@ -260,7 +337,7 @@ async function populateR2IncrementalCacheWithBatchUpload(
  * Falls back to this method when batch upload is not available or fails
  */
 async function populateR2IncrementalCacheWithSequentialUpload(
-	options: BuildOptions,
+	buildOpts: BuildOptions,
 	bucket: string,
 	prefix: string | undefined,
 	assets: CacheAsset[],
@@ -275,7 +352,7 @@ async function populateR2IncrementalCacheWithSequentialUpload(
 			cacheType: isFetch ? "fetch" : "cache",
 		});
 		runWrangler(
-			options,
+			buildOpts,
 			[
 				"r2 object put",
 				quoteShellMeta(normalizePath(path.join(bucket, cacheKey))),
@@ -295,9 +372,10 @@ async function populateR2IncrementalCacheWithSequentialUpload(
 }
 
 async function populateR2IncrementalCache(
-	options: BuildOptions,
+	buildOpts: BuildOptions,
 	config: WranglerConfig,
-	populateCacheOptions: PopulateCacheOptions
+	populateCacheOptions: PopulateCacheOptions,
+	envVars: WorkerEnvVar
 ) {
 	logger.info("\nPopulating R2 incremental cache...");
 
@@ -311,21 +389,20 @@ async function populateR2IncrementalCache(
 		throw new Error(`R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} should have a 'bucket_name'`);
 	}
 
-	const envVars = await getEnvFromPlatformProxy(populateCacheOptions);
 	const prefix = envVars[R2_CACHE_PREFIX_ENV_NAME];
 
-	const assets = getCacheAssets(options);
+	const assets = getCacheAssets(buildOpts);
 
 	try {
 		// Attempt batch upload first (using rclone)
-		return await populateR2IncrementalCacheWithBatchUpload(options, bucket, prefix, assets);
+		return await populateR2IncrementalCacheWithBatchUpload(buildOpts, bucket, prefix, assets, envVars);
 	} catch (error) {
 		logger.warn(`Batch upload failed: ${error instanceof Error ? error.message : error}`);
 		logger.info("Falling back to sequential uploads...");
 
 		// Sequential upload fallback (using Wrangler)
 		return await populateR2IncrementalCacheWithSequentialUpload(
-			options,
+			buildOpts,
 			bucket,
 			prefix,
 			assets,
@@ -335,9 +412,10 @@ async function populateR2IncrementalCache(
 }
 
 async function populateKVIncrementalCache(
-	options: BuildOptions,
+	buildOpts: BuildOptions,
 	config: WranglerConfig,
-	populateCacheOptions: PopulateCacheOptions
+	populateCacheOptions: PopulateCacheOptions,
+	envVars: WorkerEnvVar
 ) {
 	logger.info("\nPopulating KV incremental cache...");
 
@@ -346,10 +424,9 @@ async function populateKVIncrementalCache(
 		throw new Error(`No KV binding ${JSON.stringify(KV_CACHE_BINDING_NAME)} found!`);
 	}
 
-	const envVars = await getEnvFromPlatformProxy(populateCacheOptions);
 	const prefix = envVars[KV_CACHE_PREFIX_ENV_NAME];
 
-	const assets = getCacheAssets(options);
+	const assets = getCacheAssets(buildOpts);
 
 	const chunkSize = Math.max(1, populateCacheOptions.cacheChunkSize ?? 25);
 	const totalChunks = Math.ceil(assets.length / chunkSize);
@@ -357,7 +434,7 @@ async function populateKVIncrementalCache(
 	logger.info(`Inserting ${assets.length} assets to KV in chunks of ${chunkSize}`);
 
 	for (const i of tqdm(Array.from({ length: totalChunks }, (_, i) => i))) {
-		const chunkPath = path.join(options.outputDir, "cloudflare", `cache-chunk-${i}.json`);
+		const chunkPath = path.join(buildOpts.outputDir, "cloudflare", `cache-chunk-${i}.json`);
 
 		const kvMapping = assets
 			.slice(i * chunkSize, (i + 1) * chunkSize)
@@ -373,7 +450,7 @@ async function populateKVIncrementalCache(
 		writeFileSync(chunkPath, JSON.stringify(kvMapping));
 
 		runWrangler(
-			options,
+			buildOpts,
 			[
 				"kv bulk put",
 				quoteShellMeta(chunkPath),
@@ -395,7 +472,7 @@ async function populateKVIncrementalCache(
 }
 
 function populateD1TagCache(
-	options: BuildOptions,
+	buildOpts: BuildOptions,
 	config: WranglerConfig,
 	populateCacheOptions: PopulateCacheOptions
 ) {
@@ -407,7 +484,7 @@ function populateD1TagCache(
 	}
 
 	runWrangler(
-		options,
+		buildOpts,
 		[
 			"d1 execute",
 			D1_TAG_BINDING_NAME,
@@ -435,73 +512,6 @@ function populateStaticAssetsIncrementalCache(options: BuildOptions) {
 	);
 
 	logger.info(`Successfully populated static assets cache`);
-}
-
-export async function populateCache(
-	options: BuildOptions,
-	config: OpenNextConfig,
-	wranglerConfig: WranglerConfig,
-	populateCacheOptions: PopulateCacheOptions
-) {
-	const { incrementalCache, tagCache } = config.default.override ?? {};
-
-	if (!existsSync(options.outputDir)) {
-		logger.error("Unable to populate cache: Open Next build not found");
-		process.exit(1);
-	}
-
-	if (!config.dangerous?.disableIncrementalCache && incrementalCache) {
-		const name = await resolveCacheName(incrementalCache);
-		switch (name) {
-			case R2_CACHE_NAME:
-				await populateR2IncrementalCache(options, wranglerConfig, populateCacheOptions);
-				break;
-			case KV_CACHE_NAME:
-				await populateKVIncrementalCache(options, wranglerConfig, populateCacheOptions);
-				break;
-			case STATIC_ASSETS_CACHE_NAME:
-				populateStaticAssetsIncrementalCache(options);
-				break;
-			default:
-				logger.info("Incremental cache does not need populating");
-		}
-	}
-
-	if (!config.dangerous?.disableTagCache && !config.dangerous?.disableIncrementalCache && tagCache) {
-		const name = await resolveCacheName(tagCache);
-		switch (name) {
-			case D1_TAG_NAME:
-				populateD1TagCache(options, wranglerConfig, populateCacheOptions);
-				break;
-			default:
-				logger.info("Tag cache does not need populating");
-		}
-	}
-}
-
-/**
- * Implementation of the `opennextjs-cloudflare populateCache` command.
- *
- * @param args
- */
-async function populateCacheCommand(
-	target: "local" | "remote",
-	args: WithWranglerArgs<{ cacheChunkSize?: number }>
-) {
-	printHeaders(`populate cache - ${target}`);
-
-	const { config } = await retrieveCompiledConfig();
-	const options = getNormalizedOptions(config);
-
-	const wranglerConfig = readWranglerConfig(args);
-
-	await populateCache(options, config, wranglerConfig, {
-		target,
-		environment: args.env,
-		wranglerConfigPath: args.wranglerConfigPath,
-		cacheChunkSize: args.cacheChunkSize,
-		shouldUsePreviewId: false,
-	});
 }
 
 /**

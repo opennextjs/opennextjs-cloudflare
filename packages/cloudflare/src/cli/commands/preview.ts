@@ -1,6 +1,7 @@
 import type yargs from "yargs";
 
 import { runWrangler } from "../utils/run-wrangler.js";
+import { getEnvFromPlatformProxy } from "./helpers.js";
 import { populateCache, withPopulateCacheOptions } from "./populate-cache.js";
 import type { WithWranglerArgs } from "./utils.js";
 import {
@@ -22,19 +23,26 @@ export async function previewCommand(
 	printHeaders("preview");
 
 	const { config } = await retrieveCompiledConfig();
-	const options = getNormalizedOptions(config);
+	const buildOpts = getNormalizedOptions(config);
 
 	const wranglerConfig = readWranglerConfig(args);
+	const envVars = await getEnvFromPlatformProxy(config, buildOpts);
 
-	await populateCache(options, config, wranglerConfig, {
-		target: args.remote ? "remote" : "local",
-		environment: args.env,
-		wranglerConfigPath: args.wranglerConfigPath,
-		cacheChunkSize: args.cacheChunkSize,
-		shouldUsePreviewId: args.remote,
-	});
+	await populateCache(
+		buildOpts,
+		config,
+		wranglerConfig,
+		{
+			target: args.remote ? "remote" : "local",
+			environment: args.env,
+			wranglerConfigPath: args.wranglerConfigPath,
+			cacheChunkSize: args.cacheChunkSize,
+			shouldUsePreviewId: args.remote,
+		},
+		envVars
+	);
 
-	runWrangler(options, ["dev", ...args.wranglerArgs], { logging: "all" });
+	runWrangler(buildOpts, ["dev", ...args.wranglerArgs], { logging: "all" });
 }
 
 /**

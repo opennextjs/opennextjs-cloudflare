@@ -21,7 +21,7 @@ The repository contains two directories:
 
 You can simply install the package from npm as specified in the [OpenNext documentation](https://opennext.js.org/cloudflare/get-started).
 
-#### Preleases
+#### Prereleases
 
 Besides the standard npm releases we also automatically publish prerelease packages on branch pushes (using [`pkg.pr.new`](https://github.com/stackblitz-labs/pkg.pr.new)):
 

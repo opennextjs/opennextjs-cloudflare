@@ -81,6 +81,10 @@ declare global {
 		CF_WORKERS_SCRIPTS_API_TOKEN?: string;
 		// Cloudflare account id
 		CF_ACCOUNT_ID?: string;
+
+		// R2 API credentials for batch cache population (optional, enables faster uploads)
+		R2_ACCESS_KEY_ID?: string;
+		R2_SECRET_ACCESS_KEY?: string;
 	}
 }
 
@@ -340,6 +344,10 @@ async function getCloudflareContextFromWrangler<
 
 	const { env, cf, ctx } = await getPlatformProxy({
 		...options,
+		// The `env` passed to the fetch handler does not contain variables from `.env*` files.
+		// because we invoke wrangler with `CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV`=`"false"`.
+		// Initializing `envFiles` with an empty list is the equivalent for this API call.
+		envFiles: [],
 		environment,
 	});
 	return {

@@ -1,5 +1,45 @@
 # @opennextjs/cloudflare
 
+## 1.10.1
+
+### Patch Changes
+
+- [#945](https://github.com/opennextjs/opennextjs-cloudflare/pull/945) [`f73ac0f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f73ac0f631dcd1e38cd6b808231ffef8e6f8215a) Thanks [@vicb](https://github.com/vicb)! - bump `@opennextjs/aws` to 3.8.4
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v3.8.4>
+
+## 1.10.0
+
+### Minor Changes
+
+- [#937](https://github.com/opennextjs/opennextjs-cloudflare/pull/937) [`32ba91a`](https://github.com/opennextjs/opennextjs-cloudflare/commit/32ba91a6d3fa6b9a8b2cd5a8c973c3b3eb1108f0) Thanks [@vicb](https://github.com/vicb)! - feat: retrieve CLI environment variables from `process.env` and `.env*` files
+
+  Recommended usage on CI:
+
+  - Add your secrets to `process.env` (i.e. `CF_ACCOUNT_ID`)
+  - Add public values to the wrangler config `wrangler.jsonc` (i.e. `R2_CACHE_PREFIX_ENV_NAME`)
+
+  Recommended usage for local dev:
+
+  - Add your secrets to either a `.dev.vars*` or `.env*` file (i.e. `CF_ACCOUNT_ID`)
+  - Add public values to the wrangler config `wrangler.jsonc` (i.e. `R2_CACHE_PREFIX_ENV_NAME`)
+
+### Patch Changes
+
+- [#941](https://github.com/opennextjs/opennextjs-cloudflare/pull/941) [`59f52e0`](https://github.com/opennextjs/opennextjs-cloudflare/commit/59f52e02f6592130b6ad82e06abe6f6ed5cb3456) Thanks [@vicb](https://github.com/vicb)! - bump `@opennextjs/aws` to 3.8.2
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v3.8.2>
+
+- [#939](https://github.com/opennextjs/opennextjs-cloudflare/pull/939) [`54c47e5`](https://github.com/opennextjs/opennextjs-cloudflare/commit/54c47e5bdca38410c6782f55f0e2ececd0010182) Thanks [@vicb](https://github.com/vicb)! - perf: low-hanging fruits
+
+## 1.9.2
+
+### Patch Changes
+
+- [#932](https://github.com/opennextjs/opennextjs-cloudflare/pull/932) [`0c7d1ae`](https://github.com/opennextjs/opennextjs-cloudflare/commit/0c7d1ae176ecc4808b0c8b21748979e2e886ca32) Thanks [@vicb](https://github.com/vicb)! - bump `@opennextjs/aws` to 3.8.1
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v3.8.1>
+
 ## 1.9.1
 
 ### Patch Changes

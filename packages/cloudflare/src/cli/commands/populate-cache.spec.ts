@@ -137,20 +137,17 @@ describe("populateCache", () => {
 		test("uses sequential upload when R2 credentials are not provided", async () => {
 			const { runWrangler } = await import("../utils/run-wrangler.js");
 
-			// Ensure no batch upload credentials are set
-			vi.stubEnv("R2_ACCESS_KEY_ID", undefined);
-			vi.stubEnv("R2_SECRET_ACCESS_KEY", undefined);
-			vi.stubEnv("CF_ACCOUNT_ID", undefined);
-
 			setupMockFileSystem();
 			vi.mocked(runWrangler).mockClear();
 
 			// Test uses partial types for simplicity - full config not needed
+			// Pass empty envVars to simulate no R2 credentials
 			await populateCache(
 				createTestBuildOptions(),
 				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
 				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-				createTestPopulateCacheOptions()
+				createTestPopulateCacheOptions(),
+				{} // envVars without R2 credentials
 			);
 
 			expect(runWrangler).toHaveBeenCalled();
@@ -158,20 +155,21 @@ describe("populateCache", () => {
 		});
 
 		test("uses batch upload with temporary config when R2 credentials are provided", async () => {
-			// Set R2 credentials to enable batch upload
-			vi.stubEnv("R2_ACCESS_KEY_ID", "test_access_key");
-			vi.stubEnv("R2_SECRET_ACCESS_KEY", "test_secret_key");
-			vi.stubEnv("CF_ACCOUNT_ID", "test_account_id");
-
 			setupMockFileSystem();
 			vi.mocked(spawnSync).mockClear();
 
 			// Test uses partial types for simplicity - full config not needed
+			// Pass envVars with R2 credentials to enable batch upload
 			await populateCache(
 				createTestBuildOptions(),
 				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
 				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-				createTestPopulateCacheOptions()
+				createTestPopulateCacheOptions(),
+				{
+					R2_ACCESS_KEY_ID: "test_access_key",
+					R2_SECRET_ACCESS_KEY: "test_secret_key",
+					CF_ACCOUNT_ID: "test_account_id",
+				}
 			);
 
 			// Verify batch upload was used with correct parameters and temporary config
@@ -190,11 +188,6 @@ describe("populateCache", () => {
 		test("handles rclone errors with status > 0", async () => {
 			const { runWrangler } = await import("../utils/run-wrangler.js");
 
-			// Set R2 credentials
-			vi.stubEnv("R2_ACCESS_KEY_ID", "test_access_key");
-			vi.stubEnv("R2_SECRET_ACCESS_KEY", "test_secret_key");
-			vi.stubEnv("CF_ACCOUNT_ID", "test_account_id");
-
 			setupMockFileSystem();
 
 			// Mock rclone failure without stderr output
@@ -205,11 +198,17 @@ describe("populateCache", () => {
 
 			vi.mocked(runWrangler).mockClear();
 
+			// Pass envVars with R2 credentials to enable batch upload (which will fail)
 			await populateCache(
 				createTestBuildOptions(),
 				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
 				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-				createTestPopulateCacheOptions()
+				createTestPopulateCacheOptions(),
+				{
+					R2_ACCESS_KEY_ID: "test_access_key",
+					R2_SECRET_ACCESS_KEY: "test_secret_key",
+					CF_ACCOUNT_ID: "test_account_id",
+				}
 			);
 
 			// Should fall back to sequential upload when batch upload fails
@@ -219,11 +218,6 @@ describe("populateCache", () => {
 
 	test("handles rclone errors with status = 0 and stderr output", async () => {
 		const { runWrangler } = await import("../utils/run-wrangler.js");
-
-		// Set R2 credentials
-		vi.stubEnv("R2_ACCESS_KEY_ID", "test_access_key");
-		vi.stubEnv("R2_SECRET_ACCESS_KEY", "test_secret_key");
-		vi.stubEnv("CF_ACCOUNT_ID", "test_account_id");
 
 		setupMockFileSystem();
 
@@ -235,11 +229,17 @@ describe("populateCache", () => {
 
 		vi.mocked(runWrangler).mockClear();
 
+		// Pass envVars with R2 credentials to enable batch upload (which will fail)
 		await populateCache(
 			createTestBuildOptions(),
 			createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
 			createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-			createTestPopulateCacheOptions()
+			createTestPopulateCacheOptions(),
+			{
+				R2_ACCESS_KEY_ID: "test_access_key",
+				R2_SECRET_ACCESS_KEY: "test_secret_key",
+				CF_ACCOUNT_ID: "test_account_id",
+			}
 		);
 
 		// Should fall back to standard upload when batch upload fails
