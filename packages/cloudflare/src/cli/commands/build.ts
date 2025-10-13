@@ -1,6 +1,7 @@
 import type yargs from "yargs";
 
 import { build as buildImpl } from "../build/build.js";
+import { createWranglerConfigIfNotExistent } from "../build/utils/index.js";
 import type { WithWranglerArgs } from "./utils.js";
 import {
 	compileConfig,
@@ -30,14 +31,18 @@ async function buildCommand(
 	const { config, buildDir } = await compileConfig(args.openNextConfigPath);
 	const options = getNormalizedOptions(config, buildDir);
 
+	const projectOpts = { ...args, minify: !args.noMinify, sourceDir: nextAppDir };
+
+	// Ask whether a `wrangler.jsonc` should be created when no config file exists.
+	// Note: We don't ask when a custom config file is specified via `--config`
+	//       nor when `--skipWranglerConfigCheck` is used.
+	if (!projectOpts.wranglerConfigPath && !args.skipWranglerConfigCheck) {
+		await createWranglerConfigIfNotExistent(projectOpts);
+	}
+
 	const wranglerConfig = readWranglerConfig(args);
 
-	await buildImpl(
-		options,
-		config,
-		{ ...args, minify: !args.noMinify, sourceDir: nextAppDir },
-		wranglerConfig
-	);
+	await buildImpl(options, config, projectOpts, wranglerConfig);
 }
 
 /**

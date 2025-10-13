@@ -17,7 +17,6 @@ import { compileInit } from "./open-next/compile-init.js";
 import { compileSkewProtection } from "./open-next/compile-skew-protection.js";
 import { compileDurableObjects } from "./open-next/compileDurableObjects.js";
 import { createServerBundle } from "./open-next/createServerBundle.js";
-import { createWranglerConfigIfNotExistent } from "./utils/index.js";
 import { getVersion } from "./utils/version.js";
 
 /**
@@ -86,10 +85,6 @@ export async function build(
 	await compileDurableObjects(options);
 
 	await bundleServer(options, projectOpts);
-
-	if (!projectOpts.skipWranglerConfigCheck) {
-		await createWranglerConfigIfNotExistent(projectOpts);
-	}
 
 	logger.info("OpenNext build complete.");
 }
