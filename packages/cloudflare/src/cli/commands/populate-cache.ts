@@ -207,18 +207,6 @@ type PopulateCacheOptions = {
 };
 
 /**
- * Get R2 credentials from environment variables
- * @param envVars Environment variables loaded from process.env, wrangler config, and .env files
- * @returns R2 credentials from environment variables or null if not set
- */
-function getR2CredentialsFromEnv(envVars: WorkerEnvVar) {
-	const accessKey = envVars.R2_ACCESS_KEY_ID || null;
-	const secretKey = envVars.R2_SECRET_ACCESS_KEY || null;
-	const accountId = envVars.CF_ACCOUNT_ID || null;
-	return { accessKey, secretKey, accountId };
-}
-
-/**
  * Create a temporary configuration file for batch upload from environment variables
  * @returns Path to the temporary config file or null if env vars not available
  */
@@ -259,9 +247,11 @@ async function populateR2IncrementalCacheWithBatchUpload(
 	assets: CacheAsset[],
 	envVars: WorkerEnvVar
 ) {
-	// Ensure R2 credentials are available in env vars
-	const { accessKey, secretKey, accountId } = getR2CredentialsFromEnv(envVars);
+	const accessKey = envVars.R2_ACCESS_KEY_ID || null;
+	const secretKey = envVars.R2_SECRET_ACCESS_KEY || null;
+	const accountId = envVars.CF_ACCOUNT_ID || null;
 
+	// Ensure all required env vars are set correctly
 	if (!accessKey || !secretKey || !accountId) {
 		throw new Error(
 			"Please set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and CF_ACCOUNT_ID environment variables to enable faster batch upload for remote R2."
@@ -276,8 +266,11 @@ async function populateR2IncrementalCacheWithBatchUpload(
 		throw new Error("Failed to create temporary rclone config for R2 batch upload.");
 	}
 
-	const env = { ...process.env };
-	env.RCLONE_CONFIG = tempConfigPath;
+	const env = {
+		...process.env,
+		RCLONE_CONFIG: tempConfigPath,
+	};
+
 	logger.info("Using batch upload with R2 credentials from environment variables");
 
 	// Create a staging dir in temp directory with proper key paths
