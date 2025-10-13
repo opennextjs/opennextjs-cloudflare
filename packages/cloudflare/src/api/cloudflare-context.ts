@@ -79,7 +79,7 @@ declare global {
 		CF_PREVIEW_DOMAIN?: string;
 		// Should have the `Workers Scripts:Read` permission
 		CF_WORKERS_SCRIPTS_API_TOKEN?: string;
-		// Cloudflare account id
+		// Cloudflare account id - needed for skew protection and R2 batch population
 		CF_ACCOUNT_ID?: string;
 
 		// R2 API credentials for batch cache population (optional, enables faster uploads)
