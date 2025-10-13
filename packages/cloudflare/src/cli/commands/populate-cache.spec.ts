@@ -147,7 +147,7 @@ describe("populateCache", () => {
 				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
 				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
 				createTestPopulateCacheOptions(),
-				{} // envVars without R2 credentials
+				{} as any // eslint-disable-line @typescript-eslint/no-explicit-any
 			);
 
 			expect(runWrangler).toHaveBeenCalled();
@@ -169,7 +169,7 @@ describe("populateCache", () => {
 					R2_ACCESS_KEY_ID: "test_access_key",
 					R2_SECRET_ACCESS_KEY: "test_secret_key",
 					CF_ACCOUNT_ID: "test_account_id",
-				}
+				} as any // eslint-disable-line @typescript-eslint/no-explicit-any
 			);
 
 			// Verify batch upload was used with correct parameters and temporary config
@@ -208,7 +208,7 @@ describe("populateCache", () => {
 					R2_ACCESS_KEY_ID: "test_access_key",
 					R2_SECRET_ACCESS_KEY: "test_secret_key",
 					CF_ACCOUNT_ID: "test_account_id",
-				}
+				} as any // eslint-disable-line @typescript-eslint/no-explicit-any
 			);
 
 			// Should fall back to sequential upload when batch upload fails
@@ -239,7 +239,7 @@ describe("populateCache", () => {
 				R2_ACCESS_KEY_ID: "test_access_key",
 				R2_SECRET_ACCESS_KEY: "test_secret_key",
 				CF_ACCOUNT_ID: "test_account_id",
-			}
+			} as any // eslint-disable-line @typescript-eslint/no-explicit-any
 		);
 
 		// Should fall back to standard upload when batch upload fails

@@ -254,7 +254,6 @@ acl = private
  * Uses parallel transfers to significantly speed up cache population
  */
 async function populateR2IncrementalCacheWithBatchUpload(
-	buildOpts: BuildOptions,
 	bucket: string,
 	prefix: string | undefined,
 	assets: CacheAsset[],
@@ -281,10 +280,11 @@ async function populateR2IncrementalCacheWithBatchUpload(
 	env.RCLONE_CONFIG = tempConfigPath;
 	logger.info("Using batch upload with R2 credentials from environment variables");
 
+	// Create a staging dir in temp directory with proper key paths
+	const tempDir = tmpdir();
+	const stagingDir = path.join(tempDir, `.r2-staging-${Date.now()}`);
+
 	try {
-		// Create a staging dir with proper key paths
-		const stagingDir = path.join(buildOpts.outputDir, ".r2-staging");
-		rmSync(stagingDir, { recursive: true, force: true });
 		mkdirSync(stagingDir, { recursive: true });
 
 		for (const { fullPath, key, buildId, isFetch } of assets) {
@@ -323,6 +323,13 @@ async function populateR2IncrementalCacheWithBatchUpload(
 
 		logger.info(`Successfully uploaded ${assets.length} assets to R2 using batch upload`);
 	} finally {
+		try {
+			// Cleanup temporary staging directory
+			rmSync(stagingDir, { recursive: true, force: true });
+		} catch {
+			console.warn(`Failed to remove temporary staging directory at ${stagingDir}`);
+		}
+
 		try {
 			// Cleanup temporary config file
 			rmSync(tempConfigPath);
@@ -395,7 +402,7 @@ async function populateR2IncrementalCache(
 
 	try {
 		// Attempt batch upload first (using rclone)
-		return await populateR2IncrementalCacheWithBatchUpload(buildOpts, bucket, prefix, assets, envVars);
+		return await populateR2IncrementalCacheWithBatchUpload(bucket, prefix, assets, envVars);
 	} catch (error) {
 		logger.warn(`Batch upload failed: ${error instanceof Error ? error.message : error}`);
 		logger.info("Falling back to sequential uploads...");
