@@ -4,11 +4,11 @@
 
 feature: optional batch upload for faster R2 cache population
 
-This update adds optional batch upload support for R2 cache population, significantly improving upload performance for large caches when enabled via environment variables.
+This update adds optional batch upload support for R2 cache population, significantly improving upload performance for large caches when enabled via .env or environment variables.
 
 **Key Changes:**
 
-1. **Optional Batch Upload**: Configure R2 credentials via environment variables to enable faster batch uploads:
+1. **Optional Batch Upload**: Configure R2 credentials via .env or environment variables to enable faster batch uploads:
 
    - `R2_ACCESS_KEY_ID`
    - `R2_SECRET_ACCESS_KEY`
@@ -33,22 +33,15 @@ This update adds optional batch upload support for R2 cache population, signific
 
 **Usage:**
 
-You can set environment variables directly:
-
-```bash
-export R2_ACCESS_KEY_ID=your_key
-export R2_SECRET_ACCESS_KEY=your_secret
-export CF_ACCOUNT_ID=your_account
-opennextjs-cloudflare deploy  # batch upload automatically used
-```
-
-Or create a `.env` file in your project root (automatically loaded):
+Add the credentials in a `.env`/`.dev.vars` file in your project root:
 
 ```bash
 R2_ACCESS_KEY_ID=your_key
 R2_SECRET_ACCESS_KEY=your_secret
 CF_ACCOUNT_ID=your_account
 ```
+
+You can also set the environment variables for CI builds.
 
 **Note:**
 
