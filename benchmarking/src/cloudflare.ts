@@ -96,7 +96,7 @@ export async function deployBuiltApp(dir: string): Promise<string> {
  * Makes sure that everything is set up so that wrangler can actually deploy the applications.
  * This means that:
  *  - the user has logged in
- *  - if they have more than one account they have set a CF_ACCOUNT_ID env variable
+ *  - if they have more than one account they have set a CLOUDFLARE_ACCOUNT_ID env variable
  */
 async function ensureWranglerSetup(): Promise<void> {
 	return new Promise((resolve, reject) => {
@@ -109,10 +109,10 @@ async function ensureWranglerSetup(): Promise<void> {
 				reject(new Error("Please log in using wrangler by running `pnpm dlx wrangler login`"));
 			}
 
-			if (!(process.env as Record<string, unknown>)["CF_ACCOUNT_ID"]) {
+			if (!(process.env as Record<string, unknown>)["CLOUDFLARE_ACCOUNT_ID"]) {
 				reject(
 					new Error(
-						"Please set the CF_ACCOUNT_ID environment variable to the id of the account you want to use to deploy the applications"
+						"Please set the CLOUDFLARE_ACCOUNT_ID environment variable to the id of the account you want to use to deploy the applications"
 					)
 				);
 			}

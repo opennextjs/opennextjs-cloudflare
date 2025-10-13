@@ -134,6 +134,31 @@ describe("populateCache", () => {
 			vi.unstubAllEnvs();
 		});
 
+		test("uses sequential upload for local target (skips batch upload)", async () => {
+			const { runWrangler } = await import("../utils/run-wrangler.js");
+
+			setupMockFileSystem();
+			vi.mocked(runWrangler).mockClear();
+			vi.mocked(spawnSync).mockClear();
+
+			// Test with local target - should skip batch upload even with credentials
+			await populateCache(
+				createTestBuildOptions(),
+				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				{ target: "local" as const, shouldUsePreviewId: false },
+				{
+					R2_ACCESS_KEY_ID: "test_access_key",
+					R2_SECRET_ACCESS_KEY: "test_secret_key",
+					CF_ACCOUNT_ID: "test_account_id",
+				} as any // eslint-disable-line @typescript-eslint/no-explicit-any
+			);
+
+			// Should use sequential upload (runWrangler), not batch upload (spawnSync/rclone)
+			expect(runWrangler).toHaveBeenCalled();
+			expect(spawnSync).not.toHaveBeenCalled();
+		});
+
 		test("uses sequential upload when R2 credentials are not provided", async () => {
 			const { runWrangler } = await import("../utils/run-wrangler.js");
 
@@ -154,17 +179,17 @@ describe("populateCache", () => {
 			expect(spawnSync).not.toHaveBeenCalled();
 		});
 
-		test("uses batch upload with temporary config when R2 credentials are provided", async () => {
+		test("uses batch upload with temporary config for remote target when R2 credentials are provided", async () => {
 			setupMockFileSystem();
 			vi.mocked(spawnSync).mockClear();
 
 			// Test uses partial types for simplicity - full config not needed
-			// Pass envVars with R2 credentials to enable batch upload
+			// Pass envVars with R2 credentials and remote target to enable batch upload
 			await populateCache(
 				createTestBuildOptions(),
 				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
 				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-				createTestPopulateCacheOptions(),
+				{ target: "remote" as const, shouldUsePreviewId: false },
 				{
 					R2_ACCESS_KEY_ID: "test_access_key",
 					R2_SECRET_ACCESS_KEY: "test_secret_key",
@@ -185,7 +210,7 @@ describe("populateCache", () => {
 			);
 		});
 
-		test("handles rclone errors with status > 0", async () => {
+		test("handles rclone errors with status > 0 for remote target", async () => {
 			const { runWrangler } = await import("../utils/run-wrangler.js");
 
 			setupMockFileSystem();
@@ -198,12 +223,12 @@ describe("populateCache", () => {
 
 			vi.mocked(runWrangler).mockClear();
 
-			// Pass envVars with R2 credentials to enable batch upload (which will fail)
+			// Pass envVars with R2 credentials and remote target to enable batch upload (which will fail)
 			await populateCache(
 				createTestBuildOptions(),
 				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
 				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-				createTestPopulateCacheOptions(),
+				{ target: "remote" as const, shouldUsePreviewId: false },
 				{
 					R2_ACCESS_KEY_ID: "test_access_key",
 					R2_SECRET_ACCESS_KEY: "test_secret_key",
@@ -214,35 +239,35 @@ describe("populateCache", () => {
 			// Should fall back to sequential upload when batch upload fails
 			expect(runWrangler).toHaveBeenCalled();
 		});
-	});
 
-	test("handles rclone errors with status = 0 and stderr output", async () => {
-		const { runWrangler } = await import("../utils/run-wrangler.js");
+		test("handles rclone errors with status = 0 and stderr output for remote target", async () => {
+			const { runWrangler } = await import("../utils/run-wrangler.js");
 
-		setupMockFileSystem();
+			setupMockFileSystem();
 
-		// Mock rclone error in stderr
-		vi.mocked(spawnSync).mockReturnValueOnce({
-			status: 0, // non-error exit code
-			stderr: Buffer.from("ERROR : Failed to copy: AccessDenied: Access Denied (403)"),
-		} as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+			// Mock rclone error in stderr
+			vi.mocked(spawnSync).mockReturnValueOnce({
+				status: 0, // non-error exit code
+				stderr: Buffer.from("ERROR : Failed to copy: AccessDenied: Access Denied (403)"),
+			} as any); // eslint-disable-line @typescript-eslint/no-explicit-any
 
-		vi.mocked(runWrangler).mockClear();
+			vi.mocked(runWrangler).mockClear();
 
-		// Pass envVars with R2 credentials to enable batch upload (which will fail)
-		await populateCache(
-			createTestBuildOptions(),
-			createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-			createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-			createTestPopulateCacheOptions(),
-			{
-				R2_ACCESS_KEY_ID: "test_access_key",
-				R2_SECRET_ACCESS_KEY: "test_secret_key",
-				CF_ACCOUNT_ID: "test_account_id",
-			} as any // eslint-disable-line @typescript-eslint/no-explicit-any
-		);
+			// Pass envVars with R2 credentials and remote target to enable batch upload (which will fail)
+			await populateCache(
+				createTestBuildOptions(),
+				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				{ target: "remote" as const, shouldUsePreviewId: false },
+				{
+					R2_ACCESS_KEY_ID: "test_access_key",
+					R2_SECRET_ACCESS_KEY: "test_secret_key",
+					CF_ACCOUNT_ID: "test_account_id",
+				} as any // eslint-disable-line @typescript-eslint/no-explicit-any
+			);
 
-		// Should fall back to standard upload when batch upload fails
-		expect(runWrangler).toHaveBeenCalled();
+			// Should fall back to standard upload when batch upload fails
+			expect(runWrangler).toHaveBeenCalled();
+		});
 	});
 });

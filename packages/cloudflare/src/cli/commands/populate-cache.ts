@@ -264,11 +264,11 @@ async function populateR2IncrementalCacheWithBatchUpload(
 
 	if (!accessKey || !secretKey || !accountId) {
 		throw new Error(
-			"Please set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and CF_ACCOUNT_ID environment variables to enable faster batch upload."
+			"Please set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and CF_ACCOUNT_ID environment variables to enable faster batch upload for remote R2."
 		);
 	}
 
-	logger.info("\nPopulating R2 incremental cache using batch upload...");
+	logger.info("\nPopulating remote R2 incremental cache using batch upload...");
 
 	// Create temporary config from env vars - required for batch upload
 	const tempConfigPath = createTempRcloneConfig(accessKey, secretKey, accountId);
@@ -400,8 +400,20 @@ async function populateR2IncrementalCache(
 
 	const assets = getCacheAssets(buildOpts);
 
+	// Force sequential upload for local target
+	if (populateCacheOptions.target === "local") {
+		logger.info("Using sequential upload for local R2 (batch upload only works with remote R2)");
+		return await populateR2IncrementalCacheWithSequentialUpload(
+			buildOpts,
+			bucket,
+			prefix,
+			assets,
+			populateCacheOptions
+		);
+	}
+
 	try {
-		// Attempt batch upload first (using rclone)
+		// Attempt batch upload first (using rclone) - only for remote target
 		return await populateR2IncrementalCacheWithBatchUpload(bucket, prefix, assets, envVars);
 	} catch (error) {
 		logger.warn(`Batch upload failed: ${error instanceof Error ? error.message : error}`);
