@@ -228,7 +228,9 @@ describe("populateCache", () => {
 			setupMockFileSystem();
 
 			// Mock rclone failure - Promise rejection
-			vi.mocked(rcloneModule.promises.copy).mockRejectedValueOnce(new Error("rclone copy failed with exit code 7"));
+			vi.mocked(rcloneModule.promises.copy).mockRejectedValueOnce(
+				new Error("rclone copy failed with exit code 7")
+			);
 
 			vi.mocked(runWrangler).mockClear();
 
