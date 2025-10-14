@@ -12,7 +12,7 @@ import type {
 } from "@opennextjs/aws/types/open-next.js";
 import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides.js";
 import { globSync } from "glob";
-import { promises as rclone } from "rclone.js";
+import rclone from "rclone.js";
 import { tqdm } from "ts-tqdm";
 import type { Unstable_Config as WranglerConfig } from "wrangler";
 import type yargs from "yargs";
@@ -298,10 +298,10 @@ async function populateR2IncrementalCacheWithBatchUpload(
 		const remote = `r2:${bucket}`;
 
 		// Using rclone.js Promise-based API for the copy operation
-		await rclone.copy(stagingDir, remote, {
+		await rclone.promises.copy(stagingDir, remote, {
 			progress: true,
-			transfers: 32,
-			checkers: 16,
+			transfers: 16,
+			checkers: 8,
 			env,
 		});
 
