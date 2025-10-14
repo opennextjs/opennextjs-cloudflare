@@ -1,4 +1,3 @@
-import { spawnSync } from "node:child_process";
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -13,6 +12,7 @@ import type {
 } from "@opennextjs/aws/types/open-next.js";
 import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides.js";
 import { globSync } from "glob";
+import { promises as rclone } from "rclone.js";
 import { tqdm } from "ts-tqdm";
 import type { Unstable_Config as WranglerConfig } from "wrangler";
 import type yargs from "yargs";
@@ -277,6 +277,9 @@ async function populateR2IncrementalCacheWithBatchUpload(
 	const tempDir = tmpdir();
 	const stagingDir = path.join(tempDir, `.r2-staging-${Date.now()}`);
 
+	// Track success to ensure cleanup happens correctly
+	let success = null;
+
 	try {
 		mkdirSync(stagingDir, { recursive: true });
 
@@ -291,30 +294,19 @@ async function populateR2IncrementalCacheWithBatchUpload(
 			copyFileSync(fullPath, destPath);
 		}
 
-		// Use rclone to sync the R2
+		// Use rclone.js to sync the R2
 		const remote = `r2:${bucket}`;
-		const args = [
-			"copy",
-			stagingDir,
-			remote,
-			"--progress",
-			"--transfers=32",
-			"--checkers=16",
-			"--error-on-no-transfer", // Fail if no files transferred
-		];
 
-		const result = spawnSync("rclone", args, {
-			stdio: ["inherit", "inherit", "pipe"], // Capture stderr while showing stdout
+		// Using rclone.js Promise-based API for the copy operation
+		await rclone.copy(stagingDir, remote, {
+			progress: true,
+			transfers: 32,
+			checkers: 16,
 			env,
 		});
 
-		// Check for errors in both exit code and stderr
-		const stderrOutput = result.stderr?.toString().trim();
-		if (result.status !== 0 || stderrOutput) {
-			throw new Error("Batch upload failed.");
-		}
-
 		logger.info(`Successfully uploaded ${assets.length} assets to R2 using batch upload`);
+		success = true;
 	} finally {
 		try {
 			// Cleanup temporary staging directory
@@ -329,6 +321,10 @@ async function populateR2IncrementalCacheWithBatchUpload(
 		} catch {
 			console.warn(`Failed to remove temporary config at ${tempConfigPath}`);
 		}
+	}
+
+	if (!success) {
+		throw new Error("R2 batch upload failed, falling back to sequential uploads...");
 	}
 }
 

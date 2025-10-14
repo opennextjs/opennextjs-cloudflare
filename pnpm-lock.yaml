@@ -1077,6 +1077,9 @@ importers:
       '@opennextjs/aws':
         specifier: 3.8.4
         version: 3.8.4
+      '@types/rclone.js':
+        specifier: ^0.6.3
+        version: 0.6.3
       cloudflare:
         specifier: ^4.4.1
         version: 4.4.1
@@ -4729,6 +4732,9 @@ packages:
 
   '@types/range-parser@1.2.7':
     resolution: {integrity: sha512-hKormJbkJqzQGhziax5PItDUTMAM9uE2XXQmM37dyd4hVM+5aVl7oVxMVUiVQn2oCQFN/LKCZdvSM0pFRqbSmQ==}
+
+  '@types/rclone.js@0.6.3':
+    resolution: {integrity: sha512-BssKAAVRY//fxGKso8SatyOwiD7X0toDofNnVxZlIXmN7UHrn2UBTxldNAjgUvWA91qJyeEPfKmeJpZVhLugXg==}
 
   '@types/react-dom@18.3.0':
     resolution: {integrity: sha512-EhwApuTmMBmXuFOikhQLIBUn6uFg81SwLMOAUgodJF14SOBOCMdU04gDoYi0WOJJHD144TL32z4yDqCW3dnkQg==}
@@ -14188,6 +14194,10 @@ snapshots:
   '@types/qs@6.9.18': {}
 
   '@types/range-parser@1.2.7': {}
+
+  '@types/rclone.js@0.6.3':
+    dependencies:
+      '@types/node': 20.14.10
 
   '@types/react-dom@18.3.0':
     dependencies:
