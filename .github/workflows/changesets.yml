@@ -25,7 +25,9 @@ jobs:
       - name: Install Dependencies
         uses: ./.github/actions/install-dependencies
         with:
-          node-version: 24 # Needs 24 to get a version of npm that can handle trusted publishers
+          # Needs 24 to get a version of npm that can handle trusted publishers
+          # See https://docs.npmjs.com/trusted-publishers
+          node-version: 24
 
       - name: Build Cloudflare package
         run: pnpm run build
