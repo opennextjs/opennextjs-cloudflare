@@ -27,7 +27,6 @@ jobs:
         with:
           node-version: 24 # Needs 24 to get a version of npm that can handle trusted publishers
 
-
       - name: Build Cloudflare package
         run: pnpm run build
 
