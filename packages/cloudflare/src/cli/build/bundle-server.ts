@@ -7,7 +7,8 @@ import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.
 import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
 import { build, type BuildOptions as EsbuildBuildOptions, type Plugin } from "esbuild";
 
-import { getOpenNextConfig, type EsbuildOverride } from "../../api/config.js";
+import type { EsbuildOverride } from "../../api/config.js";
+import { getOpenNextConfig } from "../../api/config.js";
 import type { ProjectOptions } from "../project-options.js";
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
