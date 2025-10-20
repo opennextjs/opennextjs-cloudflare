@@ -11,10 +11,21 @@ import type {
 	Queue,
 	TagCache,
 } from "@opennextjs/aws/types/overrides.js";
+import type { BuildOptions as EsbuildBuildOptions } from "esbuild";
 
 import assetResolver from "./overrides/asset-resolver/index.js";
 
 export type Override<T extends BaseOverride> = "dummy" | T | LazyLoadedOverride<T>;
+export type EsbuildOverride =
+	| Partial<EsbuildBuildOptions>
+	| ((options: EsbuildBuildOptions) => EsbuildBuildOptions);
+
+export type CloudflareEsbuildOverrides = {
+	/**
+	 * Allows customizing the esbuild configuration used when bundling the worker server.
+	 */
+	bundleServer?: EsbuildOverride;
+};
 
 /**
  * Cloudflare specific overrides.
@@ -55,6 +66,11 @@ export type CloudflareOverrides = {
 	 * @default "none"
 	 */
 	routePreloadingBehavior?: RoutePreloadingBehavior;
+
+	/**
+	 * Low-level overrides for the esbuild invocations performed by the Cloudflare adapter.
+	 */
+	esbuild?: CloudflareEsbuildOverrides;
 };
 
 /**
@@ -71,6 +87,7 @@ export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNe
 		cachePurge,
 		enableCacheInterception = false,
 		routePreloadingBehavior = "none",
+		esbuild: esbuildOverrides,
 	} = config;
 
 	return {
@@ -90,6 +107,7 @@ export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNe
 		edgeExternals: ["node:crypto"],
 		cloudflare: {
 			useWorkerdCondition: true,
+			...(esbuildOverrides ? { esbuild: esbuildOverrides } : {}),
 		},
 		dangerous: {
 			enableCacheInterception,
@@ -179,6 +197,11 @@ interface OpenNextConfig extends AwsOpenNextConfig {
 			// @default 7
 			maxVersionAgeDays?: number;
 		};
+
+		/**
+		 * Low-level overrides for the esbuild invocations performed by the Cloudflare adapter.
+		 */
+		esbuild?: CloudflareEsbuildOverrides;
 	};
 }
 

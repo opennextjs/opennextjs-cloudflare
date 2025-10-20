@@ -5,9 +5,9 @@ import { fileURLToPath } from "node:url";
 
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
-import { build, type Plugin } from "esbuild";
+import { build, type BuildOptions as EsbuildBuildOptions, type Plugin } from "esbuild";
 
-import { getOpenNextConfig } from "../../api/config.js";
+import { getOpenNextConfig, type EsbuildOverride } from "../../api/config.js";
 import type { ProjectOptions } from "../project-options.js";
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
@@ -50,6 +50,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 	copyPackageCliFiles(packageDistDir, buildOpts);
 
 	const { appPath, outputDir, monorepoRoot, debug } = buildOpts;
+	const cloudflareConfig = getOpenNextConfig(buildOpts).cloudflare;
 	const baseManifestPath = path.join(
 		outputDir,
 		"server-functions/default",
@@ -71,7 +72,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 
 	const updater = new ContentUpdater(buildOpts);
 
-	const result = await build({
+	const baseEsbuildOptions: EsbuildBuildOptions = {
 		entryPoints: [openNextServer],
 		bundle: true,
 		outfile: openNextServerBundle,
@@ -92,7 +93,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 		// - default nft conditions: https://github.com/vercel/nft/blob/2b55b01/readme.md#exports--imports
 		// - Next no explicit override: https://github.com/vercel/next.js/blob/2efcf11/packages/next/src/build/collect-build-traces.ts#L287
 		// - ESBuild `node` platform: https://esbuild.github.io/api/#platform
-		conditions: getOpenNextConfig(buildOpts).cloudflare?.useWorkerdCondition === false ? [] : ["workerd"],
+		conditions: cloudflareConfig?.useWorkerdCondition === false ? [] : ["workerd"],
 		plugins: [
 			shimRequireHook(buildOpts),
 			inlineDynamicRequires(updater, buildOpts),
@@ -159,7 +160,14 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			js: `import {setInterval, clearInterval, setTimeout, clearTimeout, setImmediate, clearImmediate} from "node:timers"`,
 		},
 		platform: "node",
-	});
+	};
+
+	const resolvedEsbuildOptions = applyEsbuildOverride(
+		baseEsbuildOptions,
+		cloudflareConfig?.esbuild?.bundleServer
+	);
+
+	const result = await build(resolvedEsbuildOptions);
 
 	fs.writeFileSync(openNextServerBundle + ".meta.json", JSON.stringify(result.metafile, null, 2));
 
@@ -185,6 +193,33 @@ export async function updateWorkerBundledCode(workerOutputFile: string): Promise
 	const code = await readFile(workerOutputFile, "utf8");
 	const patchedCode = code.replace(/__require\d?\(/g, "require(").replace(/__require\d?\./g, "require.");
 	await writeFile(workerOutputFile, patchedCode);
+}
+
+function applyEsbuildOverride(
+	baseOptions: EsbuildBuildOptions,
+	override: EsbuildOverride | undefined
+): EsbuildBuildOptions {
+	if (!override) {
+		return baseOptions;
+	}
+
+	if (typeof override === "function") {
+		return override(baseOptions);
+	}
+
+	const merged: EsbuildBuildOptions = {
+		...baseOptions,
+		...override,
+	};
+
+	if (override.logOverride || baseOptions.logOverride) {
+		merged.logOverride = {
+			...baseOptions.logOverride,
+			...override.logOverride,
+		};
+	}
+
+	return merged;
 }
 
 /**
