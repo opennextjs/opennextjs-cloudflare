@@ -63,9 +63,9 @@ export async function build(
 
 	compileCache(options);
 	compileEnvFiles(options);
-	compileInit(options, wranglerConfig);
-	compileImages(options);
-	compileSkewProtection(options, config);
+	await compileInit(options, wranglerConfig);
+	await compileImages(options);
+	await compileSkewProtection(options, config);
 
 	// Compile middleware
 	await createMiddleware(options, { forceOnlyBuildOnce: true });
