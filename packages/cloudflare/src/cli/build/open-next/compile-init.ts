@@ -13,7 +13,7 @@ export async function compileInit(options: BuildOptions, wranglerConfig: Unstabl
 	const templatesDir = path.join(currentDir, "../../templates");
 	const initPath = path.join(templatesDir, "init.js");
 
-	// TODO: need the next config here
+	// TODO: need the wrangler config here
 	const nextConfig = { basePath: "", deploymentId: "", trailingSlash: "" };
 	const basePath = nextConfig.basePath ?? "";
 	const deploymentId = nextConfig.deploymentId ?? "";
