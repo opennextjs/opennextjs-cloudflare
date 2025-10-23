@@ -2,11 +2,13 @@
 // Adapted for cloudflare workers
 
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 
 import { loadMiddlewareManifest } from "@opennextjs/aws/adapters/config/util.js";
 import { bundleNextServer } from "@opennextjs/aws/build/bundleNextServer.js";
 import { compileCache } from "@opennextjs/aws/build/compileCache.js";
+import { copyAdapterFiles } from "@opennextjs/aws/build/copyAdapterFiles.js";
 import { copyTracedFiles } from "@opennextjs/aws/build/copyTracedFiles.js";
 import { copyMiddlewareResources, generateEdgeBundle } from "@opennextjs/aws/build/edge/createEdgeBundle.js";
 import * as buildHelper from "@opennextjs/aws/build/helper.js";
@@ -16,7 +18,7 @@ import { applyCodePatches } from "@opennextjs/aws/build/patch/codePatcher.js";
 import * as awsPatches from "@opennextjs/aws/build/patch/patches/index.js";
 import logger from "@opennextjs/aws/logger.js";
 import { minifyAll } from "@opennextjs/aws/minimize-js.js";
-import type { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
+import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
 import { openNextEdgePlugins } from "@opennextjs/aws/plugins/edge.js";
 import { openNextExternalMiddlewarePlugin } from "@opennextjs/aws/plugins/externalMiddleware.js";
 import { openNextReplacementPlugin } from "@opennextjs/aws/plugins/replacement.js";
@@ -25,11 +27,10 @@ import type { FunctionOptions, SplittedFunctionOptions } from "@opennextjs/aws/t
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import type { Plugin } from "esbuild";
 
-import { getOpenNextConfig } from "../../../api/config.js";
+import type { BuildCompleteCtx } from "../../adapter.js";
 import { patchResRevalidate } from "../patches/plugins/res-revalidate.js";
 import { patchUseCacheIO } from "../patches/plugins/use-cache.js";
 import { normalizePath } from "../utils/index.js";
-import { copyWorkerdPackages } from "../utils/workerd.js";
 
 interface CodeCustomization {
 	// These patches are meant to apply on user and next generated code
@@ -41,7 +42,9 @@ interface CodeCustomization {
 
 export async function createServerBundle(
 	options: buildHelper.BuildOptions,
-	codeCustomization?: CodeCustomization
+	codeCustomization?: CodeCustomization,
+	/* TODO(vicb): optional to be backward compatible */
+	buildCtx?: BuildCompleteCtx
 ) {
 	const { config } = options;
 	const foundRoutes = new Set<string>();
@@ -60,7 +63,7 @@ export async function createServerBundle(
 		if (fnOptions.runtime === "edge") {
 			await generateEdgeBundle(name, options, fnOptions);
 		} else {
-			await generateBundle(name, options, fnOptions, codeCustomization);
+			await generateBundle(name, options, fnOptions, codeCustomization, buildCtx);
 		}
 	});
 
@@ -112,22 +115,31 @@ export async function createServerBundle(
 	}
 
 	// Generate default function
-	await generateBundle("default", options, {
-		...defaultFn,
-		// @ts-expect-error - Those string are RouteTemplate
-		routes: Array.from(remainingRoutes),
-		patterns: ["*"],
-	});
+	await generateBundle(
+		"default",
+		options,
+		{
+			...defaultFn,
+			// @ts-expect-error - Those string are RouteTemplate
+			routes: Array.from(remainingRoutes),
+			patterns: ["*"],
+		},
+		codeCustomization,
+		buildCtx
+	);
 }
 
 async function generateBundle(
 	name: string,
 	options: buildHelper.BuildOptions,
 	fnOptions: SplittedFunctionOptions,
-	codeCustomization?: CodeCustomization
+	codeCustomization?: CodeCustomization,
+	buildCtx?: BuildCompleteCtx
 ) {
 	const { appPath, appBuildOutputPath, config, outputDir, monorepoRoot } = options;
 	logger.info(`Building server function: ${name}...`);
+
+	const require = createRequire(import.meta.url);
 
 	// Create output folder
 	const outputPath = path.join(outputDir, "server-functions", name);
@@ -181,20 +193,36 @@ async function generateBundle(
 	// Copy env files
 	buildHelper.copyEnvFile(appBuildOutputPath, packagePath, outputPath);
 
-	// Copy all necessary traced files
-	const { tracedFiles, manifests, nodePackages } = await copyTracedFiles({
-		buildOutputPath: appBuildOutputPath,
-		packagePath,
-		outputDir: outputPath,
-		routes: fnOptions.routes ?? ["app/page.tsx"],
-		bundledNextServer: isBundled,
-	});
+	let tracedFiles: string[] = [];
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let manifests: any = {};
 
-	if (getOpenNextConfig(options).cloudflare?.useWorkerdCondition !== false) {
-		// Next does not trace the "workerd" build condition
-		// So we need to copy the whole packages using the condition
-		await copyWorkerdPackages(options, nodePackages);
+	// Copy all necessary traced files
+	if (config.dangerous?.useAdapterOutputs) {
+		if (!buildCtx) {
+			throw new Error("should not happen");
+		}
+		tracedFiles = await copyAdapterFiles(options, name, buildCtx.outputs);
+		//TODO: we should load manifests here
+	} else {
+		const oldTracedFileOutput = await copyTracedFiles({
+			buildOutputPath: appBuildOutputPath,
+			packagePath,
+			outputDir: outputPath,
+			routes: fnOptions.routes ?? ["app/page.tsx"],
+			bundledNextServer: isBundled,
+			skipServerFiles: options.config.dangerous?.useAdapterOutputs === true,
+		});
+		tracedFiles = oldTracedFileOutput.tracedFiles;
+		manifests = oldTracedFileOutput.manifests;
 	}
+
+	// TODO(vicb): what should `nodePackages` be for the adapter
+	// if (getOpenNextConfig(options).cloudflare?.useWorkerdCondition !== false) {
+	// 	// Next does not trace the "workerd" build condition
+	// 	// So we need to copy the whole packages using the condition
+	// 	await copyWorkerdPackages(options, nodePackages);
+	// }
 
 	const additionalCodePatches = codeCustomization?.additionalCodePatches ?? [];
 
@@ -229,8 +257,15 @@ async function generateBundle(
 	const isAfter142 = buildHelper.compareSemver(options.nextVersion, ">=", "14.2");
 	const isAfter152 = buildHelper.compareSemver(options.nextVersion, ">=", "15.2.0");
 	const isAfter154 = buildHelper.compareSemver(options.nextVersion, ">=", "15.4.0");
+	const useAdapterHandler = config.dangerous?.useAdapterOutputs === true;
 
 	const disableRouting = isBefore13413 || config.middleware?.external;
+
+	const updater = new ContentUpdater(options);
+
+	const additionalPlugins = codeCustomization?.additionalPlugins
+		? codeCustomization.additionalPlugins(updater)
+		: [];
 
 	const plugins = [
 		openNextReplacementPlugin({
@@ -242,6 +277,7 @@ async function generateBundle(
 				...(isAfter142 ? ["patchAsyncStorage"] : []),
 				...(isAfter141 ? ["appendPrefetch"] : []),
 				...(isAfter154 ? [] : ["setInitialURL"]),
+				...(useAdapterHandler ? ["useRequestHandler"] : ["useAdapterHandler"]),
 			],
 		}),
 		openNextReplacementPlugin({
@@ -253,6 +289,8 @@ async function generateBundle(
 				...(isAfter141 ? ["experimentalIncrementalCacheHandler"] : ["stableIncrementalCache"]),
 				...(isAfter152 ? [""] : ["composableCache"]),
 			],
+			replacements: [require.resolve("@opennextjs/aws/core/util.adapter.js")],
+			entireFile: useAdapterHandler,
 		}),
 
 		openNextResolvePlugin({
@@ -269,6 +307,9 @@ async function generateBundle(
 			nextDir: path.join(options.appBuildOutputPath, ".next"),
 			isInCloudflare: true,
 		}),
+		...additionalPlugins,
+		// The content updater plugin must be the last plugin
+		updater.plugin,
 	];
 
 	const outfileExt = fnOptions.runtime === "deno" ? "ts" : "mjs";
