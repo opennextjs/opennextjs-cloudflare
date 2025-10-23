@@ -3,7 +3,7 @@ description: "Install dependencies, fetching from cache when possible"
 inputs:
   node-version:
     description: the version of Node.js to install
-    default: 20.18.0
+    default: 22
 
 runs:
   using: "composite"

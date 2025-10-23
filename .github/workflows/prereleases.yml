@@ -2,7 +2,7 @@ name: Publish prereleases
 
 on:
   push:
-    branches: [main, experimental]
+    branches: [main, experimental, adapters-api]
   pull_request:
 
 jobs:
