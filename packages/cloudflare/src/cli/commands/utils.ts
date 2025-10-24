@@ -91,8 +91,13 @@ export function getNormalizedOptions(config: OpenNextConfig, buildDir = nextAppD
 	const options = normalizeOptions(config, openNextDistDir, buildDir);
 	logger.setLevel(options.debug ? "debug" : "info");
 
-	return options;
+	return {
+		...options,
+		config,
+	};
 }
+
+export type BuildOptions = ReturnType<typeof getNormalizedOptions>;
 
 /**
  * Read the Wrangler config.
