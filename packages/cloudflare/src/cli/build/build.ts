@@ -17,6 +17,7 @@ import { compileInit } from "./open-next/compile-init.js";
 import { compileSkewProtection } from "./open-next/compile-skew-protection.js";
 import { compileDurableObjects } from "./open-next/compileDurableObjects.js";
 import { createServerBundle } from "./open-next/createServerBundle.js";
+import { validateNextJSCompatibility } from "./utils/validation.js";
 import { getVersion } from "./utils/version.js";
 
 /**
@@ -42,6 +43,9 @@ export async function build(
 	logger.info(`App directory: ${options.appPath}`);
 	buildHelper.printNextjsVersion(options);
 	ensureNextjsVersionSupported(options);
+
+	validateNextJSCompatibility(options);
+
 	const { aws, cloudflare } = getVersion();
 	logger.info(`@opennextjs/cloudflare version: ${cloudflare}`);
 	logger.info(`@opennextjs/aws version: ${aws}`);

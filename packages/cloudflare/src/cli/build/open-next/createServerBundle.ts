@@ -29,6 +29,8 @@ import { getOpenNextConfig } from "../../../api/config.js";
 import { patchResRevalidate } from "../patches/plugins/res-revalidate.js";
 import { patchUseCacheIO } from "../patches/plugins/use-cache.js";
 import { normalizePath } from "../utils/index.js";
+import { getMiddlewareFileName, middlewareFileExists } from "../utils/middleware-detector.js";
+import { logMiddlewareDetection } from "../utils/validation.js";
 import { copyWorkerdPackages } from "../utils/workerd.js";
 
 interface CodeCustomization {
@@ -165,10 +167,20 @@ async function generateBundle(
 
 	// Copy middleware
 	if (!config.middleware?.external) {
-		fs.copyFileSync(
-			path.join(options.buildDir, "middleware.mjs"),
-			path.join(outPackagePath, "middleware.mjs")
-		);
+		const middlewareFileName = getMiddlewareFileName(options, options.buildDir);
+		const sourcePath = path.join(options.buildDir, middlewareFileName);
+		const targetPath = path.join(outPackagePath, middlewareFileName);
+		const found = middlewareFileExists(options, options.buildDir);
+
+		logMiddlewareDetection(options, options.buildDir, middlewareFileName, found);
+
+		if (found) {
+			fs.copyFileSync(sourcePath, targetPath);
+			logger.info(`Copied ${middlewareFileName} from Next.js ${options.nextVersion}`);
+		} else {
+			logger.warn(`No middleware/proxy file found. Expected: ${middlewareFileName}`);
+			logger.warn(`Build directory: ${options.buildDir}`);
+		}
 
 		const middlewareManifest = loadMiddlewareManifest(path.join(options.appBuildOutputPath, ".next"));
 
