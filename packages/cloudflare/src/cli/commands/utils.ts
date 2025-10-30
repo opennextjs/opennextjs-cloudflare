@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
+import url from "node:url";
 
 import { compileOpenNextConfig } from "@opennextjs/aws/build/compileConfig.js";
 import { normalizeOptions } from "@opennextjs/aws/build/helper.js";
@@ -71,7 +72,7 @@ export async function retrieveCompiledConfig() {
 		process.exit(1);
 	}
 
-	const config = await import(configPath).then((mod) => mod.default);
+	const config = await import(url.pathToFileURL(configPath).href).then((mod) => mod.default);
 	ensureCloudflareConfig(config);
 
 	return { config };
