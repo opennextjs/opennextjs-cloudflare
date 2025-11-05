@@ -4,7 +4,7 @@ import shardedTagCache from "@opennextjs/cloudflare/overrides/tag-cache/do-shard
 import doQueue from "@opennextjs/cloudflare/overrides/queue/do-queue";
 import queueCache from "@opennextjs/cloudflare/overrides/queue/queue-cache";
 
-export default defineCloudflareConfig({
+const baseConfig = defineCloudflareConfig({
 	incrementalCache: r2IncrementalCache,
 	// With such a configuration, we could have up to 12 * (8 + 2) = 120 Durable Objects instances
 	tagCache: shardedTagCache({
@@ -24,3 +24,11 @@ export default defineCloudflareConfig({
 	enableCacheInterception: true,
 	queue: queueCache(doQueue),
 });
+
+export default {
+	...baseConfig,
+	dangerous: {
+		...baseConfig.dangerous,
+		middlewareHeadersOverrideNextConfigHeaders: true,
+	},
+};

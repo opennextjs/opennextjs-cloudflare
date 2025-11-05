@@ -103,7 +103,6 @@ test.describe("dynamicParams set to true", () => {
 	test("should be HIT on a path that was prebuilt", async ({ page }) => {
 		const res = await page.goto("/isr/dynamic-params-true/1");
 		expect(res?.status()).toEqual(200);
-		// TODO: sync this to aws
 		const cacheHeader = res?.headers()["x-nextjs-cache"] ?? res?.headers()["x-opennext-cache"];
 		expect(cacheHeader).toEqual("HIT");
 		const title = await page.getByTestId("title").textContent();
@@ -117,7 +116,6 @@ test.describe("dynamicParams set to true", () => {
 	// We are gonna skip this one for now, turborepo caching can cause this page to be STALE once deployed
 	test.skip("should SSR on a path that was not prebuilt", async ({ page }) => {
 		const res = await page.goto("/isr/dynamic-params-true/11");
-		// TODO: sync this to aws
 		const cacheHeader = res?.headers()["x-nextjs-cache"] ?? res?.headers()["x-opennext-cache"];
 		expect(cacheHeader).toEqual("MISS");
 		const title = await page.getByTestId("title").textContent();
@@ -144,7 +142,6 @@ test.describe("dynamicParams set to false", () => {
 	test("should be HIT on a path that was prebuilt", async ({ page }) => {
 		const res = await page.goto("/isr/dynamic-params-false/1");
 		expect(res?.status()).toEqual(200);
-		// TODO: sync this to aws
 		const cacheHeader = res?.headers()["x-nextjs-cache"] ?? res?.headers()["x-opennext-cache"];
 		expect(cacheHeader).toEqual("HIT");
 		const title = await page.getByTestId("title").textContent();
