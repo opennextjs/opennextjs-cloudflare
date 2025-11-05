@@ -17,3 +17,11 @@ test.skip("Image Optimization", async ({ page }) => {
 	await expect(el).toHaveJSProperty("complete", true);
 	await expect(el).not.toHaveJSProperty("naturalWidth", 0);
 });
+
+// Image Optimization is currently not supported: https://github.com/opennextjs/opennextjs-cloudflare/issues/106
+test.skip("should return 400 when validateParams returns an errorMessage", async ({ request }) => {
+	const res = await request.get("/_next/image");
+	expect(res.status()).toBe(400);
+	expect(res.headers()["cache-control"]).toBe("public,max-age=60,immutable");
+	expect(await res.text()).toBe(`"url" parameter is required`);
+});
