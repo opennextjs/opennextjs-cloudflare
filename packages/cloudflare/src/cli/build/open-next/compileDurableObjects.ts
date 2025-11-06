@@ -2,7 +2,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 
 import { loadBuildId, loadPrerenderManifest } from "@opennextjs/aws/adapters/config/util.js";
-import { type BuildOptions, esbuildSync, getPackagePath } from "@opennextjs/aws/build/helper.js";
+import { type BuildOptions, esbuildSync } from "@opennextjs/aws/build/helper.js";
 
 export function compileDurableObjects(buildOpts: BuildOptions) {
 	const _require = createRequire(import.meta.url);
@@ -12,16 +12,11 @@ export function compileDurableObjects(buildOpts: BuildOptions) {
 		_require.resolve("@opennextjs/cloudflare/durable-objects/bucket-cache-purge"),
 	];
 
-	const baseManifestPath = path.join(
-		buildOpts.outputDir,
-		"server-functions/default",
-		getPackagePath(buildOpts),
-		".next"
-	);
+	const buildOutputDotNextDir = path.join(buildOpts.appBuildOutputPath, ".next");
 
-	const prerenderManifest = loadPrerenderManifest(baseManifestPath);
+	const prerenderManifest = loadPrerenderManifest(buildOutputDotNextDir);
 	const previewModeId = prerenderManifest.preview.previewModeId;
-	const BUILD_ID = loadBuildId(baseManifestPath);
+	const BUILD_ID = loadBuildId(buildOutputDotNextDir);
 
 	return esbuildSync(
 		{
