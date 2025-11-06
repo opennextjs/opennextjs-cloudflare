@@ -1,5 +1,17 @@
 # @opennextjs/cloudflare
 
+## 1.11.1
+
+### Patch Changes
+
+- [#968](https://github.com/opennextjs/opennextjs-cloudflare/pull/968) [`ddb0589`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ddb0589ad17cecb06fd789774b1d75b6771af6bf) Thanks [@rgembalik](https://github.com/rgembalik)! - fix: Compiled config is now imported using `pathToFileURL` to avoid crashes on Windows.
+
+- [#958](https://github.com/opennextjs/opennextjs-cloudflare/pull/958) [`7edf91c`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7edf91c7c195cc71f99662ac9e0f039330b2528a) Thanks [@vicb](https://github.com/vicb)! - fix: add missing `await`s
+
+- [#978](https://github.com/opennextjs/opennextjs-cloudflare/pull/978) [`d7ad53e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/d7ad53e6caa277e9a3ad8eee4dc5a0f0a2fe9562) Thanks [@vicb](https://github.com/vicb)! - error early when a node middleware is detected
+
+- [#976](https://github.com/opennextjs/opennextjs-cloudflare/pull/976) [`93f4c8a`](https://github.com/opennextjs/opennextjs-cloudflare/commit/93f4c8a56801a260012e2cab4a2b0aea9df80fb1) Thanks [@rgembalik](https://github.com/rgembalik)! - fix: shell quoting on windows machines to avoid upload errors for routes with `[...path]` segments
+
 ## 1.11.0
 
 ### Minor Changes
