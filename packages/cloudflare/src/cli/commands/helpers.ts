@@ -85,13 +85,13 @@ export async function getEnvFromPlatformProxy(options: GetPlatformProxyOptions, 
 export function quoteShellMeta(arg: string) {
 	if (process.platform === "win32") {
 		if (arg.length === 0) {
-				return '""';
+			return '""';
 		}
 		const needsEscaping = /[&|<>^()%!"]/;
 		const needsQuotes = /\s/.test(arg) || needsEscaping.test(arg);
 		let escaped = arg.replace(/"/g, '""');
 		if (/[&|<>^()%!]/.test(arg)) {
-				escaped = escaped.replace(/[&|<>^()%!]/g, "^$&");
+			escaped = escaped.replace(/[&|<>^()%!]/g, "^$&");
 		}
 		return needsQuotes ? `"${escaped}"` : escaped;
 	}
