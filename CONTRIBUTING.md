@@ -79,16 +79,16 @@ or in watch mode with:
 pnpm --filter cloudflare build:watch
 ```
 
-Build and preview a Next.js sample application. For example, the `api` application:
+Build and preview a Next.js sample application. For example, the `app-router` application:
 
 ```sh
-pnpm --filter api preview
+pnpm --filter app-router preview
 ```
 
 You can skip building the Next.js app when it has not been modified, and only run the Cloudflare adaptor tool:
 
 ```sh
-SKIP_NEXT_APP_BUILD=true pnpm --filter api preview
+SKIP_NEXT_APP_BUILD=true pnpm --filter app-router preview
 ```
 
 ## Checking the code
