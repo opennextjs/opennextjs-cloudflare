@@ -144,10 +144,6 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			// We make sure that environment variables that Next.js expects are properly defined
 			"process.env.NEXT_RUNTIME": '"nodejs"',
 			"process.env.NODE_ENV": '"production"',
-			// The 2 following defines are used to reduce the bundle size by removing unnecessary code
-			// Next uses different precompiled renderers (i.e. `app-page.runtime.prod.js`) based on if you use `TURBOPACK` or some experimental React features
-			// Turbopack is not supported for build at the moment, so we disable it
-			"process.env.TURBOPACK": "false",
 			// This define should be safe to use for Next 14.2+, earlier versions (13.5 and less) will cause trouble
 			"process.env.__NEXT_EXPERIMENTAL_REACT": `${needsExperimentalReact(nextConfig)}`,
 			// Fix `res.validate` in Next 15.4 (together with the `route-module` patch)
