@@ -10,7 +10,7 @@ fix:
   requireChunk(chunkPath)
 `;
 
-export const inlineChunksPatch: CodePatcher = {
+export const patchTurbopackRuntime: CodePatcher = {
 	name: "inline-turbopack-chunks",
 	patches: [
 		{
@@ -64,6 +64,10 @@ ${chunks
 `;
 }
 
+// Turbopack imports `og` via `externalImport`.
+// We patch it to:
+// - add the explicit path so that the file is inlined by wrangler
+// - use the edge version of the module instead of the node version.
 const inlineExternalImportRule = `
 rule:
   pattern: "$RAW = await import($ID)"
