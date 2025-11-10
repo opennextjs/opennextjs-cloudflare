@@ -20,7 +20,8 @@ export const inlineChunksPatch: CodePatcher = {
 			}),
 			contentFilter: /loadRuntimeChunkPath/,
 			patchCode: async ({ code, tracedFiles }) => {
-				const patched = patchCode(code, inlineChunksRule);
+				let patched = patchCode(code, inlineExternalImportRule);
+				patched = patchCode(patched, inlineChunksRule);
 
 				return `${patched}\n${inlineChunksFn(tracedFiles)}`;
 			},
@@ -28,14 +29,17 @@ export const inlineChunksPatch: CodePatcher = {
 	],
 };
 
-function getInlinableChunks(tracedFiles: string[]) {
+function getInlinableChunks(tracedFiles: string[]): string[] {
 	const chunks = new Set<string>();
 	for (const file of tracedFiles) {
-		if (file.includes(".next/server/chunks/") && !file.includes("[turbopack]_runtime.js")) {
+		if (file === "[turbopack]_runtime.js") {
+			continue;
+		}
+		if (file.includes(".next/server/chunks/")) {
 			chunks.add(file);
 		}
 	}
-	return chunks;
+	return Array.from(chunks);
 }
 
 function inlineChunksFn(tracedFiles: string[]) {
@@ -44,12 +48,12 @@ function inlineChunksFn(tracedFiles: string[]) {
 	return `
   function requireChunk(chunkPath) {
     switch(chunkPath) {
-${Array.from(chunks)
+${chunks
 	.map(
 		(chunk) =>
 			`      case "${
 				// we only want the path after /path/to/.next/
-				chunk.replace(/.*\.next\//, "")
+				chunk.replace(/.*\/\.next\//, "")
 			}": return require("${chunk}");`
 	)
 	.join("\n")}
@@ -59,3 +63,20 @@ ${Array.from(chunks)
   }
 `;
 }
+
+const inlineExternalImportRule = `
+rule:
+  pattern: "$RAW = await import($ID)"
+  inside:
+    regex: "externalImport"
+    kind: function_declaration
+    stopBy: end
+fix: |-
+  switch ($ID) {
+    case "next/dist/compiled/@vercel/og/index.node.js":
+      $RAW = await import("next/dist/compiled/@vercel/og/index.edge.js");
+      break;
+    default:
+      $RAW = await import($ID);
+  }
+`;
