@@ -27,9 +27,9 @@ export function configurePlaywright(
 		if (isCI) {
 			// Do not build on CI - there is a preceding build step
 			command = `pnpm preview:worker -- --port ${port} --inspector-port ${inspectorPort} ${env}`;
-			timeout = 200_000;
+			timeout = 800_000;
 		} else {
-			timeout = 500_000;
+			timeout = 800_000;
 			command = `pnpm preview -- --port ${port} --inspector-port ${inspectorPort} ${env}`;
 		}
 	} else {
