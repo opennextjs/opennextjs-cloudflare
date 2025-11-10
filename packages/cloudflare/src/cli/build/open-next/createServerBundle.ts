@@ -289,8 +289,8 @@ async function generateBundle(
 			alias: {
 				...(isBundled
 					? {
-						"next/dist/server/next-server.js": "./next-server.runtime.prod.js",
-					}
+							"next/dist/server/next-server.js": "./next-server.runtime.prod.js",
+						}
 					: {}),
 			},
 		},
