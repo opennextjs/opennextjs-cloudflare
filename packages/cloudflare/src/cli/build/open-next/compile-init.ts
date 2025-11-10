@@ -1,7 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadConfig } from "@opennextjs/aws/adapters/config/util.js";
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { build } from "esbuild";
 import type { Unstable_Config } from "wrangler";
@@ -14,7 +13,8 @@ export async function compileInit(options: BuildOptions, wranglerConfig: Unstabl
 	const templatesDir = path.join(currentDir, "../../templates");
 	const initPath = path.join(templatesDir, "init.js");
 
-	const nextConfig = loadConfig(path.join(options.appBuildOutputPath, ".next"));
+	// TODO: need the wrangler config here
+	const nextConfig = { basePath: "", deploymentId: "", trailingSlash: "" };
 	const basePath = nextConfig.basePath ?? "";
 	const deploymentId = nextConfig.deploymentId ?? "";
 	const trailingSlash = nextConfig.trailingSlash ?? false;

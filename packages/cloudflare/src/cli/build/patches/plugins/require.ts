@@ -43,6 +43,9 @@ export function fixRequire(updater: ContentUpdater): Plugin {
 					`require("next/dist/compiled/@opentelemetry/api")`
 				);
 
+				// The Adapters API build adds i.e. `__require(...)` when inlining the handlers
+				contents = contents.replace(/__require\d?\(/g, "require(").replace(/__require\d?\./g, "require.");
+
 				return contents;
 			},
 		},
