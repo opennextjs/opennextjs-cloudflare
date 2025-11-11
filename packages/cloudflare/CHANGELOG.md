@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 1.12.0
+
+### Minor Changes
+
+- [#973](https://github.com/opennextjs/opennextjs-cloudflare/pull/973) [`8cb7669`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8cb7669b0b394c02798f98f3ba5e311bf44b794e) Thanks [@petebacondarwin](https://github.com/petebacondarwin)! - Add standard Next template generated from create-next-app that will be used by create-cloudflare going forward
+
+- [#983](https://github.com/opennextjs/opennextjs-cloudflare/pull/983) [`68aed26`](https://github.com/opennextjs/opennextjs-cloudflare/commit/68aed2605c3490b8650f9c2a38ca219ffb69318c) Thanks [@vicb](https://github.com/vicb)! - feat: turbopack support
+
 ## 1.11.1
 
 ### Patch Changes
