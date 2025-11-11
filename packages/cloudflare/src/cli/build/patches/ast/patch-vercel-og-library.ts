@@ -24,6 +24,8 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions) {
 	for (const traceInfoPath of globSync(path.join(appBuildOutputPath, ".next/server/**/*.nft.json"), {
 		windowsPathsNoEscape: true,
 	})) {
+		let edgeFilePatched = false;
+
 		const traceInfo: TraceInfo = JSON.parse(readFileSync(traceInfoPath, { encoding: "utf8" }));
 		const tracedNodePath = traceInfo.files.find((p) => p.endsWith("@vercel/og/index.node.js"));
 
@@ -40,17 +42,23 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions) {
 			);
 
 			copyFileSync(tracedEdgePath, outputEdgePath);
+		}
 
+		if (!edgeFilePatched) {
+			edgeFilePatched = true;
 			// Change font fetches in the library to use imports.
 			const node = parseFile(outputEdgePath);
 			const { edits, matches } = patchVercelOgFallbackFont(node);
 			writeFileSync(outputEdgePath, node.commitEdits(edits));
 
-			const fontFileName = matches[0]!.getMatch("PATH")!.text();
-			renameSync(path.join(outputDir, fontFileName), path.join(outputDir, `${fontFileName}.bin`));
+			if (matches.length > 0) {
+				const fontFileName = matches[0]!.getMatch("PATH")!.text();
+				renameSync(path.join(outputDir, fontFileName), path.join(outputDir, `${fontFileName}.bin`));
+			}
 		}
 
 		// Change node imports for the library to edge imports.
+		// This is only useful when turbopack is not used to bundle the function.
 		const routeFilePath = traceInfoPath.replace(appBuildOutputPath, packagePath).replace(".nft.json", "");
 
 		const node = parseFile(routeFilePath);
