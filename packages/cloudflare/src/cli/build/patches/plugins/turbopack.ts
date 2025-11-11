@@ -68,6 +68,9 @@ ${chunks
 // We patch it to:
 // - add the explicit path so that the file is inlined by wrangler
 // - use the edge version of the module instead of the node version.
+//
+// Modules that are not inlined (no added to the switch), would generate an error similar to:
+// Failed to load external module path/to/module: Error: No such module "path/to/module"
 const inlineExternalImportRule = `
 rule:
   pattern: "$RAW = await import($ID)"

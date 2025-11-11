@@ -58,7 +58,7 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions) {
 		}
 
 		// Change node imports for the library to edge imports.
-		// This is only useful when tubopack is not used to bundle the function.
+		// This is only useful when turbopack is not used to bundle the function.
 		const routeFilePath = traceInfoPath.replace(appBuildOutputPath, packagePath).replace(".nft.json", "");
 
 		const node = parseFile(routeFilePath);
