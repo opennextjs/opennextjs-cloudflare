@@ -50,14 +50,11 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 	copyPackageCliFiles(packageDistDir, buildOpts);
 
 	const { appPath, outputDir, monorepoRoot, debug } = buildOpts;
-	const baseManifestPath = path.join(
-		outputDir,
-		"server-functions/default",
-		getPackagePath(buildOpts),
-		".next"
-	);
-	const serverFiles = path.join(baseManifestPath, "required-server-files.json");
+	const dotNextPath = path.join(outputDir, "server-functions/default", getPackagePath(buildOpts), ".next");
+	const serverFiles = path.join(dotNextPath, "required-server-files.json");
 	const nextConfig = JSON.parse(fs.readFileSync(serverFiles, "utf-8")).config;
+
+	const useTurbopack = fs.existsSync(path.join(dotNextPath, "server/chunks/[turbopack]_runtime.js"));
 
 	console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
 
@@ -141,6 +138,9 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			// Note: we need the __non_webpack_require__ variable declared as it is used by next-server:
 			// https://github.com/vercel/next.js/blob/be0c3283/packages/next/src/server/next-server.ts#L116-L119
 			__non_webpack_require__: "require",
+			// The 2 following defines are used to reduce the bundle size by removing unnecessary code
+			// Next uses different precompiled renderers (i.e. `app-page.runtime.prod.js`) based on if you use `TURBOPACK` or some experimental React features
+			...(useTurbopack ? {} : { "process.env.TURBOPACK": "false" }),
 			// We make sure that environment variables that Next.js expects are properly defined
 			"process.env.NEXT_RUNTIME": '"nodejs"',
 			"process.env.NODE_ENV": '"production"',
