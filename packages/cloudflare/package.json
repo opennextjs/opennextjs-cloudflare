@@ -55,11 +55,9 @@
 		"@ast-grep/napi": "0.40.0",
 		"@dotenvx/dotenvx": "catalog:",
 		"@opennextjs/aws": "3.8.5",
-		"@types/rclone.js": "^0.6.3",
 		"cloudflare": "^4.4.1",
 		"enquirer": "^2.4.1",
 		"glob": "catalog:",
-		"rclone.js": "^0.6.6",
 		"ts-tqdm": "^0.8.6",
 		"yargs": "catalog:"
 	},
