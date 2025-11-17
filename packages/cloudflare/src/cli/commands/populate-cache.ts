@@ -375,7 +375,9 @@ async function populateR2IncrementalCache(
 ) {
 	logger.info("\nPopulating R2 incremental cache...");
 
-	const binding = config.r2_buckets.find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
+	const binding = config.r2_buckets.find(
+		({ binding }: { binding: string }) => binding === R2_CACHE_BINDING_NAME
+	);
 	if (!binding) {
 		throw new Error(`No R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} found!`);
 	}
@@ -427,7 +429,9 @@ async function populateKVIncrementalCache(
 ) {
 	logger.info("\nPopulating KV incremental cache...");
 
-	const binding = config.kv_namespaces.find(({ binding }) => binding === KV_CACHE_BINDING_NAME);
+	const binding = config.kv_namespaces.find(
+		({ binding }: { binding: string }) => binding === KV_CACHE_BINDING_NAME
+	);
 	if (!binding) {
 		throw new Error(`No KV binding ${JSON.stringify(KV_CACHE_BINDING_NAME)} found!`);
 	}
@@ -486,7 +490,9 @@ function populateD1TagCache(
 ) {
 	logger.info("\nCreating D1 table if necessary...");
 
-	const binding = config.d1_databases.find(({ binding }) => binding === D1_TAG_BINDING_NAME);
+	const binding = config.d1_databases.find(
+		({ binding }: { binding: string }) => binding === D1_TAG_BINDING_NAME
+	);
 	if (!binding) {
 		throw new Error(`No D1 binding ${JSON.stringify(D1_TAG_BINDING_NAME)} found!`);
 	}
