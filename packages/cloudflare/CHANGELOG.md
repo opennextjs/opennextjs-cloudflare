@@ -1,5 +1,17 @@
 # @opennextjs/cloudflare
 
+## 1.13.0
+
+### Minor Changes
+
+- [#991](https://github.com/opennextjs/opennextjs-cloudflare/pull/991) [`b95e7ca`](https://github.com/opennextjs/opennextjs-cloudflare/commit/b95e7cad48b61524ed7c646a8247b1757f5c0171) Thanks [@vicb](https://github.com/vicb)! - use `wrangler r2 bulk put` for R2 cache population
+
+### Patch Changes
+
+- [#994](https://github.com/opennextjs/opennextjs-cloudflare/pull/994) [`ab2d805`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ab2d8051cdc1f54cc4dc787ae55581b062683a5a) Thanks [@vicb](https://github.com/vicb)! - bump `@opennextjs/aws` to 3.9.0
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v3.9.0>
+
 ## 1.12.0
 
 ### Minor Changes
