@@ -129,7 +129,7 @@ export function withWranglerOptions<T extends yargs.Argv>(args: T) {
 
 type WranglerInputArgs = {
 	configPath: string | undefined;
-	config: string | undefined;
+	config: string | string[] | undefined;
 	env: string | undefined;
 	remote?: boolean | undefined;
 };
@@ -151,9 +151,11 @@ function getWranglerArgs(args: WranglerInputArgs & { _: (string | number)[] }): 
 		}
 	}
 
+	const configValues = [args.config].flat().filter((v): v is string => Boolean(v));
+
 	return [
 		...(args.configPath ? ["--config", args.configPath] : []),
-		...(args.config ? ["--config", args.config] : []),
+		...(configValues.length > 0 ? configValues.flatMap((config) => ["--config", config]) : []),
 		...(args.env ? ["--env", args.env] : []),
 		...(args.remote ? ["--remote"] : []),
 		// Note: the first args in `_` will be the commands.
@@ -169,9 +171,10 @@ function getWranglerArgs(args: WranglerInputArgs & { _: (string | number)[] }): 
 export function withWranglerPassthroughArgs<T extends yargs.ArgumentsCamelCase<WranglerInputArgs>>(
 	args: T
 ): WithWranglerArgs<T> {
+	const [config] = [args.config].flat().filter(Boolean);
 	return {
 		...args,
-		wranglerConfigPath: args.config ?? args.configPath,
+		wranglerConfigPath: config ?? args.configPath,
 		wranglerArgs: getWranglerArgs(args),
 	};
 }
