@@ -13,120 +13,463 @@ export type LocalPattern = {
 	search?: string;
 };
 
-let NEXT_IMAGE_REGEXP: RegExp;
-
-/**
- * Fetches an images.
- *
- * Local images (starting with a '/' as fetched using the passed fetcher).
- * Remote images should match the configured remote patterns or a 404 response is returned.
- */
-export async function fetchImage(fetcher: Fetcher | undefined, imageUrl: string, ctx: ExecutionContext) {
-	// https://github.com/vercel/next.js/blob/d76f0b1/packages/next/src/server/image-optimizer.ts#L208
-	if (!imageUrl || imageUrl.length > 3072 || imageUrl.startsWith("//")) {
-		return getUrlErrorResponse();
+export async function handleImageRequest(
+	requestURL: URL,
+	requestHeaders: Headers,
+	env: CloudflareEnv
+): Promise<Response> {
+	const parseResult = parseImageRequest(requestURL, requestHeaders);
+	if (!parseResult.ok) {
+		return new Response(parseResult.message, {
+			status: 400,
+		});
 	}
 
-	// Local
-	if (imageUrl.startsWith("/")) {
-		// @ts-expect-error TS2339 Missing types for URL.parse
-		const url = URL.parse(imageUrl, "http://n");
-
-		if (url == null) {
-			return getUrlErrorResponse();
+	let imageResponse: Response;
+	if (parseResult.url.startsWith("/")) {
+		if (env.ASSETS === undefined) {
+			console.error("env.ASSETS binding is not defined.");
+			return new Response('"url" parameter is valid but upstream response is invalid', {
+				status: 404,
+			});
 		}
-
-		// This method will never throw because URL parser will handle invalid input.
-		const pathname = decodeURIComponent(url.pathname);
-
-		NEXT_IMAGE_REGEXP ??= /\/_next\/image($|\/)/;
-		if (NEXT_IMAGE_REGEXP.test(pathname)) {
-			return getUrlErrorResponse();
+		const absoluteURL = new URL(parseResult.url, requestURL);
+		imageResponse = await env.ASSETS.fetch(absoluteURL);
+	} else {
+		const fetchImageResult = await fetchImage(parseResult.url, __IMAGES_MAX_REDIRECTS__);
+		if (!fetchImageResult.ok) {
+			if (fetchImageResult.error === "timed_out") {
+				return new Response('"url" parameter is valid but upstream response timed out', {
+					status: 504,
+				});
+			}
+			if (fetchImageResult.error === "too_many_redirects") {
+				return new Response('"url" parameter is valid but upstream response is invalid', {
+					status: 508,
+				});
+			}
+			throw new Error("Failed to fetch image");
 		}
-
-		// If localPatterns are not defined all local images are allowed.
-		if (
-			__IMAGES_LOCAL_PATTERNS__.length > 0 &&
-			!__IMAGES_LOCAL_PATTERNS__.some((p: LocalPattern) => matchLocalPattern(p, url))
-		) {
-			return getUrlErrorResponse();
-		}
-
-		return fetcher?.fetch(`http://assets.local${imageUrl}`);
+		imageResponse = fetchImageResult.response;
 	}
 
-	// Remote
-	let url: URL;
-	try {
-		url = new URL(imageUrl);
-	} catch {
-		return getUrlErrorResponse();
+	if (imageResponse.status !== 200 || imageResponse.body === null) {
+		return new Response('"url" parameter is valid but upstream response is invalid', {
+			status: imageResponse.status,
+		});
 	}
 
-	if (url.protocol !== "http:" && url.protocol !== "https:") {
-		return getUrlErrorResponse();
+	let immutable = false;
+	if (parseResult.static) {
+		immutable = true;
+	} else {
+		const cacheControlHeader = imageResponse.headers.get("Cache-Control");
+		if (cacheControlHeader !== null) {
+			immutable = cacheControlHeader.includes("immutable");
+		}
 	}
 
-	// The remotePatterns is used to allow images from specific remote external paths and block all others.
-	if (!__IMAGES_REMOTE_PATTERNS__.some((p: RemotePattern) => matchRemotePattern(p, url))) {
-		return getUrlErrorResponse();
+	const [contentTypeImageStream, imageStream] = imageResponse.body.tee();
+	const imageHeaderBytes = new Uint8Array(32);
+	const contentTypeImageReader = contentTypeImageStream.getReader({
+		mode: "byob",
+	});
+	const readImageHeaderBytesResult = await contentTypeImageReader.readAtLeast(32, imageHeaderBytes);
+	if (readImageHeaderBytesResult.value === undefined) {
+		await imageResponse.body.cancel();
+
+		return new Response('"url" parameter is valid but upstream response is invalid', {
+			status: imageResponse.status,
+		});
 	}
-
-	const imgResponse = await fetch(imageUrl, { cf: { cacheEverything: true } });
-
-	if (!imgResponse.body) {
-		return imgResponse;
-	}
-
-	const buffer = new ArrayBuffer(32);
-
-	try {
-		let contentType: string | undefined;
-		// respBody is eventually used for the response
-		// contentBody is used to detect the content type
-		const [respBody, contentBody] = imgResponse.body.tee();
-		const reader = contentBody.getReader({ mode: "byob" });
-		const { value } = await reader.read(new Uint8Array(buffer));
-		// Release resources by calling `reader.cancel()`
-		// `ctx.waitUntil` keeps the runtime running until the promise settles without having to wait here.
-		ctx.waitUntil(reader.cancel());
-
-		if (value) {
-			contentType = detectContentType(value);
-		}
-
-		if (!contentType) {
-			// Fallback to upstream header when the type can not be detected
-			// https://github.com/vercel/next.js/blob/d76f0b1/packages/next/src/server/image-optimizer.ts#L748
-			contentType = imgResponse.headers.get("content-type") ?? "";
-		}
-
-		// Sanitize the content type:
-		// - Accept images only
-		// - Reject multiple content types
-		if (!contentType.startsWith("image/") || contentType.includes(",")) {
-			contentType = undefined;
-		}
-
-		if (contentType && !(contentType === SVG && !__IMAGES_ALLOW_SVG__)) {
-			const headers = new Headers(imgResponse.headers);
-			headers.set("content-type", contentType);
-			headers.set("content-disposition", __IMAGES_CONTENT_DISPOSITION__);
-			headers.set("content-security-policy", __IMAGES_CONTENT_SECURITY_POLICY__);
-			return new Response(respBody, { ...imgResponse, headers });
-		}
-
-		// Cancel the unused stream
-		ctx.waitUntil(respBody.cancel());
-
+	const contentType = detectImageContentType(readImageHeaderBytesResult.value);
+	if (contentType === null) {
 		return new Response('"url" parameter is valid but image type is not allowed', {
 			status: 400,
 		});
-	} catch {
-		return new Response('"url" parameter is valid but upstream response is invalid', {
-			status: 400,
-		});
 	}
+	if (contentType === SVG) {
+		if (!__IMAGES_ALLOW_SVG__) {
+			return new Response('"url" parameter is valid but image type is not allowed', {
+				status: 400,
+			});
+		}
+		const response = createImageResponse(imageStream, contentType, {
+			immutable,
+		});
+		return response;
+	}
+
+	if (contentType === GIF) {
+		if (env.IMAGES === undefined) {
+			console.warn("env.IMAGES binding is not defined.");
+			const response = createImageResponse(imageStream, contentType, {
+				immutable,
+			});
+			return response;
+		}
+
+		const imageSource = env.IMAGES.input(imageStream);
+		const imageTransformationResult = await imageSource
+			.transform({
+				width: parseResult.width,
+				fit: "scale-down",
+			})
+			.output({
+				quality: parseResult.quality,
+				format: GIF,
+			});
+		const outputImageStream = imageTransformationResult.image();
+		const response = createImageResponse(outputImageStream, GIF, {
+			immutable,
+		});
+		return response;
+	}
+
+	if (contentType === AVIF || contentType === WEBP || contentType === JPEG || contentType === PNG) {
+		if (env.IMAGES === undefined) {
+			console.warn("env.IMAGES binding is not defined.");
+			const response = createImageResponse(imageStream, contentType, {
+				immutable,
+			});
+			return response;
+		}
+
+		const outputFormat = parseResult.format ?? contentType;
+		const imageSource = env.IMAGES.input(imageStream);
+		const imageTransformationResult = await imageSource
+			.transform({
+				width: parseResult.width,
+				fit: "scale-down",
+			})
+			.output({
+				quality: parseResult.quality,
+				format: outputFormat,
+			});
+		const outputImageStream = imageTransformationResult.image();
+		const response = createImageResponse(outputImageStream, outputFormat, {
+			immutable,
+		});
+		return response;
+	}
+
+	await imageResponse.body.cancel();
+
+	return new Response('"url" parameter is valid but image type is not allowed', {
+		status: 400,
+	});
+}
+
+async function fetchImage(url: string, count: number): Promise<FetchImageResult> {
+	let response: Response;
+	try {
+		response = await fetch(url, {
+			signal: AbortSignal.timeout(7_000),
+			redirect: "manual",
+		});
+	} catch (e) {
+		if (e instanceof Error && e.name === "TimeoutError") {
+			const result: FetchImageErrorResult = {
+				ok: false,
+				error: "timed_out",
+			};
+			return result;
+		}
+		throw e;
+	}
+	if (redirectResponseStatuses.includes(response.status)) {
+		const locationHeader = response.headers.get("Location");
+		if (locationHeader !== null) {
+			if (count < 1) {
+				const result: FetchImageErrorResult = {
+					ok: false,
+					error: "too_many_redirects",
+				};
+				return result;
+			}
+			let redirectTarget: string;
+			if (locationHeader.startsWith("/")) {
+				redirectTarget = new URL(locationHeader, url).href;
+			} else {
+				redirectTarget = locationHeader;
+			}
+			const result = await fetchImage(redirectTarget, count - 1);
+			return result;
+		}
+	}
+	const result: FetchImageSuccessResult = {
+		ok: true,
+		response: response,
+	};
+	return result;
+}
+
+type FetchImageResult = FetchImageSuccessResult | FetchImageErrorResult;
+
+type FetchImageSuccessResult = {
+	ok: true;
+	response: Response;
+};
+
+type FetchImageErrorResult = {
+	ok: false;
+	error: FetchImageError;
+};
+
+type FetchImageError = "timed_out" | "too_many_redirects";
+
+const redirectResponseStatuses = [301, 302, 303, 307, 308];
+
+function createImageResponse(
+	image: ReadableStream,
+	contentType: string,
+	imageResponseFlags: ImageResponseFlags
+): Response {
+	const response = new Response(image);
+	response.headers.set("Vary", "Accept");
+	response.headers.set("Content-Type", contentType);
+	response.headers.set("Content-Disposition", __IMAGES_CONTENT_DISPOSITION__);
+	response.headers.set("Content-Security-Policy", __IMAGES_CONTENT_SECURITY_POLICY__);
+	if (imageResponseFlags.immutable) {
+		response.headers.set("Cache-Control", "public, max-age=315360000, immutable");
+	}
+	return response;
+}
+
+type ImageResponseFlags = {
+	immutable: boolean;
+};
+
+function parseImageRequest(requestURL: URL, requestHeaders: Headers): ParseImageRequestURLResult {
+	const deviceSizes: number[] = __IMAGES_DEVICE_SIZES__;
+	const imageSizes: number[] = __IMAGES_IMAGE_SIZES__;
+	// const minimumCacheTTLSeconds = __IMAGES_MINIMUM_CACHE_TTL__;
+	const formats = __IMAGES_FORMATS__;
+	const remotePatterns = __IMAGES_REMOTE_PATTERNS__;
+	const localPatterns = __IMAGES_LOCAL_PATTERNS__;
+	const qualities: number[] = __IMAGES_QUALITIES__;
+
+	const urlQueryValues = requestURL.searchParams.getAll("url");
+	if (urlQueryValues.length < 1) {
+		const result: ErrorResult = {
+			ok: false,
+			message: '"url" parameter is required',
+		};
+		return result;
+	}
+	if (urlQueryValues.length > 1) {
+		const result: ErrorResult = {
+			ok: false,
+			message: '"url" parameter cannot be an array',
+		};
+		return result;
+	}
+	const urlQueryValue = urlQueryValues[0]!;
+	if (urlQueryValue.length > 3072) {
+		const result: ErrorResult = {
+			ok: false,
+			message: '"url" parameter is too long',
+		};
+		return result;
+	}
+	if (urlQueryValue.startsWith("//")) {
+		const result: ErrorResult = {
+			ok: false,
+			message: '"url" parameter cannot be a protocol-relative URL (//)',
+		};
+		return result;
+	}
+
+	let url: string;
+	if (urlQueryValue.startsWith("/")) {
+		url = urlQueryValue;
+
+		const pathname = getPathnameFromRelativeURL(url);
+		if (/\/_next\/image($|\/)/.test(decodeURIComponent(pathname))) {
+			const result: ErrorResult = {
+				ok: false,
+				message: '"url" parameter cannot be recursive',
+			};
+			return result;
+		}
+		if (__IMAGES_LOCAL_PATTERNS_DEFINED__) {
+			if (!hasLocalMatch(localPatterns, url)) {
+				const result: ErrorResult = { ok: false, message: '"url" parameter is not allowed' };
+				return result;
+			}
+		}
+	} else {
+		let parsedURL: URL;
+		try {
+			parsedURL = new URL(urlQueryValue);
+		} catch {
+			const result: ErrorResult = { ok: false, message: '"url" parameter is invalid' };
+			return result;
+		}
+
+		const validProtocols = ["http:", "https:"];
+		if (!validProtocols.includes(parsedURL.protocol)) {
+			const result: ErrorResult = {
+				ok: false,
+				message: '"url" parameter is invalid',
+			};
+			return result;
+		}
+		if (!hasRemoteMatch(remotePatterns, parsedURL)) {
+			const result: ErrorResult = {
+				ok: false,
+				message: '"url" parameter is not allowed',
+			};
+			return result;
+		}
+
+		url = parsedURL.href;
+	}
+	const staticAsset = url.startsWith(`${__NEXT_BASE_PATH__ || ""}/_next/static/media`);
+
+	const widthQueryValues = requestURL.searchParams.getAll("w");
+	if (widthQueryValues.length < 1) {
+		const result: ErrorResult = {
+			ok: false,
+			message: '"w" parameter (width) is required',
+		};
+		return result;
+	}
+	if (widthQueryValues.length > 1) {
+		const result: ErrorResult = {
+			ok: false,
+			message: '"w" parameter (width) cannot be an array',
+		};
+		return result;
+	}
+	const widthQueryValue = widthQueryValues[0]!;
+	if (!/^[0-9]+$/.test(widthQueryValue)) {
+		const result: ErrorResult = {
+			ok: false,
+			message: '"w" parameter (width) must be an integer greater than 0',
+		};
+		return result;
+	}
+	const width = parseInt(widthQueryValue, 10);
+	if (width <= 0 || isNaN(width)) {
+		const result: ErrorResult = {
+			ok: false,
+			message: '"w" parameter (width) must be an integer greater than 0',
+		};
+		return result;
+	}
+
+	const sizeValid = deviceSizes.includes(width) || imageSizes.includes(width);
+	if (!sizeValid) {
+		const result: ErrorResult = {
+			ok: false,
+			message: `"w" parameter (width) of ${width} is not allowed`,
+		};
+		return result;
+	}
+
+	const qualityQueryValues = requestURL.searchParams.getAll("q");
+	if (qualityQueryValues.length < 1) {
+		const result: ErrorResult = {
+			ok: false,
+			message: '"q" parameter (quality) is required',
+		};
+		return result;
+	}
+	if (qualityQueryValues.length > 1) {
+		const result: ErrorResult = {
+			ok: false,
+			message: '"q" parameter (quality) cannot be an array',
+		};
+		return result;
+	}
+	const qualityQueryValue = qualityQueryValues[0]!;
+	if (!/^[0-9]+$/.test(qualityQueryValue)) {
+		const result: ErrorResult = {
+			ok: false,
+			message: '"q" parameter (quality) must be an integer between 1 and 100',
+		};
+		return result;
+	}
+	const quality = parseInt(qualityQueryValue, 10);
+	if (isNaN(quality) || quality < 1 || quality > 100) {
+		const result: ErrorResult = {
+			ok: false,
+			message: '"q" parameter (quality) must be an integer between 1 and 100',
+		};
+		return result;
+	}
+	if (!qualities.includes(quality)) {
+		const result: ErrorResult = {
+			ok: false,
+			message: `"w" parameter (width) of ${width} is not allowed`,
+		};
+		return result;
+	}
+
+	const acceptHeader = requestHeaders.get("Accept") ?? "";
+	let format: OptimizedImageFormat | null = null;
+	// Find a more specific format that the client accepts.
+	for (const allowedFormat of formats) {
+		if (acceptHeader.includes(allowedFormat)) {
+			format = allowedFormat;
+			break;
+		}
+	}
+
+	const result: ParseImageRequestURLSuccessResult = {
+		ok: true,
+		url: url,
+		width: width,
+		quality: quality,
+		format: format,
+		static: staticAsset,
+	};
+	return result;
+}
+
+type ParseImageRequestURLResult = ParseImageRequestURLSuccessResult | ErrorResult;
+
+type ParseImageRequestURLSuccessResult = {
+	ok: true;
+	/** Absolute or relative URL. */
+	url: string;
+	width: number;
+	quality: number;
+	format: OptimizedImageFormat | null;
+	static: boolean;
+};
+
+export type OptimizedImageFormat = "image/avif" | "image/webp";
+
+type ErrorResult = {
+	ok: false;
+	message: string;
+};
+
+function getPathnameFromRelativeURL(relativeURL: string): string {
+	return relativeURL.split("?")[0]!;
+}
+
+function hasLocalMatch(localPatterns: LocalPattern[], relativeURL: string): boolean {
+	const pathname = getPathnameFromRelativeURL(relativeURL);
+	for (const localPattern of localPatterns) {
+		const patternRegExp = new RegExp(localPattern.pathname);
+		if (patternRegExp.test(pathname)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+function hasRemoteMatch(remotePatterns: RemotePattern[], url: URL): boolean {
+	for (const remotePattern of remotePatterns) {
+		const matched = matchRemotePattern(remotePattern, url);
+		if (matched) {
+			return true;
+		}
+	}
+	return false;
 }
 
 export function matchRemotePattern(pattern: RemotePattern, url: URL): boolean {
@@ -163,28 +506,22 @@ export function matchLocalPattern(pattern: LocalPattern, url: URL): boolean {
 	return new RegExp(pattern.pathname).test(url.pathname);
 }
 
-/**
- * @returns same error as Next.js when the url query parameter is not accepted.
- */
-function getUrlErrorResponse() {
-	return new Response(`"url" parameter is not allowed`, { status: 400 });
-}
-
 const AVIF = "image/avif";
 const WEBP = "image/webp";
 const PNG = "image/png";
 const JPEG = "image/jpeg";
-const JXL = "image/jxl";
-const JP2 = "image/jp2";
 const HEIC = "image/heic";
 const GIF = "image/gif";
 const SVG = "image/svg+xml";
-const ICO = "image/x-icon";
-const ICNS = "image/x-icns";
-const TIFF = "image/tiff";
-const BMP = "image/bmp";
-// pdf will be rejected (not an `image/...` type)
-const PDF = "application/pdf";
+
+type ImageContentType =
+	| "image/avif"
+	| "image/webp"
+	| "image/png"
+	| "image/jpeg"
+	| "image/heic"
+	| "image/gif"
+	| "image/svg+xml";
 
 /**
  * Detects the content type by looking at the first few bytes of a file
@@ -194,7 +531,7 @@ const PDF = "application/pdf";
  * @param buffer The image bytes
  * @returns a content type of undefined for unsupported content
  */
-export function detectContentType(buffer: Uint8Array) {
+export function detectImageContentType(buffer: Uint8Array): ImageContentType | null {
 	if ([0xff, 0xd8, 0xff].every((b, i) => buffer[i] === b)) {
 		return JPEG;
 	}
@@ -216,43 +553,25 @@ export function detectContentType(buffer: Uint8Array) {
 	if ([0, 0, 0, 0, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66].every((b, i) => !b || buffer[i] === b)) {
 		return AVIF;
 	}
-	if ([0x00, 0x00, 0x01, 0x00].every((b, i) => buffer[i] === b)) {
-		return ICO;
-	}
-	if ([0x69, 0x63, 0x6e, 0x73].every((b, i) => buffer[i] === b)) {
-		return ICNS;
-	}
-	if ([0x49, 0x49, 0x2a, 0x00].every((b, i) => buffer[i] === b)) {
-		return TIFF;
-	}
-	if ([0x42, 0x4d].every((b, i) => buffer[i] === b)) {
-		return BMP;
-	}
-	if ([0xff, 0x0a].every((b, i) => buffer[i] === b)) {
-		return JXL;
-	}
-	if (
-		[0x00, 0x00, 0x00, 0x0c, 0x4a, 0x58, 0x4c, 0x20, 0x0d, 0x0a, 0x87, 0x0a].every((b, i) => buffer[i] === b)
-	) {
-		return JXL;
-	}
 	if ([0, 0, 0, 0, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63].every((b, i) => !b || buffer[i] === b)) {
 		return HEIC;
 	}
-	if ([0x25, 0x50, 0x44, 0x46, 0x2d].every((b, i) => buffer[i] === b)) {
-		return PDF;
-	}
-	if (
-		[0x00, 0x00, 0x00, 0x0c, 0x6a, 0x50, 0x20, 0x20, 0x0d, 0x0a, 0x87, 0x0a].every((b, i) => buffer[i] === b)
-	) {
-		return JP2;
-	}
+	return null;
 }
 
 declare global {
 	var __IMAGES_REMOTE_PATTERNS__: RemotePattern[];
+	var __IMAGES_LOCAL_PATTERNS_DEFINED__: boolean;
 	var __IMAGES_LOCAL_PATTERNS__: LocalPattern[];
+	var __IMAGES_DEVICE_SIZES__: number[];
+	var __IMAGES_IMAGE_SIZES__: number[];
+	var __IMAGES_QUALITIES__: number[];
+	var __IMAGES_FORMATS__: NextConfigImageFormat[];
+	var __IMAGES_MINIMUM_CACHE_TTL__: number;
 	var __IMAGES_ALLOW_SVG__: boolean;
 	var __IMAGES_CONTENT_SECURITY_POLICY__: string;
 	var __IMAGES_CONTENT_DISPOSITION__: string;
+	var __IMAGES_MAX_REDIRECTS__: number;
+
+	type NextConfigImageFormat = "image/avif" | "image/webp";
 }

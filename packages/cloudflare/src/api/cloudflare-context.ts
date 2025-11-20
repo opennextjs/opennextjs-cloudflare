@@ -13,6 +13,9 @@ declare global {
 		// Asset binding
 		ASSETS?: Fetcher;
 
+		// Images binding
+		IMAGES?: ImagesBinding;
+
 		// Environment to use when loading Next `.env` files
 		// Default to "production"
 		NEXTJS_ENV?: string;
