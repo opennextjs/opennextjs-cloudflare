@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 1.13.1
+
+### Patch Changes
+
+- [#1001](https://github.com/opennextjs/opennextjs-cloudflare/pull/1001) [`fdf61b4`](https://github.com/opennextjs/opennextjs-cloudflare/commit/fdf61b45b14896de2ff7f61628fd2667c9365552) Thanks [@vicb](https://github.com/vicb)! - Bump wrangler to ^4.49.1
+
+- [#998](https://github.com/opennextjs/opennextjs-cloudflare/pull/998) [`f69787c`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f69787ce4c5a4b6a9905d927ba84f5fe96486d4d) Thanks [@vicb](https://github.com/vicb)! - Warn when using Next 16
+
 ## 1.13.0
 
 ### Minor Changes
