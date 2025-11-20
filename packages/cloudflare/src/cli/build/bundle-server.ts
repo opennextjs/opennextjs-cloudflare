@@ -3,11 +3,12 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
+import { getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
 import { build, type Plugin } from "esbuild";
 
 import { getOpenNextConfig } from "../../api/config.js";
+import { BuildOptions } from "../commands/utils.js";
 import type { ProjectOptions } from "../project-options.js";
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
@@ -108,7 +109,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			// Apply updater updates, must be the last plugin
 			updater.plugin,
 		] as Plugin[],
-		external: ["./middleware/handler.mjs"],
+		external: ["./middleware/handler.mjs", ...buildOpts.config.serverExternals || []],
 		alias: {
 			// Workers have `fetch` so the `node-fetch` polyfill is not needed
 			"next/dist/compiled/node-fetch": path.join(buildOpts.outputDir, "cloudflare-templates/shims/fetch.js"),
