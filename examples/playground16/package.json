@@ -1,0 +1,32 @@
+{
+	"name": "playground16",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"dev": "next dev --webpack",
+		"build": "next build --webpack",
+		"start": "next start",
+		"lint": "eslint",
+		"build:worker": "pnpm opennextjs-cloudflare build",
+		"preview:worker": "pnpm opennextjs-cloudflare preview",
+		"preview": "pnpm build:worker && pnpm preview:worker",
+		"e2e": "playwright test -c e2e/playwright.config.ts",
+		"e2e:dev": "playwright test -c e2e/playwright.dev.config.ts",
+		"cf-typegen": "wrangler types --env-interface CloudflareEnv"
+	},
+	"dependencies": {
+		"next": "16.0.10",
+		"react-dom": "19.2.3",
+		"react": "19.2.3"
+	},
+	"devDependencies": {
+		"@opennextjs/cloudflare": "workspace:*",
+		"@playwright/test": "catalog:",
+		"@tailwindcss/postcss": "^4",
+		"@types/node": "catalog:",
+		"@types/react-dom": "^19.2",
+		"@types/react": "^19.2",
+		"tailwindcss": "^4",
+		"wrangler": "catalog:"
+	}
+}

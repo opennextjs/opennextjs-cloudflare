@@ -1,5 +1,4 @@
 import { defineConfig, devices } from "@playwright/test";
-import { execSync } from "node:child_process";
 import { getAppPort, getInspectorPort, type AppName } from "./apps";
 
 declare const process: typeof nodeProcess;

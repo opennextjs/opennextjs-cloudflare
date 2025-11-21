@@ -1,5 +1,5 @@
 import { configurePlaywright } from "../../common/config-e2e";
 
-export default configurePlaywright("playground15", {
+export default configurePlaywright("playground16", {
 	isWorker: false,
 });

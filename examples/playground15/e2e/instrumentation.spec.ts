@@ -1,5 +1,4 @@
 import { test, expect } from "@playwright/test";
-import { describe } from "node:test";
 
 test.describe("instrumentation", () => {
 	test("the instrumentation register hook should work for the nodejs runtime", async ({ page }) => {
@@ -20,7 +19,7 @@ test.describe("instrumentation", () => {
 
 	// Note: we cannot test this since currently both runtimes share the same global scope
 	//       (see: https://github.com/opennextjs/opennextjs-cloudflare/issues/408)
-	describe.skip("isolation", () => {
+	test.describe.skip("isolation", () => {
 		test("the instrumentation register hook nodejs logic should not effect edge routes", async ({ page }) => {
 			const res = await page.request.get("/middleware-instrumentation");
 			const respJson: Record<string, string> = await res.json();
