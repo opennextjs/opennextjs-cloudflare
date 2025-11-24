@@ -40,7 +40,7 @@
 		"zod": "^3.24.1"
 	},
 	"devDependencies": {
-		"@cloudflare/workers-types": "^4.20241224.0",
+		"@cloudflare/workers-types": "catalog:",
 		"@eslint/eslintrc": "^3",
 		"@opennextjs/cloudflare": "workspace:*",
 		"@playwright/test": "catalog:",

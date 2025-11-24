@@ -5,7 +5,7 @@
 	"scripts": {
 		"openbuild": "node ../../packages/open-next/dist/index.js build --streaming --build-command \"npx turbo build\"",
 		"dev": "next dev --turbopack --port 3001",
-		"build": "next build --turbopack",
+		"build": "next build --webpack",
 		"start": "next start --port 3001",
 		"lint": "next lint",
 		"clean": "rm -rf .turbo node_modules .next .open-next",

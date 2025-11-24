@@ -12,7 +12,7 @@
 		"moduleResolution": "NodeNext",
 		"resolveJsonModule": true,
 		"isolatedModules": true,
-		"jsx": "preserve",
+		"jsx": "react-jsx",
 		"incremental": true,
 		"plugins": [
 			{
@@ -24,6 +24,13 @@
 			"@example/shared": ["../shared"]
 		}
 	},
-	"include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "../utils.ts"],
+	"include": [
+		"next-env.d.ts",
+		"**/*.ts",
+		"**/*.tsx",
+		".next/types/**/*.ts",
+		"../utils.ts",
+		".next/dev/types/**/*.ts"
+	],
 	"exclude": ["node_modules", "open-next.config.ts"]
 }
