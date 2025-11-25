@@ -13,6 +13,16 @@ export type LocalPattern = {
 	search?: string;
 };
 
+/**
+ * Handles requests to /_next/image(/), including image optimizations.
+ * Image optimization is disabled if env.IMAGES is undefined.
+ *
+ * Throws an exception on unexpected errors.
+ * @param requestURL
+ * @param requestHeaders
+ * @param env
+ * @returns A promise that resolves to the resolved request.
+ */
 export async function handleImageRequest(
 	requestURL: URL,
 	requestHeaders: Headers,
@@ -36,7 +46,12 @@ export async function handleImageRequest(
 		const absoluteURL = new URL(parseResult.url, requestURL);
 		imageResponse = await env.ASSETS.fetch(absoluteURL);
 	} else {
-		const fetchImageResult = await fetchImage(parseResult.url, __IMAGES_MAX_REDIRECTS__);
+		let fetchImageResult: FetchWithRedirectsResult;
+		try {
+			fetchImageResult = await fetchWithRedirects(parseResult.url, 7_000, __IMAGES_MAX_REDIRECTS__);
+		} catch (e) {
+			throw new Error("Failed to fetch image", { cause: e });
+		}
 		if (!fetchImageResult.ok) {
 			if (fetchImageResult.error === "timed_out") {
 				return new Response('"url" parameter is valid but upstream response timed out', {
@@ -160,16 +175,29 @@ export async function handleImageRequest(
 	});
 }
 
-async function fetchImage(url: string, count: number): Promise<FetchImageResult> {
+/**
+ * Fetch call with max redirects and timeouts.
+ *
+ * Re-throws the exception thrown by a fetch call.
+ * @param url
+ * @param timeout Timeout for a single fetch call.
+ * @param maxRedirectCount
+ * @returns
+ */
+async function fetchWithRedirects(
+	url: string,
+	timeout: number,
+	maxRedirectCount: number
+): Promise<FetchWithRedirectsResult> {
 	let response: Response;
 	try {
 		response = await fetch(url, {
-			signal: AbortSignal.timeout(7_000),
+			signal: AbortSignal.timeout(timeout),
 			redirect: "manual",
 		});
 	} catch (e) {
 		if (e instanceof Error && e.name === "TimeoutError") {
-			const result: FetchImageErrorResult = {
+			const result: FetchWithRedirectsErrorResult = {
 				ok: false,
 				error: "timed_out",
 			};
@@ -180,8 +208,8 @@ async function fetchImage(url: string, count: number): Promise<FetchImageResult>
 	if (redirectResponseStatuses.includes(response.status)) {
 		const locationHeader = response.headers.get("Location");
 		if (locationHeader !== null) {
-			if (count < 1) {
-				const result: FetchImageErrorResult = {
+			if (maxRedirectCount < 1) {
+				const result: FetchWithRedirectsErrorResult = {
 					ok: false,
 					error: "too_many_redirects",
 				};
@@ -193,25 +221,25 @@ async function fetchImage(url: string, count: number): Promise<FetchImageResult>
 			} else {
 				redirectTarget = locationHeader;
 			}
-			const result = await fetchImage(redirectTarget, count - 1);
+			const result = await fetchWithRedirects(redirectTarget, timeout, maxRedirectCount - 1);
 			return result;
 		}
 	}
-	const result: FetchImageSuccessResult = {
+	const result: FetchWithRedirectsSuccessResult = {
 		ok: true,
 		response: response,
 	};
 	return result;
 }
 
-type FetchImageResult = FetchImageSuccessResult | FetchImageErrorResult;
+type FetchWithRedirectsResult = FetchWithRedirectsSuccessResult | FetchWithRedirectsErrorResult;
 
-type FetchImageSuccessResult = {
+type FetchWithRedirectsSuccessResult = {
 	ok: true;
 	response: Response;
 };
 
-type FetchImageErrorResult = {
+type FetchWithRedirectsErrorResult = {
 	ok: false;
 	error: FetchImageError;
 };
@@ -419,10 +447,10 @@ function parseImageRequest(requestURL: URL, requestHeaders: Headers): ParseImage
 
 	const result: ParseImageRequestURLSuccessResult = {
 		ok: true,
-		url: url,
-		width: width,
-		quality: quality,
-		format: format,
+		url,
+		width,
+		quality,
+		format,
 		static: staticAsset,
 	};
 	return result;
