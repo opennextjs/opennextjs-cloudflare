@@ -1,3 +1,5 @@
+import { error, warn } from "@opennextjs/aws/adapters/logger.js";
+
 export type RemotePattern = {
 	protocol?: "http" | "https";
 	hostname: string;
@@ -38,7 +40,7 @@ export async function handleImageRequest(
 	let imageResponse: Response;
 	if (parseResult.url.startsWith("/")) {
 		if (env.ASSETS === undefined) {
-			console.error("env.ASSETS binding is not defined.");
+			error("env.ASSETS binding is not defined.");
 			return new Response('"url" parameter is valid but upstream response is invalid', {
 				status: 404,
 			});
@@ -117,7 +119,7 @@ export async function handleImageRequest(
 
 	if (contentType === GIF) {
 		if (env.IMAGES === undefined) {
-			console.warn("env.IMAGES binding is not defined.");
+			warn("env.IMAGES binding is not defined.");
 			const response = createImageResponse(imageStream, contentType, {
 				immutable,
 			});
@@ -143,7 +145,7 @@ export async function handleImageRequest(
 
 	if (contentType === AVIF || contentType === WEBP || contentType === JPEG || contentType === PNG) {
 		if (env.IMAGES === undefined) {
-			console.warn("env.IMAGES binding is not defined.");
+			warn("env.IMAGES binding is not defined.");
 			const response = createImageResponse(imageStream, contentType, {
 				immutable,
 			});

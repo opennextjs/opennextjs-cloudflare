@@ -42,7 +42,7 @@ export async function compileImages(options: BuildOptions) {
 	await build({
 		entryPoints: [imagesPath],
 		outdir: path.join(options.outputDir, "cloudflare"),
-		bundle: false,
+		bundle: true,
 		minify: false,
 		format: "esm",
 		target: "esnext",
