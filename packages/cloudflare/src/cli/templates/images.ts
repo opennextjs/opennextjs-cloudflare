@@ -334,11 +334,9 @@ function parseImageRequest(requestURL: URL, requestHeaders: Headers): ParseImage
 		}
 
 		if (!staticAsset) {
-			if (!__IMAGES_ALLOW_ALL_LOCAL_PATHS__) {
-				if (!hasLocalMatch(localPatterns, url)) {
-					const result: ErrorResult = { ok: false, message: '"url" parameter is not allowed' };
-					return result;
-				}
+			if (!hasLocalMatch(localPatterns, url)) {
+				const result: ErrorResult = { ok: false, message: '"url" parameter is not allowed' };
+				return result;
 			}
 		}
 	} else {
@@ -666,7 +664,6 @@ export function detectImageContentType(buffer: Uint8Array): ImageContentType | n
 
 declare global {
 	var __IMAGES_REMOTE_PATTERNS__: RemotePattern[];
-	var __IMAGES_ALLOW_ALL_LOCAL_PATHS__: boolean;
 	var __IMAGES_LOCAL_PATTERNS__: LocalPattern[];
 	var __IMAGES_DEVICE_SIZES__: number[];
 	var __IMAGES_IMAGE_SIZES__: number[];

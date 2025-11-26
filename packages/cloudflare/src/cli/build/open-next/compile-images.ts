@@ -19,10 +19,9 @@ export async function compileImages(options: BuildOptions) {
 		: {};
 
 	const __IMAGES_REMOTE_PATTERNS__ = JSON.stringify(imagesManifest?.images?.remotePatterns ?? []);
-	const __IMAGES_ALLOW_ALL_LOCAL_PATHS__ = JSON.stringify(
-		imagesManifest?.images?.localPatterns === undefined
+	const __IMAGES_LOCAL_PATTERNS__ = JSON.stringify(
+		imagesManifest?.images?.localPatterns ?? defaultLocalPatterns
 	);
-	const __IMAGES_LOCAL_PATTERNS__ = JSON.stringify(imagesManifest?.images?.localPatterns ?? []);
 	const __IMAGES_DEVICE_SIZES__ = JSON.stringify(imagesManifest?.images?.deviceSizes ?? defaultDeviceSizes);
 	const __IMAGES_IMAGE_SIZES__ = JSON.stringify(imagesManifest?.images?.imageSizes ?? defaultImageSizes);
 	const __IMAGES_QUALITIES__ = JSON.stringify(imagesManifest?.images?.qualities ?? defaultQualities);
@@ -51,7 +50,6 @@ export async function compileImages(options: BuildOptions) {
 		platform: "node",
 		define: {
 			__IMAGES_REMOTE_PATTERNS__,
-			__IMAGES_ALLOW_ALL_LOCAL_PATHS__,
 			__IMAGES_LOCAL_PATTERNS__,
 			__IMAGES_DEVICE_SIZES__,
 			__IMAGES_IMAGE_SIZES__,
@@ -80,3 +78,5 @@ const defaultMaxRedirects = 3;
 const defaultFormats = ["image/webp"];
 
 const defaultMinimumCacheTTL = 14400;
+
+const defaultLocalPatterns = { pathname: "/**" };
