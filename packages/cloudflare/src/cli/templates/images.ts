@@ -261,11 +261,14 @@ function createImageResponse(
 	contentType: string,
 	imageResponseFlags: ImageResponseFlags
 ): Response {
-	const response = new Response(image, {});
-	response.headers.set("Vary", "Accept");
-	response.headers.set("Content-Type", contentType);
-	response.headers.set("Content-Disposition", __IMAGES_CONTENT_DISPOSITION__);
-	response.headers.set("Content-Security-Policy", __IMAGES_CONTENT_SECURITY_POLICY__);
+	const response = new Response(image, {
+		headers: {
+			Vary: "Accept",
+			"Content-Type": contentType,
+			"Content-Disposition": __IMAGES_CONTENT_DISPOSITION__,
+			"Content-Security-Policy": __IMAGES_CONTENT_SECURITY_POLICY__,
+		},
+	});
 	if (imageResponseFlags.immutable) {
 		response.headers.set("Cache-Control", "public, max-age=315360000, immutable");
 	}
