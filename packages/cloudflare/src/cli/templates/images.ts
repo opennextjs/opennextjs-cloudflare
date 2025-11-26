@@ -40,7 +40,7 @@ export async function handleImageRequest(
 	let imageResponse: Response;
 	if (parseResult.url.startsWith("/")) {
 		if (env.ASSETS === undefined) {
-			error("env.ASSETS binding is not defined.");
+			error("env.ASSETS binding is not defined");
 			return new Response('"url" parameter is valid but upstream response is invalid', {
 				status: 404,
 			});
@@ -120,7 +120,7 @@ export async function handleImageRequest(
 
 	if (contentType === GIF) {
 		if (env.IMAGES === undefined) {
-			warn("env.IMAGES binding is not defined.");
+			warn("env.IMAGES binding is not defined");
 			const response = createImageResponse(imageStream, contentType, {
 				immutable,
 			});
@@ -146,7 +146,7 @@ export async function handleImageRequest(
 
 	if (contentType === AVIF || contentType === WEBP || contentType === JPEG || contentType === PNG) {
 		if (env.IMAGES === undefined) {
-			warn("env.IMAGES binding is not defined.");
+			warn("env.IMAGES binding is not defined");
 			const response = createImageResponse(imageStream, contentType, {
 				immutable,
 			});
