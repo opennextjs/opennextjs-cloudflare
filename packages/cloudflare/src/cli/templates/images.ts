@@ -273,7 +273,6 @@ type ImageResponseFlags = {
 function parseImageRequest(requestURL: URL, requestHeaders: Headers): ParseImageRequestURLResult {
 	const deviceSizes: number[] = __IMAGES_DEVICE_SIZES__;
 	const imageSizes: number[] = __IMAGES_IMAGE_SIZES__;
-	// const minimumCacheTTLSeconds = __IMAGES_MINIMUM_CACHE_TTL__;
 	const formats = __IMAGES_FORMATS__;
 	const remotePatterns = __IMAGES_REMOTE_PATTERNS__;
 	const localPatterns = __IMAGES_LOCAL_PATTERNS__;
