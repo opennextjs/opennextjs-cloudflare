@@ -482,14 +482,49 @@ function getPathnameFromRelativeURL(relativeURL: string): string {
 }
 
 function hasLocalMatch(localPatterns: LocalPattern[], relativeURL: string): boolean {
-	const pathname = getPathnameFromRelativeURL(relativeURL);
+	const parseRelativeURLResult = parseRelativeURL(relativeURL);
 	for (const localPattern of localPatterns) {
-		const patternRegExp = new RegExp(localPattern.pathname);
-		if (patternRegExp.test(pathname)) {
+		const matched = matchLocalPattern(
+			localPattern,
+			parseRelativeURLResult.pathname,
+			parseRelativeURLResult.search
+		);
+		if (matched) {
 			return true;
 		}
 	}
 	return false;
+}
+
+function parseRelativeURL(relativeURL: string): ParseRelativeURLResult {
+	if (!relativeURL.includes("?")) {
+		const result: ParseRelativeURLResult = {
+			pathname: relativeURL,
+			search: "",
+		};
+		return result;
+	}
+	const parts = relativeURL.split("?");
+	const pathname = parts[0]!;
+	const search = "?" + parts.slice(1).join("?");
+	const result: ParseRelativeURLResult = {
+		pathname,
+		search,
+	};
+	return result;
+}
+
+type ParseRelativeURLResult = {
+	pathname: string;
+	search: string;
+};
+
+export function matchLocalPattern(pattern: LocalPattern, pathname: string, search: string): boolean {
+	if (pattern.search !== undefined && pattern.search !== search) {
+		return false;
+	}
+
+	return new RegExp(pattern.pathname).test(pathname);
 }
 
 function hasRemoteMatch(remotePatterns: RemotePattern[], url: URL): boolean {
@@ -524,15 +559,6 @@ export function matchRemotePattern(pattern: RemotePattern, url: URL): boolean {
 	}
 
 	// Should be the same as writeImagesManifest()
-	return new RegExp(pattern.pathname).test(url.pathname);
-}
-
-export function matchLocalPattern(pattern: LocalPattern, url: URL): boolean {
-	// https://github.com/vercel/next.js/blob/d76f0b1/packages/next/src/shared/lib/match-local-pattern.ts
-	if (pattern.search !== undefined && pattern.search !== url.search) {
-		return false;
-	}
-
 	return new RegExp(pattern.pathname).test(url.pathname);
 }
 
