@@ -17,7 +17,7 @@ export type LocalPattern = {
 
 /**
  * Handles requests to /_next/image(/), including image optimizations.
- * Image optimization is disabled if env.IMAGES is undefined.
+ * Image optimization is disabled and the original image is returned if env.IMAGES is undefined.
  *
  * Throws an exception on unexpected errors.
  * @param requestURL
@@ -70,7 +70,7 @@ export async function handleImageRequest(
 		imageResponse = fetchImageResult.response;
 	}
 
-	if (imageResponse.status !== 200 || imageResponse.body === null) {
+	if (!imageResponse.ok || imageResponse.body === null) {
 		return new Response('"url" parameter is valid but upstream response is invalid', {
 			status: imageResponse.status,
 		});
@@ -96,11 +96,12 @@ export async function handleImageRequest(
 		await imageResponse.body.cancel();
 
 		return new Response('"url" parameter is valid but upstream response is invalid', {
-			status: imageResponse.status,
+			status: 400,
 		});
 	}
 	const contentType = detectImageContentType(readImageHeaderBytesResult.value);
 	if (contentType === null) {
+		warn(`Failed to detect content type of "${parseResult.url}"`);
 		return new Response('"url" parameter is valid but image type is not allowed', {
 			status: 400,
 		});
@@ -170,6 +171,8 @@ export async function handleImageRequest(
 		return response;
 	}
 
+	warn(`Image content type ${contentType} not supported.`);
+
 	await imageResponse.body.cancel();
 
 	return new Response('"url" parameter is valid but image type is not allowed', {
@@ -182,19 +185,19 @@ export async function handleImageRequest(
  *
  * Re-throws the exception thrown by a fetch call.
  * @param url
- * @param timeout Timeout for a single fetch call.
+ * @param timeoutMS Timeout for a single fetch call.
  * @param maxRedirectCount
  * @returns
  */
 async function fetchWithRedirects(
 	url: string,
-	timeout: number,
+	timeoutMS: number,
 	maxRedirectCount: number
 ): Promise<FetchWithRedirectsResult> {
 	let response: Response;
 	try {
 		response = await fetch(url, {
-			signal: AbortSignal.timeout(timeout),
+			signal: AbortSignal.timeout(timeoutMS),
 			redirect: "manual",
 		});
 	} catch (e) {
@@ -223,7 +226,7 @@ async function fetchWithRedirects(
 			} else {
 				redirectTarget = locationHeader;
 			}
-			const result = await fetchWithRedirects(redirectTarget, timeout, maxRedirectCount - 1);
+			const result = await fetchWithRedirects(redirectTarget, timeoutMS, maxRedirectCount - 1);
 			return result;
 		}
 	}
@@ -255,7 +258,7 @@ function createImageResponse(
 	contentType: string,
 	imageResponseFlags: ImageResponseFlags
 ): Response {
-	const response = new Response(image);
+	const response = new Response(image, {});
 	response.headers.set("Vary", "Accept");
 	response.headers.set("Content-Type", contentType);
 	response.headers.set("Content-Disposition", __IMAGES_CONTENT_DISPOSITION__);
