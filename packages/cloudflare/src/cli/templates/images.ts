@@ -82,6 +82,7 @@ export async function handleImageRequest(
 	} else {
 		const cacheControlHeader = imageResponse.headers.get("Cache-Control");
 		if (cacheControlHeader !== null) {
+			// TODO: Properly parse header
 			immutable = cacheControlHeader.includes("immutable");
 		}
 	}
