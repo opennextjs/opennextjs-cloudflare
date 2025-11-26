@@ -5,6 +5,7 @@
  */
 
 import { test, expect } from "@playwright/test";
+import sharp from "sharp";
 
 test.describe("playground/cloudflare", () => {
 	test("NextConfig", async ({ page }) => {
@@ -69,6 +70,16 @@ test.describe("playground/cloudflare", () => {
 		test("400 when fetching an image with unsupported quality value", async ({ page }) => {
 			const res = await page.request.get("/_next/image?url=/snipp/snipp.webp?iscute=yes&w=256&q=100");
 			expect(res.status()).toBe(400);
+		});
+	});
+
+	test.describe('"w" parameter', () => {
+		test("Image is shrunk to target width", async ({ page }) => {
+			const res = await page.request.get("/_next/image?url=/snipp/snipp.webp?iscute=yes&w=256&q=75");
+			expect(res.status()).toBe(200);
+			const buffer = await res.body();
+			const metadata = await sharp(buffer).metadata();
+			expect(metadata.width).toBe(256);
 		});
 	});
 });
