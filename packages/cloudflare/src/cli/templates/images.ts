@@ -314,8 +314,10 @@ function parseImageRequest(requestURL: URL, requestHeaders: Headers): ParseImage
 	}
 
 	let url: string;
+	let staticAsset = false;
 	if (urlQueryValue.startsWith("/")) {
 		url = urlQueryValue;
+		staticAsset = url.startsWith(`${__NEXT_BASE_PATH__ || ""}/_next/static/media`);
 
 		const pathname = getPathnameFromRelativeURL(url);
 		if (/\/_next\/image($|\/)/.test(decodeURIComponent(pathname))) {
@@ -325,10 +327,13 @@ function parseImageRequest(requestURL: URL, requestHeaders: Headers): ParseImage
 			};
 			return result;
 		}
-		if (__IMAGES_LOCAL_PATTERNS_DEFINED__) {
-			if (!hasLocalMatch(localPatterns, url)) {
-				const result: ErrorResult = { ok: false, message: '"url" parameter is not allowed' };
-				return result;
+
+		if (!staticAsset) {
+			if (!__IMAGES_ALLOW_ALL_LOCAL_PATHS__) {
+				if (!hasLocalMatch(localPatterns, url)) {
+					const result: ErrorResult = { ok: false, message: '"url" parameter is not allowed' };
+					return result;
+				}
 			}
 		}
 	} else {
@@ -358,7 +363,6 @@ function parseImageRequest(requestURL: URL, requestHeaders: Headers): ParseImage
 
 		url = parsedURL.href;
 	}
-	const staticAsset = url.startsWith(`${__NEXT_BASE_PATH__ || ""}/_next/static/media`);
 
 	const widthQueryValues = requestURL.searchParams.getAll("w");
 	if (widthQueryValues.length < 1) {
@@ -620,7 +624,7 @@ export function detectImageContentType(buffer: Uint8Array): ImageContentType | n
 
 declare global {
 	var __IMAGES_REMOTE_PATTERNS__: RemotePattern[];
-	var __IMAGES_LOCAL_PATTERNS_DEFINED__: boolean;
+	var __IMAGES_ALLOW_ALL_LOCAL_PATHS__: boolean;
 	var __IMAGES_LOCAL_PATTERNS__: LocalPattern[];
 	var __IMAGES_DEVICE_SIZES__: number[];
 	var __IMAGES_IMAGE_SIZES__: number[];

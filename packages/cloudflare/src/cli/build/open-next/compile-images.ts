@@ -19,8 +19,8 @@ export async function compileImages(options: BuildOptions) {
 		: {};
 
 	const __IMAGES_REMOTE_PATTERNS__ = JSON.stringify(imagesManifest?.images?.remotePatterns ?? []);
-	const __IMAGES_LOCAL_PATTERNS_DEFINED__ = JSON.stringify(
-		Array.isArray(imagesManifest?.images?.localPatterns)
+	const __IMAGES_ALLOW_ALL_LOCAL_PATHS__ = JSON.stringify(
+		imagesManifest?.images?.localPatterns === undefined
 	);
 	const __IMAGES_LOCAL_PATTERNS__ = JSON.stringify(imagesManifest?.images?.localPatterns ?? []);
 	const __IMAGES_DEVICE_SIZES__ = JSON.stringify(imagesManifest?.images?.deviceSizes ?? defaultDeviceSizes);
@@ -49,7 +49,7 @@ export async function compileImages(options: BuildOptions) {
 		platform: "node",
 		define: {
 			__IMAGES_REMOTE_PATTERNS__,
-			__IMAGES_LOCAL_PATTERNS_DEFINED__,
+			__IMAGES_ALLOW_ALL_LOCAL_PATHS__,
 			__IMAGES_LOCAL_PATTERNS__,
 			__IMAGES_DEVICE_SIZES__,
 			__IMAGES_IMAGE_SIZES__,
