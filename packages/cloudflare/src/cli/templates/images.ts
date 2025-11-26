@@ -172,7 +172,7 @@ export async function handleImageRequest(
 		return response;
 	}
 
-	warn(`Image content type ${contentType} not supported.`);
+	warn(`Image content type ${contentType} not supported`);
 
 	await imageResponse.body.cancel();
 
