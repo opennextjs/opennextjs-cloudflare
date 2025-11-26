@@ -619,7 +619,7 @@ export function detectImageContentType(buffer: Uint8Array): ImageContentType | n
 	if ([0x47, 0x49, 0x46, 0x38].every((b, i) => buffer[i] === b)) {
 		return GIF;
 	}
-	if ([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50].every((b, i) => buffer[i] === b)) {
+	if ([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50].every((b, i) => !b || buffer[i] === b)) {
 		return WEBP;
 	}
 	if ([0x3c, 0x3f, 0x78, 0x6d, 0x6c].every((b, i) => buffer[i] === b)) {
@@ -628,7 +628,7 @@ export function detectImageContentType(buffer: Uint8Array): ImageContentType | n
 	if ([0x3c, 0x73, 0x76, 0x67].every((b, i) => buffer[i] === b)) {
 		return SVG;
 	}
-	if ([0, 0, 0, 0, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66].every((b, i) => buffer[i] === b)) {
+	if ([0, 0, 0, 0, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66].every((b, i) => !b || buffer[i] === b)) {
 		return AVIF;
 	}
 	if ([0x00, 0x00, 0x01, 0x00].every((b, i) => buffer[i] === b)) {
@@ -651,7 +651,7 @@ export function detectImageContentType(buffer: Uint8Array): ImageContentType | n
 	) {
 		return JXL;
 	}
-	if ([0, 0, 0, 0, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63].every((b, i) => buffer[i] === b)) {
+	if ([0, 0, 0, 0, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63].every((b, i) => !b || buffer[i] === b)) {
 		return HEIC;
 	}
 	if (
