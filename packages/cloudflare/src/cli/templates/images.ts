@@ -195,6 +195,8 @@ async function fetchWithRedirects(
 	timeoutMS: number,
 	maxRedirectCount: number
 ): Promise<FetchWithRedirectsResult> {
+	// TODO: Add dangerouslyAllowLocalIP support
+
 	let response: Response;
 	try {
 		response = await fetch(url, {

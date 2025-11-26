@@ -37,7 +37,9 @@ export async function compileImages(options: BuildOptions) {
 	const __IMAGES_CONTENT_DISPOSITION__ = JSON.stringify(
 		imagesManifest?.images?.contentDispositionType ?? "attachment"
 	);
-	const __IMAGES_MAX_REDIRECTS__ = JSON.stringify(imagesManifest?.images?.maximumRedirects ?? 3);
+	const __IMAGES_MAX_REDIRECTS__ = JSON.stringify(
+		imagesManifest?.images?.maximumRedirects ?? defaultMaxRedirects
+	);
 
 	await build({
 		entryPoints: [imagesPath],
@@ -65,7 +67,16 @@ export async function compileImages(options: BuildOptions) {
 }
 
 const defaultDeviceSizes = [640, 750, 828, 1080, 1200, 1920, 2048, 3840];
+
+// 16 was included in Next.js 15
 const defaultImageSizes = [32, 48, 64, 96, 128, 256, 384];
+
+// All values between 1-100 was allowed in Next.js 16
 const defaultQualities = [75];
+
+// Was unlimited in Next.js 15
+const defaultMaxRedirects = 3;
+
 const defaultFormats = ["image/webp"];
+
 const defaultMinimumCacheTTL = 14400;
