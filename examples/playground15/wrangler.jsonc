@@ -44,5 +44,8 @@
 			"database_id": "db_id",
 			"database_name": "db_name"
 		}
-	]
+	],
+	"images": {
+		"binding": "IMAGES"
+	}
 }

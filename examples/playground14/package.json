@@ -24,6 +24,7 @@
 		"@opennextjs/cloudflare": "workspace:*",
 		"@playwright/test": "catalog:",
 		"@types/node": "catalog:",
+		"sharp": "^0.34.5",
 		"wrangler": "catalog:"
 	}
 }

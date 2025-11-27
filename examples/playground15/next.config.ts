@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
 	},
 	deploymentId: getDeploymentId(),
 	trailingSlash: true,
+	images: {
+		formats: ["image/avif", "image/webp"],
+	},
 };
 
 export default nextConfig;
