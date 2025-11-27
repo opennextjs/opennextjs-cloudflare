@@ -543,11 +543,7 @@ function getPathnameFromRelativeURL(relativeURL: string): string {
 function hasLocalMatch(localPatterns: LocalPattern[], relativeURL: string): boolean {
 	const parseRelativeURLResult = parseRelativeURL(relativeURL);
 	for (const localPattern of localPatterns) {
-		const matched = matchLocalPattern(
-			localPattern,
-			parseRelativeURLResult.pathname,
-			parseRelativeURLResult.search
-		);
+		const matched = matchLocalPattern(localPattern, parseRelativeURLResult);
 		if (matched) {
 			return true;
 		}
@@ -578,12 +574,12 @@ type ParseRelativeURLResult = {
 	search: string;
 };
 
-export function matchLocalPattern(pattern: LocalPattern, pathname: string, search: string): boolean {
-	if (pattern.search !== undefined && pattern.search !== search) {
+export function matchLocalPattern(pattern: LocalPattern, url: { pathname: string; search: string }): boolean {
+	if (pattern.search !== undefined && pattern.search !== url.search) {
 		return false;
 	}
 
-	return new RegExp(pattern.pathname).test(pathname);
+	return new RegExp(pattern.pathname).test(url.pathname);
 }
 
 function hasRemoteMatch(remotePatterns: RemotePattern[], url: URL): boolean {
