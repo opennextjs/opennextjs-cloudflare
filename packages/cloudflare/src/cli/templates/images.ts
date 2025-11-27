@@ -17,9 +17,11 @@ export type LocalPattern = {
 
 /**
  * Handles requests to /_next/image(/), including image optimizations.
- * Image optimization is disabled and the original image is returned if env.IMAGES is undefined.
+ *
+ * Image optimization is disabled and the original image is returned if `env.IMAGES` is undefined.
  *
  * Throws an exception on unexpected errors.
+ *
  * @param requestURL
  * @param requestHeaders
  * @param env
@@ -279,38 +281,107 @@ type ImageResponseFlags = {
 	immutable: boolean;
 };
 
-function parseImageRequest(requestURL: URL, requestHeaders: Headers): ParseImageRequestURLResult {
-	const deviceSizes: number[] = __IMAGES_DEVICE_SIZES__;
-	const imageSizes: number[] = __IMAGES_IMAGE_SIZES__;
+/**
+ * Parses the image request URL and headers.
+ *
+ * This function validates the parameters and returns either the parsed result or an error message.
+ *
+ * @param requestURL request URL
+ * @param requestHeaders request headers
+ * @returns an instance of `ParseImageRequestURLSuccessResult` when successful, or an instance of `ErrorResult` when failed.
+ */
+function parseImageRequest(
+	requestURL: URL,
+	requestHeaders: Headers
+): ParseImageRequestURLSuccessResult | ErrorResult {
 	const formats = __IMAGES_FORMATS__;
-	const remotePatterns = __IMAGES_REMOTE_PATTERNS__;
-	const localPatterns = __IMAGES_LOCAL_PATTERNS__;
-	const qualities: number[] = __IMAGES_QUALITIES__;
 
-	const urlQueryValues = requestURL.searchParams.getAll("url");
-	if (urlQueryValues.length < 1) {
+	const parsedUrlOrError = validateUrlQueryParameter(requestURL);
+	if (!("url" in parsedUrlOrError)) {
+		return parsedUrlOrError;
+	}
+
+	const widthOrError = validateWidthQueryParameter(requestURL);
+	if (typeof widthOrError !== "number") {
+		return widthOrError;
+	}
+
+	const qualityOrError = validateQualityQueryParameter(requestURL);
+	if (typeof qualityOrError !== "number") {
+		return qualityOrError;
+	}
+
+	const acceptHeader = requestHeaders.get("Accept") ?? "";
+	let format: OptimizedImageFormat | null = null;
+	// Find a more specific format that the client accepts.
+	for (const allowedFormat of formats) {
+		if (acceptHeader.includes(allowedFormat)) {
+			format = allowedFormat;
+			break;
+		}
+	}
+
+	const result: ParseImageRequestURLSuccessResult = {
+		ok: true,
+		url: parsedUrlOrError.url,
+		width: widthOrError,
+		quality: qualityOrError,
+		format,
+		static: parsedUrlOrError.static,
+	};
+	return result;
+}
+
+type ParseImageRequestURLSuccessResult = {
+	ok: true;
+	/** Absolute or relative URL. */
+	url: string;
+	width: number;
+	quality: number;
+	format: OptimizedImageFormat | null;
+	static: boolean;
+};
+
+export type OptimizedImageFormat = "image/avif" | "image/webp";
+
+type ErrorResult = {
+	ok: false;
+	message: string;
+};
+
+/**
+ * Validates that there is exactly one "url" query parameter.
+ *
+ * @returns the validated URL or an error result.
+ */
+function validateUrlQueryParameter(requestURL: URL): ErrorResult | { url: string; static: boolean } {
+	// There should be a single "url" parameter.
+	const urls = requestURL.searchParams.getAll("url");
+	if (urls.length < 1) {
 		const result: ErrorResult = {
 			ok: false,
 			message: '"url" parameter is required',
 		};
 		return result;
 	}
-	if (urlQueryValues.length > 1) {
+	if (urls.length > 1) {
 		const result: ErrorResult = {
 			ok: false,
 			message: '"url" parameter cannot be an array',
 		};
 		return result;
 	}
-	const urlQueryValue = urlQueryValues[0]!;
-	if (urlQueryValue.length > 3072) {
+
+	// The url parameter value should be a valid URL or a valid relative URL.
+	const url = urls[0]!;
+	if (url.length > 3072) {
 		const result: ErrorResult = {
 			ok: false,
 			message: '"url" parameter is too long',
 		};
 		return result;
 	}
-	if (urlQueryValue.startsWith("//")) {
+	if (url.startsWith("//")) {
 		const result: ErrorResult = {
 			ok: false,
 			message: '"url" parameter cannot be a protocol-relative URL (//)',
@@ -318,11 +389,8 @@ function parseImageRequest(requestURL: URL, requestHeaders: Headers): ParseImage
 		return result;
 	}
 
-	let url: string;
-	let staticAsset = false;
-	if (urlQueryValue.startsWith("/")) {
-		url = urlQueryValue;
-		staticAsset = url.startsWith(`${__NEXT_BASE_PATH__ || ""}/_next/static/media`);
+	if (url.startsWith("/")) {
+		const staticAsset = url.startsWith(`${__NEXT_BASE_PATH__ || ""}/_next/static/media`);
 
 		const pathname = getPathnameFromRelativeURL(url);
 		if (/\/_next\/image($|\/)/.test(decodeURIComponent(pathname))) {
@@ -334,39 +402,48 @@ function parseImageRequest(requestURL: URL, requestHeaders: Headers): ParseImage
 		}
 
 		if (!staticAsset) {
-			if (!hasLocalMatch(localPatterns, url)) {
+			if (!hasLocalMatch(__IMAGES_LOCAL_PATTERNS__, url)) {
 				const result: ErrorResult = { ok: false, message: '"url" parameter is not allowed' };
 				return result;
 			}
 		}
-	} else {
-		let parsedURL: URL;
-		try {
-			parsedURL = new URL(urlQueryValue);
-		} catch {
-			const result: ErrorResult = { ok: false, message: '"url" parameter is invalid' };
-			return result;
-		}
 
-		const validProtocols = ["http:", "https:"];
-		if (!validProtocols.includes(parsedURL.protocol)) {
-			const result: ErrorResult = {
-				ok: false,
-				message: '"url" parameter is invalid',
-			};
-			return result;
-		}
-		if (!hasRemoteMatch(remotePatterns, parsedURL)) {
-			const result: ErrorResult = {
-				ok: false,
-				message: '"url" parameter is not allowed',
-			};
-			return result;
-		}
-
-		url = parsedURL.href;
+		return { url, static: staticAsset };
 	}
 
+	let parsedURL: URL;
+	try {
+		parsedURL = new URL(url);
+	} catch {
+		const result: ErrorResult = { ok: false, message: '"url" parameter is invalid' };
+		return result;
+	}
+
+	const validProtocols = ["http:", "https:"];
+	if (!validProtocols.includes(parsedURL.protocol)) {
+		const result: ErrorResult = {
+			ok: false,
+			message: '"url" parameter is invalid',
+		};
+		return result;
+	}
+	if (!hasRemoteMatch(__IMAGES_REMOTE_PATTERNS__, parsedURL)) {
+		const result: ErrorResult = {
+			ok: false,
+			message: '"url" parameter is not allowed',
+		};
+		return result;
+	}
+
+	return { url: parsedURL.href, static: false };
+}
+
+/**
+ * Validates the "w" (width) query parameter.
+ *
+ * @returns the validated width number or an error result.
+ */
+function validateWidthQueryParameter(requestURL: URL): ErrorResult | number {
 	const widthQueryValues = requestURL.searchParams.getAll("w");
 	if (widthQueryValues.length < 1) {
 		const result: ErrorResult = {
@@ -399,7 +476,7 @@ function parseImageRequest(requestURL: URL, requestHeaders: Headers): ParseImage
 		return result;
 	}
 
-	const sizeValid = deviceSizes.includes(width) || imageSizes.includes(width);
+	const sizeValid = __IMAGES_DEVICE_SIZES__.includes(width) || __IMAGES_IMAGE_SIZES__.includes(width);
 	if (!sizeValid) {
 		const result: ErrorResult = {
 			ok: false,
@@ -408,6 +485,15 @@ function parseImageRequest(requestURL: URL, requestHeaders: Headers): ParseImage
 		return result;
 	}
 
+	return width;
+}
+
+/**
+ * Validates the "q" (quality) query parameter.
+ *
+ * @returns the validated quality number or an error result.
+ */
+function validateQualityQueryParameter(requestURL: URL): ErrorResult | number {
 	const qualityQueryValues = requestURL.searchParams.getAll("q");
 	if (qualityQueryValues.length < 1) {
 		const result: ErrorResult = {
@@ -439,53 +525,16 @@ function parseImageRequest(requestURL: URL, requestHeaders: Headers): ParseImage
 		};
 		return result;
 	}
-	if (!qualities.includes(quality)) {
+	if (!__IMAGES_QUALITIES__.includes(quality)) {
 		const result: ErrorResult = {
 			ok: false,
-			message: `"w" parameter (width) of ${width} is not allowed`,
+			message: `"q" parameter (quality) of ${quality} is not allowed`,
 		};
 		return result;
 	}
 
-	const acceptHeader = requestHeaders.get("Accept") ?? "";
-	let format: OptimizedImageFormat | null = null;
-	// Find a more specific format that the client accepts.
-	for (const allowedFormat of formats) {
-		if (acceptHeader.includes(allowedFormat)) {
-			format = allowedFormat;
-			break;
-		}
-	}
-
-	const result: ParseImageRequestURLSuccessResult = {
-		ok: true,
-		url,
-		width,
-		quality,
-		format,
-		static: staticAsset,
-	};
-	return result;
+	return quality;
 }
-
-type ParseImageRequestURLResult = ParseImageRequestURLSuccessResult | ErrorResult;
-
-type ParseImageRequestURLSuccessResult = {
-	ok: true;
-	/** Absolute or relative URL. */
-	url: string;
-	width: number;
-	quality: number;
-	format: OptimizedImageFormat | null;
-	static: boolean;
-};
-
-export type OptimizedImageFormat = "image/avif" | "image/webp";
-
-type ErrorResult = {
-	ok: false;
-	message: string;
-};
 
 function getPathnameFromRelativeURL(relativeURL: string): string {
 	return relativeURL.split("?")[0]!;
@@ -669,7 +718,7 @@ declare global {
 	var __IMAGES_IMAGE_SIZES__: number[];
 	var __IMAGES_QUALITIES__: number[];
 	var __IMAGES_FORMATS__: NextConfigImageFormat[];
-	var __IMAGES_MINIMUM_CACHE_TTL__: number;
+	var __IMAGES_MINIMUM_CACHE_TTL_SEC__: number;
 	var __IMAGES_ALLOW_SVG__: boolean;
 	var __IMAGES_CONTENT_SECURITY_POLICY__: string;
 	var __IMAGES_CONTENT_DISPOSITION__: string;

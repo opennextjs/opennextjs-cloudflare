@@ -26,8 +26,8 @@ export async function compileImages(options: BuildOptions) {
 	const __IMAGES_IMAGE_SIZES__ = JSON.stringify(imagesManifest?.images?.imageSizes ?? defaultImageSizes);
 	const __IMAGES_QUALITIES__ = JSON.stringify(imagesManifest?.images?.qualities ?? defaultQualities);
 	const __IMAGES_FORMATS__ = JSON.stringify(imagesManifest?.images?.formats ?? defaultFormats);
-	const __IMAGES_MINIMUM_CACHE_TTL__ = JSON.stringify(
-		imagesManifest?.images?.minimumCacheTTL ?? defaultMinimumCacheTTL
+	const __IMAGES_MINIMUM_CACHE_TTL_SEC__ = JSON.stringify(
+		imagesManifest?.images?.minimumCacheTTL ?? defaultMinimumCacheTTLSec
 	);
 	const __IMAGES_ALLOW_SVG__ = JSON.stringify(Boolean(imagesManifest?.images?.dangerouslyAllowSVG));
 	const __IMAGES_CONTENT_SECURITY_POLICY__ = JSON.stringify(
@@ -55,7 +55,7 @@ export async function compileImages(options: BuildOptions) {
 			__IMAGES_IMAGE_SIZES__,
 			__IMAGES_QUALITIES__,
 			__IMAGES_FORMATS__,
-			__IMAGES_MINIMUM_CACHE_TTL__,
+			__IMAGES_MINIMUM_CACHE_TTL_SEC__,
 			__IMAGES_ALLOW_SVG__,
 			__IMAGES_CONTENT_SECURITY_POLICY__,
 			__IMAGES_CONTENT_DISPOSITION__,
@@ -69,7 +69,7 @@ const defaultDeviceSizes = [640, 750, 828, 1080, 1200, 1920, 2048, 3840];
 // 16 was included in Next.js 15
 const defaultImageSizes = [32, 48, 64, 96, 128, 256, 384];
 
-// All values between 1-100 was allowed in Next.js 16
+// All values between 1-100 were allowed in Next.js 15
 const defaultQualities = [75];
 
 // Was unlimited in Next.js 15
@@ -77,6 +77,6 @@ const defaultMaxRedirects = 3;
 
 const defaultFormats = ["image/webp"];
 
-const defaultMinimumCacheTTL = 14400;
+const defaultMinimumCacheTTLSec = 14400;
 
 const defaultLocalPatterns = { pathname: "/**" };
