@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.14.0
+
+### Minor Changes
+
+- [#999](https://github.com/opennextjs/opennextjs-cloudflare/pull/999) [`50d7427`](https://github.com/opennextjs/opennextjs-cloudflare/commit/50d74273f918109179f02dc4ab804d6070637e74) Thanks [@pilcrowonpaper](https://github.com/pilcrowonpaper)! - feat: support image optimization using [the image binding](https://developers.cloudflare.com/images/transform-images/bindings/)
+
 ## 1.13.1
 
 ### Patch Changes
