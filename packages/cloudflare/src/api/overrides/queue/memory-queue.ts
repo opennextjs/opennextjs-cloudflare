@@ -34,13 +34,10 @@ export class MemoryQueue implements Queue {
 		try {
 			const protocol = host.includes("localhost") ? "http" : "https";
 
-			// TODO: Drop the import - https://github.com/opennextjs/opennextjs-cloudflare/issues/361
-			// @ts-ignore
-			const manifest = await import("./.next/prerender-manifest.json");
 			response = await service.fetch(`${protocol}://${host}${url}`, {
 				method: "HEAD",
 				headers: {
-					"x-prerender-revalidate": manifest.preview.previewModeId,
+					"x-prerender-revalidate": process.env.NEXT_PREVIEW_MODE_ID!,
 					"x-isr": "1",
 				},
 				// We want to timeout the revalidation to avoid hanging the queue
