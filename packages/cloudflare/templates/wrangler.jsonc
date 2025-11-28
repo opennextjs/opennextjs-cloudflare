@@ -18,5 +18,8 @@
 			// See https://developers.cloudflare.com/workers/wrangler/commands/#r2-bucket-create
 			"bucket_name": "cache"
 		}
-	]
+	],
+	"images": {
+		"binding": "IMAGES"
+	}
 }
