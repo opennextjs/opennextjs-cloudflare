@@ -2,4 +2,4 @@
 "@opennextjs/cloudflare": patch
 ---
 
-Add image binding to template
+Add image binding to Wrangler configuration template file
