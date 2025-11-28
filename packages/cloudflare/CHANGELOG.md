@@ -4,7 +4,7 @@
 
 ### Minor Changes
 
-- [#1010](https://github.com/opennextjs/opennextjs-cloudflare/pull/1010) [`672750a`](https://github.com/opennextjs/opennextjs-cloudflare/commit/672750a5a9378721885ec2f92c2ea8530b235db0) Thanks [@pilcrowonpaper](https://github.com/pilcrowonpaper)! - feat: support image optimization using [the image binding](https://developers.cloudflare.com/images/transform-images/bindings/)
+- [#999](https://github.com/opennextjs/opennextjs-cloudflare/pull/999) [`50d7427`](https://github.com/opennextjs/opennextjs-cloudflare/commit/50d74273f918109179f02dc4ab804d6070637e74) Thanks [@pilcrowonpaper](https://github.com/pilcrowonpaper)! - feat: support image optimization using [the image binding](https://developers.cloudflare.com/images/transform-images/bindings/)
 
 ## 1.13.1
 
