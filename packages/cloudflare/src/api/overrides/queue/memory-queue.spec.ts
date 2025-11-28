@@ -1,9 +1,7 @@
 import { generateMessageGroupId } from "@opennextjs/aws/core/routing/queue.js";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import cache, { DEFAULT_REVALIDATION_TIMEOUT_MS } from "./memory-queue.js";
-
-vi.mock("./.next/prerender-manifest.json", () => Promise.resolve({ preview: { previewModeId: "id" } }));
 
 const mockServiceWorkerFetch = vi.fn();
 vi.mock("../../cloudflare-context", () => ({
@@ -21,11 +19,18 @@ const generateMessageBody = ({ host, url }: { host: string; url: string }) => ({
 
 describe("MemoryQueue", () => {
 	beforeAll(() => {
-		vi.useFakeTimers();
 		globalThis.internalFetch = vi.fn().mockReturnValue(new Promise((res) => setTimeout(() => res(true), 1)));
 	});
 
-	afterEach(() => vi.clearAllMocks());
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.stubEnv("NEXT_PREVIEW_MODE_ID", "id");
+		return () => {
+			vi.useRealTimers();
+			vi.unstubAllEnvs();
+			vi.clearAllMocks();
+		};
+	});
 
 	it("should process revalidations for a path", async () => {
 		const firstRequest = cache.send({
