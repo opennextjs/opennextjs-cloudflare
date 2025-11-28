@@ -15,7 +15,7 @@ export function compileDurableObjects(buildOpts: BuildOptions) {
 	const buildOutputDotNextDir = path.join(buildOpts.appBuildOutputPath, ".next");
 
 	const prerenderManifest = loadPrerenderManifest(buildOutputDotNextDir);
-	const previewModeId = prerenderManifest.preview.previewModeId;
+	const previewModeId = prerenderManifest?.preview?.previewModeId;
 	const BUILD_ID = loadBuildId(buildOutputDotNextDir);
 
 	return esbuildSync(
