@@ -21,7 +21,7 @@
 		"react-dom": "^19.0.0"
 	},
 	"devDependencies": {
-		"@cloudflare/workers-types": "^4.20241224.0",
+		"@cloudflare/workers-types": "catalog:",
 		"@opennextjs/cloudflare": "workspace:*",
 		"@playwright/test": "catalog:",
 		"@types/node": "^22.10.2",

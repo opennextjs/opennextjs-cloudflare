@@ -8,7 +8,7 @@ packages:
   - benchmarking
 
 catalog:
-  "@cloudflare/workers-types": ^4.20250917.0
+  "@cloudflare/workers-types": ^4.20251118.0
   "@dotenvx/dotenvx": 1.31.0
   "@eslint/js": ^9.11.1
   "@playwright/test": ^1.51.1
@@ -26,13 +26,13 @@ catalog:
   glob: ^12.0.0
   globals: ^15.9.0
   mock-fs: ^5.4.1
-  next: ~14.2.24
+  next: ~15.5.6
   package-manager-detector: ^0.2.0
   react-dom: ^18
   react: ^18
   rimraf: ^6.0.1
   tsx: ^4.19.2
-  typescript-eslint: ^8.37.0
+  typescript-eslint: ^8.48.0
   typescript: ^5.9.3
   vitest: ^2.1.1
   wrangler: ^4.49.1
@@ -45,7 +45,7 @@ catalogs:
     "@types/react-dom": 19.0.0
     "@types/react": 19.0.0
     autoprefixer: 10.4.15
-    next: ~15.5.6
+    next: 16.0.5
     postcss: 8.4.27
     react-dom: 19.0.0
     react: 19.0.0

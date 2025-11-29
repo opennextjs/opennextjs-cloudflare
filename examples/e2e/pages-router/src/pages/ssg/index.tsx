@@ -1,5 +1,4 @@
 import type { InferGetStaticPropsType } from "next";
-import Link from "next/link";
 
 export async function getStaticProps() {
 	return {
@@ -15,7 +14,7 @@ export default function Page({ time }: InferGetStaticPropsType<typeof getStaticP
 			<div className="flex" data-testid="time">
 				Time: {time}
 			</div>
-			<Link href="/">Home</Link>
+			<a href="/">Home</a>
 		</div>
 	);
 }
