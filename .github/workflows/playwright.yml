@@ -22,7 +22,7 @@ jobs:
       - name: Build workers (webpack)
         run: pnpm -r build:worker
 
-      - name: Run playwright tests
+      - name: Run playwright tests (webpack)
         run: pnpm e2e
 
       - name: Build workers (turbopack)
