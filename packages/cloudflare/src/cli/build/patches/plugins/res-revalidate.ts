@@ -14,12 +14,13 @@ rule:
     kind: if_statement
     stopBy: end
     has:
-      kind: parenthesized_expression
-      has: { kind: property_identifier , stopBy: end, regex: trustHostHeader}
+      field: condition
+      stopBy: end
+      pattern: $$$_.trustHostHeader
   has:
     kind: call_expression
     all:
-      - has: {kind: identifier, pattern: fetch}
+      - has: { kind: identifier, pattern: fetch}
       - has:
           kind: arguments
           all:
@@ -29,31 +30,23 @@ rule:
                   - has:
                       kind: pair
                       all:
-                        - has: {kind: property_identifier, regex: method }
-                        - has: {kind: string, regex: 'HEAD'}
+                        - has: { kind: property_identifier, regex: method }
+                        - has: { kind: string, regex: 'HEAD'}
                   - has:
                       kind: pair
                       all:
-                        - has: {kind: property_identifier, regex: headers}
-                        - has: {kind: identifier, pattern: $HEADERS}
+                        - has: { kind: property_identifier, regex: headers}
+                        - has: { kind: identifier, pattern: $HEADERS}
             - has:
                 kind: template_string
                 all:
-                  - has:
-                      kind: string_fragment
-                      regex: https://
+                  - has: { kind: string_fragment, regex: ^https://$ }
                   - has:
                       kind: template_substitution
                       all:
                         - has: { kind: identifier, stopBy: end, pattern: $REQ }
-                        - has:
-                            kind: property_identifier
-                            regex: headers
-                            stopBy: end
-                        - has:
-                            kind: property_identifier
-                            regex: host
-                            stopBy: end
+                        - has: { kind: property_identifier, regex: ^headers$, stopBy: end }
+                        - has: { kind: property_identifier, regex: ^host$, stopBy: end }
                   - has:
                       kind: template_substitution
                       pattern: $URL_PATH
@@ -69,7 +62,7 @@ export const patchResRevalidate: CodePatcher = {
 		{
 			versions: ">=14.2.0",
 			pathFilter: getCrossPlatformPathRegex(
-				String.raw`(pages-api\.runtime\.prod\.js|node/api-resolver\.js)$`,
+				String.raw`(pages-api(?:-turbo)?\.runtime\.prod\.js|node/api-resolver\.js)$`,
 				{
 					escape: false,
 				}

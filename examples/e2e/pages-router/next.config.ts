@@ -9,7 +9,6 @@ const nextConfig: NextConfig = {
 	cleanDistDir: true,
 	reactStrictMode: true,
 	output: "standalone",
-	// outputFileTracingRoot: "../sst",
 	typescript: {
 		ignoreBuildErrors: true,
 	},
