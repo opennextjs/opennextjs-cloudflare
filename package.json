@@ -12,8 +12,9 @@
 	"scripts": {
 		"fix": "pnpm prettier:fix && pnpm lint:fix",
 		"build": "pnpm --filter cloudflare build",
-		"test": "pnpm -r test",
+		"test": "pnpm build && pnpm -r test",
 		"e2e": "pnpm build && pnpm -r e2e",
+		"e2e-turbopack": "pnpm build && pnpm -r e2e-turbopack",
 		"e2e:dev": "pnpm build && pnpm -r e2e:dev",
 		"prettier:check": "prettier --check .",
 		"prettier:fix": "prettier --write .",

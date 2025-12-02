@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import type nodeProcess from "node:process";
+import { execSync } from "node:child_process";
 import { getAppPort, getInspectorPort, type AppName } from "./apps";
 
 declare const process: typeof nodeProcess;
@@ -15,6 +15,8 @@ export function configurePlaywright(
 		multipleBrowsers = false,
 		// Whether to run tests in single file in parallel
 		parallel = true,
+		// Use the turbopack runtime
+		useTurbopack = false,
 	} = {}
 ) {
 	const port = getAppPort(app, { isWorker });
@@ -23,15 +25,12 @@ export function configurePlaywright(
 	let command: string;
 	let timeout: number;
 	if (isWorker) {
+		// Do not build on CI - there is a preceding build step
+		command = isCI ? "" : `pnpm ${useTurbopack ? "build:worker-turbopack" : "build:worker"} && `;
+
 		const env = app === "r2-incremental-cache" ? "--env e2e" : "";
-		if (isCI) {
-			// Do not build on CI - there is a preceding build step
-			command = `pnpm preview:worker -- --port ${port} --inspector-port ${inspectorPort} ${env}`;
-			timeout = 800_000;
-		} else {
-			timeout = 800_000;
-			command = `pnpm preview -- --port ${port} --inspector-port ${inspectorPort} ${env}`;
-		}
+		command += `pnpm preview:worker -- --port ${port} --inspector-port ${inspectorPort} ${env}`;
+		timeout = 800_000;
 	} else {
 		timeout = 100_000;
 		command = `pnpm dev --port ${port}`;

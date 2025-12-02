@@ -19,14 +19,17 @@ jobs:
       - name: Install Playwright
         uses: ./.github/actions/setup-playwright
 
-      - name: Build the tool
-        run: pnpm build
-
-      - name: Build all workers
+      - name: Build workers (webpack)
         run: pnpm -r build:worker
 
-      - name: Run playwright tests
+      - name: Run playwright tests (webpack)
         run: pnpm e2e
+
+      - name: Build workers (turbopack)
+        run: pnpm -r build:worker-turbopack
+
+      - name: Run playwright tests (turbopack)
+        run: pnpm e2e-turbopack
 
       - name: Run playwright dev tests
         run: pnpm e2e:dev

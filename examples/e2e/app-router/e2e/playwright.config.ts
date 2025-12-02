@@ -1,3 +1,3 @@
 import { configurePlaywright } from "../../../common/config-e2e";
 
-export default configurePlaywright("app-router");
+export default configurePlaywright("app-router", { useTurbopack: false });
