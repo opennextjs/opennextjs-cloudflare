@@ -1,5 +1,23 @@
 # @opennextjs/cloudflare
 
+## 1.14.1
+
+### Patch Changes
+
+- [#1016](https://github.com/opennextjs/opennextjs-cloudflare/pull/1016) [`2200b4b`](https://github.com/opennextjs/opennextjs-cloudflare/commit/2200b4b7d05e1f8a89af3831decb3a5734d3fb9f) Thanks [@vicb](https://github.com/vicb)! - Update e2e tests to Next 16 (webpack)
+
+- [#1015](https://github.com/opennextjs/opennextjs-cloudflare/pull/1015) [`e8971cd`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e8971cda7effcdcfa786c8bff85e62a14d4969a5) Thanks [@vicb](https://github.com/vicb)! - memory queue: retrieve the preview ID from `process.env`
+
+- [#1012](https://github.com/opennextjs/opennextjs-cloudflare/pull/1012) [`5f6c0a6`](https://github.com/opennextjs/opennextjs-cloudflare/commit/5f6c0a6775760155b3f1860bb44b4fff2c2916eb) Thanks [@pilcrowonpaper](https://github.com/pilcrowonpaper)! - Add image binding to Wrangler configuration template file
+
+- [#1017](https://github.com/opennextjs/opennextjs-cloudflare/pull/1017) [`a6904a4`](https://github.com/opennextjs/opennextjs-cloudflare/commit/a6904a4a0ce6c167d75132bf0fc1642515a7323f) Thanks [@vicb](https://github.com/vicb)! - fix: `response.validate` with the turbo pages runtime
+
+- [#1014](https://github.com/opennextjs/opennextjs-cloudflare/pull/1014) [`f4b53b9`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f4b53b9d33ab2cd6fe27d0c7d3434b1e8494bbb8) Thanks [@vicb](https://github.com/vicb)! - bump `@opennextjs/aws` to 3.9.1
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v3.9.1>
+
+- [#1019](https://github.com/opennextjs/opennextjs-cloudflare/pull/1019) [`2a3ee86`](https://github.com/opennextjs/opennextjs-cloudflare/commit/2a3ee86b54da60c7df72c7567c7f09edf9e877d7) Thanks [@vicb](https://github.com/vicb)! - await `headers()`
+
 ## 1.14.0
 
 ### Minor Changes
