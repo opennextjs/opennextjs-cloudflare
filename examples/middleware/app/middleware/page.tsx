@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 
-export default function MiddlewarePage() {
-	const cloudflareContextHeader = headers().get("x-cloudflare-context");
+export default async function MiddlewarePage() {
+	const cloudflareContextHeader = (await headers()).get("x-cloudflare-context");
 
 	return (
 		<>
