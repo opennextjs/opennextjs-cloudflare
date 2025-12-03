@@ -8,6 +8,12 @@
 		"directory": ".open-next/assets",
 		"binding": "ASSETS"
 	},
+	"services": [
+		{
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "app-name"
+		}
+	],
 	"r2_buckets": [
 		// Use R2 incremental cache
 		// See https://opennext.js.org/cloudflare/caching
