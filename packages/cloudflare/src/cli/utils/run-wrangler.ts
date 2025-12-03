@@ -83,6 +83,8 @@ export function runWrangler(options: BuildOptions, args: string[], wranglerOpts:
 				// Wrangler would load `.env.<wrangler env>` while we should load `.env.<process.env.NEXTJS_ENV>`
 				// See https://opennext.js.org/cloudflare/howtos/env-vars
 				CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: "false",
+				// We pass this variable to wrangler so that it can be aware that it is being run by us
+				RUN_BY_OPEN_NEXT: "true",
 			},
 		}
 	);
