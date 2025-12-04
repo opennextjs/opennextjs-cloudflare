@@ -40,7 +40,7 @@ export async function createWranglerConfigIfNotExistent(projectOpts: ProjectOpti
 
 	const appName = getAppNameFromPackageJson(projectOpts.sourceDir) ?? "app-name";
 	if (appName) {
-		wranglerConfig = wranglerConfig.replace('"app-name"', JSON.stringify(appName.replaceAll("_", "-")));
+		wranglerConfig = wranglerConfig.replaceAll('"app-name"', JSON.stringify(appName.replaceAll("_", "-")));
 	}
 
 	const compatDate = await getLatestCompatDate();
