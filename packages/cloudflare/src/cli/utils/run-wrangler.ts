@@ -85,11 +85,11 @@ export function runWrangler(options: BuildOptions, args: string[], wranglerOpts:
 				// Wrangler would load `.env.<wrangler env>` while we should load `.env.<process.env.NEXTJS_ENV>`
 				// See https://opennext.js.org/cloudflare/howtos/env-vars
 				CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: "false",
-				// If we are running the deploy command we set this RUN_BY_OPEN_NEXT environment variable
+				// If we are running the deploy command we set this OPEN_NEXT_DEPLOY environment variable
 				// to let `wrangler deploy` know that it is being run from open-next. We do this because
 				// otherwise `wrangler deploy` run in an open-next project would call
 				// `opennextjs-cloudflare deploy` (thus causing an unwanted recursion).
-				...(isDeployCommand ? { RUN_BY_OPEN_NEXT: "true" } : {}),
+				...(isDeployCommand ? { OPEN_NEXT_DEPLOY: "true" } : {}),
 			},
 		}
 	);
