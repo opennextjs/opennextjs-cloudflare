@@ -8,7 +8,7 @@
 
 ### Patch Changes
 
-- [#1033](https://github.com/opennextjs/opennextjs-cloudflare/pull/1033) [`26de072`](https://github.com/opennextjs/opennextjs-cloudflare/commit/26de0720fe6198273a580c4b3d066b73a2dc1d01) Thanks [@vicb](https://github.com/vicb)! - fix(images): allow any local path when no localPatterns are specified
+- [#1032](https://github.com/opennextjs/opennextjs-cloudflare/pull/1032) [`1de4899`](https://github.com/opennextjs/opennextjs-cloudflare/commit/1de4899e425510e200a8ecf1b959438afee0633b) Thanks [@vicb](https://github.com/vicb)! - fix(images): allow any local path when no localPatterns are specified
 
 ## 1.14.3
 
