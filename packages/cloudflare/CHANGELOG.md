@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 1.14.4
+
+### Patch Changes
+
+- [#1020](https://github.com/opennextjs/opennextjs-cloudflare/pull/1020) [`07919d8`](https://github.com/opennextjs/opennextjs-cloudflare/commit/07919d84033ba46e3e4cad62f526be330947d7ec) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - Add missing WORKER_SELF_REFERENCE service binding in the wrangler.jsonc that the CLI creates
+
+- [#1032](https://github.com/opennextjs/opennextjs-cloudflare/pull/1032) [`1de4899`](https://github.com/opennextjs/opennextjs-cloudflare/commit/1de4899e425510e200a8ecf1b959438afee0633b) Thanks [@vicb](https://github.com/vicb)! - fix(images): allow any local path when no localPatterns are specified
+
 ## 1.14.3
 
 ### Patch Changes
