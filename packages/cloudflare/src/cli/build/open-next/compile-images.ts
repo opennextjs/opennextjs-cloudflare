@@ -79,4 +79,9 @@ const defaultFormats = ["image/webp"];
 
 const defaultMinimumCacheTTLSec = 14400;
 
-const defaultLocalPatterns = { pathname: "/**" };
+// Allow any local image when no localPatterns are specified
+const defaultLocalPatterns = [
+	{
+		pathname: "^(?:\\/(?!\\.{1,2}(?:\\/|$))(?:(?:(?!(?:^|\\/)\\.{1,2}(?:\\/|$)).)*?))$",
+	},
+];
