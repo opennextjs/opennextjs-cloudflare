@@ -56,7 +56,7 @@ function injectPassthroughFlagForArgs(options: BuildOptions, args: string[]) {
 }
 
 export function runWrangler(options: BuildOptions, args: string[], wranglerOpts: WranglerOptions = {}) {
-	const result = spawnSync(
+	const spawnArgs = [
 		options.packager,
 		[
 			options.packager === "bun" ? "x" : "exec",
@@ -72,19 +72,24 @@ export function runWrangler(options: BuildOptions, args: string[], wranglerOpts:
 				].filter((v): v is string => !!v)
 			),
 		],
-		{
-			shell: true,
-			stdio: wranglerOpts.logging === "error" ? ["ignore", "ignore", "inherit"] : "inherit",
-			env: {
-				...process.env,
-				...(wranglerOpts.logging === "error" ? { WRANGLER_LOG: "error" } : undefined),
-				// `.env` files are handled by the adapter.
-				// Wrangler would load `.env.<wrangler env>` while we should load `.env.<process.env.NEXTJS_ENV>`
-				// See https://opennext.js.org/cloudflare/howtos/env-vars
-				CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: "false",
-			},
-		}
-	);
+	] as const;
+
+	// ensure the logs are on a new line so they don't get appended to tqdm progress bars
+	if (options.debug) console.log();
+	logger.debug(`Running wrangler command: ${spawnArgs.flat().join(" ")}`);
+
+	const result = spawnSync(...spawnArgs, {
+		shell: true,
+		stdio: !options.debug && wranglerOpts.logging === "error" ? ["ignore", "ignore", "inherit"] : "inherit",
+		env: {
+			...process.env,
+			...(!options.debug && wranglerOpts.logging === "error" ? { WRANGLER_LOG: "error" } : undefined),
+			// `.env` files are handled by the adapter.
+			// Wrangler would load `.env.<wrangler env>` while we should load `.env.<process.env.NEXTJS_ENV>`
+			// See https://opennext.js.org/cloudflare/howtos/env-vars
+			CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: "false",
+		},
+	});
 
 	if (result.status !== 0) {
 		logger.error("Wrangler command failed");
