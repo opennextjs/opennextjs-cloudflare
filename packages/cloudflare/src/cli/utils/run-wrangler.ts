@@ -56,6 +56,8 @@ function injectPassthroughFlagForArgs(options: BuildOptions, args: string[]) {
 }
 
 export function runWrangler(options: BuildOptions, args: string[], wranglerOpts: WranglerOptions = {}) {
+	const shouldPipeLogs = wranglerOpts.logging === "error";
+
 	const result = spawnSync(
 		options.packager,
 		[
@@ -74,10 +76,9 @@ export function runWrangler(options: BuildOptions, args: string[], wranglerOpts:
 		],
 		{
 			shell: true,
-			stdio: wranglerOpts.logging === "error" ? ["ignore", "ignore", "inherit"] : "inherit",
+			stdio: shouldPipeLogs ? ["ignore", "pipe", "pipe"] : "inherit",
 			env: {
 				...process.env,
-				...(wranglerOpts.logging === "error" ? { WRANGLER_LOG: "error" } : undefined),
 				// `.env` files are handled by the adapter.
 				// Wrangler would load `.env.<wrangler env>` while we should load `.env.<process.env.NEXTJS_ENV>`
 				// See https://opennext.js.org/cloudflare/howtos/env-vars
@@ -87,6 +88,11 @@ export function runWrangler(options: BuildOptions, args: string[], wranglerOpts:
 	);
 
 	if (result.status !== 0) {
+		if (shouldPipeLogs) {
+			process.stdout.write(result.stdout.toString());
+			process.stderr.write(result.stderr.toString());
+		}
+
 		logger.error("Wrangler command failed");
 		process.exit(1);
 	}
