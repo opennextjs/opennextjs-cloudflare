@@ -13,6 +13,7 @@ type WranglerOptions = {
 	environment?: string;
 	configPath?: string;
 	logging?: "all" | "error";
+	deploy?: boolean;
 };
 
 /**
@@ -58,8 +59,6 @@ function injectPassthroughFlagForArgs(options: BuildOptions, args: string[]) {
 export function runWrangler(options: BuildOptions, args: string[], wranglerOpts: WranglerOptions = {}) {
 	const shouldPipeLogs = wranglerOpts.logging === "error";
 
-	const isDeployCommand = args[0] === "deploy";
-
 	const result = spawnSync(
 		options.packager,
 		[
@@ -89,7 +88,7 @@ export function runWrangler(options: BuildOptions, args: string[], wranglerOpts:
 				// to let `wrangler deploy` know that it is being run from open-next. We do this because
 				// otherwise `wrangler deploy` run in an open-next project would call
 				// `opennextjs-cloudflare deploy` (thus causing an unwanted recursion).
-				...(isDeployCommand ? { OPEN_NEXT_DEPLOY: "true" } : {}),
+				...(wranglerOpts.deploy ? { OPEN_NEXT_DEPLOY: "true" } : {}),
 			},
 		}
 	);

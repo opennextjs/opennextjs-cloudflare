@@ -56,6 +56,7 @@ export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 		],
 		{
 			logging: "all",
+			deploy: true,
 		}
 	);
 }
