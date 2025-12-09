@@ -56,6 +56,13 @@ export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 		],
 		{
 			logging: "all",
+			env: {
+				// If we are running the deploy command we set this OPEN_NEXT_DEPLOY environment variable
+				// to let `wrangler deploy` know that it is being run from open-next. We do this because
+				// otherwise `wrangler deploy` run in an open-next project would call
+				// `opennextjs-cloudflare deploy` (thus causing an unwanted recursion).
+				OPEN_NEXT_DEPLOY: "true",
+			},
 		}
 	);
 }
