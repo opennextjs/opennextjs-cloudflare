@@ -13,7 +13,7 @@ type WranglerOptions = {
 	environment?: string;
 	configPath?: string;
 	logging?: "all" | "error";
-	env?: Record<string, unknown>;
+	env?: Record<string, string>;
 };
 
 /**
