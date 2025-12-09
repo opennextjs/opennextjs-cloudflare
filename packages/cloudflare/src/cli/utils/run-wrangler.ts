@@ -80,11 +80,11 @@ export function runWrangler(options: BuildOptions, args: string[], wranglerOpts:
 			stdio: shouldPipeLogs ? ["ignore", "pipe", "pipe"] : "inherit",
 			env: {
 				...process.env,
+				...wranglerOpts.env,
 				// `.env` files are handled by the adapter.
 				// Wrangler would load `.env.<wrangler env>` while we should load `.env.<process.env.NEXTJS_ENV>`
 				// See https://opennext.js.org/cloudflare/howtos/env-vars
 				CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: "false",
-				...wranglerOpts.env,
 			},
 		}
 	);
