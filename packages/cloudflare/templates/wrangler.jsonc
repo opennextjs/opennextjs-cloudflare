@@ -1,8 +1,8 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"main": ".open-next/worker.js",
-	"name": "app-name",
-	"compatibility_date": "2024-12-30",
+	"name": "<WORKER_NAME>",
+	"compatibility_date": "2025-12-01",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"assets": {
 		"directory": ".open-next/assets",
@@ -10,8 +10,10 @@
 	},
 	"services": [
 		{
+			// Self-reference service binding, the service name must match the worker name
+			// see https://opennext.js.org/cloudflare/caching
 			"binding": "WORKER_SELF_REFERENCE",
-			"service": "app-name"
+			"service": "<WORKER_NAME>"
 		}
 	],
 	"r2_buckets": [

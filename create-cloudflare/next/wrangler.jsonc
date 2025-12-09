@@ -4,20 +4,28 @@
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "next",
+	"name": "<WORKER_NAME>",
 	"main": ".open-next/worker.js",
-	"compatibility_date": "2025-11-06",
+	"compatibility_date": "2025-12-01",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".open-next/assets"
 	},
-	"observability": {
-		"enabled": true
-	},
 	"images": {
 		// Enable image optimization
 		// see https://opennext.js.org/cloudflare/howtos/image
 		"binding": "IMAGES"
+	},
+	"services": [
+		{
+			// Self-reference service binding, the service name must match the worker name
+			// see https://opennext.js.org/cloudflare/caching
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "<WORKER_NAME>"
+		}
+	],
+	"observability": {
+		"enabled": true
 	}
 }

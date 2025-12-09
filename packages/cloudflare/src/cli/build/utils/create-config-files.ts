@@ -39,9 +39,8 @@ export async function createWranglerConfigIfNotExistent(projectOpts: ProjectOpti
 	let wranglerConfig = readFileSync(join(getPackageTemplatesDirPath(), "wrangler.jsonc"), "utf8");
 
 	const appName = getAppNameFromPackageJson(projectOpts.sourceDir) ?? "app-name";
-	if (appName) {
-		wranglerConfig = wranglerConfig.replaceAll('"app-name"', JSON.stringify(appName.replaceAll("_", "-")));
-	}
+
+	wranglerConfig = wranglerConfig.replaceAll('"<WORKER_NAME>"', JSON.stringify(appName.replaceAll("_", "-")));
 
 	const compatDate = await getLatestCompatDate();
 	if (compatDate) {
