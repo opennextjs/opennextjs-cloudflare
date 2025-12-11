@@ -1,5 +1,19 @@
 # @opennextjs/cloudflare
 
+## 1.14.5
+
+### Patch Changes
+
+- [#1042](https://github.com/opennextjs/opennextjs-cloudflare/pull/1042) [`763c4ec`](https://github.com/opennextjs/opennextjs-cloudflare/commit/763c4ec9903532e37054bb046930f62b2d73fb34) Thanks [@vicb](https://github.com/vicb)! - Bump Next, React, and @opennextjs/aws to fix vulnerabilities (CVE-2025-55184 and CVE-2025-55183)
+
+  See <https://react.dev/blog/2025/12/11/denial-of-service-and-source-code-exposure-in-react-server-components>
+  See <https://nextjs.org/blog/security-update-2025-12-11>
+  See <https://github.com/opennextjs/opennextjs-aws/releases/tag/v3.9.5>
+
+- [#1034](https://github.com/opennextjs/opennextjs-cloudflare/pull/1034) [`721bff0`](https://github.com/opennextjs/opennextjs-cloudflare/commit/721bff023068c93bba830fe897de8314e71b3a5b) Thanks [@james-elicx](https://github.com/james-elicx)! - output more wrangler command logs when the command fails
+
+- [#1023](https://github.com/opennextjs/opennextjs-cloudflare/pull/1023) [`a4a2f02`](https://github.com/opennextjs/opennextjs-cloudflare/commit/a4a2f02fe664e95de47c75ca60c150892ae4d70d) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - When running `wrangler deploy` add a `OPEN_NEXT_DEPLOY` environment variable to let wrangler know that it is being run by open-next
+
 ## 1.14.4
 
 ### Patch Changes
