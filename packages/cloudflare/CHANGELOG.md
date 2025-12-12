@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 1.14.6
+
+### Patch Changes
+
+- [#1043](https://github.com/opennextjs/opennextjs-cloudflare/pull/1043) [`c83cb83`](https://github.com/opennextjs/opennextjs-cloudflare/commit/c83cb83f30e08d24c0a2b0217e02dff39bf87f95) Thanks [@vicb](https://github.com/vicb)! - fix for CVE-2025-67779
+
+  See <https://nextjs.org/blog/security-update-2025-12-11>
+
 ## 1.14.5
 
 ### Patch Changes
