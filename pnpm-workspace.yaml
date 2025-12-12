@@ -42,11 +42,11 @@ catalog:
 catalogs:
   e2e:
     "@types/node": 20.17.6
-    "@types/react-dom": 19.0.2
-    "@types/react": 19.0.2
+    "@types/react-dom": 19.0.3
+    "@types/react": 19.0.3
     autoprefixer: 10.4.15
     next: 16.0.10
     postcss: 8.4.27
-    react-dom: 19.0.2
-    react: 19.0.2
+    react-dom: 19.0.3
+    react: 19.0.3
     tailwindcss: 3.3.3
