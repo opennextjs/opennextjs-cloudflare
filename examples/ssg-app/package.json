@@ -13,8 +13,8 @@
 		"e2e": "playwright test -c e2e/playwright.config.ts"
 	},
 	"dependencies": {
-		"react": "^19.0.0",
-		"react-dom": "^19.0.0",
+		"react": "^19.0.3",
+		"react-dom": "^19.0.3",
 		"next": "15.5.9"
 	},
 	"devDependencies": {
