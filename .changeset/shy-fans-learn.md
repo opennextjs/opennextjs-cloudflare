@@ -1,5 +1,5 @@
 ---
-"@opennextjs/aws": patch
+"@opennextjs/cloudflare": patch
 ---
 
 fix for CVE-2025-67779
