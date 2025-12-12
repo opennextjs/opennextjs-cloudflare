@@ -16,7 +16,7 @@
 		"cf-typegen": "wrangler types --env-interface CloudflareEnv"
 	},
 	"dependencies": {
-		"next": "^14.2.33",
+		"next": "^14.2.35",
 		"react": "catalog:",
 		"react-dom": "catalog:"
 	},
