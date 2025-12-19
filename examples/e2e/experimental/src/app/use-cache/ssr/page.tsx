@@ -9,7 +9,7 @@ export default async function Page() {
 		<div>
 			<h1>Cache</h1>
 			<p>{_headers.get("accept") ?? "No accept headers"}</p>
-			cached:
+			<h2>cached:</h2>
 			<Suspense fallback={<p>Loading...</p>}>
 				<FullyCachedComponent />
 			</Suspense>
