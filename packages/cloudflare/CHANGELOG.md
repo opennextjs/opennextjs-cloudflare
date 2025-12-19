@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.14.7
+
+### Patch Changes
+
+- [#1053](https://github.com/opennextjs/opennextjs-cloudflare/pull/1053) [`d447125`](https://github.com/opennextjs/opennextjs-cloudflare/commit/d44712566659b1040c345f0931532cc03f5619c0) Thanks [@vicb](https://github.com/vicb)! - Support composable cache in Next 16
+
 ## 1.14.6
 
 ### Patch Changes
