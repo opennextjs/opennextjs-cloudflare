@@ -102,7 +102,11 @@ fix: |-
 export function createComposableCacheHandlersRule(handlerPath: string) {
 	return `
 rule:
-  pattern: "const { cacheHandlers } = this.nextConfig.experimental;"
+  # matches
+  # - const { cacheHandlers } = this.nextConfig.experimental; pre Next 16
+  # - const { cacheMaxMemorySize, cacheHandlers } = this.nextConfig; from Next 16
+  kind: lexical_declaration
+  regex: cacheHandlers
   inside:
     kind: method_definition
     has:
