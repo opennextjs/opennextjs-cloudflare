@@ -17,7 +17,7 @@ export default async function Page() {
 			<Suspense fallback={<p>Loading...</p>}>
 				<FullyCachedComponentWithTag />
 			</Suspense>
-			isr:
+			<h2>isr:</h2>
 			<Suspense fallback={<p>Loading...</p>}>
 				<ISRComponent />
 			</Suspense>
