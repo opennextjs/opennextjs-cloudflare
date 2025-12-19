@@ -13,7 +13,7 @@ export default async function Page() {
 			<Suspense fallback={<p>Loading...</p>}>
 				<FullyCachedComponent />
 			</Suspense>
-			cached (with tag):
+			<h2>cached (with tag):</h2>
 			<Suspense fallback={<p>Loading...</p>}>
 				<FullyCachedComponentWithTag />
 			</Suspense>
