@@ -5,6 +5,7 @@ const apps = [
 	"middleware",
 	"playground14",
 	"playground15",
+	"playground16",
 	"vercel-blog-starter",
 	"ssg-app",
 	"prisma",
