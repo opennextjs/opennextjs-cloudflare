@@ -20,6 +20,7 @@ import { patchResolveCache, patchSetWorkingDirectory } from "./patches/plugins/o
 import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
 import { patchPagesRouterContext } from "./patches/plugins/pages-router-context.js";
 import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations.js";
+import { shimFastSetImmediate } from "./patches/plugins/fast-set-immediate.js";
 import { fixRequire } from "./patches/plugins/require.js";
 import { shimRequireHook } from "./patches/plugins/require-hook.js";
 import { patchRouteModules } from "./patches/plugins/route-module.js";
@@ -92,6 +93,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 		conditions: getOpenNextConfig(buildOpts).cloudflare?.useWorkerdCondition === false ? [] : ["workerd"],
 		plugins: [
 			shimRequireHook(buildOpts),
+			shimFastSetImmediate(),
 			inlineDynamicRequires(updater, buildOpts),
 			setWranglerExternal(),
 			fixRequire(updater),
