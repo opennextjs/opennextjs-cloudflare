@@ -10,16 +10,12 @@ export function shimFastSetImmediate(): Plugin {
 	return {
 		name: "shim-fast-set-immediate",
 		setup(build) {
-			// Intercept the import of fast-set-immediate.external
+			// Intercept the fast-set-immediate.external module
 			build.onResolve({ filter: /fast-set-immediate\.external/ }, (args) => {
-				// Only intercept if it's being imported from node-environment-extensions
-				if (args.path.includes("fast-set-immediate")) {
-					return {
-						path: args.path,
-						namespace: "fast-set-immediate-shim",
-					};
-				}
-				return undefined;
+				return {
+					path: args.path,
+					namespace: "fast-set-immediate-shim",
+				};
 			});
 
 			build.onLoad({ filter: /.*/, namespace: "fast-set-immediate-shim" }, () => {
