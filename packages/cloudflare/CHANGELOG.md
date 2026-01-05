@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.14.8
+
+### Patch Changes
+
+- [#1064](https://github.com/opennextjs/opennextjs-cloudflare/pull/1064) [`9222070`](https://github.com/opennextjs/opennextjs-cloudflare/commit/9222070d68ecff62cd0138b727065e724f857121) Thanks [@vicb](https://github.com/vicb)! - fix r2 bulk put to respect bucket jurisdiction
+
 ## 1.14.7
 
 ### Patch Changes
