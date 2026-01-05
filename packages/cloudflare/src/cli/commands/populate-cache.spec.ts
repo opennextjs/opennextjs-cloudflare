@@ -137,6 +137,43 @@ describe("populateCache", () => {
 					expect.objectContaining({ target })
 				);
 			});
+
+			test(`${target} using jurisdiction`, async () => {
+				const { runWrangler } = await import("../utils/run-wrangler.js");
+
+				setupMockFileSystem();
+				vi.mocked(runWrangler).mockClear();
+
+				await populateCache(
+					{
+						outputDir: "/test/output",
+					} as BuildOptions,
+					{
+						default: {
+							override: {
+								incrementalCache: "cf-r2-incremental-cache",
+							},
+						},
+					} as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+					{
+						r2_buckets: [
+							{
+								binding: "NEXT_INC_CACHE_R2_BUCKET",
+								bucket_name: "test-bucket",
+								jurisdiction: "eu",
+							},
+						],
+					} as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+					{ target, shouldUsePreviewId: false },
+					{} as any // eslint-disable-line @typescript-eslint/no-explicit-any
+				);
+
+				expect(runWrangler).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.arrayContaining(["r2 bulk put", "test-bucket", "--jurisdiction eu"]),
+					expect.objectContaining({ target })
+				);
+			});
 		}
 	);
 });

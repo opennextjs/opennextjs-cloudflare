@@ -245,10 +245,17 @@ async function populateR2IncrementalCache(
 	fs.writeFileSync(listFile, JSON.stringify(objectList));
 
 	const concurrency = Math.max(1, populateCacheOptions.cacheChunkSize ?? 50);
+	const jurisdiction = binding.jurisdiction ? `--jurisdiction ${binding.jurisdiction}` : "";
 
 	runWrangler(
 		buildOpts,
-		["r2 bulk put", bucket, `--filename ${quoteShellMeta(listFile)}`, `--concurrency ${concurrency}`],
+		[
+			"r2 bulk put",
+			bucket,
+			`--filename ${quoteShellMeta(listFile)}`,
+			`--concurrency ${concurrency}`,
+			jurisdiction,
+		],
 		{
 			target: populateCacheOptions.target,
 			configPath: populateCacheOptions.wranglerConfigPath,
