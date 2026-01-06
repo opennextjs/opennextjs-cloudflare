@@ -152,7 +152,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 		banner: {
 			// We need to import them here, assigning them to `globalThis` does not work because node:timers use `globalThis` and thus create an infinite loop
 			// See https://github.com/cloudflare/workerd/blob/d6a764c/src/node/internal/internal_timers.ts#L56-L70
-			js: `import {setInterval, clearInterval, setTimeout, clearTimeout, setImmediate, clearImmediate} from "node:timers"`,
+			js: `import {setInterval, clearInterval, setTimeout, clearTimeout} from "node:timers"`,
 		},
 		platform: "node",
 	});
