@@ -14,3 +14,14 @@ test.describe("playground/cloudflare", () => {
 		expect(nextConfig.output).toEqual("standalone");
 	});
 });
+
+test.describe("using cloudflare:* modules", () => {
+	test("NextConfig", async ({ page }) => {
+		const res = await page.request.get("/api/cloudflare");
+		expect(res.status()).toEqual(200);
+		const { cloudflare, env } = await res.json();
+		expect(cloudflare).toBe(true);
+		expect(env.NEXTJS_ENV).toEqual("development");
+		expect(env.ASSETS).toBeDefined();
+	});
+});
