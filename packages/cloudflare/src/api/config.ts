@@ -55,6 +55,11 @@ export type CloudflareOverrides = {
 	 * @default "none"
 	 */
 	routePreloadingBehavior?: RoutePreloadingBehavior;
+
+	/**
+	 * List of external modules to exclude from the server bundle.
+	 */
+	serverExternals?: string[];
 };
 
 /**
@@ -71,6 +76,7 @@ export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNe
 		cachePurge,
 		enableCacheInterception = false,
 		routePreloadingBehavior = "none",
+		serverExternals = [],
 	} = config;
 
 	return {
@@ -106,6 +112,7 @@ export function defineCloudflareConfig(config: CloudflareOverrides = {}): OpenNe
 			},
 			assetResolver: () => assetResolver,
 		},
+		serverExternals,
 	};
 }
 
@@ -180,6 +187,7 @@ interface OpenNextConfig extends AwsOpenNextConfig {
 			maxVersionAgeDays?: number;
 		};
 	};
+	serverExternals?: string[];
 }
 
 /**
