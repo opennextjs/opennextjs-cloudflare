@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.14.9
+
+### Patch Changes
+
+- [#1057](https://github.com/opennextjs/opennextjs-cloudflare/pull/1057) [`0230cbe`](https://github.com/opennextjs/opennextjs-cloudflare/commit/0230cbeb5a1fb9e4218b01651d73283171d3963f) Thanks [@vicb](https://github.com/vicb)! - Do not inject setImmediate/clearImmediate in the global scope
+
 ## 1.14.8
 
 ### Patch Changes
