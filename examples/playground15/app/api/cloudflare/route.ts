@@ -10,7 +10,7 @@ export async function GET() {
 		// See https://opennext.js.org/cloudflare/bindings
 		const req = module.createRequire("file:///");
 		const { env } = req("cloudflare:workers");
-		return Response.json({ cloudflare: true, env, e });
+		return Response.json({ cloudflare: true, env });
 	}
 
 	return Response.json({ cloudflare: false });
