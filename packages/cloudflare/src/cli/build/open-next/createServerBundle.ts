@@ -377,8 +377,11 @@ async function copyMissingNextDistDirs(
 	outputPath: string,
 	packagePath: string
 ) {
+	console.log("DEBUG: copyMissingNextDistDirs called");
+	console.log("DEBUG: nextVersion:", options.nextVersion);
 	// Only needed for Next.js 16+
 	if (!buildHelper.compareSemver(options.nextVersion, ">=", "16.0.0")) {
+		console.log("DEBUG: Not Next.js 16+, returning early");
 		return;
 	}
 
@@ -472,18 +475,60 @@ async function copyMissingNextDistDirs(
 	}
 
 	// NFT doesn't trace all the files needed by Next.js 16.
-	// The simplest fix is to copy the entire Next.js dist directory from source
-	// and let it overwrite/merge with what NFT copied.
+	// Copy only specific directories needed for the server, not the entire dist
+	// (full dist would make the bundle too large - 700MB+)
 	const sourceDistDir = path.join(sourceNextDir, "dist");
 	const destDistDir = path.join(nextOutputDir, "dist");
 
+	// Server-required subdirectories that NFT might miss
+	// Note: We copy server/ entirely because next-server.js needs many peer modules
+	// Note: client/ is needed because server modules reference client/components (app-router-headers, etc.)
+	const requiredDirs = [
+		"server",            // All server modules (next-server.js needs peers in same dir)
+		"client",            // Client components referenced by server (app-router-headers, etc.)
+		"shared",            // Shared utilities
+		"lib",               // Library utilities
+		"build",             // Build utilities
+		"next-devtools",     // DevTools shared modules
+	];
+
 	if (fs.existsSync(sourceDistDir)) {
-		logger.info("  Copying complete next/dist/ directory...");
-		// Remove the NFT-traced dist and replace with complete source
-		// This ensures all internal modules are available
-		if (fs.existsSync(destDistDir)) {
-			fs.rmSync(destDistDir, { recursive: true });
+		logger.info("  Copying missing Next.js 16 server modules...");
+		for (const dir of requiredDirs) {
+			const srcDir = path.join(sourceDistDir, dir);
+			const dstDir = path.join(destDistDir, dir);
+			if (fs.existsSync(srcDir)) {
+				// Merge with existing (don't delete first, just overwrite missing files)
+				fs.cpSync(srcDir, dstDir, { recursive: true, force: false });
+				logger.info(`    Copied ${dir}/`);
+			}
 		}
-		fs.cpSync(sourceDistDir, destDistDir, { recursive: true });
+	}
+
+	// Create styled-jsx stub for app-router-only apps
+	// pages.runtime.prod.js requires styled-jsx, but it's not needed for app router
+	// Create a stub package that exports an empty object to satisfy the require
+	const styledJsxDir = path.join(nextOutputDir, "..", "styled-jsx");
+	console.log("DEBUG: styled-jsx dir path:", styledJsxDir);
+	console.log("DEBUG: nextOutputDir:", nextOutputDir);
+	console.log("DEBUG: styled-jsx exists:", fs.existsSync(styledJsxDir));
+	// Always create the stub (delete first if exists)
+	try {
+		if (fs.existsSync(styledJsxDir)) {
+			fs.rmSync(styledJsxDir, { recursive: true });
+		}
+		console.log("DEBUG: Creating styled-jsx stub...");
+		fs.mkdirSync(styledJsxDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(styledJsxDir, "package.json"),
+			JSON.stringify({ name: "styled-jsx", version: "0.0.0", main: "index.js" })
+		);
+		fs.writeFileSync(
+			path.join(styledJsxDir, "index.js"),
+			"module.exports = { default: function() { throw new Error('styled-jsx is not available - this app uses app router only'); } };"
+		);
+		console.log("DEBUG: styled-jsx stub created at", styledJsxDir);
+	} catch (error) {
+		console.error("DEBUG: Error creating styled-jsx stub:", error);
 	}
 }
