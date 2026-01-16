@@ -1,5 +1,19 @@
 # @opennextjs/cloudflare
 
+## 1.14.9
+
+### Patch Changes
+
+- [#1070](https://github.com/opennextjs/opennextjs-cloudflare/pull/1070) [`f7c6b3a`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f7c6b3a221bd6ad53f04eb6fdfb3a9af9793562e) Thanks [@vicb](https://github.com/vicb)! - bump `@opennextjs/aws` to 3.9.8
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v3.9.8>
+
+- [#1057](https://github.com/opennextjs/opennextjs-cloudflare/pull/1057) [`0230cbe`](https://github.com/opennextjs/opennextjs-cloudflare/commit/0230cbeb5a1fb9e4218b01651d73283171d3963f) Thanks [@vicb](https://github.com/vicb)! - Do not inject setImmediate/clearImmediate in the global scope
+
+- [#1069](https://github.com/opennextjs/opennextjs-cloudflare/pull/1069) [`4ee4ba3`](https://github.com/opennextjs/opennextjs-cloudflare/commit/4ee4ba31932af53c3f3ed3e33b9509cb6681f182) Thanks [@vicb](https://github.com/vicb)! - Check that wrangler is >= 4.59.2 when building Next 16.1+.
+
+  To ensure `workerd` has a required fix to `setImmediate`
+
 ## 1.14.8
 
 ### Patch Changes

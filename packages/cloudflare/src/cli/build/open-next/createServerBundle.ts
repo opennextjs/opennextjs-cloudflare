@@ -191,6 +191,10 @@ async function generateBundle(
 		bundledNextServer: isBundled,
 	});
 
+	// Next.js 16+ fix: NFT doesn't trace all internal modules correctly
+	// Copy missing Next.js dist directories that next-server.js requires
+	await copyMissingNextDistDirs(options, outputPath, packagePath);
+
 	if (getOpenNextConfig(options).cloudflare?.useWorkerdCondition !== false) {
 		// Next does not trace the "workerd" build condition
 		// So we need to copy the whole packages using the condition
@@ -363,4 +367,170 @@ async function minifyServerBundle(outputDir: string) {
 		compress_json: true,
 		mangle: true,
 	});
+}
+
+/**
+ * Copy missing Next.js dist directories that NFT doesn't trace correctly.
+ * This is needed for Next.js 16+ where the file structure changed and
+ * NFT doesn't follow all internal require chains.
+ */
+async function copyMissingNextDistDirs(
+	options: buildHelper.BuildOptions,
+	outputPath: string,
+	packagePath: string
+) {
+	console.log("DEBUG: copyMissingNextDistDirs called");
+	console.log("DEBUG: nextVersion:", options.nextVersion);
+	// Only needed for Next.js 16+
+	if (!buildHelper.compareSemver(options.nextVersion, ">=", "16.0.0")) {
+		console.log("DEBUG: Not Next.js 16+, returning early");
+		return;
+	}
+
+	logger.info("Copying missing Next.js 16 internal modules...");
+
+	// Find the Next.js package in the traced node_modules
+	// For monorepos, the .bun/.pnpm directory is at the root level
+	const packageNodeModules = path.join(outputPath, packagePath, "node_modules");
+	const rootNodeModules = path.join(outputPath, "node_modules");
+
+	// Look for Next.js in various possible locations (pnpm, npm, bun, etc.)
+	let nextOutputDir: string | null = null;
+
+	// Helper to find Next.js in a package manager's cache directory
+	const findNextInPkgMgrDir = (baseDir: string, dirName: string): string | null => {
+		const pkgMgrDir = path.join(baseDir, dirName);
+		if (fs.existsSync(pkgMgrDir)) {
+			const entries = fs.readdirSync(pkgMgrDir);
+			const nextEntry = entries.find(e => e.startsWith("next@"));
+			if (nextEntry) {
+				return path.join(pkgMgrDir, nextEntry, "node_modules", "next");
+			}
+		}
+		return null;
+	};
+
+	// Check root node_modules first (monorepo setup)
+	nextOutputDir = findNextInPkgMgrDir(rootNodeModules, ".bun");
+	if (!nextOutputDir) nextOutputDir = findNextInPkgMgrDir(rootNodeModules, ".pnpm");
+
+	// Check package-level node_modules
+	if (!nextOutputDir) nextOutputDir = findNextInPkgMgrDir(packageNodeModules, ".bun");
+	if (!nextOutputDir) nextOutputDir = findNextInPkgMgrDir(packageNodeModules, ".pnpm");
+
+	// Check for standard node_modules/next (resolve symlinks)
+	if (!nextOutputDir) {
+		const standardNextDir = path.join(packageNodeModules, "next");
+		if (fs.existsSync(standardNextDir)) {
+			try {
+				nextOutputDir = fs.realpathSync(standardNextDir);
+			} catch {
+				nextOutputDir = standardNextDir;
+			}
+		}
+	}
+
+	if (!nextOutputDir || !fs.existsSync(nextOutputDir)) {
+		logger.warn("Could not find Next.js in output node_modules, skipping dist copy");
+		return;
+	}
+
+	// Find the source Next.js installation
+	// IMPORTANT: Use the actual workspace node_modules, not the standalone output
+	// The standalone only has NFT-traced files, which is the problem we're fixing
+	const findSourceNext = (): string | null => {
+		// Try app's node_modules first (resolve symlinks for bun/pnpm)
+		const appNextPath = path.join(options.appPath, "node_modules", "next");
+		if (fs.existsSync(appNextPath)) {
+			try {
+				return fs.realpathSync(appNextPath);
+			} catch {
+				return appNextPath;
+			}
+		}
+
+		// Try monorepo root node_modules
+		const monoNextPath = path.join(options.monorepoRoot, "node_modules", "next");
+		if (fs.existsSync(monoNextPath)) {
+			try {
+				return fs.realpathSync(monoNextPath);
+			} catch {
+				return monoNextPath;
+			}
+		}
+
+		// Try finding in bun/pnpm directories at monorepo root
+		const monoBunNext = findNextInPkgMgrDir(path.join(options.monorepoRoot, "node_modules"), ".bun");
+		if (monoBunNext) return monoBunNext;
+
+		const monoPnpmNext = findNextInPkgMgrDir(path.join(options.monorepoRoot, "node_modules"), ".pnpm");
+		if (monoPnpmNext) return monoPnpmNext;
+
+		return null;
+	};
+
+	const sourceNextDir = findSourceNext();
+
+	if (!sourceNextDir || !fs.existsSync(sourceNextDir)) {
+		logger.warn("Could not find source Next.js installation, skipping dist copy");
+		return;
+	}
+
+	// NFT doesn't trace all the files needed by Next.js 16.
+	// Copy only specific directories needed for the server, not the entire dist
+	// (full dist would make the bundle too large - 700MB+)
+	const sourceDistDir = path.join(sourceNextDir, "dist");
+	const destDistDir = path.join(nextOutputDir, "dist");
+
+	// Server-required subdirectories that NFT might miss
+	// Note: We copy server/ entirely because next-server.js needs many peer modules
+	// Note: client/ is needed because server modules reference client/components (app-router-headers, etc.)
+	const requiredDirs = [
+		"server",            // All server modules (next-server.js needs peers in same dir)
+		"client",            // Client components referenced by server (app-router-headers, etc.)
+		"shared",            // Shared utilities
+		"lib",               // Library utilities
+		"build",             // Build utilities
+		"next-devtools",     // DevTools shared modules
+	];
+
+	if (fs.existsSync(sourceDistDir)) {
+		logger.info("  Copying missing Next.js 16 server modules...");
+		for (const dir of requiredDirs) {
+			const srcDir = path.join(sourceDistDir, dir);
+			const dstDir = path.join(destDistDir, dir);
+			if (fs.existsSync(srcDir)) {
+				// Merge with existing (don't delete first, just overwrite missing files)
+				fs.cpSync(srcDir, dstDir, { recursive: true, force: false });
+				logger.info(`    Copied ${dir}/`);
+			}
+		}
+	}
+
+	// Create styled-jsx stub for app-router-only apps
+	// pages.runtime.prod.js requires styled-jsx, but it's not needed for app router
+	// Create a stub package that exports an empty object to satisfy the require
+	const styledJsxDir = path.join(nextOutputDir, "..", "styled-jsx");
+	console.log("DEBUG: styled-jsx dir path:", styledJsxDir);
+	console.log("DEBUG: nextOutputDir:", nextOutputDir);
+	console.log("DEBUG: styled-jsx exists:", fs.existsSync(styledJsxDir));
+	// Always create the stub (delete first if exists)
+	try {
+		if (fs.existsSync(styledJsxDir)) {
+			fs.rmSync(styledJsxDir, { recursive: true });
+		}
+		console.log("DEBUG: Creating styled-jsx stub...");
+		fs.mkdirSync(styledJsxDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(styledJsxDir, "package.json"),
+			JSON.stringify({ name: "styled-jsx", version: "0.0.0", main: "index.js" })
+		);
+		fs.writeFileSync(
+			path.join(styledJsxDir, "index.js"),
+			"module.exports = { default: function() { throw new Error('styled-jsx is not available - this app uses app router only'); } };"
+		);
+		console.log("DEBUG: styled-jsx stub created at", styledJsxDir);
+	} catch (error) {
+		console.error("DEBUG: Error creating styled-jsx stub:", error);
+	}
 }

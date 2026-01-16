@@ -1,5 +1,6 @@
+import { execSync } from "node:child_process";
 import fs from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -41,6 +42,8 @@ const optionalDependencies = [
 	"probe-image-size",
 	// `server.edge` is not available in react-dom@18
 	"react-dom/server.edge",
+	// styled-jsx is used by pages router, not needed for app-router-only apps
+	"styled-jsx",
 ];
 
 /**
@@ -108,10 +111,17 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			// Apply updater updates, must be the last plugin
 			updater.plugin,
 		] as Plugin[],
-		external: ["./middleware/handler.mjs"],
+		external: [
+			"./middleware/handler.mjs",
+			// Node.js-only packages that can't run on Workers - mark as external
+			"@tensorflow/tfjs-node",
+		],
 		alias: {
 			// Workers have `fetch` so the `node-fetch` polyfill is not needed
 			"next/dist/compiled/node-fetch": path.join(buildOpts.outputDir, "cloudflare-templates/shims/fetch.js"),
+			// styled-jsx is required by pages router but may not be traced correctly in Next.js 16
+			// If app only uses app router, this can be safely shimmed
+			"styled-jsx": path.join(buildOpts.outputDir, "cloudflare-templates/shims/empty.js"),
 			// Workers have builtin Web Sockets
 			"next/dist/compiled/ws": path.join(buildOpts.outputDir, "cloudflare-templates/shims/empty.js"),
 			// The toolbox optimizer pulls severals MB of dependencies (`caniuse-lite`, `terser`, `acorn`, ...)
@@ -176,11 +186,35 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 
 /**
  * This function apply updates to the bundled code.
+ * For large files (>100MB), uses sed to avoid JavaScript string length limits.
  */
 export async function updateWorkerBundledCode(workerOutputFile: string): Promise<void> {
-	const code = await readFile(workerOutputFile, "utf8");
-	const patchedCode = code.replace(/__require\d?\(/g, "require(").replace(/__require\d?\./g, "require.");
-	await writeFile(workerOutputFile, patchedCode);
+	const MAX_JS_STRING_SIZE = 100 * 1024 * 1024; // 100MB threshold
+	const fileStats = await stat(workerOutputFile);
+
+	if (fileStats.size > MAX_JS_STRING_SIZE) {
+		// Use sed for large files to avoid JavaScript string length limits
+		console.log(`Bundle is ${Math.round(fileStats.size / 1024 / 1024)}MB, using sed for patching...`);
+		try {
+			// macOS sed requires -i '' for in-place editing, Linux uses -i
+			const isMacOS = process.platform === "darwin";
+			const sedInPlace = isMacOS ? "-i ''" : "-i";
+
+			// Run sed replacements
+			execSync(`sed ${sedInPlace} 's/__require\\([0-9]*\\)(/require(/g' "${workerOutputFile}"`, { stdio: "pipe" });
+			execSync(`sed ${sedInPlace} 's/__require\\([0-9]*\\)\\./require./g' "${workerOutputFile}"`, { stdio: "pipe" });
+		} catch (error) {
+			console.warn("sed patching failed, trying node-based approach:", error);
+			// Fallback: try reading in chunks (may still fail for very large files)
+			const code = await readFile(workerOutputFile, "utf8");
+			const patchedCode = code.replace(/__require\d?\(/g, "require(").replace(/__require\d?\./g, "require.");
+			await writeFile(workerOutputFile, patchedCode);
+		}
+	} else {
+		const code = await readFile(workerOutputFile, "utf8");
+		const patchedCode = code.replace(/__require\d?\(/g, "require(").replace(/__require\d?\./g, "require.");
+		await writeFile(workerOutputFile, patchedCode);
+	}
 }
 
 /**
