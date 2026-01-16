@@ -37,15 +37,15 @@ export function configurePlaywright(
 
 	const projects = [
 		{
-			name: "chromium",
+			name: `${app} - chromium`,
 			use: { ...devices["Desktop Chrome"] },
 		},
 		{
-			name: "firefox",
+			name: `${app} - firefox`,
 			use: { ...devices["Desktop Firefox"] },
 		},
 		{
-			name: "webkit",
+			name: `${app} - webkit`,
 			use: { ...devices["Desktop Safari"] },
 		},
 	];
