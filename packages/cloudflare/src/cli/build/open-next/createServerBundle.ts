@@ -385,38 +385,43 @@ async function copyMissingNextDistDirs(
 	logger.info("Copying missing Next.js 16 internal modules...");
 
 	// Find the Next.js package in the traced node_modules
-	const outputNodeModules = path.join(outputPath, packagePath, "node_modules");
+	// For monorepos, the .bun/.pnpm directory is at the root level
+	const packageNodeModules = path.join(outputPath, packagePath, "node_modules");
+	const rootNodeModules = path.join(outputPath, "node_modules");
 
 	// Look for Next.js in various possible locations (pnpm, npm, bun, etc.)
 	let nextOutputDir: string | null = null;
 
-	// Check for pnpm-style path first
-	if (fs.existsSync(outputNodeModules)) {
-
-		// Check for .pnpm directory
-		const pnpmDir = path.join(outputNodeModules, ".pnpm");
-		if (fs.existsSync(pnpmDir)) {
-			const pnpmEntries = fs.readdirSync(pnpmDir);
-			const nextEntry = pnpmEntries.find(e => e.startsWith("next@"));
+	// Helper to find Next.js in a package manager's cache directory
+	const findNextInPkgMgrDir = (baseDir: string, dirName: string): string | null => {
+		const pkgMgrDir = path.join(baseDir, dirName);
+		if (fs.existsSync(pkgMgrDir)) {
+			const entries = fs.readdirSync(pkgMgrDir);
+			const nextEntry = entries.find(e => e.startsWith("next@"));
 			if (nextEntry) {
-				nextOutputDir = path.join(pnpmDir, nextEntry, "node_modules", "next");
+				return path.join(pkgMgrDir, nextEntry, "node_modules", "next");
 			}
 		}
+		return null;
+	};
 
-		// Check for .bun directory
-		const bunDir = path.join(outputNodeModules, ".bun");
-		if (!nextOutputDir && fs.existsSync(bunDir)) {
-			const bunEntries = fs.readdirSync(bunDir);
-			const nextEntry = bunEntries.find(e => e.startsWith("next@"));
-			if (nextEntry) {
-				nextOutputDir = path.join(bunDir, nextEntry, "node_modules", "next");
+	// Check root node_modules first (monorepo setup)
+	nextOutputDir = findNextInPkgMgrDir(rootNodeModules, ".bun");
+	if (!nextOutputDir) nextOutputDir = findNextInPkgMgrDir(rootNodeModules, ".pnpm");
+
+	// Check package-level node_modules
+	if (!nextOutputDir) nextOutputDir = findNextInPkgMgrDir(packageNodeModules, ".bun");
+	if (!nextOutputDir) nextOutputDir = findNextInPkgMgrDir(packageNodeModules, ".pnpm");
+
+	// Check for standard node_modules/next (resolve symlinks)
+	if (!nextOutputDir) {
+		const standardNextDir = path.join(packageNodeModules, "next");
+		if (fs.existsSync(standardNextDir)) {
+			try {
+				nextOutputDir = fs.realpathSync(standardNextDir);
+			} catch {
+				nextOutputDir = standardNextDir;
 			}
-		}
-
-		// Check for standard node_modules/next
-		const standardNextDir = path.join(outputNodeModules, "next");
-		if (!nextOutputDir && fs.existsSync(standardNextDir)) {
-			nextOutputDir = standardNextDir;
 		}
 	}
 
@@ -426,22 +431,59 @@ async function copyMissingNextDistDirs(
 	}
 
 	// Find the source Next.js installation
-	const sourceNextDir = path.join(options.appBuildOutputPath, "node_modules", "next");
-	if (!fs.existsSync(sourceNextDir)) {
+	// IMPORTANT: Use the actual workspace node_modules, not the standalone output
+	// The standalone only has NFT-traced files, which is the problem we're fixing
+	const findSourceNext = (): string | null => {
+		// Try app's node_modules first (resolve symlinks for bun/pnpm)
+		const appNextPath = path.join(options.appPath, "node_modules", "next");
+		if (fs.existsSync(appNextPath)) {
+			try {
+				return fs.realpathSync(appNextPath);
+			} catch {
+				return appNextPath;
+			}
+		}
+
+		// Try monorepo root node_modules
+		const monoNextPath = path.join(options.monorepoRoot, "node_modules", "next");
+		if (fs.existsSync(monoNextPath)) {
+			try {
+				return fs.realpathSync(monoNextPath);
+			} catch {
+				return monoNextPath;
+			}
+		}
+
+		// Try finding in bun/pnpm directories at monorepo root
+		const monoBunNext = findNextInPkgMgrDir(path.join(options.monorepoRoot, "node_modules"), ".bun");
+		if (monoBunNext) return monoBunNext;
+
+		const monoPnpmNext = findNextInPkgMgrDir(path.join(options.monorepoRoot, "node_modules"), ".pnpm");
+		if (monoPnpmNext) return monoPnpmNext;
+
+		return null;
+	};
+
+	const sourceNextDir = findSourceNext();
+
+	if (!sourceNextDir || !fs.existsSync(sourceNextDir)) {
 		logger.warn("Could not find source Next.js installation, skipping dist copy");
 		return;
 	}
 
-	// Directories that next-server.js requires but NFT doesn't trace
-	const requiredDirs = ["shared", "lib", "build", "client"];
+	// NFT doesn't trace all the files needed by Next.js 16.
+	// The simplest fix is to copy the entire Next.js dist directory from source
+	// and let it overwrite/merge with what NFT copied.
+	const sourceDistDir = path.join(sourceNextDir, "dist");
+	const destDistDir = path.join(nextOutputDir, "dist");
 
-	for (const dir of requiredDirs) {
-		const sourceDir = path.join(sourceNextDir, "dist", dir);
-		const destDir = path.join(nextOutputDir, "dist", dir);
-
-		if (fs.existsSync(sourceDir) && !fs.existsSync(destDir)) {
-			logger.info(`  Copying next/dist/${dir}...`);
-			fs.cpSync(sourceDir, destDir, { recursive: true });
+	if (fs.existsSync(sourceDistDir)) {
+		logger.info("  Copying complete next/dist/ directory...");
+		// Remove the NFT-traced dist and replace with complete source
+		// This ensures all internal modules are available
+		if (fs.existsSync(destDistDir)) {
+			fs.rmSync(destDistDir, { recursive: true });
 		}
+		fs.cpSync(sourceDistDir, destDistDir, { recursive: true });
 	}
 }
