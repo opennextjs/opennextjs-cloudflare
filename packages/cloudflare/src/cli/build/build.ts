@@ -42,7 +42,7 @@ export async function build(
 	buildHelper.checkRunningInsideNextjsApp(options);
 	logger.info(`App directory: ${options.appPath}`);
 	buildHelper.printNextjsVersion(options);
-	ensureNextjsVersionSupported(options);
+	await ensureNextjsVersionSupported(options);
 	const { aws, cloudflare } = getVersion();
 	logger.info(`@opennextjs/cloudflare version: ${cloudflare}`);
 	logger.info(`@opennextjs/aws version: ${aws}`);
@@ -96,12 +96,27 @@ export async function build(
 	logger.info("OpenNext build complete.");
 }
 
-function ensureNextjsVersionSupported(options: buildHelper.BuildOptions) {
-	if (buildHelper.compareSemver(options.nextVersion, "<", "14.2.0")) {
+async function ensureNextjsVersionSupported({ nextVersion }: buildHelper.BuildOptions) {
+	if (buildHelper.compareSemver(nextVersion, "<", "14.2.0")) {
 		logger.error("Next.js version unsupported, please upgrade to version 14.2 or greater.");
 		process.exit(1);
 	}
-	if (buildHelper.compareSemver(options.nextVersion, ">=", "16")) {
+	if (buildHelper.compareSemver(nextVersion, ">=", "16")) {
 		logger.warn("Next.js 16 is not fully supported yet! Some features may not work as expected.");
+	}
+
+	const {
+		default: { version: wranglerVersion },
+	} = await import("wrangler/package.json", { with: { type: "json" } });
+
+	// We need a version of workerd that has a fix for setImmediate for Next.js 16.1+
+	// See:
+	// - https://github.com/cloudflare/workerd/pull/5869
+	// - https://github.com/opennextjs/opennextjs-cloudflare/issues/1049
+	if (
+		buildHelper.compareSemver(nextVersion, ">=", "16.1.0") &&
+		buildHelper.compareSemver(wranglerVersion, "<", "4.59.2")
+	) {
+		logger.warn(`Next.js 16.1+ requires wrangler 4.59.2 or greater (${wranglerVersion} detected).`);
 	}
 }
