@@ -191,6 +191,10 @@ async function generateBundle(
 		bundledNextServer: isBundled,
 	});
 
+	// Next.js 16+ fix: NFT doesn't trace all internal modules correctly
+	// Copy missing Next.js dist directories that next-server.js requires
+	await copyMissingNextDistDirs(options, outputPath, packagePath);
+
 	if (getOpenNextConfig(options).cloudflare?.useWorkerdCondition !== false) {
 		// Next does not trace the "workerd" build condition
 		// So we need to copy the whole packages using the condition
@@ -361,4 +365,83 @@ async function minifyServerBundle(outputDir: string) {
 		compress_json: true,
 		mangle: true,
 	});
+}
+
+/**
+ * Copy missing Next.js dist directories that NFT doesn't trace correctly.
+ * This is needed for Next.js 16+ where the file structure changed and
+ * NFT doesn't follow all internal require chains.
+ */
+async function copyMissingNextDistDirs(
+	options: buildHelper.BuildOptions,
+	outputPath: string,
+	packagePath: string
+) {
+	// Only needed for Next.js 16+
+	if (!buildHelper.compareSemver(options.nextVersion, ">=", "16.0.0")) {
+		return;
+	}
+
+	logger.info("Copying missing Next.js 16 internal modules...");
+
+	// Find the Next.js package in the traced node_modules
+	const outputNodeModules = path.join(outputPath, packagePath, "node_modules");
+
+	// Look for Next.js in various possible locations (pnpm, npm, bun, etc.)
+	let nextOutputDir: string | null = null;
+
+	// Check for pnpm-style path first
+	if (fs.existsSync(outputNodeModules)) {
+
+		// Check for .pnpm directory
+		const pnpmDir = path.join(outputNodeModules, ".pnpm");
+		if (fs.existsSync(pnpmDir)) {
+			const pnpmEntries = fs.readdirSync(pnpmDir);
+			const nextEntry = pnpmEntries.find(e => e.startsWith("next@"));
+			if (nextEntry) {
+				nextOutputDir = path.join(pnpmDir, nextEntry, "node_modules", "next");
+			}
+		}
+
+		// Check for .bun directory
+		const bunDir = path.join(outputNodeModules, ".bun");
+		if (!nextOutputDir && fs.existsSync(bunDir)) {
+			const bunEntries = fs.readdirSync(bunDir);
+			const nextEntry = bunEntries.find(e => e.startsWith("next@"));
+			if (nextEntry) {
+				nextOutputDir = path.join(bunDir, nextEntry, "node_modules", "next");
+			}
+		}
+
+		// Check for standard node_modules/next
+		const standardNextDir = path.join(outputNodeModules, "next");
+		if (!nextOutputDir && fs.existsSync(standardNextDir)) {
+			nextOutputDir = standardNextDir;
+		}
+	}
+
+	if (!nextOutputDir || !fs.existsSync(nextOutputDir)) {
+		logger.warn("Could not find Next.js in output node_modules, skipping dist copy");
+		return;
+	}
+
+	// Find the source Next.js installation
+	const sourceNextDir = path.join(options.appBuildOutputPath, "node_modules", "next");
+	if (!fs.existsSync(sourceNextDir)) {
+		logger.warn("Could not find source Next.js installation, skipping dist copy");
+		return;
+	}
+
+	// Directories that next-server.js requires but NFT doesn't trace
+	const requiredDirs = ["shared", "lib", "build", "client"];
+
+	for (const dir of requiredDirs) {
+		const sourceDir = path.join(sourceNextDir, "dist", dir);
+		const destDir = path.join(nextOutputDir, "dist", dir);
+
+		if (fs.existsSync(sourceDir) && !fs.existsSync(destDir)) {
+			logger.info(`  Copying next/dist/${dir}...`);
+			fs.cpSync(sourceDir, destDir, { recursive: true });
+		}
+	}
 }
