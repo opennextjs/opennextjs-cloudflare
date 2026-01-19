@@ -1,8 +1,9 @@
-import type yargs from "yargs";
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+
 import Enquirer from "enquirer";
+import type yargs from "yargs";
 
 interface PackageManager {
 	name: string;
@@ -10,13 +11,13 @@ interface PackageManager {
 	installDev: string;
 }
 
-const packageManagers: Record<string, PackageManager> = {
+const packageManagers = {
 	pnpm: { name: "pnpm", install: "pnpm add", installDev: "pnpm add -D" },
 	npm: { name: "npm", install: "npm install", installDev: "npm install --save-dev" },
 	bun: { name: "bun", install: "bun add", installDev: "bun add -D" },
 	yarn: { name: "yarn", install: "yarn add", installDev: "yarn add -D" },
 	deno: { name: "deno", install: "deno add", installDev: "deno add --dev" },
-};
+} satisfies Record<string, PackageManager>;
 
 async function selectPackageManager(): Promise<PackageManager> {
 	const choices = Object.entries(packageManagers).map(([key, pm], index) => ({
@@ -32,14 +33,10 @@ async function selectPackageManager(): Promise<PackageManager> {
 		choices,
 	});
 
-	return packageManagers[answer.packageManager] || packageManagers.npm;
+	return packageManagers[answer.packageManager as keyof typeof packageManagers] ?? packageManagers.npm;
 }
 
-function findFilesRecursive(
-	dir: string,
-	extensions: string[],
-	fileList: string[] = []
-): string[] {
+function findFilesRecursive(dir: string, extensions: string[], fileList: string[] = []): string[] {
 	const files = fs.readdirSync(dir);
 
 	files.forEach((file) => {
@@ -63,11 +60,11 @@ function findFilesRecursive(
 }
 
 /**
- * Implementation of the `opennextjs-cloudflare migrate` command.
+ * Implementation of the `opennextjs-cloudflare init` command.
  *
  * @param args
  */
-async function migrateCommand(_args: Record<string, unknown>): Promise<void> {
+async function initCommand(): Promise<void> {
 	console.log("🚀 Setting up OpenNext.js for Cloudflare...\n");
 
 	// Check if running on Windows
@@ -103,7 +100,7 @@ async function migrateCommand(_args: Record<string, unknown>): Promise<void> {
 				appName = packageJson.name;
 			}
 		}
-	} catch (error) {
+	} catch {
 		console.log('⚠️  Could not read package.json, using default name "my-app"');
 	}
 
@@ -202,8 +199,7 @@ export default defineCloudflareConfig({
 		packageJson.scripts.preview = "opennextjs-cloudflare build && opennextjs-cloudflare preview";
 		packageJson.scripts.deploy = "opennextjs-cloudflare build && opennextjs-cloudflare deploy";
 		packageJson.scripts.upload = "opennextjs-cloudflare build && opennextjs-cloudflare upload";
-		packageJson.scripts["cf-typegen"] =
-			"wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts";
+		packageJson.scripts["cf-typegen"] = "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts";
 
 		fs.writeFileSync("package.json", JSON.stringify(packageJson, null, 2));
 		console.log("✅ package.json scripts updated\n");
@@ -273,33 +269,29 @@ export default defineCloudflareConfig({
 					console.log(`⚠️  Found edge runtime in: ${file}`);
 					foundEdgeRuntime = true;
 				}
-			} catch (error) {
+			} catch {
 				// Skip files that can't be read
 			}
 		}
 
 		if (foundEdgeRuntime) {
 			console.log("\n🚨 WARNING:");
-			console.log("Remove any export const runtime = \"edge\"; if present");
+			console.log('Remove any export const runtime = "edge"; if present');
 			console.log(
-				"Before deploying your app, remove the export const runtime = \"edge\"; line from any of your source files."
+				'Before deploying your app, remove the export const runtime = "edge"; line from any of your source files.'
 			);
 			console.log("The edge runtime is not supported yet with @opennextjs/cloudflare.\n");
 		} else {
 			console.log("✅ No edge runtime declarations found\n");
 		}
-	} catch (error) {
+	} catch {
 		console.log("⚠️  Could not check for edge runtime usage\n");
 	}
 
 	console.log("🎉 OpenNext.js for Cloudflare setup complete!");
 	console.log("\nNext steps:");
 	const runCommand =
-		selectedPM.name === "npm"
-			? "npm run"
-			: selectedPM.name === "yarn"
-				? "yarn"
-				: `${selectedPM.name} run`;
+		selectedPM.name === "npm" ? "npm run" : selectedPM.name === "yarn" ? "yarn" : `${selectedPM.name} run`;
 	console.log(`1. Run: ${runCommand} build`);
 	console.log(`2. Run: ${runCommand} preview (to test locally)`);
 	console.log(`3. Run: ${runCommand} deploy (to deploy to Cloudflare)`);
@@ -307,14 +299,13 @@ export default defineCloudflareConfig({
 }
 
 /**
- * Add the `migrate` command to yargs configuration.
+ * Add the `init` command to yargs configuration.
  */
-export function addMigrateCommand<T extends yargs.Argv>(y: T) {
+export function addInitCommand<T extends yargs.Argv>(y: T) {
 	return y.command(
-		"migrate",
+		"init",
 		"Set up OpenNext.js for Cloudflare in an existing Next.js project",
 		() => ({}),
-		(args) => migrateCommand(args)
+		() => initCommand()
 	);
 }
-
