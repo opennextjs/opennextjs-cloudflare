@@ -1,9 +1,10 @@
-import { cpSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { getPackageTemplatesDirPath } from "../../../utils/get-package-templates-dir-path.js";
 import type { ProjectOptions } from "../../project-options.js";
 import { askConfirmation } from "../../utils/ask-confirmation.js";
+import { createWranglerConfigFile } from "../../utils/create-wrangler-config.js";
 
 /**
  * Creates a `wrangler.jsonc` file for the user if a wrangler config file doesn't already exist,
@@ -36,54 +37,7 @@ export async function createWranglerConfigIfNotExistent(projectOpts: ProjectOpti
 		return;
 	}
 
-	let wranglerConfig = readFileSync(join(getPackageTemplatesDirPath(), "wrangler.jsonc"), "utf8");
-
-	const appName = getAppNameFromPackageJson(projectOpts.sourceDir) ?? "app-name";
-
-	wranglerConfig = wranglerConfig.replaceAll('"<WORKER_NAME>"', JSON.stringify(appName.replaceAll("_", "-")));
-
-	const compatDate = await getLatestCompatDate();
-	if (compatDate) {
-		wranglerConfig = wranglerConfig.replace(
-			/"compatibility_date": "\d{4}-\d{2}-\d{2}"/,
-			`"compatibility_date": ${JSON.stringify(compatDate)}`
-		);
-	}
-
-	writeFileSync(join(projectOpts.sourceDir, "wrangler.jsonc"), wranglerConfig);
-}
-
-function getAppNameFromPackageJson(sourceDir: string): string | undefined {
-	try {
-		const packageJsonStr = readFileSync(join(sourceDir, "package.json"), "utf8");
-		const packageJson: Record<string, string> = JSON.parse(packageJsonStr);
-		if (typeof packageJson.name === "string") return packageJson.name;
-	} catch {
-		/* empty */
-	}
-}
-
-export async function getLatestCompatDate(): Promise<string | undefined> {
-	try {
-		const resp = await fetch(`https://registry.npmjs.org/workerd`);
-		const latestWorkerdVersion = (
-			(await resp.json()) as {
-				"dist-tags": { latest: string };
-			}
-		)["dist-tags"].latest;
-
-		// The format of the workerd version is `major.yyyymmdd.patch`.
-		const match = latestWorkerdVersion.match(/\d+\.(\d{4})(\d{2})(\d{2})\.\d+/);
-
-		if (match) {
-			const [, year, month, date] = match;
-			const compatDate = `${year}-${month}-${date}`;
-
-			return compatDate;
-		}
-	} catch {
-		/* empty */
-	}
+	await createWranglerConfigFile(projectOpts.sourceDir);
 }
 
 /**

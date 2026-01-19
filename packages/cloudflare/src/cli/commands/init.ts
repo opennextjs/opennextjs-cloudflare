@@ -5,6 +5,8 @@ import path from "node:path";
 import Enquirer from "enquirer";
 import type yargs from "yargs";
 
+import { createWranglerConfigFile } from "../utils/create-wrangler-config.js";
+
 interface PackageManager {
 	name: string;
 	install: string;
@@ -89,56 +91,9 @@ async function initCommand(): Promise<void> {
 		process.exit(1);
 	}
 
-	// Step 2: Read package.json to get app name
-	let appName = "my-app";
-	try {
-		if (fs.existsSync("package.json")) {
-			const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8")) as {
-				name?: string;
-			};
-			if (packageJson.name) {
-				appName = packageJson.name;
-			}
-		}
-	} catch {
-		console.log('⚠️  Could not read package.json, using default name "my-app"');
-	}
-
 	// Step 3: Create/update wrangler.jsonc
 	console.log("⚙️  Creating wrangler.jsonc...");
-	const wranglerConfig = `{
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "main": ".open-next/worker.js",
-  "name": "${appName}",
-  "compatibility_date": "2024-12-30",
-  "compatibility_flags": [
-    // Enable Node.js API
-    // see https://developers.cloudflare.com/workers/configuration/compatibility-flags/#nodejs-compatibility-flag
-    "nodejs_compat",
-    // Allow to fetch URLs in your app
-    // see https://developers.cloudflare.com/workers/configuration/compatibility-flags/#global-fetch-strictly-public
-    "global_fetch_strictly_public",
-  ],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS",
-  },
-  "services": [
-    {
-      "binding": "WORKER_SELF_REFERENCE",
-      // The service should match the "name" of your worker
-      "service": "${appName}",
-    },
-  ],
-  "r2_buckets": [
-    // Create a R2 binding with the binding name "NEXT_INC_CACHE_R2_BUCKET"
-    // {
-    //   "binding": "NEXT_INC_CACHE_R2_BUCKET",
-    //   "bucket_name": "<BUCKET_NAME>",
-    // },
-  ],
-}`;
-	fs.writeFileSync("wrangler.jsonc", wranglerConfig);
+	await createWranglerConfigFile("./");
 	console.log("✅ wrangler.jsonc created\n");
 
 	// Step 4: Create open-next.config.ts
