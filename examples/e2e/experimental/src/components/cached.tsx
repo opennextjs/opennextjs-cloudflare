@@ -1,4 +1,4 @@
-import { cacheLife, cacheTag } from "next/cache";
+import { unstable_cacheLife, unstable_cacheTag } from "next/cache";
 
 export async function FullyCachedComponent() {
 	"use cache";
@@ -11,7 +11,7 @@ export async function FullyCachedComponent() {
 
 export async function FullyCachedComponentWithTag() {
 	"use cache";
-	cacheTag("fullyTagged");
+	unstable_cacheTag("fullyTagged");
 	return (
 		<div>
 			<p data-testid="fully-cached-with-tag">{Date.now()}</p>
@@ -21,7 +21,7 @@ export async function FullyCachedComponentWithTag() {
 
 export async function ISRComponent() {
 	"use cache";
-	cacheLife({
+	unstable_cacheLife({
 		stale: 1,
 		revalidate: 5,
 	});
