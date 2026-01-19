@@ -3,6 +3,7 @@ import { compileCache } from "@opennextjs/aws/build/compileCache.js";
 import { createCacheAssets, createStaticAssets } from "@opennextjs/aws/build/createAssets.js";
 import { createMiddleware } from "@opennextjs/aws/build/createMiddleware.js";
 import * as buildHelper from "@opennextjs/aws/build/helper.js";
+import { patchOriginalNextConfig } from "@opennextjs/aws/build/patch/patches/index.js";
 import { printHeader } from "@opennextjs/aws/build/utils.js";
 import logger from "@opennextjs/aws/logger.js";
 import type { Unstable_Config } from "wrangler";
@@ -67,6 +68,8 @@ export async function build(
 
 	// Generate deployable bundle
 	printHeader("Generating bundle");
+
+	await patchOriginalNextConfig(options);
 
 	compileCache(options);
 	compileEnvFiles(options);
