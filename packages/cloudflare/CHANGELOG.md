@@ -1,5 +1,16 @@
 # @opennextjs/cloudflare
 
+## 1.14.10
+
+### Patch Changes
+
+- [#1071](https://github.com/opennextjs/opennextjs-cloudflare/pull/1071) [`886c742`](https://github.com/opennextjs/opennextjs-cloudflare/commit/886c742f8e735843196a4a1c758a9e5b1cb5464e) Thanks [@vicb](https://github.com/vicb)! - fix: patch Next config for missing fields.
+
+  There was a regression in Next 16.1.0 (https://github.com/vercel/next.js/pull/86830) and some fields were missing in the config.
+  The Next team fixed that in 16.1.4 (https://github.com/vercel/next.js/pull/88733).
+
+  This PR introduce a patch for 16.1.0-16.1.3
+
 ## 1.14.9
 
 ### Patch Changes
