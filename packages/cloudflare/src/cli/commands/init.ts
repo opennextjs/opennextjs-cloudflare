@@ -99,22 +99,22 @@ async function initCommand(): Promise<void> {
 	}
 
 	// Step 3: Create/update wrangler.jsonc
-	console.log("⚙️  Creating wrangler.jsonc...");
+	console.log("⚙️  Creating wrangler.jsonc...\n");
 	await createWranglerConfigFile("./");
 
 	// Step 4: Create open-next.config.ts
-	console.log("⚙️  Creating open-next.config.ts...");
+	console.log("⚙️  Creating open-next.config.ts...\n");
 	await createOpenNextConfig("./");
 
 	// Step 5: Create .dev.vars
 	if (!fs.existsSync(".dev.vars")) {
-		console.log("📝 Creating .dev.vars...");
+		console.log("📝 Creating .dev.vars...\n");
 		const devVarsContent = `NEXTJS_ENV=development\n`;
 		fs.writeFileSync(".dev.vars", devVarsContent);
 	}
 
 	// Step 6: Create _headers in public folder
-	console.log("📁 Creating _headers in public folder...");
+	console.log("📁 Creating _headers in public folder...\n");
 	if (!fs.existsSync("public")) {
 		fs.mkdirSync("public");
 	}
@@ -124,7 +124,7 @@ async function initCommand(): Promise<void> {
 	fs.writeFileSync("public/_headers", headersContent);
 
 	// Step 7: Update package.json scripts
-	console.log("📝 Updating package.json scripts...");
+	console.log("📝 Updating package.json scripts...\n");
 	try {
 		let packageJson: { scripts?: Record<string, string> } = {};
 		if (fs.existsSync("package.json")) {
@@ -164,7 +164,7 @@ async function initCommand(): Promise<void> {
 	}
 
 	// Step 9: Update Next.js config
-	console.log("⚙️  Updating Next.js config...");
+	console.log("⚙️  Updating Next.js config...\n");
 	const configFiles = ["next.config.ts", "next.config.js", "next.config.mjs"];
 	let configFile: string | null = null;
 
@@ -196,7 +196,7 @@ async function initCommand(): Promise<void> {
 	}
 
 	// Step 10: Check for edge runtime usage
-	console.log("🔍 Checking for edge runtime usage...");
+	console.log("🔍 Checking for edge runtime usage...\n");
 	try {
 		const extensions = [".ts", ".tsx", ".js", ".jsx", ".mjs"];
 		const files = findFilesRecursive(".", extensions).slice(0, 100); // Limit to first 100 files
