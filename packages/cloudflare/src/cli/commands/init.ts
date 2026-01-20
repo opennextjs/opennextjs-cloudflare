@@ -72,7 +72,7 @@ async function initCommand(): Promise<void> {
 
 	if (fs.existsSync("open-next.config.ts")) {
 		console.log(
-			`Exiting since the project is already configured for OpenNext (an \`open-next.config.ts\` file already exists)`
+			`Exiting since the project is already configured for OpenNext (an \`open-next.config.ts\` file already exists)\n`
 		);
 		return;
 	}
