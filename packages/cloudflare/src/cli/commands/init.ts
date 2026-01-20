@@ -5,6 +5,7 @@ import path from "node:path";
 import Enquirer from "enquirer";
 import type yargs from "yargs";
 
+import { createOpenNextConfig } from "../utils/create-open-next-config.js";
 import { createWranglerConfigFile } from "../utils/create-wrangler-config.js";
 
 interface PackageManager {
@@ -69,6 +70,13 @@ function findFilesRecursive(dir: string, extensions: string[], fileList: string[
 async function initCommand(): Promise<void> {
 	console.log("🚀 Setting up OpenNext.js for Cloudflare...\n");
 
+	if (fs.existsSync("open-next.config.ts")) {
+		console.log(
+			`Exiting since the project is already configured for OpenNext (an \`open-next.config.ts\` file already exists)`
+		);
+		return;
+	}
+
 	// Check if running on Windows
 	if (process.platform === "win32") {
 		console.log("⚠️  Windows Support Notice:");
@@ -98,20 +106,7 @@ async function initCommand(): Promise<void> {
 
 	// Step 4: Create open-next.config.ts
 	console.log("⚙️  Creating open-next.config.ts...");
-	const openNextConfig = `import { defineCloudflareConfig } from "@opennextjs/cloudflare";
-import r2IncrementalCache from "@opennextjs/cloudflare/overrides/incremental-cache/r2-incremental-cache";
-
-export default defineCloudflareConfig({
-  incrementalCache: r2IncrementalCache,
-});
-`;
-
-	if (!fs.existsSync("open-next.config.ts")) {
-		fs.writeFileSync("open-next.config.ts", openNextConfig);
-		console.log("✅ open-next.config.ts created\n");
-	} else {
-		console.log("✅ open-next.config.ts already exists\n");
-	}
+	await createOpenNextConfig("./");
 
 	// Step 5: Create .dev.vars
 	console.log("📝 Creating .dev.vars...");

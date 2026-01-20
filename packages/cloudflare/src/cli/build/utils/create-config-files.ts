@@ -1,9 +1,9 @@
-import { cpSync, existsSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import { getPackageTemplatesDirPath } from "../../../utils/get-package-templates-dir-path.js";
 import type { ProjectOptions } from "../../project-options.js";
 import { askConfirmation } from "../../utils/ask-confirmation.js";
+import { createOpenNextConfig } from "../../utils/create-open-next-config.js";
 import { createWranglerConfigFile } from "../../utils/create-wrangler-config.js";
 
 /**
@@ -60,7 +60,7 @@ export async function createOpenNextConfigIfNotExistent(sourceDir: string): Prom
 			throw new Error("The `open-next.config.ts` file is required, aborting!");
 		}
 
-		cpSync(join(getPackageTemplatesDirPath(), "open-next.config.ts"), openNextConfigPath);
+		return createOpenNextConfig(sourceDir);
 	}
 
 	return openNextConfigPath;
