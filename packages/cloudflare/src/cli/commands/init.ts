@@ -93,7 +93,6 @@ async function initCommand(): Promise<void> {
 	try {
 		execSync(`${selectedPM.install} @opennextjs/cloudflare@latest`, { stdio: "inherit" });
 		execSync(`${selectedPM.installDev} wrangler@latest`, { stdio: "inherit" });
-		console.log("✅ Dependencies installed\n");
 	} catch (error) {
 		console.error("❌ Failed to install dependencies:", (error as Error).message);
 		process.exit(1);
@@ -102,22 +101,16 @@ async function initCommand(): Promise<void> {
 	// Step 3: Create/update wrangler.jsonc
 	console.log("⚙️  Creating wrangler.jsonc...");
 	await createWranglerConfigFile("./");
-	console.log("✅ wrangler.jsonc created\n");
 
 	// Step 4: Create open-next.config.ts
 	console.log("⚙️  Creating open-next.config.ts...");
 	await createOpenNextConfig("./");
 
 	// Step 5: Create .dev.vars
-	console.log("📝 Creating .dev.vars...");
-	const devVarsContent = `NEXTJS_ENV=development
-`;
-
 	if (!fs.existsSync(".dev.vars")) {
+		console.log("📝 Creating .dev.vars...");
+		const devVarsContent = `NEXTJS_ENV=development\n`;
 		fs.writeFileSync(".dev.vars", devVarsContent);
-		console.log("✅ .dev.vars created\n");
-	} else {
-		console.log("✅ .dev.vars already exists\n");
 	}
 
 	// Step 6: Create _headers in public folder
@@ -129,7 +122,6 @@ async function initCommand(): Promise<void> {
   Cache-Control: public,max-age=31536000,immutable
 `;
 	fs.writeFileSync("public/_headers", headersContent);
-	console.log("✅ _headers created in public folder\n");
 
 	// Step 7: Update package.json scripts
 	console.log("📝 Updating package.json scripts...");
@@ -152,24 +144,23 @@ async function initCommand(): Promise<void> {
 		packageJson.scripts["cf-typegen"] = "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts";
 
 		fs.writeFileSync("package.json", JSON.stringify(packageJson, null, 2));
-		console.log("✅ package.json scripts updated\n");
 	} catch (error) {
 		console.error("❌ Failed to update package.json:", (error as Error).message);
 	}
 
 	// Step 8: Add .open-next to .gitignore
-	console.log("📋 Updating .gitignore...");
-	let gitignoreContent = "";
-	if (fs.existsSync(".gitignore")) {
-		gitignoreContent = fs.readFileSync(".gitignore", "utf8");
-	}
+	const gitIgnoreExists = !fs.existsSync(".gitignore");
+	const gitIgnoreOpenNextText = "# OpenNext\n.open-next\n";
 
-	if (!gitignoreContent.includes(".open-next")) {
-		gitignoreContent += "\n# OpenNext\n.open-next\n";
-		fs.writeFileSync(".gitignore", gitignoreContent);
-		console.log("✅ .open-next added to .gitignore\n");
+	if (!gitIgnoreExists) {
+		console.log("📋 Creating .gitignore...");
+		fs.writeFileSync(".gitignore", gitIgnoreOpenNextText);
 	} else {
-		console.log("✅ .open-next already in .gitignore\n");
+		const gitignoreContent = fs.readFileSync(".gitignore", "utf8");
+		if (!gitignoreContent.includes(".open-next")) {
+			console.log("📋 Updating .gitignore...");
+			fs.writeFileSync(".gitignore", `${gitignoreContent}\n${gitIgnoreOpenNextText}`);
+		}
 	}
 
 	// Step 9: Update Next.js config
@@ -231,8 +222,6 @@ async function initCommand(): Promise<void> {
 				'Before deploying your app, remove the export const runtime = "edge"; line from any of your source files.'
 			);
 			console.log("The edge runtime is not supported yet with @opennextjs/cloudflare.\n");
-		} else {
-			console.log("✅ No edge runtime declarations found\n");
 		}
 	} catch {
 		console.log("⚠️  Could not check for edge runtime usage\n");
