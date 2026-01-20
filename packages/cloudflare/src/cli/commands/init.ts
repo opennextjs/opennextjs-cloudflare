@@ -191,7 +191,6 @@ async function initCommand(): Promise<void> {
 		}
 
 		fs.writeFileSync(configFile, configContent);
-		console.log(`✅ ${configFile} updated\n`);
 	} else {
 		console.log("⚠️  No Next.js config file found, you may need to create one\n");
 	}
