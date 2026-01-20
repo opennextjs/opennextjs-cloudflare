@@ -14,22 +14,27 @@ type TraceInfo = { version: number; files: string[] };
  * Patches the usage of @vercel/og to be compatible with Cloudflare Workers.
  *
  * @param buildOpts Build options.
+ * @returns Whether the @vercel/og library is used.
  */
-export function patchVercelOgLibrary(buildOpts: BuildOptions) {
+export function patchVercelOgLibrary(buildOpts: BuildOptions): boolean {
 	const { appBuildOutputPath, outputDir } = buildOpts;
 
 	const functionsPath = path.join(outputDir, "server-functions/default");
 	const packagePath = path.join(functionsPath, getPackagePath(buildOpts));
 
+	let useOg = false;
+
 	for (const traceInfoPath of globSync(path.join(appBuildOutputPath, ".next/server/**/*.nft.json"), {
 		windowsPathsNoEscape: true,
 	})) {
-		let edgeFilePatched = false;
-
+		// Look for the Node version of the traced @vercel/og files
 		const traceInfo: TraceInfo = JSON.parse(readFileSync(traceInfoPath, { encoding: "utf8" }));
 		const tracedNodePath = traceInfo.files.find((p) => p.endsWith("@vercel/og/index.node.js"));
-
 		if (!tracedNodePath) continue;
+
+		// If we are here, it means the application is using the @vercel/og library
+		// and there is an `index.edge.js` colocated file that we need to copy and patch.
+		useOg = true;
 
 		const outputDir = getOutputDir({ functionsPath, packagePath });
 		const outputEdgePath = path.join(outputDir, "index.edge.js");
@@ -44,12 +49,11 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions) {
 			copyFileSync(tracedEdgePath, outputEdgePath);
 		}
 
-		if (!edgeFilePatched) {
-			edgeFilePatched = true;
-			// Change font fetches in the library to use imports.
-			const node = parseFile(outputEdgePath);
-			const { edits, matches } = patchVercelOgFallbackFont(node);
-			writeFileSync(outputEdgePath, node.commitEdits(edits));
+		// Change font fetches in the library to use imports.
+		{
+			const ast = parseFile(outputEdgePath);
+			const { edits, matches } = patchVercelOgFallbackFont(ast);
+			writeFileSync(outputEdgePath, ast.commitEdits(edits));
 
 			if (matches.length > 0) {
 				const fontFileName = matches[0]!.getMatch("PATH")!.text();
@@ -59,12 +63,16 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions) {
 
 		// Change node imports for the library to edge imports.
 		// This is only useful when turbopack is not used to bundle the function.
-		const routeFilePath = traceInfoPath.replace(appBuildOutputPath, packagePath).replace(".nft.json", "");
+		{
+			const routeFilePath = traceInfoPath.replace(appBuildOutputPath, packagePath).replace(".nft.json", "");
 
-		const node = parseFile(routeFilePath);
-		const { edits } = patchVercelOgImport(node);
-		writeFileSync(routeFilePath, node.commitEdits(edits));
+			const ast = parseFile(routeFilePath);
+			const { edits } = patchVercelOgImport(ast);
+			writeFileSync(routeFilePath, ast.commitEdits(edits));
+		}
 	}
+
+	return useOg;
 }
 
 function getOutputDir(opts: { functionsPath: string; packagePath: string }) {

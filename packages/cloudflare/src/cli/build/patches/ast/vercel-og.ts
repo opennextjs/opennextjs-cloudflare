@@ -54,6 +54,9 @@ fix: |-
 /**
  * Patches the default font fetching to use a .bin import.
  *
+ * We use `.bin` extension as they are added as modules in the wrangler bundler.
+ * We would need to add a rule to handle `.ttf` otherwise.
+ *
  * @param root Root node.
  * @returns Results of applying the rule.
  */
