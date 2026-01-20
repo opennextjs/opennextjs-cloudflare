@@ -59,7 +59,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 	console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
 
 	await patchWebpackRuntime(buildOpts);
-	patchVercelOgLibrary(buildOpts);
+	const useOg = patchVercelOgLibrary(buildOpts);
 
 	const outputPath = path.join(outputDir, "server-functions", "default");
 	const packagePath = getPackagePath(buildOpts);
@@ -108,7 +108,11 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			// Apply updater updates, must be the last plugin
 			updater.plugin,
 		] as Plugin[],
-		external: ["./middleware/handler.mjs"],
+		external: [
+			"./middleware/handler.mjs",
+			// Do not bundle og when it is not used
+			...(useOg ? [] : ["next/dist/compiled/@vercel/og/index.edge.js"]),
+		],
 		alias: {
 			// Workers have `fetch` so the `node-fetch` polyfill is not needed
 			"next/dist/compiled/node-fetch": path.join(buildOpts.outputDir, "cloudflare-templates/shims/fetch.js"),
