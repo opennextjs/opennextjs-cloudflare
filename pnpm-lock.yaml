@@ -1118,8 +1118,8 @@ importers:
         specifier: 'catalog:'
         version: 1.31.0
       '@opennextjs/aws':
-        specifier: 3.9.9
-        version: 3.9.9(next@15.5.9(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))
+        specifier: 3.9.10
+        version: 3.9.10(next@15.5.9(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))
       cloudflare:
         specifier: ^4.4.1
         version: 4.4.1
@@ -3797,8 +3797,8 @@ packages:
   '@octokit/types@13.10.0':
     resolution: {integrity: sha512-ifLaO34EbbPj0Xgro4G5lP5asESjwHracYJvVaPIyXMuiuXLlhic3S47cBdTb+jfODkTE5YtGCLt3Ay3+J97sA==}
 
-  '@opennextjs/aws@3.9.9':
-    resolution: {integrity: sha512-W+8W0ndfehy0r8SfCqcGXLJJgeroXXINgKoOZcmTm4DKFMNhiWTMiDWTZHBhAhZgi6n02iEx/kxCVp2/se0bow==}
+  '@opennextjs/aws@3.9.10':
+    resolution: {integrity: sha512-a1MwDsGmy9CXA6jOWAaNMofpy87x3HnoFLYDB3pUx5sVXYl1yLs+hHW+k9AMs1ri1a92cJ1mAdpGJ2eSm1MMXg==}
     hasBin: true
     peerDependencies:
       next: ^14.2.35 || ~15.0.7 || ~15.1.11 || ~15.2.8 || ~15.3.8 || ~15.4.10 || ~15.5.9 || ^16.0.10
@@ -12634,7 +12634,7 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 24.2.0
 
-  '@opennextjs/aws@3.9.9(next@15.5.9(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))':
+  '@opennextjs/aws@3.9.10(next@15.5.9(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))':
     dependencies:
       '@ast-grep/napi': 0.40.0
       '@aws-sdk/client-cloudfront': 3.398.0
@@ -16343,7 +16343,7 @@ snapshots:
       content-type: 1.0.5
       cookie: 0.7.1
       cookie-signature: 1.2.2
-      debug: 4.4.0
+      debug: 4.4.3
       depd: 2.0.0
       encodeurl: 2.0.0
       escape-html: 1.0.3
@@ -16470,7 +16470,7 @@ snapshots:
 
   finalhandler@2.1.1:
     dependencies:
-      debug: 4.4.0
+      debug: 4.4.3
       encodeurl: 2.0.0
       escape-html: 1.0.3
       on-finished: 2.4.1
@@ -19005,7 +19005,7 @@ snapshots:
 
   router@2.2.0:
     dependencies:
-      debug: 4.4.0
+      debug: 4.4.3
       depd: 2.0.0
       is-promise: 4.0.0
       parseurl: 1.3.3
