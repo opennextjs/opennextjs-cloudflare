@@ -9,6 +9,7 @@ import logger from "@opennextjs/aws/logger.js";
 import type { Unstable_Config } from "wrangler";
 
 import { OpenNextConfig } from "../../api/config.js";
+import { BuildOptions } from "../commands/utils.js";
 import type { ProjectOptions } from "../project-options.js";
 import { bundleServer } from "./bundle-server.js";
 import { compileCacheAssetsManifestSqlFile } from "./open-next/compile-cache-assets-manifest.js";
@@ -31,7 +32,7 @@ import { getVersion } from "./utils/version.js";
  * @param projectOpts The options for the project
  */
 export async function build(
-	options: buildHelper.BuildOptions,
+	options: BuildOptions,
 	config: OpenNextConfig,
 	projectOpts: ProjectOptions,
 	wranglerConfig: Unstable_Config
