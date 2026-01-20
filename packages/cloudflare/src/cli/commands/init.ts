@@ -150,7 +150,7 @@ async function initCommand(): Promise<void> {
 
 	// Step 8: Add .open-next to .gitignore
 	const gitIgnoreExists = fs.existsSync(".gitignore");
-	const gitIgnoreOpenNextText = "\n# OpenNext\n.open-next\n";
+	const gitIgnoreOpenNextText = "# OpenNext\n.open-next\n";
 
 	if (!gitIgnoreExists) {
 		console.log("📋 Creating .gitignore...\n");
