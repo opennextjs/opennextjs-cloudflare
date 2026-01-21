@@ -205,7 +205,7 @@ async function generateBundle(
 		awsPatches.patchUnstableCacheForISR,
 		awsPatches.patchUseCacheForISR,
 		awsPatches.patchNextServer,
-		awsPatches.patchEnvVars,
+		awsPatches.getEnvVarsPatch(options),
 		awsPatches.patchBackgroundRevalidation,
 		awsPatches.patchNodeEnvironment,
 		// Cloudflare specific patches

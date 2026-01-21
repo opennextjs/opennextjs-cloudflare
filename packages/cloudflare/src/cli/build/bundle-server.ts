@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
+import * as buildHelper from "@opennextjs/aws/build/helper.js";
 import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
 import { build, type Plugin } from "esbuild";
 
@@ -55,7 +56,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 	const serverFiles = path.join(dotNextPath, "required-server-files.json");
 	const nextConfig = JSON.parse(fs.readFileSync(serverFiles, "utf-8")).config;
 
-	const useTurbopack = fs.existsSync(path.join(dotNextPath, "server/chunks/[turbopack]_runtime.js"));
+	const useTurbopack = buildHelper.getBundlerRuntime(buildOpts) === "turbopack";
 
 	console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
 
