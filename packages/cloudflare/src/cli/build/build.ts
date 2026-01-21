@@ -104,9 +104,6 @@ async function ensureNextjsVersionSupported({ nextVersion }: buildHelper.BuildOp
 		logger.error("Next.js version unsupported, please upgrade to version 14.2 or greater.");
 		process.exit(1);
 	}
-	if (buildHelper.compareSemver(nextVersion, ">=", "16")) {
-		logger.warn("Next.js 16 is not fully supported yet! Some features may not work as expected.");
-	}
 
 	const {
 		default: { version: wranglerVersion },
