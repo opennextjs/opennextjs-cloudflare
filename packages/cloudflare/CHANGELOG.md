@@ -1,5 +1,23 @@
 # @opennextjs/cloudflare
 
+## 1.15.0
+
+### Minor Changes
+
+- [#1081](https://github.com/opennextjs/opennextjs-cloudflare/pull/1081) [`ae3d43d`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ae3d43d2aa2b0a318d2ab622a4b1bbb2c6069ed9) Thanks [@vicb](https://github.com/vicb)! - Next 16 is now supported
+
+### Patch Changes
+
+- [#1076](https://github.com/opennextjs/opennextjs-cloudflare/pull/1076) [`c99eefd`](https://github.com/opennextjs/opennextjs-cloudflare/commit/c99eefdf925045fd9119d9bb5c4e57bdc12690d0) Thanks [@vicb](https://github.com/vicb)! - fix: do not bundle og when not used
+
+  This saves ~500kB when og is not used
+
+- [#1079](https://github.com/opennextjs/opennextjs-cloudflare/pull/1079) [`6ac789a`](https://github.com/opennextjs/opennextjs-cloudflare/commit/6ac789ae6f0c9a81fcfbab255797f6084c5f7075) Thanks [@vicb](https://github.com/vicb)! - fix: use the correct runtime (i.e. webpack or turbopack)
+
+- [#1078](https://github.com/opennextjs/opennextjs-cloudflare/pull/1078) [`249f738`](https://github.com/opennextjs/opennextjs-cloudflare/commit/249f7389196a43a93d9713c478a4a75504e5fd8f) Thanks [@vicb](https://github.com/vicb)! - drop unused react-dom modules
+
+  This saves ~500kB on the output bundle
+
 ## 1.14.10
 
 ### Patch Changes
