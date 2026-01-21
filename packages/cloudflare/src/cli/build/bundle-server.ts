@@ -23,6 +23,7 @@ import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations
 import { fixRequire } from "./patches/plugins/require.js";
 import { shimRequireHook } from "./patches/plugins/require-hook.js";
 import { patchRouteModules } from "./patches/plugins/route-module.js";
+import { shimReact } from "./patches/plugins/shim-react.js";
 import { setWranglerExternal } from "./patches/plugins/wrangler-external.js";
 import { copyPackageCliFiles, needsExperimentalReact, normalizePath } from "./utils/index.js";
 
@@ -92,6 +93,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 		conditions: getOpenNextConfig(buildOpts).cloudflare?.useWorkerdCondition === false ? [] : ["workerd"],
 		plugins: [
 			shimRequireHook(buildOpts),
+			shimReact(buildOpts),
 			inlineDynamicRequires(updater, buildOpts),
 			setWranglerExternal(),
 			fixRequire(updater),

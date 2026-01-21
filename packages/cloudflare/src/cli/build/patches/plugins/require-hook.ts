@@ -7,9 +7,9 @@ import type { Plugin } from "esbuild";
 export function shimRequireHook(options: BuildOptions): Plugin {
 	const emptyShimPath = join(options.outputDir, "cloudflare-templates/shims/empty.js");
 	return {
-		name: "replaceRelative",
+		name: "require-hook-shim",
 		setup(build) {
-			// Note: we (empty) shim require-hook modules as they generate problematic code that uses requires
+			// We (empty) shim require-hook modules as they generate problematic code that uses requires
 			build.onResolve(
 				{ filter: getCrossPlatformPathRegex(String.raw`^\./require-hook$`, { escape: false }) },
 				() => ({
