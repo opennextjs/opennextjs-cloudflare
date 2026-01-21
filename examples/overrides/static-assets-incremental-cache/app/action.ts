@@ -3,7 +3,7 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 
 export async function revalidateTagAction() {
-	revalidateTag("date");
+	revalidateTag("date", { expire: 0 });
 }
 
 export async function revalidatePathAction() {
