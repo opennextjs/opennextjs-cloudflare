@@ -1,10 +1,11 @@
 import { execSync } from "node:child_process";
-import fs from "node:fs";
+import fs, { cpSync } from "node:fs";
 import path from "node:path";
 
 import { findPackagerAndRoot } from "@opennextjs/aws/build/helper.js";
 import type yargs from "yargs";
 
+import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
 import { createOpenNextConfig } from "../utils/create-open-next-config.js";
 import { createWranglerConfigFile } from "../utils/create-wrangler-config.js";
 
@@ -100,11 +101,11 @@ async function initCommand(): Promise<void> {
 		if (!fs.existsSync("public")) {
 			fs.mkdirSync("public");
 		}
-		// TODO: create _headers file in templates directory
-		const headersContent = `/_next/static/*
-	  Cache-Control: public,max-age=31536000,immutable
-	`;
-		fs.writeFileSync("public/_headers", headersContent);
+		if (fs.existsSync("public/_headers")) {
+			console.log("⚠️  No public/_headers file already exists\n");
+		} else {
+			cpSync(`${getPackageTemplatesDirPath()}/public/_headers`, "public/_headers");
+		}
 	});
 
 	runStep("Updating package.json scripts", () => {
