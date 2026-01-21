@@ -12,13 +12,14 @@ interface PackageManager {
 	name: string;
 	install: string;
 	installDev: string;
+	run: string;
 }
 
 const packageManagers = {
-	pnpm: { name: "pnpm", install: "pnpm add", installDev: "pnpm add -D" },
-	npm: { name: "npm", install: "npm install", installDev: "npm install --save-dev" },
-	bun: { name: "bun", install: "bun add", installDev: "bun add -D" },
-	yarn: { name: "yarn", install: "yarn add", installDev: "yarn add -D" },
+	pnpm: { name: "pnpm", install: "pnpm add", installDev: "pnpm add -D", run: "pnpm" },
+	npm: { name: "npm", install: "npm install", installDev: "npm install --save-dev", run: "npm run" },
+	bun: { name: "bun", install: "bun add", installDev: "bun add -D", run: "bun" },
+	yarn: { name: "yarn", install: "yarn add", installDev: "yarn add -D", run: "yarn" },
 } satisfies Record<string, PackageManager>;
 
 function findFilesRecursive(dir: string, extensions: string[], fileList: string[] = []): string[] {
@@ -212,16 +213,10 @@ async function initCommand(): Promise<void> {
 
 	console.log("🎉 OpenNext.js for Cloudflare setup complete!");
 	console.log("\nNext steps:");
-	const runCommand =
-		packageManager.name === "npm"
-			? "npm run"
-			: packageManager.name === "yarn"
-				? "yarn"
-				: `${packageManager.name} run`;
-	console.log(`1. Run: ${runCommand} build`);
-	console.log(`2. Run: ${runCommand} preview (to test locally)`);
-	console.log(`3. Run: ${runCommand} deploy (to deploy to Cloudflare)`);
-	console.log(`\nFor development, continue using: ${runCommand} dev`);
+	console.log(
+		`- Run: "${packageManager.run} preview" to build and preview your Cloudflare application locally`
+	);
+	console.log(`- Run: "${packageManager.run} deploy" to deploy your application to Cloudflare Workers`);
 }
 
 async function runStep(stepText: string, stepLogic: () => void | Promise<void>): Promise<void> {
