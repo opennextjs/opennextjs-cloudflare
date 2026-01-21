@@ -1118,8 +1118,8 @@ importers:
         specifier: 'catalog:'
         version: 1.31.0
       '@opennextjs/aws':
-        specifier: 3.9.10
-        version: 3.9.10(next@15.5.9(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))
+        specifier: 3.9.11
+        version: 3.9.11(next@15.5.9(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))
       cloudflare:
         specifier: ^4.4.1
         version: 4.4.1
@@ -3797,8 +3797,8 @@ packages:
   '@octokit/types@13.10.0':
     resolution: {integrity: sha512-ifLaO34EbbPj0Xgro4G5lP5asESjwHracYJvVaPIyXMuiuXLlhic3S47cBdTb+jfODkTE5YtGCLt3Ay3+J97sA==}
 
-  '@opennextjs/aws@3.9.10':
-    resolution: {integrity: sha512-a1MwDsGmy9CXA6jOWAaNMofpy87x3HnoFLYDB3pUx5sVXYl1yLs+hHW+k9AMs1ri1a92cJ1mAdpGJ2eSm1MMXg==}
+  '@opennextjs/aws@3.9.11':
+    resolution: {integrity: sha512-E1zyURv/Bx4epMY0cby6CacnIzPRRnrPUD+0PAis8MhYTsasxuBlzpznv0qrS5RhRb4wVnYxUPDd3RYi2aRqrg==}
     hasBin: true
     peerDependencies:
       next: ^14.2.35 || ~15.0.7 || ~15.1.11 || ~15.2.8 || ~15.3.8 || ~15.4.10 || ~15.5.9 || ^16.0.10
@@ -12634,7 +12634,7 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 24.2.0
 
-  '@opennextjs/aws@3.9.10(next@15.5.9(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))':
+  '@opennextjs/aws@3.9.11(next@15.5.9(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))':
     dependencies:
       '@ast-grep/napi': 0.40.0
       '@aws-sdk/client-cloudfront': 3.398.0
