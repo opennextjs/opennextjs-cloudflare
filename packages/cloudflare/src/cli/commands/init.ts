@@ -70,144 +70,145 @@ async function initCommand(): Promise<void> {
 	const { packager } = findPackagerAndRoot(".");
 	const packageManager = packageManagers[packager];
 
-	console.log("");
+	runStep("Installing dependencies", () => {
+		try {
+			execSync(`${packageManager.install} @opennextjs/cloudflare@latest`, { stdio: "inherit" });
+			execSync(`${packageManager.installDev} wrangler@latest`, { stdio: "inherit" });
+		} catch (error) {
+			console.error("❌ Failed to install dependencies:", (error as Error).message);
+			process.exit(1);
+		}
+	});
 
-	// Step 1: Install dependencies
-	try {
-		execSync(`${packageManager.install} @opennextjs/cloudflare@latest`, { stdio: "inherit" });
-		execSync(`${packageManager.installDev} wrangler@latest`, { stdio: "inherit" });
-	} catch (error) {
-		console.error("❌ Failed to install dependencies:", (error as Error).message);
-		process.exit(1);
-	}
+	runStep("Creating wrangler.jsonc", async () => {
+		await createWranglerConfigFile("./");
+	});
 
-	// Step 3: Create/update wrangler.jsonc
-	console.log("⚙️  Creating wrangler.jsonc...\n");
-	await createWranglerConfigFile("./");
+	runStep("Creating open-next.config.ts", async () => {
+		await createOpenNextConfig("./");
+	});
 
-	// Step 4: Create open-next.config.ts
-	console.log("⚙️  Creating open-next.config.ts...\n");
-	await createOpenNextConfig("./");
-
-	// Step 5: Create .dev.vars
 	if (!fs.existsSync(".dev.vars")) {
-		console.log("📝 Creating .dev.vars...\n");
-		const devVarsContent = `NEXTJS_ENV=development\n`;
-		fs.writeFileSync(".dev.vars", devVarsContent);
+		runStep("Creating .dev.vars", () => {
+			const devVarsContent = `NEXTJS_ENV=development\n`;
+			fs.writeFileSync(".dev.vars", devVarsContent);
+		});
 	}
 
-	// Step 6: Create _headers in public folder
-	console.log("📁 Creating _headers in public folder...\n");
-	if (!fs.existsSync("public")) {
-		fs.mkdirSync("public");
-	}
-	const headersContent = `/_next/static/*
-  Cache-Control: public,max-age=31536000,immutable
-`;
-	fs.writeFileSync("public/_headers", headersContent);
-
-	// Step 7: Update package.json scripts
-	console.log("📝 Updating package.json scripts...\n");
-	try {
-		let packageJson: { scripts?: Record<string, string> } = {};
-		if (fs.existsSync("package.json")) {
-			packageJson = JSON.parse(fs.readFileSync("package.json", "utf8")) as {
-				scripts?: Record<string, string>;
-			};
+	runStep("Creating _headers in public folder", () => {
+		if (!fs.existsSync("public")) {
+			fs.mkdirSync("public");
 		}
+		// TODO: create _headers file in templates directory
+		const headersContent = `/_next/static/*
+	  Cache-Control: public,max-age=31536000,immutable
+	`;
+		fs.writeFileSync("public/_headers", headersContent);
+	});
 
-		if (!packageJson.scripts) {
-			packageJson.scripts = {};
+	runStep("Updating package.json scripts", () => {
+		try {
+			let packageJson: { scripts?: Record<string, string> } = {};
+			if (fs.existsSync("package.json")) {
+				packageJson = JSON.parse(fs.readFileSync("package.json", "utf8")) as {
+					scripts?: Record<string, string>;
+				};
+			}
+
+			if (!packageJson.scripts) {
+				packageJson.scripts = {};
+			}
+
+			packageJson.scripts.build = "next build";
+			packageJson.scripts.preview = "opennextjs-cloudflare build && opennextjs-cloudflare preview";
+			packageJson.scripts.deploy = "opennextjs-cloudflare build && opennextjs-cloudflare deploy";
+			packageJson.scripts.upload = "opennextjs-cloudflare build && opennextjs-cloudflare upload";
+			packageJson.scripts["cf-typegen"] = "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts";
+
+			fs.writeFileSync("package.json", JSON.stringify(packageJson, null, 2));
+		} catch (error) {
+			console.error("❌ Failed to update package.json:", (error as Error).message);
+			// TODO: instruct user to update their `build`, `preview` and `upload` scripts
 		}
+	});
 
-		packageJson.scripts.build = "next build";
-		packageJson.scripts.preview = "opennextjs-cloudflare build && opennextjs-cloudflare preview";
-		packageJson.scripts.deploy = "opennextjs-cloudflare build && opennextjs-cloudflare deploy";
-		packageJson.scripts.upload = "opennextjs-cloudflare build && opennextjs-cloudflare upload";
-		packageJson.scripts["cf-typegen"] = "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts";
-
-		fs.writeFileSync("package.json", JSON.stringify(packageJson, null, 2));
-	} catch (error) {
-		console.error("❌ Failed to update package.json:", (error as Error).message);
-	}
-
-	// Step 8: Add .open-next to .gitignore
 	const gitIgnoreExists = fs.existsSync(".gitignore");
-	const gitIgnoreOpenNextText = "# OpenNext\n.open-next\n";
 
-	if (!gitIgnoreExists) {
-		console.log("📋 Creating .gitignore...\n");
-		fs.writeFileSync(".gitignore", gitIgnoreOpenNextText);
-	} else {
-		const gitignoreContent = fs.readFileSync(".gitignore", "utf8");
-		if (!gitignoreContent.includes(".open-next")) {
-			console.log("📋 Updating .gitignore...\n");
-			fs.writeFileSync(".gitignore", `${gitignoreContent}\n${gitIgnoreOpenNextText}`);
+	runStep(`${gitIgnoreExists ? "Updating" : "Creating"} .gitignore file`, () => {
+		const gitIgnoreOpenNextText = "# OpenNext\n.open-next\n";
+
+		if (!gitIgnoreExists) {
+			fs.writeFileSync(".gitignore", gitIgnoreOpenNextText);
+		} else {
+			const gitignoreContent = fs.readFileSync(".gitignore", "utf8");
+			if (!gitignoreContent.includes(".open-next")) {
+				fs.writeFileSync(".gitignore", `${gitignoreContent}\n${gitIgnoreOpenNextText}`);
+			}
 		}
-	}
+	});
 
-	// Step 9: Update Next.js config
-	console.log("⚙️  Updating Next.js config...\n");
-	const configFiles = ["next.config.ts", "next.config.js", "next.config.mjs"];
-	let configFile: string | null = null;
+	runStep("Updating Next.js config", () => {
+		const configFiles = ["next.config.ts", "next.config.js", "next.config.mjs"];
+		let configFile: string | null = null;
 
-	for (const file of configFiles) {
-		if (fs.existsSync(file)) {
-			configFile = file;
-			break;
-		}
-	}
-
-	if (configFile) {
-		let configContent = fs.readFileSync(configFile, "utf8");
-		const importLine = 'import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";';
-		const initLine = "initOpenNextCloudflareForDev();";
-
-		if (!configContent.includes(importLine)) {
-			// Add import at the top
-			configContent = importLine + "\n" + configContent;
-		}
-
-		if (!configContent.includes(initLine)) {
-			// Add init call at the end
-			configContent += "\n" + initLine + "\n";
-		}
-
-		fs.writeFileSync(configFile, configContent);
-	} else {
-		console.log("⚠️  No Next.js config file found, you may need to create one\n");
-	}
-
-	// Step 10: Check for edge runtime usage
-	console.log("🔍 Checking for edge runtime usage...\n");
-	try {
-		const extensions = [".ts", ".tsx", ".js", ".jsx", ".mjs"];
-		const files = findFilesRecursive(".", extensions).slice(0, 100); // Limit to first 100 files
-		let foundEdgeRuntime = false;
-
-		for (const file of files) {
-			try {
-				const content = fs.readFileSync(file, "utf8");
-				if (content.includes('export const runtime = "edge"')) {
-					console.log(`⚠️  Found edge runtime in: ${file}`);
-					foundEdgeRuntime = true;
-				}
-			} catch {
-				// Skip files that can't be read
+		for (const file of configFiles) {
+			if (fs.existsSync(file)) {
+				configFile = file;
+				break;
 			}
 		}
 
-		if (foundEdgeRuntime) {
-			console.log("\n🚨 WARNING:");
-			console.log('Remove any export const runtime = "edge"; if present');
-			console.log(
-				'Before deploying your app, remove the export const runtime = "edge"; line from any of your source files.'
-			);
-			console.log("The edge runtime is not supported yet with @opennextjs/cloudflare.\n");
+		if (configFile) {
+			let configContent = fs.readFileSync(configFile, "utf8");
+			const importLine = 'import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";';
+			const initLine = "initOpenNextCloudflareForDev();";
+
+			if (!configContent.includes(importLine)) {
+				// Add import at the top
+				configContent = importLine + "\n" + configContent;
+			}
+
+			if (!configContent.includes(initLine)) {
+				// Add init call at the end
+				configContent += "\n" + initLine + "\n";
+			}
+
+			fs.writeFileSync(configFile, configContent);
+		} else {
+			console.log("⚠️  No Next.js config file found, you may need to create one\n");
 		}
-	} catch {
-		console.log("⚠️  Could not check for edge runtime usage\n");
-	}
+	});
+
+	runStep("Checking for edge runtime usage", () => {
+		try {
+			const extensions = [".ts", ".tsx", ".js", ".jsx", ".mjs"];
+			const files = findFilesRecursive(".", extensions).slice(0, 100); // Limit to first 100 files
+			let foundEdgeRuntime = false;
+
+			for (const file of files) {
+				try {
+					const content = fs.readFileSync(file, "utf8");
+					if (content.includes('export const runtime = "edge"')) {
+						console.log(`⚠️  Found edge runtime in: ${file}`);
+						foundEdgeRuntime = true;
+					}
+				} catch {
+					// Skip files that can't be read
+				}
+			}
+
+			if (foundEdgeRuntime) {
+				console.log("\n🚨 WARNING:");
+				console.log('Remove any export const runtime = "edge"; if present');
+				console.log(
+					'Before deploying your app, remove the export const runtime = "edge"; line from any of your source files.'
+				);
+				console.log("The edge runtime is not supported yet with @opennextjs/cloudflare.\n");
+			}
+		} catch {
+			console.log("⚠️  Could not check for edge runtime usage\n");
+		}
+	});
 
 	console.log("🎉 OpenNext.js for Cloudflare setup complete!");
 	console.log("\nNext steps:");
@@ -221,6 +222,11 @@ async function initCommand(): Promise<void> {
 	console.log(`2. Run: ${runCommand} preview (to test locally)`);
 	console.log(`3. Run: ${runCommand} deploy (to deploy to Cloudflare)`);
 	console.log(`\nFor development, continue using: ${runCommand} dev`);
+}
+
+async function runStep(stepText: string, stepLogic: () => void | Promise<void>): Promise<void> {
+	console.log(`⚙️  ${stepText}...\n`);
+	await stepLogic();
 }
 
 /**
