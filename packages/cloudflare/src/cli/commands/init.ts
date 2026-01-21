@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import Enquirer from "enquirer";
+import { findPackagerAndRoot } from "@opennextjs/aws/build/helper.js";
 import type yargs from "yargs";
 
 import { createOpenNextConfig } from "../utils/create-open-next-config.js";
@@ -19,25 +19,7 @@ const packageManagers = {
 	npm: { name: "npm", install: "npm install", installDev: "npm install --save-dev" },
 	bun: { name: "bun", install: "bun add", installDev: "bun add -D" },
 	yarn: { name: "yarn", install: "yarn add", installDev: "yarn add -D" },
-	deno: { name: "deno", install: "deno add", installDev: "deno add --dev" },
 } satisfies Record<string, PackageManager>;
-
-async function selectPackageManager(): Promise<PackageManager> {
-	const choices = Object.entries(packageManagers).map(([key, pm], index) => ({
-		name: key,
-		message: `${index + 1}. ${pm.name}`,
-		value: key,
-	}));
-
-	const answer = await Enquirer.prompt<{ packageManager: string }>({
-		type: "select",
-		name: "packageManager",
-		message: "📦 Select your package manager:",
-		choices,
-	});
-
-	return packageManagers[answer.packageManager as keyof typeof packageManagers] ?? packageManagers.npm;
-}
 
 function findFilesRecursive(dir: string, extensions: string[], fileList: string[] = []): string[] {
 	const files = fs.readdirSync(dir);
@@ -85,14 +67,15 @@ async function initCommand(): Promise<void> {
 	}
 
 	// Package manager selection
-	const selectedPM = await selectPackageManager();
+	const { packager } = findPackagerAndRoot(".");
+	const packageManager = packageManagers[packager];
+
 	console.log("");
 
 	// Step 1: Install dependencies
-	console.log(`📦 Installing dependencies with ${selectedPM.name}...`);
 	try {
-		execSync(`${selectedPM.install} @opennextjs/cloudflare@latest`, { stdio: "inherit" });
-		execSync(`${selectedPM.installDev} wrangler@latest`, { stdio: "inherit" });
+		execSync(`${packageManager.install} @opennextjs/cloudflare@latest`, { stdio: "inherit" });
+		execSync(`${packageManager.installDev} wrangler@latest`, { stdio: "inherit" });
 	} catch (error) {
 		console.error("❌ Failed to install dependencies:", (error as Error).message);
 		process.exit(1);
@@ -229,7 +212,11 @@ async function initCommand(): Promise<void> {
 	console.log("🎉 OpenNext.js for Cloudflare setup complete!");
 	console.log("\nNext steps:");
 	const runCommand =
-		selectedPM.name === "npm" ? "npm run" : selectedPM.name === "yarn" ? "yarn" : `${selectedPM.name} run`;
+		packageManager.name === "npm"
+			? "npm run"
+			: packageManager.name === "yarn"
+				? "yarn"
+				: `${packageManager.name} run`;
 	console.log(`1. Run: ${runCommand} build`);
 	console.log(`2. Run: ${runCommand} preview (to test locally)`);
 	console.log(`3. Run: ${runCommand} deploy (to deploy to Cloudflare)`);
