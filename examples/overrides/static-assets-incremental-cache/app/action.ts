@@ -3,7 +3,7 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 
 export async function revalidateTagAction() {
-	revalidateTag("date");
+	revalidateTag("date", "max");
 }
 
 export async function revalidatePathAction() {
