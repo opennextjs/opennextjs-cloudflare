@@ -40,7 +40,7 @@ async function buildCommand(
 		await createWranglerConfigIfNotExistent(projectOpts);
 	}
 
-	const wranglerConfig = readWranglerConfig(args);
+	const wranglerConfig = await readWranglerConfig(args);
 
 	await buildImpl(options, config, projectOpts, wranglerConfig);
 }

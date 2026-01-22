@@ -25,7 +25,7 @@ export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 	const { config } = await retrieveCompiledConfig();
 	const buildOpts = getNormalizedOptions(config);
 
-	const wranglerConfig = readWranglerConfig(args);
+	const wranglerConfig = await readWranglerConfig(args);
 
 	const envVars = await getEnvFromPlatformProxy(
 		{
