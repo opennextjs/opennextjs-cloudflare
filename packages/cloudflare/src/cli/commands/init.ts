@@ -102,7 +102,7 @@ async function initCommand(): Promise<void> {
 			fs.mkdirSync("public");
 		}
 		if (fs.existsSync("public/_headers")) {
-			console.log("⚠️  No public/_headers file already exists\n");
+			console.log("⚠️ public/_headers file already exists\n");
 		} else {
 			cpSync(`${getPackageTemplatesDirPath()}/_headers`, "public/_headers");
 		}
