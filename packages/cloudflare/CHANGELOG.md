@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.15.1
+
+### Patch Changes
+
+- [#1085](https://github.com/opennextjs/opennextjs-cloudflare/pull/1085) [`74302ec`](https://github.com/opennextjs/opennextjs-cloudflare/commit/74302ec90a4a98dd05db9d54b72fa312f128cc98) Thanks [@vicb](https://github.com/vicb)! - fix the detection of the runtime (webpack vs turbopack)
+
 ## 1.15.0
 
 ### Minor Changes
