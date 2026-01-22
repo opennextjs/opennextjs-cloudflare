@@ -6,11 +6,11 @@ import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-di
 /**
  * Creates a `open-next.config.ts` file in the target directory for the project.
  *
- * @param projectDir The target directory for the project
+ * @param appDir The Next application root
  * @return The path to the created source file
  */
-export async function createOpenNextConfig(projectDir: string): Promise<string> {
-	const openNextConfigPath = join(projectDir, "open-next.config.ts");
+export async function createOpenNextConfig(appDir: string): Promise<string> {
+	const openNextConfigPath = join(appDir, "open-next.config.ts");
 
 	cpSync(join(getPackageTemplatesDirPath(), "open-next.config.ts"), openNextConfigPath);
 
