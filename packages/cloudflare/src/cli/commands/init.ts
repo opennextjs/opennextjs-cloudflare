@@ -10,43 +10,6 @@ import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-di
 import { createOpenNextConfig } from "../utils/create-open-next-config.js";
 import { createWranglerConfigFile } from "../utils/create-wrangler-config.js";
 
-interface PackageManager {
-	name: string;
-	install: string;
-	installDev: string;
-	run: string;
-}
-
-const packageManagers = {
-	pnpm: { name: "pnpm", install: "pnpm add", installDev: "pnpm add -D", run: "pnpm" },
-	npm: { name: "npm", install: "npm install", installDev: "npm install --save-dev", run: "npm run" },
-	bun: { name: "bun", install: "bun add", installDev: "bun add -D", run: "bun" },
-	yarn: { name: "yarn", install: "yarn add", installDev: "yarn add -D", run: "yarn" },
-} satisfies Record<string, PackageManager>;
-
-function findFilesRecursive(dir: string, extensions: string[], fileList: string[] = []): string[] {
-	const files = fs.readdirSync(dir);
-
-	files.forEach((file) => {
-		const filePath = path.join(dir, file);
-		const stat = fs.statSync(filePath);
-
-		if (stat.isDirectory()) {
-			// Skip node_modules, .next, .open-next, and other common build/cache directories
-			if (!["node_modules", ".next", ".open-next", ".git", "dist", "build"].includes(file)) {
-				findFilesRecursive(filePath, extensions, fileList);
-			}
-		} else if (stat.isFile()) {
-			const ext = path.extname(file).toLowerCase();
-			if (extensions.includes(ext)) {
-				fileList.push(filePath);
-			}
-		}
-	});
-
-	return fileList;
-}
-
 /**
  * Implementation of the `opennextjs-cloudflare init` command.
  *
@@ -209,6 +172,43 @@ async function initCommand(): Promise<void> {
 		`- Run: "${packageManager.run} preview" to build and preview your Cloudflare application locally`
 	);
 	logger.info(`- Run: "${packageManager.run} deploy" to deploy your application to Cloudflare Workers`);
+}
+
+interface PackageManager {
+	name: string;
+	install: string;
+	installDev: string;
+	run: string;
+}
+
+const packageManagers = {
+	pnpm: { name: "pnpm", install: "pnpm add", installDev: "pnpm add -D", run: "pnpm" },
+	npm: { name: "npm", install: "npm install", installDev: "npm install --save-dev", run: "npm run" },
+	bun: { name: "bun", install: "bun add", installDev: "bun add -D", run: "bun" },
+	yarn: { name: "yarn", install: "yarn add", installDev: "yarn add -D", run: "yarn" },
+} satisfies Record<string, PackageManager>;
+
+function findFilesRecursive(dir: string, extensions: string[], fileList: string[] = []): string[] {
+	const files = fs.readdirSync(dir);
+
+	files.forEach((file) => {
+		const filePath = path.join(dir, file);
+		const stat = fs.statSync(filePath);
+
+		if (stat.isDirectory()) {
+			// Skip node_modules, .next, .open-next, and other common build/cache directories
+			if (!["node_modules", ".next", ".open-next", ".git", "dist", "build"].includes(file)) {
+				findFilesRecursive(filePath, extensions, fileList);
+			}
+		} else if (stat.isFile()) {
+			const ext = path.extname(file).toLowerCase();
+			if (extensions.includes(ext)) {
+				fileList.push(filePath);
+			}
+		}
+	});
+
+	return fileList;
 }
 
 function printStepTitle(title: string): void {
