@@ -182,6 +182,16 @@ const packageManagers = {
 	yarn: { name: "yarn", install: "yarn add", installDev: "yarn add -D", run: "yarn" },
 } satisfies Record<string, PackageManager>;
 
+/**
+ * Recursively searches a directory for files with specified extensions.
+ *
+ * Skips common build/cache directories: node_modules, .next, .open-next, .git, dist, build.
+ *
+ * @param dir - The directory path to start searching from
+ * @param extensions - Array of file extensions to match (e.g., ['.ts', '.js'])
+ * @param fileList - Accumulator array for found files (used internally for recursion)
+ * @returns Array of file paths matching the specified extensions
+ */
 function findFilesRecursive(dir: string, extensions: string[], fileList: string[] = []): string[] {
 	const files = fs.readdirSync(dir);
 
