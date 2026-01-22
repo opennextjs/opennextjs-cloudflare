@@ -52,7 +52,7 @@ function findFilesRecursive(dir: string, extensions: string[], fileList: string[
  * @param args
  */
 async function initCommand(): Promise<void> {
-	console.log("🚀 Setting up OpenNext.js for Cloudflare...\n");
+	console.log("🚀 Setting up the OpenNext Cloudflare adapter...\n");
 
 	if (fs.existsSync("open-next.config.ts")) {
 		console.log(
