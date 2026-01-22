@@ -9,6 +9,7 @@ import type yargs from "yargs";
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
 import { createOpenNextConfig } from "../utils/create-open-next-config.js";
 import { createWranglerConfigFile } from "../utils/create-wrangler-config.js";
+import { printHeaders } from "./utils.js";
 
 /**
  * Implementation of the `opennextjs-cloudflare init` command.
@@ -16,6 +17,8 @@ import { createWranglerConfigFile } from "../utils/create-wrangler-config.js";
  * @param args
  */
 async function initCommand(): Promise<void> {
+	printHeaders("init");
+
 	logger.info("🚀 Setting up the OpenNext Cloudflare adapter...\n");
 
 	if (fs.existsSync("open-next.config.ts")) {
@@ -23,13 +26,6 @@ async function initCommand(): Promise<void> {
 			`Exiting since the project is already configured for OpenNext (an \`open-next.config.ts\` file already exists)\n`
 		);
 		return;
-	}
-
-	// Check if running on Windows
-	if (process.platform === "win32") {
-		logger.warn("⚠️  Windows Support Notice:");
-		logger.warn("OpenNext can be used on Windows systems but Windows full support is not guaranteed.");
-		logger.warn("Please read more: https://opennext.js.org/cloudflare#windows-support\n");
 	}
 
 	// Package manager selection
