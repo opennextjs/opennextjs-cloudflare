@@ -53,13 +53,10 @@ async function initCommand(): Promise<void> {
 	}
 
 	printStepTitle("Creating _headers in public folder");
-	if (!fs.existsSync("public")) {
-		fs.mkdirSync("public");
-	}
 	if (fs.existsSync("public/_headers")) {
 		logger.warn("⚠️ public/_headers file already exists\n");
 	} else {
-		cpSync(`${getPackageTemplatesDirPath()}/_headers`, "public/_headers");
+		cpSync(`${getPackageTemplatesDirPath()}/_headers`, "public/_headers", { recursive: true });
 	}
 
 	printStepTitle("Updating package.json scripts");
