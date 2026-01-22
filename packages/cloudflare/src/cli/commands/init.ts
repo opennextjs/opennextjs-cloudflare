@@ -3,6 +3,7 @@ import fs, { cpSync } from "node:fs";
 import path from "node:path";
 
 import { findPackagerAndRoot } from "@opennextjs/aws/build/helper.js";
+import logger from "@opennextjs/aws/logger.js";
 import type yargs from "yargs";
 
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
@@ -52,10 +53,10 @@ function findFilesRecursive(dir: string, extensions: string[], fileList: string[
  * @param args
  */
 async function initCommand(): Promise<void> {
-	console.log("🚀 Setting up the OpenNext Cloudflare adapter...\n");
+	logger.info("🚀 Setting up the OpenNext Cloudflare adapter...\n");
 
 	if (fs.existsSync("open-next.config.ts")) {
-		console.log(
+		logger.info(
 			`Exiting since the project is already configured for OpenNext (an \`open-next.config.ts\` file already exists)\n`
 		);
 		return;
@@ -63,9 +64,9 @@ async function initCommand(): Promise<void> {
 
 	// Check if running on Windows
 	if (process.platform === "win32") {
-		console.log("⚠️  Windows Support Notice:");
-		console.log("OpenNext can be used on Windows systems but Windows full support is not guaranteed.");
-		console.log("Please read more: https://opennext.js.org/cloudflare#windows-support\n");
+		logger.warn("⚠️  Windows Support Notice:");
+		logger.warn("OpenNext can be used on Windows systems but Windows full support is not guaranteed.");
+		logger.warn("Please read more: https://opennext.js.org/cloudflare#windows-support\n");
 	}
 
 	// Package manager selection
@@ -77,7 +78,7 @@ async function initCommand(): Promise<void> {
 		execSync(`${packageManager.install} @opennextjs/cloudflare@latest`, { stdio: "inherit" });
 		execSync(`${packageManager.installDev} wrangler@latest`, { stdio: "inherit" });
 	} catch (error) {
-		console.error("❌ Failed to install dependencies:", (error as Error).message);
+		logger.error("❌ Failed to install dependencies:", (error as Error).message);
 		process.exit(1);
 	}
 
@@ -97,7 +98,7 @@ async function initCommand(): Promise<void> {
 		fs.mkdirSync("public");
 	}
 	if (fs.existsSync("public/_headers")) {
-		console.log("⚠️ public/_headers file already exists\n");
+		logger.warn("⚠️ public/_headers file already exists\n");
 	} else {
 		cpSync(`${getPackageTemplatesDirPath()}/_headers`, "public/_headers");
 	}
@@ -123,7 +124,7 @@ async function initCommand(): Promise<void> {
 
 		fs.writeFileSync("package.json", JSON.stringify(packageJson, null, 2));
 	} catch (error) {
-		console.error("❌ Failed to update package.json:", (error as Error).message);
+		logger.error("❌ Failed to update package.json:", (error as Error).message);
 		// TODO: instruct user to update their `build`, `preview` and `upload` scripts
 	}
 
@@ -169,7 +170,7 @@ async function initCommand(): Promise<void> {
 
 		fs.writeFileSync(configFile, configContent);
 	} else {
-		console.log("⚠️  No Next.js config file found, you may need to create one\n");
+		logger.warn("⚠️  No Next.js config file found, you may need to create one\n");
 	}
 
 	printStepTitle("Checking for edge runtime usage");
@@ -182,7 +183,7 @@ async function initCommand(): Promise<void> {
 			try {
 				const content = fs.readFileSync(file, "utf8");
 				if (content.includes('export const runtime = "edge"')) {
-					console.log(`⚠️  Found edge runtime in: ${file}`);
+					logger.warn(`⚠️  Found edge runtime in: ${file}`);
 					foundEdgeRuntime = true;
 				}
 			} catch {
@@ -191,27 +192,27 @@ async function initCommand(): Promise<void> {
 		}
 
 		if (foundEdgeRuntime) {
-			console.log("\n🚨 WARNING:");
-			console.log('Remove any export const runtime = "edge"; if present');
-			console.log(
+			logger.warn("\n🚨 WARNING:");
+			logger.warn('Remove any export const runtime = "edge"; if present');
+			logger.warn(
 				'Before deploying your app, remove the export const runtime = "edge"; line from any of your source files.'
 			);
-			console.log("The edge runtime is not supported yet with @opennextjs/cloudflare.\n");
+			logger.warn("The edge runtime is not supported yet with @opennextjs/cloudflare.\n");
 		}
 	} catch {
-		console.log("⚠️  Could not check for edge runtime usage\n");
+		logger.warn("⚠️  Could not check for edge runtime usage\n");
 	}
 
-	console.log("🎉 OpenNext.js for Cloudflare setup complete!");
-	console.log("\nNext steps:");
-	console.log(
+	logger.info("🎉 OpenNext.js for Cloudflare setup complete!");
+	logger.info("\nNext steps:");
+	logger.info(
 		`- Run: "${packageManager.run} preview" to build and preview your Cloudflare application locally`
 	);
-	console.log(`- Run: "${packageManager.run} deploy" to deploy your application to Cloudflare Workers`);
+	logger.info(`- Run: "${packageManager.run} deploy" to deploy your application to Cloudflare Workers`);
 }
 
 function printStepTitle(title: string): void {
-	console.log(`⚙️  ${title}...\n`);
+	logger.info(`⚙️  ${title}...\n`);
 }
 
 /**
