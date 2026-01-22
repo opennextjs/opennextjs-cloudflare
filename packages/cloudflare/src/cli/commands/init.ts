@@ -224,7 +224,7 @@ function printStepTitle(title: string): void {
 export function addInitCommand<T extends yargs.Argv>(y: T) {
 	return y.command(
 		"init",
-		"Set up OpenNext.js for Cloudflare in an existing Next.js project",
+		"Set up the OpenNext Cloudflare adapter in an existing Next.js project",
 		() => ({}),
 		() => initCommand()
 	);
