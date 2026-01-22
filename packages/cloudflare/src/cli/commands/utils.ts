@@ -103,7 +103,7 @@ export function getNormalizedOptions(config: OpenNextConfig, buildDir = nextAppD
  */
 export async function readWranglerConfig(args: WithWranglerArgs) {
 	// Note: `unstable_readConfig` is sync as of wrangler 4.60.0
-	//       But it will ultimately become async.
+	//       But it will eventually become async.
 	//       See https://github.com/cloudflare/workers-sdk/pull/12031
 	return await unstable_readConfig({ env: args.env, config: args.wranglerConfigPath });
 }
