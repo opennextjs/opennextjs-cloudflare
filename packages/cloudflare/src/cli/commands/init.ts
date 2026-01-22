@@ -7,7 +7,7 @@ import logger from "@opennextjs/aws/logger.js";
 import type yargs from "yargs";
 
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
-import { createOpenNextConfig } from "../utils/create-open-next-config.js";
+import { createOpenNextConfig } from "../utils/open-next-config.js";
 import { createWranglerConfigFile } from "../utils/wrangler-config.js";
 import { printHeaders } from "./utils.js";
 
