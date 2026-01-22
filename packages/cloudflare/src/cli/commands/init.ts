@@ -104,7 +104,7 @@ async function initCommand(): Promise<void> {
 		if (fs.existsSync("public/_headers")) {
 			console.log("⚠️  No public/_headers file already exists\n");
 		} else {
-			cpSync(`${getPackageTemplatesDirPath()}/public/_headers`, "public/_headers");
+			cpSync(`${getPackageTemplatesDirPath()}/_headers`, "public/_headers");
 		}
 	});
 
