@@ -92,8 +92,7 @@ async function initCommand(): Promise<void> {
 
 	if (!fs.existsSync(".dev.vars")) {
 		runStep("Creating .dev.vars", () => {
-			const devVarsContent = `NEXTJS_ENV=development\n`;
-			fs.writeFileSync(".dev.vars", devVarsContent);
+			fs.writeFileSync(".dev.vars", `NEXTJS_ENV=development\n`);
 		});
 	}
 
