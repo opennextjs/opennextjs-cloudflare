@@ -71,15 +71,14 @@ async function initCommand(): Promise<void> {
 			};
 		}
 
-		if (!packageJson.scripts) {
-			packageJson.scripts = {};
-		}
-
-		packageJson.scripts.build = "next build";
-		packageJson.scripts.preview = "opennextjs-cloudflare build && opennextjs-cloudflare preview";
-		packageJson.scripts.deploy = "opennextjs-cloudflare build && opennextjs-cloudflare deploy";
-		packageJson.scripts.upload = "opennextjs-cloudflare build && opennextjs-cloudflare upload";
-		packageJson.scripts["cf-typegen"] = "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts";
+		packageJson.scripts = {
+			...packageJson.scripts,
+			build: "next build",
+			preview: "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+			deploy: "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+			upload: "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+			["cf-typegen"]: "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+		};
 
 		fs.writeFileSync("package.json", JSON.stringify(packageJson, null, 2));
 	} catch (error) {
