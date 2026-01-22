@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { ProjectOptions } from "../../project-options.js";
 import { askConfirmation } from "../../utils/ask-confirmation.js";
 import { createOpenNextConfig } from "../../utils/create-open-next-config.js";
-import { createWranglerConfigFile } from "../../utils/create-wrangler-config.js";
+import { createWranglerConfigFile, wranglerConfigFileExists } from "../../utils/wrangler-config.js";
 
 /**
  * Creates a `wrangler.jsonc` file for the user if a wrangler config file doesn't already exist,
@@ -15,12 +15,7 @@ import { createWranglerConfigFile } from "../../utils/create-wrangler-config.js"
  * @param projectOpts The options for the project
  */
 export async function createWranglerConfigIfNotExistent(projectOpts: ProjectOptions): Promise<void> {
-	const possibleExts = ["toml", "json", "jsonc"];
-
-	const wranglerConfigFileExists = possibleExts.some((ext) =>
-		existsSync(join(projectOpts.sourceDir, `wrangler.${ext}`))
-	);
-	if (wranglerConfigFileExists) {
+	if (wranglerConfigFileExists(projectOpts.sourceDir)) {
 		return;
 	}
 

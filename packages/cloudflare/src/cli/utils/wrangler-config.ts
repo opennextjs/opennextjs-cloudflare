@@ -1,7 +1,21 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
+
+/**
+ * Checks if a Wrangler configuration file exists in the given directory.
+ *
+ * Looks for wrangler.toml, wrangler.json, or wrangler.jsonc.
+ *
+ * @param appDir The directory to check for a Wrangler config file
+ * @returns true if a Wrangler config file exists, false otherwise
+ */
+export function wranglerConfigFileExists(appDir: string): boolean {
+	const possibleExts = ["toml", "json", "jsonc"];
+
+	return possibleExts.some((ext) => existsSync(join(appDir, `wrangler.${ext}`)));
+}
 
 /**
  * Creates a wrangler.jsonc config file in the target directory for the project.
