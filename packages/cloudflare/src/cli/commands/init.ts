@@ -118,16 +118,14 @@ async function initCommand(): Promise<void> {
 
 	if (configFile) {
 		let configContent = fs.readFileSync(configFile, "utf8");
-		const importLine = 'import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";';
-		const initLine = "initOpenNextCloudflareForDev();";
 
+		const importLine = 'import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";';
 		if (!configContent.includes(importLine)) {
-			// Add import at the top
 			configContent = importLine + "\n" + configContent;
 		}
 
+		const initLine = "initOpenNextCloudflareForDev();";
 		if (!configContent.includes(initLine)) {
-			// Add init call at the end
 			configContent += "\n" + initLine + "\n";
 		}
 
