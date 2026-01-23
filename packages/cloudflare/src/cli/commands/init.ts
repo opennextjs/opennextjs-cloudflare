@@ -8,7 +8,7 @@ import type yargs from "yargs";
 
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
 import { getNextConfigPath } from "../utils/next-config.js";
-import { createOpenNextConfig } from "../utils/open-next-config.js";
+import { createOpenNextConfig, getOpenNextConfigPath } from "../utils/open-next-config.js";
 import { createWranglerConfigFile } from "../utils/wrangler-config.js";
 import { printHeaders } from "./utils.js";
 
@@ -31,7 +31,7 @@ async function initCommand(): Promise<void> {
 		process.exit(1);
 	}
 
-	if (fs.existsSync("open-next.config.ts")) {
+	if (getOpenNextConfigPath(".")) {
 		logger.info(
 			`Exiting since the project is already configured for OpenNext (an \`open-next.config.ts\` file already exists)\n`
 		);
