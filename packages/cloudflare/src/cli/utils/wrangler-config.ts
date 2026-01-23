@@ -4,17 +4,15 @@ import { join } from "node:path";
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
 
 /**
- * Checks if a Wrangler configuration file exists in the given directory.
+ * Gets the path to the Wrangler configuration file if it exists.
  *
- * Looks for wrangler.toml, wrangler.json, or wrangler.jsonc.
- *
- * @param appDir The directory to check for a Wrangler config file
- * @returns true if a Wrangler config file exists, false otherwise
+ * @param appDir The directory to check for the Wrangler config file
+ * @returns The full path to Wrangler config file if it exists, undefined otherwise
  */
-export function wranglerConfigFileExists(appDir: string): boolean {
+export function getWranglerConfigPath(appDir: string): string | undefined {
 	const possibleExts = ["toml", "json", "jsonc"];
 
-	return possibleExts.some((ext) => existsSync(join(appDir, `wrangler.${ext}`)));
+	return possibleExts.find((ext) => existsSync(join(appDir, `wrangler.${ext}`)));
 }
 
 /**
