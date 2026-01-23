@@ -7,6 +7,7 @@ import logger from "@opennextjs/aws/logger.js";
 import type yargs from "yargs";
 
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
+import { getNextConfigPath } from "../utils/next-config.js";
 import { createOpenNextConfig } from "../utils/open-next-config.js";
 import { createWranglerConfigFile } from "../utils/wrangler-config.js";
 import { printHeaders } from "./utils.js";
@@ -20,6 +21,15 @@ async function initCommand(): Promise<void> {
 	printHeaders("init");
 
 	logger.info("🚀 Setting up the OpenNext Cloudflare adapter...\n");
+
+	const nextConfigFilePath = getNextConfigPath(".");
+
+	if (!nextConfigFilePath) {
+		logger.error(
+			`No Next.js config file detected, are you sure that this current directory contains a Next.js project? aborting\n`
+		);
+		process.exit(1);
+	}
 
 	if (fs.existsSync("open-next.config.ts")) {
 		logger.info(
@@ -98,33 +108,20 @@ async function initCommand(): Promise<void> {
 	}
 
 	printStepTitle("Updating Next.js config");
-	const configFiles = ["next.config.ts", "next.config.js", "next.config.mjs"];
-	let configFile: string | null = null;
 
-	for (const file of configFiles) {
-		if (fs.existsSync(file)) {
-			configFile = file;
-			break;
-		}
+	let configContent = fs.readFileSync(nextConfigFilePath, "utf8");
+
+	const importLine = 'import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";';
+	if (!configContent.includes(importLine)) {
+		configContent = importLine + "\n" + configContent;
 	}
 
-	if (configFile) {
-		let configContent = fs.readFileSync(configFile, "utf8");
-
-		const importLine = 'import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";';
-		if (!configContent.includes(importLine)) {
-			configContent = importLine + "\n" + configContent;
-		}
-
-		const initLine = "initOpenNextCloudflareForDev();";
-		if (!configContent.includes(initLine)) {
-			configContent += "\n" + initLine + "\n";
-		}
-
-		fs.writeFileSync(configFile, configContent);
-	} else {
-		logger.warn("No Next.js config file found, you may need to create one\n");
+	const initLine = "initOpenNextCloudflareForDev();";
+	if (!configContent.includes(initLine)) {
+		configContent += "\n" + initLine + "\n";
 	}
+
+	fs.writeFileSync(nextConfigFilePath, configContent);
 
 	printStepTitle("Checking for edge runtime usage");
 	try {
