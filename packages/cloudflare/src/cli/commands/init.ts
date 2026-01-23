@@ -37,7 +37,7 @@ async function initCommand(): Promise<void> {
 		execSync(`${packageManager.install} @opennextjs/cloudflare@latest`, { stdio: "inherit" });
 		execSync(`${packageManager.installDev} wrangler@latest`, { stdio: "inherit" });
 	} catch (error) {
-		logger.error("❌ Failed to install dependencies:", (error as Error).message);
+		logger.error("Failed to install dependencies:", (error as Error).message);
 		process.exit(1);
 	}
 
@@ -79,7 +79,7 @@ async function initCommand(): Promise<void> {
 
 		fs.writeFileSync("package.json", JSON.stringify(packageJson, null, 2));
 	} catch (error) {
-		logger.error("❌ Failed to update package.json:", (error as Error).message);
+		logger.error("Failed to update package.json:", (error as Error).message);
 		// TODO: instruct user to update their `build`, `preview` and `upload` scripts
 	}
 
