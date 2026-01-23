@@ -49,7 +49,6 @@ async function initCommand(): Promise<void> {
 		return;
 	}
 
-	// Package manager selection
 	const { packager } = findPackagerAndRoot(".");
 	const packageManager = packageManagers[packager];
 
