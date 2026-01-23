@@ -7,6 +7,7 @@ import logger from "@opennextjs/aws/logger.js";
 import type yargs from "yargs";
 
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
+import { createOrAppendToFile } from "../build/utils/files.js";
 import { getNextConfigPath } from "../utils/next-config.js";
 import { createOpenNextConfig, getOpenNextConfigPath } from "../utils/open-next-config.js";
 import { createWranglerConfigFile, getWranglerConfigPath } from "../utils/wrangler-config.js";
@@ -67,9 +68,17 @@ async function initCommand(): Promise<void> {
 	printStepTitle("Creating open-next.config.ts");
 	await createOpenNextConfig("./");
 
+	const devVarsExists = fs.existsSync(".dev.vars");
+	printStepTitle(`${devVarsExists ? "Updating" : "Creating"} .dev.vars file`);
+	createOrAppendToFile(
+		".dev.vars",
+		"NEXTJS_ENV=development",
+		(gitIgnoreContent) => !gitIgnoreContent.includes("NEXTJS_ENV=")
+	);
+
 	if (!fs.existsSync(".dev.vars")) {
 		printStepTitle("Creating .dev.vars");
-		fs.writeFileSync(".dev.vars", `NEXTJS_ENV=development\n`);
+		fs.writeFileSync(".dev.vars", "NEXTJS_ENV=development\n");
 	}
 
 	printStepTitle("Creating _headers in public folder");
@@ -104,34 +113,19 @@ async function initCommand(): Promise<void> {
 	}
 
 	const gitIgnoreExists = fs.existsSync(".gitignore");
-
 	printStepTitle(`${gitIgnoreExists ? "Updating" : "Creating"} .gitignore file`);
-	const gitIgnoreOpenNextText = "# OpenNext\n.open-next\n";
-
-	if (!gitIgnoreExists) {
-		fs.writeFileSync(".gitignore", gitIgnoreOpenNextText);
-	} else {
-		const gitignoreContent = fs.readFileSync(".gitignore", "utf8");
-		if (!gitignoreContent.includes(".open-next")) {
-			fs.appendFileSync(".gitignore", `\n${gitIgnoreOpenNextText}`);
-		}
-	}
+	createOrAppendToFile(
+		".gitignore",
+		"# OpenNext\n.open-next",
+		(gitIgnoreContent) => !gitIgnoreContent.includes(".open-next")
+	);
 
 	printStepTitle("Updating Next.js config");
-
-	let configContent = fs.readFileSync(nextConfigFilePath, "utf8");
-
-	const importLine = 'import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";';
-	if (!configContent.includes(importLine)) {
-		configContent = importLine + "\n" + configContent;
-	}
-
-	const initLine = "initOpenNextCloudflareForDev();";
-	if (!configContent.includes(initLine)) {
-		configContent += "\n" + initLine + "\n";
-	}
-
-	fs.writeFileSync(nextConfigFilePath, configContent);
+	createOrAppendToFile(
+		nextConfigFilePath,
+		"\nimport('@opennextjs/cloudflare').then(m => m.initOpenNextCloudflareForDev());",
+		(nextConfigContent) => !nextConfigContent.includes("initOpenNextCloudflareForDev")
+	);
 
 	printStepTitle("Checking for edge runtime usage");
 	try {
