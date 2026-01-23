@@ -146,13 +146,17 @@ async function initCommand(): Promise<void> {
 
 		if (foundEdgeRuntime) {
 			logger.warn(
-				'Remove any export const runtime = "edge"; if present\n' +
-					'Before deploying your app, remove the export const runtime = "edge"; line from any of your source files.\n' +
-					"The edge runtime is not supported yet with @opennextjs/cloudflare.\n"
+				"Detected usage of the edge runtime.\n" +
+					"The edge runtime is not supported yet with @opennextjs/cloudflare.\n" +
+					'Remove all the `export const runtime = "edge";` lines from your source files'
 			);
 		}
 	} catch {
-		logger.warn("Could not check for edge runtime usage\n");
+		logger.warn(
+			"Failed to check for edge runtime usage.\n" +
+				"The edge runtime is not supported yet with @opennextjs/cloudflare.\n" +
+				'If present, remove all the `export const runtime = "edge";` lines from your source files'
+		);
 	}
 
 	logger.info("🎉 OpenNext.js for Cloudflare setup complete!");
