@@ -1,7 +1,7 @@
 import type yargs from "yargs";
 
 import { build as buildImpl } from "../build/build.js";
-import { createWranglerConfigIfNotExistent } from "../build/utils/index.js";
+import { createWranglerConfigIfNonExistent } from "../build/utils/index.js";
 import type { WithWranglerArgs } from "./utils.js";
 import {
 	compileConfig,
@@ -38,7 +38,7 @@ async function buildCommand(
 	// Note: We don't ask when a custom config file is specified via `--config`
 	//       nor when `--skipWranglerConfigCheck` is used.
 	if (!projectOpts.wranglerConfigPath && !args.skipWranglerConfigCheck) {
-		await createWranglerConfigIfNotExistent(projectOpts);
+		await createWranglerConfigIfNonExistent(projectOpts);
 	}
 
 	const wranglerConfig = await readWranglerConfig(args);
