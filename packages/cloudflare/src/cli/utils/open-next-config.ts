@@ -24,7 +24,7 @@ export function getOpenNextConfigPath(appDir: string): string | undefined {
  * @param appDir The Next application root
  * @return The path to the created source file
  */
-export async function createOpenNextConfig(appDir: string): Promise<string> {
+export async function createOpenNextConfigFile(appDir: string): Promise<string> {
 	const openNextConfigPath = join(appDir, "open-next.config.ts");
 
 	cpSync(join(getPackageTemplatesDirPath(), "open-next.config.ts"), openNextConfigPath);

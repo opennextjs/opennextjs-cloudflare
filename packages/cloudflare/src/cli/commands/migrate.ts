@@ -9,7 +9,7 @@ import type yargs from "yargs";
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
 import { createOrAppendToFile } from "../build/utils/files.js";
 import { getNextConfigPath } from "../utils/next-config.js";
-import { createOpenNextConfig, getOpenNextConfigPath } from "../utils/open-next-config.js";
+import { createOpenNextConfigFile, getOpenNextConfigPath } from "../utils/open-next-config.js";
 import { createWranglerConfigFile, getWranglerConfigPath } from "../utils/wrangler-config.js";
 import { printHeaders } from "./utils.js";
 
@@ -66,7 +66,7 @@ async function migrateCommand(): Promise<void> {
 	await createWranglerConfigFile("./");
 
 	printStepTitle("Creating open-next.config.ts");
-	await createOpenNextConfig("./");
+	await createOpenNextConfigFile("./");
 
 	const devVarsExists = fs.existsSync(".dev.vars");
 	printStepTitle(`${devVarsExists ? "Updating" : "Creating"} .dev.vars file`);

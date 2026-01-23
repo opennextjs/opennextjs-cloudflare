@@ -1,6 +1,6 @@
 import type { ProjectOptions } from "../../project-options.js";
 import { askConfirmation } from "../../utils/ask-confirmation.js";
-import { createOpenNextConfig, getOpenNextConfigPath } from "../../utils/open-next-config.js";
+import { createOpenNextConfigFile, getOpenNextConfigPath } from "../../utils/open-next-config.js";
 import { createWranglerConfigFile, getWranglerConfigPath } from "../../utils/wrangler-config.js";
 
 /**
@@ -53,7 +53,7 @@ export async function createOpenNextConfigIfNotExistent(sourceDir: string): Prom
 			throw new Error("The `open-next.config.ts` file is required, aborting!");
 		}
 
-		return createOpenNextConfig(sourceDir);
+		return createOpenNextConfigFile(sourceDir);
 	}
 
 	return openNextConfigPath;
