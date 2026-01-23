@@ -54,7 +54,7 @@ async function initCommand(): Promise<void> {
 
 	printStepTitle("Creating _headers in public folder");
 	if (fs.existsSync("public/_headers")) {
-		logger.warn("⚠️ public/_headers file already exists\n");
+		logger.warn("public/_headers file already exists\n");
 	} else {
 		cpSync(`${getPackageTemplatesDirPath()}/_headers`, "public/_headers", { recursive: true });
 	}
@@ -123,7 +123,7 @@ async function initCommand(): Promise<void> {
 
 		fs.writeFileSync(configFile, configContent);
 	} else {
-		logger.warn("⚠️  No Next.js config file found, you may need to create one\n");
+		logger.warn("No Next.js config file found, you may need to create one\n");
 	}
 
 	printStepTitle("Checking for edge runtime usage");
@@ -136,7 +136,7 @@ async function initCommand(): Promise<void> {
 			try {
 				const content = fs.readFileSync(file, "utf8");
 				if (content.includes('export const runtime = "edge"')) {
-					logger.warn(`⚠️  Found edge runtime in: ${file}`);
+					logger.warn(`Found edge runtime in: ${file}`);
 					foundEdgeRuntime = true;
 				}
 			} catch {
@@ -146,14 +146,13 @@ async function initCommand(): Promise<void> {
 
 		if (foundEdgeRuntime) {
 			logger.warn(
-				"\n🚨 WARNING:\n" +
-					'Remove any export const runtime = "edge"; if present\n' +
+				'Remove any export const runtime = "edge"; if present\n' +
 					'Before deploying your app, remove the export const runtime = "edge"; line from any of your source files.\n' +
 					"The edge runtime is not supported yet with @opennextjs/cloudflare.\n"
 			);
 		}
 	} catch {
-		logger.warn("⚠️  Could not check for edge runtime usage\n");
+		logger.warn("Could not check for edge runtime usage\n");
 	}
 
 	logger.info("🎉 OpenNext.js for Cloudflare setup complete!");
