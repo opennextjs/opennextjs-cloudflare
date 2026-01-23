@@ -103,7 +103,7 @@ async function initCommand(): Promise<void> {
 	} else {
 		const gitignoreContent = fs.readFileSync(".gitignore", "utf8");
 		if (!gitignoreContent.includes(".open-next")) {
-			fs.writeFileSync(".gitignore", `${gitignoreContent}\n${gitIgnoreOpenNextText}`);
+			fs.appendFileSync(".gitignore", `\n${gitIgnoreOpenNextText}`);
 		}
 	}
 
