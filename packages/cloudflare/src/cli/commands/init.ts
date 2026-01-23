@@ -129,7 +129,7 @@ async function initCommand(): Promise<void> {
 	printStepTitle("Checking for edge runtime usage");
 	try {
 		const extensions = [".ts", ".tsx", ".js", ".jsx", ".mjs"];
-		const files = findFilesRecursive(".", extensions).slice(0, 100); // Limit to first 100 files
+		const files = findFilesRecursive(".", extensions);
 		let foundEdgeRuntime = false;
 
 		for (const file of files) {
