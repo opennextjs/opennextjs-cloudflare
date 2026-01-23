@@ -4,7 +4,7 @@ import yargs from "yargs";
 
 import { addBuildCommand } from "./commands/build.js";
 import { addDeployCommand } from "./commands/deploy.js";
-import { addInitCommand } from "./commands/init.js";
+import { addMigrateCommand } from "./commands/migrate.js";
 import { addPopulateCacheCommand } from "./commands/populate-cache.js";
 import { addPreviewCommand } from "./commands/preview.js";
 import { addUploadCommand } from "./commands/upload.js";
@@ -19,7 +19,7 @@ export function runCommand() {
 	addDeployCommand(y);
 	addUploadCommand(y);
 	addPopulateCacheCommand(y);
-	addInitCommand(y);
+	addMigrateCommand(y);
 
 	return y.demandCommand(1, 1).parse();
 }

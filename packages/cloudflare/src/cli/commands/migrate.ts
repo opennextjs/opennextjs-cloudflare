@@ -14,12 +14,12 @@ import { createWranglerConfigFile, getWranglerConfigPath } from "../utils/wrangl
 import { printHeaders } from "./utils.js";
 
 /**
- * Implementation of the `opennextjs-cloudflare init` command.
+ * Implementation of the `opennextjs-cloudflare migrate` command.
  *
  * @param args
  */
-async function initCommand(): Promise<void> {
-	printHeaders("init");
+async function migrateCommand(): Promise<void> {
+	printHeaders("migrate");
 
 	logger.info("🚀 Setting up the OpenNext Cloudflare adapter...\n");
 
@@ -220,13 +220,13 @@ function printStepTitle(title: string): void {
 }
 
 /**
- * Add the `init` command to yargs configuration.
+ * Add the `migrate` command to yargs configuration.
  */
-export function addInitCommand<T extends yargs.Argv>(y: T) {
+export function addMigrateCommand<T extends yargs.Argv>(y: T) {
 	return y.command(
-		"init",
+		"migrate",
 		"Set up the OpenNext Cloudflare adapter in an existing Next.js project",
 		() => ({}),
-		() => initCommand()
+		() => migrateCommand()
 	);
 }
