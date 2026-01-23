@@ -9,7 +9,7 @@ import type yargs from "yargs";
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
 import { getNextConfigPath } from "../utils/next-config.js";
 import { createOpenNextConfig, getOpenNextConfigPath } from "../utils/open-next-config.js";
-import { createWranglerConfigFile } from "../utils/wrangler-config.js";
+import { createWranglerConfigFile, getWranglerConfigPath } from "../utils/wrangler-config.js";
 import { printHeaders } from "./utils.js";
 
 /**
@@ -27,6 +27,17 @@ async function initCommand(): Promise<void> {
 	if (!nextConfigFilePath) {
 		logger.error(
 			`No Next.js config file detected, are you sure that this current directory contains a Next.js project? aborting\n`
+		);
+		process.exit(1);
+	}
+
+	const wranglerConfigFilePath = getWranglerConfigPath(".");
+	if (wranglerConfigFilePath) {
+		logger.error(
+			`The project already contains a Wrangler config file (at ${wranglerConfigFilePath}).\n` +
+				"This means that your application is either a static site or a next-on-pages project.\n" +
+				"If your project is a static site and you want to migrate to OpenNext, delete the Wrangler configuration file, convert the project to a full stack one and try again." +
+				" if your project is a next-on-pages one remove any next-on-pages configuration, any edge runtime usage and try again."
 		);
 		process.exit(1);
 	}
