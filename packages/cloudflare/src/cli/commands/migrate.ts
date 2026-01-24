@@ -77,10 +77,6 @@ async function migrateCommand(): Promise<void> {
 		(gitIgnoreContent) => !gitIgnoreContent.includes("NEXTJS_ENV=")
 	);
 
-	if (!fs.existsSync(".dev.vars")) {
-		printStepTitle("Creating .dev.vars");
-		fs.writeFileSync(".dev.vars", "NEXTJS_ENV=development\n");
-	}
 
 	printStepTitle(`${fs.existsSync("public/_headers") ? "Updating" : "Creating"} public/_headers file`);
 	createOrAppendToFile(
@@ -112,8 +108,8 @@ async function migrateCommand(): Promise<void> {
 		}
 
 		packageJson.scripts = {
-			...packageJson.scripts,
 			build: "next build",
+			...packageJson.scripts,
 			...openNextScripts,
 		};
 

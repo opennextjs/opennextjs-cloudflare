@@ -12,7 +12,7 @@ import { createWranglerConfigFile, getWranglerConfigPath } from "../../utils/wra
  * @param projectOpts The options for the project
  */
 export async function createWranglerConfigIfNonExistent(projectOpts: ProjectOptions): Promise<void> {
-	const wranglerConfigFileExists = !!getWranglerConfigPath(projectOpts.sourceDir);
+	const wranglerConfigFileExists = Boolean(getWranglerConfigPath(projectOpts.sourceDir));
 	if (wranglerConfigFileExists) {
 		return;
 	}
