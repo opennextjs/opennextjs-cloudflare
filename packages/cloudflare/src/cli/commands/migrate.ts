@@ -172,12 +172,12 @@ async function migrateCommand(): Promise<void> {
 		);
 	}
 
-	logger.info("🎉 OpenNext.js for Cloudflare setup complete!");
-	logger.info("\nNext steps:");
 	logger.info(
-		`- Run: "${packageManager.run} preview" to build and preview your Cloudflare application locally`
+		"🎉 OpenNext.js for Cloudflare setup complete!\n" +
+			"\nNext steps:\n" +
+			`- Run: "${packageManager.run} preview" to build and preview your Cloudflare application locally\n` +
+			`- Run: "${packageManager.run} deploy" to deploy your application to Cloudflare Workers\n`
 	);
-	logger.info(`- Run: "${packageManager.run} deploy" to deploy your application to Cloudflare Workers`);
 }
 
 interface PackageManager {
