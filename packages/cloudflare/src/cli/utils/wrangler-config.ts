@@ -25,6 +25,8 @@ export function getWranglerConfigPath(appDir: string): string | undefined {
 /**
  * Creates a wrangler.jsonc config file in the target directory for the project.
  *
+ * If a wrangler.jsonc file already exists it will be overridden.
+ *
  * @param projectDir The target directory for the project
  */
 export async function createWranglerConfigFile(projectDir: string) {
