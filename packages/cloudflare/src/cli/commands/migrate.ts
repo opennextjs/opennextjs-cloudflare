@@ -22,7 +22,9 @@ async function migrateCommand(): Promise<void> {
 
 	logger.info("🚀 Setting up the OpenNext Cloudflare adapter...\n");
 
-	const nextConfigFilePath = getNextConfigPath(".");
+	const projectDir = process.cwd();
+
+	const nextConfigFilePath = getNextConfigPath(projectDir);
 
 	if (!nextConfigFilePath) {
 		logger.error(
@@ -31,7 +33,7 @@ async function migrateCommand(): Promise<void> {
 		process.exit(1);
 	}
 
-	const wranglerConfigFilePath = getWranglerConfigPath(".");
+	const wranglerConfigFilePath = getWranglerConfigPath(projectDir);
 	if (wranglerConfigFilePath) {
 		logger.error(
 			`The project already contains a Wrangler config file (at ${wranglerConfigFilePath}).\n` +
@@ -42,14 +44,14 @@ async function migrateCommand(): Promise<void> {
 		process.exit(1);
 	}
 
-	if (getOpenNextConfigPath(".")) {
+	if (getOpenNextConfigPath(projectDir)) {
 		logger.info(
 			`Exiting since the project is already configured for OpenNext (an \`open-next.config.ts\` file already exists)\n`
 		);
 		return;
 	}
 
-	const { packager } = findPackagerAndRoot(".");
+	const { packager } = findPackagerAndRoot(projectDir);
 	const packageManager = packageManagers[packager];
 
 	printStepTitle("Installing dependencies");
@@ -136,7 +138,7 @@ async function migrateCommand(): Promise<void> {
 	printStepTitle("Checking for edge runtime usage");
 	try {
 		const extensions = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".mts"];
-		const files = findFilesRecursive(".", extensions);
+		const files = findFilesRecursive(projectDir, extensions);
 		let foundEdgeRuntime = false;
 
 		for (const file of files) {
