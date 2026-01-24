@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import logger from "@opennextjs/aws/logger.js";
 import yargs from "yargs";
 
 import { addBuildCommand } from "./commands/build.js";
@@ -12,7 +13,22 @@ import { addUploadCommand } from "./commands/upload.js";
 export function runCommand() {
 	const y = yargs(process.argv.slice(2).filter((arg) => arg !== "--"))
 		.scriptName("opennextjs-cloudflare")
-		.parserConfiguration({ "unknown-options-as-args": true });
+		.parserConfiguration({ "unknown-options-as-args": true })
+		.strictCommands()
+		.help()
+		.alias("h", "help")
+		.version()
+		.alias("v", "version")
+		.fail((msg, err, yargs) => {
+			if (msg) {
+				logger.error(`Error: ${msg}\n`);
+			}
+			if (err) {
+				throw err;
+			}
+			yargs.showHelp();
+			process.exit(1);
+		});
 
 	addBuildCommand(y);
 	addPreviewCommand(y);
