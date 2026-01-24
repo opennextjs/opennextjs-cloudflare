@@ -97,6 +97,12 @@ async function migrateCommand(): Promise<void> {
 	);
 
 	printStepTitle("Updating package.json scripts");
+	const openNextScripts = {
+		preview: "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+		deploy: "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+		upload: "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+		["cf-typegen"]: "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+	};
 	try {
 		let packageJson: { scripts?: Record<string, string> } = {};
 		if (fs.existsSync("package.json")) {
@@ -108,16 +114,19 @@ async function migrateCommand(): Promise<void> {
 		packageJson.scripts = {
 			...packageJson.scripts,
 			build: "next build",
-			preview: "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-			deploy: "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-			upload: "opennextjs-cloudflare build && opennextjs-cloudflare upload",
-			["cf-typegen"]: "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+			...openNextScripts,
 		};
 
 		fs.writeFileSync("package.json", JSON.stringify(packageJson, null, 2));
 	} catch (error) {
-		logger.error("Failed to update package.json:", (error as Error).message);
-		// TODO: instruct user to update their `build`, `preview` and `upload` scripts
+		logger.error("Failed to update package.json", (error as Error).message);
+		logger.warn(
+			"\nPlease ensure that your package.json contains the following scripts:\n" +
+				console.log(
+					[...Object.entries(openNextScripts)].map(([key, value]) => ` - ${key}: ${value}`).join("\n")
+				) +
+				"\n"
+		);
 	}
 
 	const gitIgnoreExists = fs.existsSync(".gitignore");
