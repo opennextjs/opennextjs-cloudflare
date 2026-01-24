@@ -6,7 +6,7 @@ import { findPackagerAndRoot } from "@opennextjs/aws/build/helper.js";
 import logger from "@opennextjs/aws/logger.js";
 import type yargs from "yargs";
 
-import { createOrAppendToFile } from "../build/utils/files.js";
+import { conditionalAppendFileSync } from "../build/utils/files.js";
 import { getNextConfigPath } from "../utils/next-config.js";
 import { createOpenNextConfigFile, getOpenNextConfigPath } from "../utils/open-next-config.js";
 import { createWranglerConfigFile, getWranglerConfigPath } from "../utils/wrangler-config.js";
@@ -71,15 +71,14 @@ async function migrateCommand(): Promise<void> {
 
 	const devVarsExists = fs.existsSync(".dev.vars");
 	printStepTitle(`${devVarsExists ? "Updating" : "Creating"} .dev.vars file`);
-	createOrAppendToFile(
+	conditionalAppendFileSync(
 		".dev.vars",
 		"NEXTJS_ENV=development",
 		(gitIgnoreContent) => !gitIgnoreContent.includes("NEXTJS_ENV=")
 	);
 
-
 	printStepTitle(`${fs.existsSync("public/_headers") ? "Updating" : "Creating"} public/_headers file`);
-	createOrAppendToFile(
+	conditionalAppendFileSync(
 		"public/_headers",
 		[
 			"",
@@ -127,14 +126,14 @@ async function migrateCommand(): Promise<void> {
 
 	const gitIgnoreExists = fs.existsSync(".gitignore");
 	printStepTitle(`${gitIgnoreExists ? "Updating" : "Creating"} .gitignore file`);
-	createOrAppendToFile(
+	conditionalAppendFileSync(
 		".gitignore",
 		"# OpenNext\n.open-next",
 		(gitIgnoreContent) => !gitIgnoreContent.includes(".open-next")
 	);
 
 	printStepTitle("Updating Next.js config");
-	createOrAppendToFile(
+	conditionalAppendFileSync(
 		nextConfigFilePath,
 		"\nimport('@opennextjs/cloudflare').then(m => m.initOpenNextCloudflareForDev());",
 		(nextConfigContent) => !nextConfigContent.includes("initOpenNextCloudflareForDev")
