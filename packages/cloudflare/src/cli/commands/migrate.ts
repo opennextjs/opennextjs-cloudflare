@@ -80,14 +80,10 @@ async function migrateCommand(): Promise<void> {
 	printStepTitle(`${fs.existsSync("public/_headers") ? "Updating" : "Creating"} public/_headers file`);
 	conditionalAppendFileSync(
 		"public/_headers",
-		[
-			"",
-			"# https://developers.cloudflare.com/workers/static-assets/headers",
-			"# https://opennext.js.org/cloudflare/caching#static-assets-caching",
-			"/_next/static/*",
-			"  Cache-Control: public,max-age=31536000,immutable",
-			"",
-		].join("\n"),
+		"\n# https://developers.cloudflare.com/workers/static-assets/headers\n" +
+			"# https://opennext.js.org/cloudflare/caching#static-assets-caching\n" +
+			"/_next/static/*\n" +
+			"  Cache-Control: public,max-age=31536000,immutable\n\n",
 		(headersContent) => !/^\/_next\/static\/*\b/.test(headersContent)
 	);
 
