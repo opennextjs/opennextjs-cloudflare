@@ -44,7 +44,7 @@ async function migrateCommand(): Promise<void> {
 		process.exit(1);
 	}
 
-	if (getOpenNextConfigPath(projectDir)) {
+	if (fs.existsSync(getOpenNextConfigPath(projectDir))) {
 		logger.info(
 			`Exiting since the project is already configured for OpenNext (an \`open-next.config.ts\` file already exists)\n`
 		);

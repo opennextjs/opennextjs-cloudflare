@@ -1,21 +1,16 @@
-import { cpSync, existsSync } from "node:fs";
+import { cpSync } from "node:fs";
 import { join } from "node:path";
 
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
 
 /**
- * Gets the path to the OpenNext configuration file if it exists.
+ * Gets the path to the project's OpenNext configuration file.
  *
  * @param appDir The directory to check for the open-next.config.ts file
  * @returns The full path to open-next.config.ts if it exists, undefined otherwise
  */
-export function getOpenNextConfigPath(appDir: string): string | undefined {
-	const openNextConfigPath = join(appDir, "open-next.config.ts");
-
-	if (existsSync(openNextConfigPath)) {
-		return openNextConfigPath;
-	}
-	return undefined;
+export function getOpenNextConfigPath(appDir: string): string {
+	return join(appDir, "open-next.config.ts");
 }
 
 /**
