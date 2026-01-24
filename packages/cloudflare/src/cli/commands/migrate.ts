@@ -1,12 +1,11 @@
 import { execSync } from "node:child_process";
-import fs, { cpSync } from "node:fs";
+import fs from "node:fs";
 import path from "node:path";
 
 import { findPackagerAndRoot } from "@opennextjs/aws/build/helper.js";
 import logger from "@opennextjs/aws/logger.js";
 import type yargs from "yargs";
 
-import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
 import { createOrAppendToFile } from "../build/utils/files.js";
 import { getNextConfigPath } from "../utils/next-config.js";
 import { createOpenNextConfigFile, getOpenNextConfigPath } from "../utils/open-next-config.js";
@@ -81,12 +80,19 @@ async function migrateCommand(): Promise<void> {
 		fs.writeFileSync(".dev.vars", "NEXTJS_ENV=development\n");
 	}
 
-	printStepTitle("Creating _headers in public folder");
-	if (fs.existsSync("public/_headers")) {
-		logger.warn("public/_headers file already exists\n");
-	} else {
-		cpSync(`${getPackageTemplatesDirPath()}/_headers`, "public/_headers", { recursive: true });
-	}
+	printStepTitle(`${fs.existsSync("public/_headers") ? "Updating" : "Creating"} public/_headers file`);
+	createOrAppendToFile(
+		"public/_headers",
+		[
+			"",
+			"# https://developers.cloudflare.com/workers/static-assets/headers",
+			"# https://opennext.js.org/cloudflare/caching#static-assets-caching",
+			"/_next/static/*",
+			"  Cache-Control: public,max-age=31536000,immutable",
+			"",
+		].join("\n"),
+		(headersContent) => !/^\/_next\/static\/*\b/.test(headersContent)
+	);
 
 	printStepTitle("Updating package.json scripts");
 	try {
