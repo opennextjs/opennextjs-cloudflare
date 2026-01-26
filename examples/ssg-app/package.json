@@ -13,16 +13,16 @@
 		"e2e": "playwright test -c e2e/playwright.config.ts"
 	},
 	"dependencies": {
-		"react": "^19.0.3",
-		"react-dom": "^19.0.3",
-		"next": "15.5.9"
+		"react": "^19.0.4",
+		"react-dom": "^19.0.4",
+		"next": "15.5.10"
 	},
 	"devDependencies": {
 		"@opennextjs/cloudflare": "workspace:*",
 		"@playwright/test": "catalog:",
 		"@types/node": "catalog:",
-		"@types/react": "^19",
-		"@types/react-dom": "^19",
+		"@types/react": "^19.0.4",
+		"@types/react-dom": "^19.0.4",
 		"typescript": "catalog:",
 		"wrangler": "catalog:"
 	}

@@ -16,9 +16,9 @@
 		"cf-typegen": "wrangler types --env-interface CloudflareEnv"
 	},
 	"dependencies": {
-		"next": "^15.5.9",
-		"react": "^19.0.3",
-		"react-dom": "^19.0.3"
+		"next": "^15.5.10",
+		"react": "^19.0.4",
+		"react-dom": "^19.0.4"
 	},
 	"devDependencies": {
 		"@opennextjs/cloudflare": "workspace:*",
