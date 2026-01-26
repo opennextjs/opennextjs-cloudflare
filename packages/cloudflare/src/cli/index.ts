@@ -17,6 +17,9 @@ export function runCommand() {
 		.strictCommands()
 		.help()
 		.alias("h", "help")
+		// Due to how the package is currently built and distributed the version cannot easily
+		// be retrieved so we disable the --version flag for the time being
+		.version(false)
 		.fail((msg, err, yargs) => {
 			if (msg) {
 				logger.error(`Error: ${msg}\n`);
