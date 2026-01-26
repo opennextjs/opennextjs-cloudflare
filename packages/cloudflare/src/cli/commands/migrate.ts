@@ -20,7 +20,7 @@ import { printHeaders } from "./utils.js";
  *
  * @param args
  */
-async function migrateCommand(): Promise<void> {
+async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 	printHeaders("migrate");
 
 	logger.info("🚀 Setting up the OpenNext Cloudflare adapter...\n");
@@ -52,8 +52,11 @@ async function migrateCommand(): Promise<void> {
 
 	printStepTitle("Installing dependencies");
 	try {
-		childProcess.execSync(`${packageManager.install} @opennextjs/cloudflare@latest`, { stdio: "inherit" });
-		childProcess.execSync(`${packageManager.installDev} wrangler@latest`, { stdio: "inherit" });
+		const forceFlag = args.forceInstall ? " --force" : "";
+		childProcess.execSync(`${packageManager.install}${forceFlag} @opennextjs/cloudflare@latest`, {
+			stdio: "inherit",
+		});
+		childProcess.execSync(`${packageManager.installDev}${forceFlag} wrangler@latest`, { stdio: "inherit" });
 	} catch (error) {
 		logger.error("Failed to install dependencies:", (error as Error).message);
 		process.exit(1);
@@ -231,7 +234,13 @@ export function addMigrateCommand<T extends yargs.Argv>(y: T) {
 	return y.command(
 		"migrate",
 		"Set up the OpenNext Cloudflare adapter in an existing Next.js project",
-		() => ({}),
-		() => migrateCommand()
+		(args) =>
+			args.option("force-install", {
+				type: "boolean",
+				alias: "f",
+				desc: "Install the dependencies using the `--force` flag.",
+				default: false,
+			}),
+		(args) => migrateCommand(args)
 	);
 }
