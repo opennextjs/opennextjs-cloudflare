@@ -143,6 +143,7 @@ async function migrateCommand(): Promise<void> {
 				if (content.includes('export const runtime = "edge"')) {
 					logger.warn(`Found edge runtime in: ${file}`);
 					foundEdgeRuntime = true;
+					break;
 				}
 			} catch {
 				// Skip files that can't be read
