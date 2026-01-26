@@ -9,7 +9,7 @@ import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-di
  * @param appDir The directory to check for the Wrangler config file
  * @returns The path to Wrangler config file if it exists, undefined otherwise
  */
-export function getWranglerConfigPath(appDir: string): string | undefined {
+export function findWranglerConfig(appDir: string): string | undefined {
 	const possibleExts = ["toml", "json", "jsonc"];
 
 	for (const ext of possibleExts) {

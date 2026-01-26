@@ -1,9 +1,7 @@
-import { existsSync } from "node:fs";
-
 import type { ProjectOptions } from "../../project-options.js";
 import { askConfirmation } from "../../utils/ask-confirmation.js";
-import { createOpenNextConfigFile, getOpenNextConfigPath } from "../../utils/open-next-config.js";
-import { createWranglerConfigFile, getWranglerConfigPath } from "../../utils/wrangler-config.js";
+import { createOpenNextConfigFile, findOpenNextConfig } from "../../utils/open-next-config.js";
+import { createWranglerConfigFile, findWranglerConfig } from "../../utils/wrangler-config.js";
 
 /**
  * Creates a `wrangler.jsonc` file for the user if a wrangler config file doesn't already exist,
@@ -14,7 +12,7 @@ import { createWranglerConfigFile, getWranglerConfigPath } from "../../utils/wra
  * @param projectOpts The options for the project
  */
 export async function createWranglerConfigIfNonExistent(projectOpts: ProjectOptions): Promise<void> {
-	const wranglerConfigFileExists = Boolean(getWranglerConfigPath(projectOpts.sourceDir));
+	const wranglerConfigFileExists = Boolean(findWranglerConfig(projectOpts.sourceDir));
 	if (wranglerConfigFileExists) {
 		return;
 	}
@@ -44,8 +42,8 @@ export async function createWranglerConfigIfNonExistent(projectOpts: ProjectOpti
  * @return The path to the created source file
  */
 export async function createOpenNextConfigIfNotExistent(sourceDir: string): Promise<string> {
-	const openNextConfigPath = getOpenNextConfigPath(sourceDir);
-	if (!existsSync(openNextConfigPath)) {
+	const openNextConfigPath = findOpenNextConfig(sourceDir);
+	if (!openNextConfigPath) {
 		const answer = await askConfirmation(
 			"Missing required `open-next.config.ts` file, do you want to create one?"
 		);

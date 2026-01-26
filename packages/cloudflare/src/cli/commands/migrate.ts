@@ -7,9 +7,9 @@ import logger from "@opennextjs/aws/logger.js";
 import type yargs from "yargs";
 
 import { conditionalAppendFileSync } from "../build/utils/files.js";
-import { getNextConfigPath } from "../utils/next-config.js";
-import { createOpenNextConfigFile, getOpenNextConfigPath } from "../utils/open-next-config.js";
-import { createWranglerConfigFile, getWranglerConfigPath } from "../utils/wrangler-config.js";
+import { findNextConfig } from "../utils/next-config.js";
+import { createOpenNextConfigFile, findOpenNextConfig } from "../utils/open-next-config.js";
+import { createWranglerConfigFile, findWranglerConfig } from "../utils/wrangler-config.js";
 import { printHeaders } from "./utils.js";
 
 /**
@@ -24,7 +24,7 @@ async function migrateCommand(): Promise<void> {
 
 	const projectDir = process.cwd();
 
-	const nextConfigFilePath = getNextConfigPath(projectDir);
+	const nextConfigFilePath = findNextConfig(projectDir);
 
 	if (!nextConfigFilePath) {
 		logger.error(
@@ -33,7 +33,7 @@ async function migrateCommand(): Promise<void> {
 		process.exit(1);
 	}
 
-	const wranglerConfigFilePath = getWranglerConfigPath(projectDir);
+	const wranglerConfigFilePath = findWranglerConfig(projectDir);
 	if (wranglerConfigFilePath) {
 		logger.error(
 			`The project already contains a Wrangler config file (at ${wranglerConfigFilePath}).\n` +
@@ -44,7 +44,7 @@ async function migrateCommand(): Promise<void> {
 		process.exit(1);
 	}
 
-	if (fs.existsSync(getOpenNextConfigPath(projectDir))) {
+	if (findOpenNextConfig(projectDir)) {
 		logger.info(
 			`Exiting since the project is already configured for OpenNext (an \`open-next.config.ts\` file already exists)\n`
 		);
