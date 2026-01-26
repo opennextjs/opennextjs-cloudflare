@@ -18,6 +18,6 @@ export function conditionalAppendFileSync(
 	const fileExists = fs.existsSync(filepath);
 
 	if (!fileExists || condition(fs.readFileSync(filepath, "utf8"))) {
-		fs.appendFileSync(filepath, `\n${text}\n`);
+		fs.appendFileSync(filepath, text);
 	}
 }

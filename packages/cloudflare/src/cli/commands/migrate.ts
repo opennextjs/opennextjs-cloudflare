@@ -73,14 +73,14 @@ async function migrateCommand(): Promise<void> {
 	printStepTitle(`${devVarsExists ? "Updating" : "Creating"} .dev.vars file`);
 	conditionalAppendFileSync(
 		".dev.vars",
-		"NEXTJS_ENV=development",
+		"\nNEXTJS_ENV=development\n",
 		(content) => !/\bNEXTJS_ENV\b/.test(content)
 	);
 
 	printStepTitle(`${fs.existsSync("public/_headers") ? "Updating" : "Creating"} public/_headers file`);
 	conditionalAppendFileSync(
 		"public/_headers",
-		"\n# https://developers.cloudflare.com/workers/static-assets/headers\n" +
+		"\n\n# https://developers.cloudflare.com/workers/static-assets/headers\n" +
 			"# https://opennext.js.org/cloudflare/caching#static-assets-caching\n" +
 			"/_next/static/*\n" +
 			"  Cache-Control: public,max-age=31536000,immutable\n\n",
@@ -124,14 +124,14 @@ async function migrateCommand(): Promise<void> {
 	printStepTitle(`${gitIgnoreExists ? "Updating" : "Creating"} .gitignore file`);
 	conditionalAppendFileSync(
 		".gitignore",
-		"# OpenNext\n.open-next",
+		"\n# OpenNext\n.open-next\n",
 		(content) => !content.includes(".open-next")
 	);
 
 	printStepTitle("Updating Next.js config");
 	conditionalAppendFileSync(
 		nextConfigFilePath,
-		"\nimport('@opennextjs/cloudflare').then(m => m.initOpenNextCloudflareForDev());",
+		"\nimport('@opennextjs/cloudflare').then(m => m.initOpenNextCloudflareForDev());\n",
 		(content) => !content.includes("initOpenNextCloudflareForDev")
 	);
 
