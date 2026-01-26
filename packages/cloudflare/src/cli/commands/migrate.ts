@@ -166,7 +166,7 @@ async function migrateCommand(): Promise<void> {
 	}
 
 	logger.info(
-		"🎉 OpenNext.js for Cloudflare setup complete!\n" +
+		"🎉 OpenNext Cloudflare adapter complete!\n" +
 			"\nNext steps:\n" +
 			`- Run: "${packageManager.run} preview" to build and preview your Cloudflare application locally\n` +
 			`- Run: "${packageManager.run} deploy" to deploy your application to Cloudflare Workers\n`
