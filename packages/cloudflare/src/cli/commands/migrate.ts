@@ -2,12 +2,15 @@ import childProcess from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import { findPackagerAndRoot } from "@opennextjs/aws/build/helper.js";
+import {
+	checkRunningInsideNextjsApp,
+	findNextConfig,
+	findPackagerAndRoot,
+} from "@opennextjs/aws/build/helper.js";
 import logger from "@opennextjs/aws/logger.js";
 import type yargs from "yargs";
 
 import { conditionalAppendFileSync } from "../build/utils/files.js";
-import { findNextConfig } from "../utils/next-config.js";
 import { createOpenNextConfigFile, findOpenNextConfig } from "../utils/open-next-config.js";
 import { createWranglerConfigFile, findWranglerConfig } from "../utils/wrangler-config.js";
 import { printHeaders } from "./utils.js";
@@ -24,14 +27,7 @@ async function migrateCommand(): Promise<void> {
 
 	const projectDir = process.cwd();
 
-	const nextConfigFilePath = findNextConfig(projectDir);
-
-	if (!nextConfigFilePath) {
-		logger.error(
-			`No Next.js config file detected, are you sure that this current directory contains a Next.js project? aborting\n`
-		);
-		process.exit(1);
-	}
+	checkRunningInsideNextjsApp({ appPath: projectDir });
 
 	const wranglerConfigFilePath = findWranglerConfig(projectDir);
 	if (wranglerConfigFilePath) {
@@ -130,7 +126,7 @@ async function migrateCommand(): Promise<void> {
 
 	printStepTitle("Updating Next.js config");
 	conditionalAppendFileSync(
-		nextConfigFilePath,
+		findNextConfig({ appPath: projectDir })!,
 		"\nimport('@opennextjs/cloudflare').then(m => m.initOpenNextCloudflareForDev());\n",
 		(content) => !content.includes("initOpenNextCloudflareForDev")
 	);
