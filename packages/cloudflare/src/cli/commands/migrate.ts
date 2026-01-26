@@ -56,8 +56,8 @@ async function migrateCommand(): Promise<void> {
 
 	printStepTitle("Installing dependencies");
 	try {
-		execSync(`${packageManager.install} @opennextjs/cloudflare@latest`, { stdio: "inherit" });
-		execSync(`${packageManager.installDev} wrangler@latest`, { stdio: "inherit" });
+		childProcess.execSync(`${packageManager.install} @opennextjs/cloudflare@latest`, { stdio: "inherit" });
+		childProcess.execSync(`${packageManager.installDev} wrangler@latest`, { stdio: "inherit" });
 	} catch (error) {
 		logger.error("Failed to install dependencies:", (error as Error).message);
 		process.exit(1);
