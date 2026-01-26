@@ -1,7 +1,10 @@
 import fs from "node:fs";
 
 /**
- * Runs fs' `appendFileSync` on a target file, but only a specified condition is met in regards to the file's content.
+ * Appends text to a file
+ * 
+ * When the file does not exists, it is always created with the text content.
+ * When the file exists, the text is appended only when the predicate return `true`.  
  *
  * @param filepath The path to the file.
  * @param text The text to append to the file.
@@ -14,9 +17,7 @@ export function conditionalAppendFileSync(
 ): void {
 	const fileExists = fs.existsSync(filepath);
 
-	const fileContent = fileExists ? fs.readFileSync(filepath, "utf8") : undefined;
-
-	if (fileContent !== undefined && condition(fileContent)) {
+	if (!fileExists || condition(fs.readFileSync(filepath, "utf8"))) {
 		fs.appendFileSync(filepath, `\n${text}\n`);
 	}
 }

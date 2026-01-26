@@ -196,7 +196,7 @@ const packageManagers = {
  * Skips common build/cache directories: node_modules, .next, .open-next, .git, dist, build.
  *
  * @param dir - The directory path to start searching from
- * @param extensions - Array of file extensions to match (e.g., ['.ts', '.js'])
+ * @param extensions - Array of file extensions to match
  * @param fileList - Accumulator array for found files (used internally for recursion)
  * @returns Array of file paths matching the specified extensions
  */
