@@ -235,7 +235,7 @@ export function addMigrateCommand<T extends yargs.Argv>(y: T) {
 		"migrate",
 		"Set up the OpenNext Cloudflare adapter in an existing Next.js project",
 		(args) =>
-			args.option("force-install", {
+			args.option("forceInstall", {
 				type: "boolean",
 				alias: "f",
 				desc: "Install the dependencies using the `--force` flag.",
