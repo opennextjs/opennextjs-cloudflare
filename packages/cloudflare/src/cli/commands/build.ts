@@ -24,6 +24,7 @@ async function buildCommand(
 		noMinify: boolean;
 		skipWranglerConfigCheck: boolean;
 		openNextConfigPath: string | undefined;
+		dangerouslyUseUnsupportedNextVersion: boolean;
 	}>
 ): Promise<void> {
 	printHeaders("build");
@@ -42,7 +43,7 @@ async function buildCommand(
 
 	const wranglerConfig = await readWranglerConfig(args);
 
-	await buildImpl(options, config, projectOpts, wranglerConfig);
+	await buildImpl(options, config, projectOpts, wranglerConfig, args.dangerouslyUseUnsupportedNextVersion);
 }
 
 /**
@@ -75,6 +76,11 @@ export function addBuildCommand<T extends yargs.Argv>(y: T) {
 				.option("openNextConfigPath", {
 					type: "string",
 					desc: "Path to the OpenNext configuration file",
+				})
+				.option("dangerouslyUseUnsupportedNextVersion", {
+					type: "boolean",
+					default: false,
+					desc: "Allow using unsupported Next.js versions",
 				}),
 		(args) => buildCommand(withWranglerPassthroughArgs(args))
 	);
