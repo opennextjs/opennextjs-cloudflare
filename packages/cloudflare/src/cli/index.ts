@@ -17,8 +17,6 @@ export function runCommand() {
 		.strictCommands()
 		.help()
 		.alias("h", "help")
-		.version()
-		.alias("v", "version")
 		.fail((msg, err, yargs) => {
 			if (msg) {
 				logger.error(`Error: ${msg}\n`);
