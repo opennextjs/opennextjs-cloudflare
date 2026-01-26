@@ -34,7 +34,8 @@ export async function build(
 	options: buildHelper.BuildOptions,
 	config: OpenNextConfig,
 	projectOpts: ProjectOptions,
-	wranglerConfig: Unstable_Config
+	wranglerConfig: Unstable_Config,
+	allowUnsupportedNextVersions: boolean
 ): Promise<void> {
 	// Do not minify the code so that we can apply string replacement patch.
 	options.minify = false;
@@ -44,6 +45,11 @@ export async function build(
 	logger.info(`App directory: ${options.appPath}`);
 	buildHelper.printNextjsVersion(options);
 	await ensureNextjsVersionSupported(options);
+	buildHelper.checkNextVersionSupport(
+		options.nextVersion,
+		allowUnsupportedNextVersions,
+		`--dangerouslyUseUnsupportedNextVersion`
+	);
 	const { aws, cloudflare } = getVersion();
 	logger.info(`@opennextjs/cloudflare version: ${cloudflare}`);
 	logger.info(`@opennextjs/aws version: ${aws}`);
