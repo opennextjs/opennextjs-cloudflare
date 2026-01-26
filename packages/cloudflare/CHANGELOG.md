@@ -1,5 +1,22 @@
 # @opennextjs/cloudflare
 
+## 1.16.0
+
+### Minor Changes
+
+- [#1083](https://github.com/opennextjs/opennextjs-cloudflare/pull/1083) [`b062597`](https://github.com/opennextjs/opennextjs-cloudflare/commit/b0625978050c2b8b2d10e3baa589706261cb7e1b) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - feature: add `migrate` command to set up OpenNext for Cloudflare adapter
+
+  This command helps users migrate existing Next.js applications to the OpenNext Cloudflare adapter by automatically setting up all necessary configuration files, dependencies, and scripts.
+
+  To use the command simply run: `npx opennextjs-cloudflare migrate`
+
+### Patch Changes
+
+- [#1092](https://github.com/opennextjs/opennextjs-cloudflare/pull/1092) [`4279043`](https://github.com/opennextjs/opennextjs-cloudflare/commit/42790437e3edb56dad092e4d6c5319d354a286d6) Thanks [@vicb](https://github.com/vicb)! - Check for supported Next version
+
+  The build will now error for unsupported Next version which may contain unpatched security vulnerabilities.
+  You can bypass the check using the `--dangerouslyUseUnsupportedNextVersion` flag.
+
 ## 1.15.1
 
 ### Patch Changes
