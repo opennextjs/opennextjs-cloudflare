@@ -2,9 +2,9 @@ import fs from "node:fs";
 
 /**
  * Appends text to a file
- * 
+ *
  * When the file does not exists, it is always created with the text content.
- * When the file exists, the text is appended only when the predicate return `true`.  
+ * When the file exists, the text is appended only when the predicate return `true`.
  *
  * @param filepath The path to the file.
  * @param text The text to append to the file.
