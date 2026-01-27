@@ -22,7 +22,7 @@ export function runCommand() {
 		.alias("v", "version")
 		.fail((msg, err, yargs) => {
 			if (msg) {
-				logger.error(`Error: ${msg}\n`);
+				logger.error(`${msg}\n`);
 			}
 			if (err) {
 				throw err;
