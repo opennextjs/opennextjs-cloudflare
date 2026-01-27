@@ -3,6 +3,7 @@
 import logger from "@opennextjs/aws/logger.js";
 import yargs from "yargs";
 
+import { getVersion } from "./build/utils/version.js";
 import { addBuildCommand } from "./commands/build.js";
 import { addDeployCommand } from "./commands/deploy.js";
 import { addMigrateCommand } from "./commands/migrate.js";
@@ -17,9 +18,8 @@ export function runCommand() {
 		.strictCommands()
 		.help()
 		.alias("h", "help")
-		// Due to how the package is currently built and distributed the version cannot easily
-		// be retrieved so we disable the --version flag for the time being
-		.version(false)
+		.version(getVersion().cloudflare)
+		.alias("v", "version")
 		.fail((msg, err, yargs) => {
 			if (msg) {
 				logger.error(`Error: ${msg}\n`);
