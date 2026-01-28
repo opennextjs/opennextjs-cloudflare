@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.16.1
+
+### Patch Changes
+
+- [#1100](https://github.com/opennextjs/opennextjs-cloudflare/pull/1100) [`8676c78`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8676c788cd19022442c36476331a71ee2a850eee) Thanks [@vicb](https://github.com/vicb)! - Empty `NextNodeServer#handleNextImageRequest` to avoid pulling unneeded deps (in #1098)
+
 ## 1.16.0
 
 ### Minor Changes
