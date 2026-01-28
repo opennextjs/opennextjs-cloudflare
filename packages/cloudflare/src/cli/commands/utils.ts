@@ -164,11 +164,8 @@ function getWranglerArgs(
 		...(args.config ? ["--config", args.config] : []),
 		...(args.env ? ["--env", args.env] : []),
 		...(args.remote ? ["--remote"] : []),
-		// Note: the `args` array contains unrecognised flags before the `--` separator.
+		// Note: the `args` array contains unrecognised flags.
 		...(args.args?.map((a) => `${a}`) ?? []),
-		// Note: the first args in `_` will be the commands.
-		//       other values will be unrecognised flags after the `--` separator.
-		...args._.slice(args._[0] === "populateCache" ? 2 : 1).map((a) => `${a}`),
 	];
 }
 
