@@ -28,18 +28,32 @@ import {
 } from "./utils.js";
 
 /**
- * Threshold for using binding-based R2 cache population.
+ * Threshold for using binding-based R2 cache population in "auto" mode.
  * If the number of cache assets exceeds this, we use the binding approach
  * to avoid wrangler CLI rate limits.
  */
 const R2_BINDING_THRESHOLD = 500;
 
 /**
+ * Cache population method options.
+ * - "auto": Automatically select based on cache size (binding for 500+ entries)
+ * - "wrangler": Always use wrangler CLI (original behavior)
+ * - "binding": Always use worker binding (new approach)
+ */
+export type CacheMethod = "auto" | "wrangler" | "binding";
+
+/** Deploy command arguments */
+type DeployArgs = {
+	cacheChunkSize?: number;
+	cacheMethod?: CacheMethod;
+};
+
+/**
  * Implementation of the `opennextjs-cloudflare deploy` command.
  *
  * @param args
  */
-export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize?: number }>): Promise<void> {
+export async function deployCommand(args: WithWranglerArgs<DeployArgs>): Promise<void> {
 	printHeaders("deploy");
 
 	const { config } = await retrieveCompiledConfig();
@@ -50,14 +64,54 @@ export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 	const { incrementalCache } = config.default.override ?? {};
 	const useR2Cache = incrementalCache && (await isR2Cache(incrementalCache));
 	const cacheAssets = getCacheAssets(buildOpts);
-	const useBindingPopulate = useR2Cache && cacheAssets.length > R2_BINDING_THRESHOLD;
+	const cacheMethod = args.cacheMethod ?? "auto";
+
+	// Determine which method to use
+	const useBindingPopulate = shouldUseBindingPopulate(cacheMethod, useR2Cache, cacheAssets.length);
 
 	if (useBindingPopulate) {
-		logger.info(`\nDetected ${cacheAssets.length} cache assets (> ${R2_BINDING_THRESHOLD})`);
-		logger.info("Using worker binding for R2 cache population to avoid API rate limits...\n");
+		if (cacheMethod === "auto") {
+			logger.info(`\nDetected ${cacheAssets.length} cache assets (> ${R2_BINDING_THRESHOLD})`);
+			logger.info("Using worker binding for R2 cache population to avoid API rate limits...\n");
+		} else {
+			logger.info("\nUsing worker binding for R2 cache population (--cacheMethod=binding)...\n");
+		}
 		await deployWithBindingCachePopulation(args, config, buildOpts, wranglerConfig, envVars);
 	} else {
+		if (cacheMethod === "wrangler" && useR2Cache && cacheAssets.length > R2_BINDING_THRESHOLD) {
+			logger.warn(
+				`\nWarning: Using wrangler CLI for ${cacheAssets.length} cache assets. ` +
+				`This may hit Cloudflare API rate limits. Consider using --cacheMethod=auto or --cacheMethod=binding.\n`
+			);
+		}
 		await deployWithWranglerCachePopulation(args, config, buildOpts, wranglerConfig, envVars);
+	}
+}
+
+/**
+ * Determines whether to use the binding-based cache population.
+ */
+function shouldUseBindingPopulate(
+	cacheMethod: CacheMethod,
+	useR2Cache: boolean,
+	cacheAssetCount: number
+): boolean {
+	// Binding approach only works with R2 cache
+	if (!useR2Cache) {
+		if (cacheMethod === "binding") {
+			logger.warn("--cacheMethod=binding is only supported for R2 cache. Falling back to wrangler CLI.");
+		}
+		return false;
+	}
+
+	switch (cacheMethod) {
+		case "wrangler":
+			return false;
+		case "binding":
+			return true;
+		case "auto":
+		default:
+			return cacheAssetCount > R2_BINDING_THRESHOLD;
 	}
 }
 
@@ -66,7 +120,7 @@ export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
  * Used for small caches (< R2_BINDING_THRESHOLD) or non-R2 caches.
  */
 async function deployWithWranglerCachePopulation(
-	args: WithWranglerArgs<{ cacheChunkSize?: number }>,
+	args: WithWranglerArgs<DeployArgs>,
 	config: OpenNextConfig,
 	buildOpts: BuildOptions,
 	wranglerConfig: WranglerConfig,
@@ -117,7 +171,7 @@ async function deployWithWranglerCachePopulation(
  * and is rate-limited to 1,200 requests per 5 minutes.
  */
 async function deployWithBindingCachePopulation(
-	args: WithWranglerArgs<{ cacheChunkSize?: number }>,
+	args: WithWranglerArgs<DeployArgs>,
 	config: OpenNextConfig,
 	buildOpts: BuildOptions,
 	wranglerConfig: WranglerConfig,
@@ -244,6 +298,33 @@ async function isR2Cache(
 }
 
 /**
+ * Add deploy-specific options to the yargs configuration.
+ */
+function withDeployOptions<T extends yargs.Argv>(args: T) {
+	return withPopulateCacheOptions(args).option("cacheMethod", {
+		type: "string",
+		choices: ["auto", "wrangler", "binding"] as const,
+		default: "auto",
+		desc: "Method for populating R2 cache during deployment",
+		description:
+			"Cache population method:\n" +
+			"  auto     - Use binding for 500+ entries, wrangler CLI otherwise (default)\n" +
+			"  wrangler - Always use wrangler CLI (original behavior)\n" +
+			"  binding  - Always use worker binding (bypasses API rate limits)",
+	});
+}
+
+/**
+ * Validates and normalizes the cache method argument.
+ */
+function parseCacheMethod(value: string | undefined): CacheMethod {
+	if (value === "wrangler" || value === "binding" || value === "auto") {
+		return value;
+	}
+	return "auto";
+}
+
+/**
  * Add the `deploy` command to yargs configuration.
  *
  * Consumes 1 positional parameter.
@@ -252,7 +333,13 @@ export function addDeployCommand<T extends yargs.Argv>(y: T) {
 	return y.command(
 		"deploy",
 		"Deploy a built OpenNext app to Cloudflare Workers",
-		(c) => withPopulateCacheOptions(c),
-		(args) => deployCommand(withWranglerPassthroughArgs(args))
+		(c) => withDeployOptions(c),
+		(args) => {
+			const normalizedArgs = {
+				...withWranglerPassthroughArgs(args),
+				cacheMethod: parseCacheMethod(args.cacheMethod),
+			};
+			return deployCommand(normalizedArgs);
+		}
 	);
 }
