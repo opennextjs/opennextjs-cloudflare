@@ -71,7 +71,23 @@ describe("getCacheAssets", () => {
 
 vi.mock("../utils/run-wrangler.js", () => ({
 	runWrangler: vi.fn(),
+	runWranglerCapture: vi.fn(),
 }));
+
+describe("generateCachePopulateToken", () => {
+	test("generates a 64-character hex token", async () => {
+		const { generateCachePopulateToken } = await import("./populate-cache.js");
+		const token = generateCachePopulateToken();
+		expect(token).toMatch(/^[a-f0-9]{64}$/);
+	});
+
+	test("generates unique tokens", async () => {
+		const { generateCachePopulateToken } = await import("./populate-cache.js");
+		const token1 = generateCachePopulateToken();
+		const token2 = generateCachePopulateToken();
+		expect(token1).not.toBe(token2);
+	});
+});
 
 vi.mock("./helpers.js", () => ({
 	getEnvFromPlatformProxy: vi.fn(async () => ({})),

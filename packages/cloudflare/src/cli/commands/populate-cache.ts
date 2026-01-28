@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import os from "node:os";
@@ -269,6 +270,153 @@ async function populateR2IncrementalCache(
 	fs.rmSync(listFile, { force: true });
 
 	logger.info(`Successfully populated cache with ${assets.length} assets`);
+}
+
+/** Path for the cache population endpoint */
+const CACHE_POPULATE_PATH = "/_open-next/cache/populate";
+
+/** Environment variable name for the cache populate token */
+export const CACHE_POPULATE_TOKEN_ENV_NAME = "OPEN_NEXT_CACHE_POPULATE_TOKEN";
+
+/** Options for populating R2 cache via the worker binding */
+export interface PopulateR2ViaBindingOptions {
+	/** URL of the deployed worker (e.g., https://my-app.my-subdomain.workers.dev) */
+	workerUrl: string;
+	/** Authentication token for the cache populate endpoint */
+	token: string;
+	/** Number of entries per batch (default: 100) */
+	batchSize?: number;
+	/** Number of retries for failed batches (default: 3) */
+	maxRetries?: number;
+	/** Delay between retries in ms (default: 1000) */
+	retryDelayMs?: number;
+}
+
+/**
+ * Populates the R2 incremental cache via the worker binding.
+ *
+ * This function sends cache entries directly to the deployed worker's cache populate
+ * endpoint, bypassing wrangler's r2 bulk put command which is rate-limited by the
+ * Cloudflare API (1,200 requests per 5 minutes).
+ *
+ * The worker uses its R2 binding to write entries directly, which doesn't have the
+ * same rate limits as the Cloudflare REST API.
+ *
+ * @param buildOpts Build options containing output directory
+ * @param config Wrangler configuration
+ * @param options Options for populating via binding
+ * @param envVars Environment variables (for cache prefix)
+ */
+export async function populateR2IncrementalCacheViaBinding(
+	buildOpts: BuildOptions,
+	config: WranglerConfig,
+	options: PopulateR2ViaBindingOptions,
+	envVars: WorkerEnvVar
+): Promise<void> {
+	logger.info("\nPopulating R2 incremental cache via worker binding...");
+
+	const binding = config.r2_buckets.find(
+		({ binding }: { binding: string }) => binding === R2_CACHE_BINDING_NAME
+	);
+	if (!binding) {
+		throw new Error(`No R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} found!`);
+	}
+
+	const prefix = envVars[R2_CACHE_PREFIX_ENV_NAME];
+	const assets = getCacheAssets(buildOpts);
+
+	if (assets.length === 0) {
+		logger.info("No cache assets to populate");
+		return;
+	}
+
+	const batchSize = options.batchSize ?? 100;
+	const maxRetries = options.maxRetries ?? 3;
+	const retryDelayMs = options.retryDelayMs ?? 1000;
+	const endpoint = new URL(CACHE_POPULATE_PATH, options.workerUrl).toString();
+
+	logger.info(`Populating ${assets.length} cache entries in batches of ${batchSize}`);
+
+	const totalBatches = Math.ceil(assets.length / batchSize);
+	let totalWritten = 0;
+	let totalFailed = 0;
+
+	for (const batchIndex of tqdm(Array.from({ length: totalBatches }, (_, i) => i))) {
+		const batchAssets = assets.slice(batchIndex * batchSize, (batchIndex + 1) * batchSize);
+
+		// Prepare entries for this batch
+		const entries = batchAssets.map(({ fullPath, key, buildId, isFetch }) => ({
+			key: computeCacheKey(key, {
+				prefix,
+				buildId,
+				cacheType: isFetch ? "fetch" : "cache",
+			}),
+			value: fs.readFileSync(fullPath, "utf8"),
+		}));
+
+		// Send batch with retries
+		let success = false;
+		let lastError: Error | undefined;
+
+		for (let attempt = 0; attempt < maxRetries && !success; attempt++) {
+			if (attempt > 0) {
+				logger.info(`Retrying batch ${batchIndex + 1} (attempt ${attempt + 1}/${maxRetries})...`);
+				await sleep(retryDelayMs * Math.pow(2, attempt - 1)); // Exponential backoff
+			}
+
+			try {
+				const response = await fetch(endpoint, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: `Bearer ${options.token}`,
+					},
+					body: JSON.stringify({ entries }),
+				});
+
+				if (!response.ok && response.status !== 207) {
+					const text = await response.text().catch(() => "");
+					throw new Error(`HTTP ${response.status}: ${text || response.statusText}`);
+				}
+
+				const result = (await response.json()) as {
+					success: boolean;
+					written: number;
+					failed: number;
+					errors?: string[];
+				};
+
+				totalWritten += result.written;
+				totalFailed += result.failed;
+
+				if (result.failed > 0 && result.errors) {
+					logger.warn(`Batch ${batchIndex + 1} had ${result.failed} failures: ${result.errors.slice(0, 3).join(", ")}`);
+				}
+
+				success = true;
+			} catch (error) {
+				lastError = error instanceof Error ? error : new Error(String(error));
+				logger.warn(`Batch ${batchIndex + 1} failed: ${lastError.message}`);
+			}
+		}
+
+		if (!success) {
+			throw new Error(`Failed to populate batch ${batchIndex + 1} after ${maxRetries} attempts: ${lastError?.message}`);
+		}
+	}
+
+	logger.info(`Successfully populated cache: ${totalWritten} written, ${totalFailed} failed`);
+}
+
+/**
+ * Generates a random token for cache population authentication.
+ */
+export function generateCachePopulateToken(): string {
+	return crypto.randomBytes(32).toString("hex");
+}
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function populateKVIncrementalCache(
