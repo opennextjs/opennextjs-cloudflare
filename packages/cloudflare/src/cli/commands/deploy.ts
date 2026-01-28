@@ -74,7 +74,7 @@ export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
  */
 export function addDeployCommand<T extends yargs.Argv>(y: T) {
 	return y.command(
-		"deploy",
+		"deploy [args..]",
 		"Deploy a built OpenNext app to Cloudflare Workers",
 		(c) => withPopulateCacheOptions(c),
 		(args) => deployCommand(withWranglerPassthroughArgs(args))
