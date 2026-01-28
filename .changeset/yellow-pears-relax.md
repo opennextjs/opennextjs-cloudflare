@@ -2,7 +2,7 @@
 "@opennextjs/cloudflare": patch
 ---
 
-Apply quality of life improvements to the `opennextjs-cloudflare` CLI
+Add `--help` and `--version` to the `opennextjs-cloudflare` CLI
 
 Improve the `opennextjs-cloudflare` CLI by:
 
