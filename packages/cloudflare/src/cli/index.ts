@@ -12,7 +12,7 @@ import { addPreviewCommand } from "./commands/preview.js";
 import { addUploadCommand } from "./commands/upload.js";
 
 export function runCommand() {
-	const y = yargs(process.argv.slice(2).filter((arg) => arg !== "--"))
+	const y = yargs(process.argv.slice(2))
 		.scriptName("opennextjs-cloudflare")
 		.parserConfiguration({ "unknown-options-as-args": true })
 		.strictCommands()

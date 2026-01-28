@@ -389,13 +389,13 @@ export function addPopulateCacheCommand<T extends yargs.Argv>(y: T) {
 	return y.command("populateCache", "Populate the cache for a built Next.js app", (c) =>
 		c
 			.command(
-				"local",
+				"local [args..]",
 				"Local dev server cache",
 				(c) => withPopulateCacheOptions(c),
 				(args) => populateCacheCommand("local", withWranglerPassthroughArgs(args))
 			)
 			.command(
-				"remote",
+				"remote [args..]",
 				"Remote Cloudflare Worker cache",
 				(c) => withPopulateCacheOptions(c),
 				(args) => populateCacheCommand("remote", withWranglerPassthroughArgs(args))
