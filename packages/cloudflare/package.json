@@ -8,7 +8,7 @@
 		"build": "pnpm clean && tsc",
 		"build:watch": "tsc -w",
 		"lint:check": "eslint",
-		"lint:fix": "eslint --fix",
+		"lint:fix": "eslint --cache --fix",
 		"ts:check": "tsc --noEmit",
 		"test": "vitest --run",
 		"test:watch": "vitest"
