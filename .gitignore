@@ -6,3 +6,7 @@ output
 .wrangler
 .turbo
 dist
+
+# Cache folders
+.eslintcache
+.prettiercache
