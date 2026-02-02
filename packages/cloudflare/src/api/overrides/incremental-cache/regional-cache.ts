@@ -8,7 +8,6 @@ import {
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
 import { debugCache, FALLBACK_BUILD_ID, IncrementalCacheEntry, isPurgeCacheEnabled } from "../internal.js";
-import { NAME as KV_CACHE_NAME } from "./kv-incremental-cache.js";
 
 const ONE_MINUTE_IN_SECONDS = 60;
 const THIRTY_MINUTES_IN_SECONDS = ONE_MINUTE_IN_SECONDS * 30;
@@ -78,20 +77,17 @@ class RegionalCache implements IncrementalCache {
 		private store: IncrementalCache,
 		private opts: Options
 	) {
-		if (this.store.name === KV_CACHE_NAME) {
-			throw new Error("The KV incremental cache does not need a regional cache.");
-		}
 		this.name = this.store.name;
+		// `shouldLazilyUpdateOnCacheHit` is not needed when cache purge is enabled.
 		this.opts.shouldLazilyUpdateOnCacheHit ??= this.opts.mode === "long-lived" && !isPurgeCacheEnabled();
 	}
 
 	get #bypassTagCacheOnCacheHit(): boolean {
 		if (this.opts.bypassTagCacheOnCacheHit !== undefined) {
-			// If the bypassTagCacheOnCacheHit option is set we return that one
 			return this.opts.bypassTagCacheOnCacheHit;
 		}
 
-		// Otherwise we default to whether the automatic cache purging is enabled or not
+		// When `bypassTagCacheOnCacheHit` is not set, we default to whether the automatic cache purging is enabled or not
 		return isPurgeCacheEnabled();
 	}
 
@@ -237,17 +233,7 @@ class RegionalCache implements IncrementalCache {
  * a request is made to another region that has an entry stored in its regional cache.
  *
  * @param cache Incremental cache instance.
- * @param opts.mode The mode to use for the regional cache.
- *                  - `short-lived`: Re-use a cache entry for up to a minute after it has been retrieved.
- *                  - `long-lived`: Re-use a fetch cache entry until it is revalidated (per-region),
- *                                  or an ISR/SSG entry for up to 30 minutes.
- * @param opts.shouldLazilyUpdateOnCacheHit Whether the regional cache entry should be updated in
- *                                          the background or not when it experiences a cache hit.
- * @param opts.defaultLongLivedTtlSec The default age to use for long-lived cache entries.
- *                                  When no revalidate is provided, the default age will be used.
- *                                  @default `THIRTY_MINUTES_IN_SECONDS`
- *
- * @default `false` for the `short-lived` mode, and `true` for the `long-lived` mode.
+ * @param opts Options for the regional cache.
  */
 export function withRegionalCache(cache: IncrementalCache, opts: Options) {
 	return new RegionalCache(cache, opts);
