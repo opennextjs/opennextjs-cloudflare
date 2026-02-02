@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.16.2
+
+### Patch Changes
+
+- [#1105](https://github.com/opennextjs/opennextjs-cloudflare/pull/1105) [`e6938a0`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e6938a0aff7c01c011ef3035edf47f4e59e3827c) Thanks [@vicb](https://github.com/vicb)! - allow using a regional cache with KV
+
 ## 1.16.1
 
 ### Patch Changes
