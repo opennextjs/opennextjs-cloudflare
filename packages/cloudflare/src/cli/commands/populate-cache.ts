@@ -1,8 +1,9 @@
-import crypto from "node:crypto";
+import { type ChildProcess, spawn } from "node:child_process";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import logger from "@opennextjs/aws/logger.js";
@@ -208,6 +209,31 @@ type PopulateCacheOptions = {
 	shouldUsePreviewId: boolean;
 };
 
+/**
+ * Resolves the path to the cache populate handler file.
+ *
+ * The handler is a standalone worker that wrangler dev can run directly.
+ * It's located in the templates directory relative to this file.
+ */
+function getCachePopulateHandlerPath(): string {
+	const currentDir = path.dirname(fileURLToPath(import.meta.url));
+	return path.join(currentDir, "../templates/cache-populate-handler.js");
+}
+
+/**
+ * Populates the R2 incremental cache using a local wrangler dev worker
+ * with a remote R2 binding.
+ *
+ * This approach:
+ * 1. Derives a temporary wrangler config from the project's config with the
+ *    R2 cache binding set to `remote: true` (for remote targets).
+ * 2. Starts a local worker via `wrangler dev` with a POST endpoint.
+ * 3. Sends batched cache entries to the local worker.
+ * 4. The worker writes entries to R2 using the binding (no API rate limits).
+ *
+ * This bypasses the Cloudflare API rate limit of 1,200 requests per 5 minutes
+ * that affects `wrangler r2 bulk put`.
+ */
 async function populateR2IncrementalCache(
 	buildOpts: BuildOptions,
 	config: WranglerConfig,
@@ -215,105 +241,6 @@ async function populateR2IncrementalCache(
 	envVars: WorkerEnvVar
 ) {
 	logger.info("\nPopulating R2 incremental cache...");
-
-	const binding = config.r2_buckets.find(
-		({ binding }: { binding: string }) => binding === R2_CACHE_BINDING_NAME
-	);
-	if (!binding) {
-		throw new Error(`No R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} found!`);
-	}
-
-	const bucket = binding.bucket_name;
-	if (!bucket) {
-		throw new Error(`R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} should have a 'bucket_name'`);
-	}
-
-	const prefix = envVars[R2_CACHE_PREFIX_ENV_NAME];
-
-	const assets = getCacheAssets(buildOpts);
-
-	const objectList = assets.map(({ fullPath, key, buildId, isFetch }) => ({
-		key: computeCacheKey(key, {
-			prefix,
-			buildId,
-			cacheType: isFetch ? "fetch" : "cache",
-		}),
-		file: fullPath,
-	}));
-
-	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "open-next-"));
-	const listFile = path.join(tempDir, `r2-bulk-list.json`);
-	fs.writeFileSync(listFile, JSON.stringify(objectList));
-
-	const concurrency = Math.max(1, populateCacheOptions.cacheChunkSize ?? 50);
-	const jurisdiction = binding.jurisdiction ? `--jurisdiction ${binding.jurisdiction}` : "";
-
-	runWrangler(
-		buildOpts,
-		[
-			"r2 bulk put",
-			bucket,
-			`--filename ${quoteShellMeta(listFile)}`,
-			`--concurrency ${concurrency}`,
-			jurisdiction,
-		],
-		{
-			target: populateCacheOptions.target,
-			configPath: populateCacheOptions.wranglerConfigPath,
-			// R2 does not support the environment flag and results in the following error:
-			// Incorrect type for the 'cacheExpiry' field on 'HttpMetadata': the provided value is not of type 'date'.
-			environment: undefined,
-			logging: "error",
-		}
-	);
-
-	fs.rmSync(listFile, { force: true });
-
-	logger.info(`Successfully populated cache with ${assets.length} assets`);
-}
-
-/** Path for the cache population endpoint */
-const CACHE_POPULATE_PATH = "/_open-next/cache/populate";
-
-/** Environment variable name for the cache populate token */
-export const CACHE_POPULATE_TOKEN_ENV_NAME = "OPEN_NEXT_CACHE_POPULATE_TOKEN";
-
-/** Options for populating R2 cache via the worker binding */
-export interface PopulateR2ViaBindingOptions {
-	/** URL of the deployed worker (e.g., https://my-app.my-subdomain.workers.dev) */
-	workerUrl: string;
-	/** Authentication token for the cache populate endpoint */
-	token: string;
-	/** Number of entries per batch (default: 100) */
-	batchSize?: number;
-	/** Number of retries for failed batches (default: 3) */
-	maxRetries?: number;
-	/** Delay between retries in ms (default: 1000) */
-	retryDelayMs?: number;
-}
-
-/**
- * Populates the R2 incremental cache via the worker binding.
- *
- * This function sends cache entries directly to the deployed worker's cache populate
- * endpoint, bypassing wrangler's r2 bulk put command which is rate-limited by the
- * Cloudflare API (1,200 requests per 5 minutes).
- *
- * The worker uses its R2 binding to write entries directly, which doesn't have the
- * same rate limits as the Cloudflare REST API.
- *
- * @param buildOpts Build options containing output directory
- * @param config Wrangler configuration
- * @param options Options for populating via binding
- * @param envVars Environment variables (for cache prefix)
- */
-export async function populateR2IncrementalCacheViaBinding(
-	buildOpts: BuildOptions,
-	config: WranglerConfig,
-	options: PopulateR2ViaBindingOptions,
-	envVars: WorkerEnvVar
-): Promise<void> {
-	logger.info("\nPopulating R2 incremental cache via worker binding...");
 
 	const binding = config.r2_buckets.find(
 		({ binding }: { binding: string }) => binding === R2_CACHE_BINDING_NAME
@@ -330,21 +257,135 @@ export async function populateR2IncrementalCacheViaBinding(
 		return;
 	}
 
-	const batchSize = options.batchSize ?? 100;
-	const maxRetries = options.maxRetries ?? 3;
-	const retryDelayMs = options.retryDelayMs ?? 1000;
-	const endpoint = new URL(CACHE_POPULATE_PATH, options.workerUrl).toString();
+	const useRemote = populateCacheOptions.target === "remote";
+	const handlerPath = getCachePopulateHandlerPath();
+
+	// Create a temporary wrangler config derived from the project's config.
+	// Only the R2 cache binding is propagated, with `remote` set appropriately.
+	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "open-next-r2-populate-"));
+
+	try {
+		const tempWranglerConfig = {
+			name: "open-next-cache-populate",
+			main: handlerPath,
+			compatibility_date: "2024-12-01",
+			r2_buckets: [
+				{
+					binding: R2_CACHE_BINDING_NAME,
+					bucket_name: binding.bucket_name,
+					...(binding.jurisdiction && { jurisdiction: binding.jurisdiction }),
+					...(useRemote && { remote: true }),
+				},
+			],
+		};
+
+		const configPath = path.join(tempDir, "wrangler.json");
+		fs.writeFileSync(configPath, JSON.stringify(tempWranglerConfig, null, 2));
+
+		// Start a local worker via wrangler dev
+		const { url, stop } = await startWranglerDev(buildOpts, configPath);
+
+		try {
+			await sendCacheEntries(url, assets, prefix, populateCacheOptions.cacheChunkSize);
+		} finally {
+			stop();
+		}
+	} finally {
+		fs.rmSync(tempDir, { recursive: true, force: true });
+	}
+
+	logger.info(`Successfully populated cache with ${assets.length} assets`);
+}
+
+/**
+ * Starts `wrangler dev` with the given config and waits for it to be ready.
+ *
+ * @returns The local URL and a function to stop the worker.
+ */
+function startWranglerDev(
+	buildOpts: BuildOptions,
+	configPath: string
+): Promise<{ url: string; stop: () => void }> {
+	return new Promise((resolve, reject) => {
+		const proc: ChildProcess = spawn(
+			buildOpts.packager,
+			[
+				buildOpts.packager === "bun" ? "x" : "exec",
+				"wrangler",
+				"dev",
+				"--config",
+				configPath,
+				"--port",
+				"0",
+			],
+			{
+				shell: true,
+				stdio: ["ignore", "pipe", "pipe"],
+				env: {
+					...process.env,
+					CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: "false",
+				},
+			}
+		);
+
+		let output = "";
+		const timeout = setTimeout(() => {
+			proc.kill();
+			reject(new Error(`wrangler dev timed out waiting for ready signal.\nOutput:\n${output}`));
+		}, 60_000);
+
+		const onData = (data: Buffer) => {
+			output += data.toString();
+			const match = output.match(/http:\/\/(?:localhost|0\.0\.0\.0|127\.0\.0\.1):(\d+)/);
+			if (match?.[1]) {
+				clearTimeout(timeout);
+				const url = `http://localhost:${match[1]}`;
+				resolve({
+					url,
+					stop: () => {
+						proc.kill();
+					},
+				});
+			}
+		};
+
+		proc.stdout?.on("data", onData);
+		proc.stderr?.on("data", onData);
+
+		proc.on("error", (err) => {
+			clearTimeout(timeout);
+			reject(err);
+		});
+
+		proc.on("exit", (code) => {
+			clearTimeout(timeout);
+			if (code !== 0 && code !== null) {
+				reject(new Error(`wrangler dev exited with code ${code}\nOutput:\n${output}`));
+			}
+		});
+	});
+}
+
+/**
+ * Sends cache entries to the local populate worker in batches.
+ */
+async function sendCacheEntries(
+	workerUrl: string,
+	assets: CacheAsset[],
+	prefix: string | undefined,
+	cacheChunkSize?: number
+): Promise<void> {
+	const batchSize = Math.max(1, cacheChunkSize ?? 100);
+	const totalBatches = Math.ceil(assets.length / batchSize);
 
 	logger.info(`Populating ${assets.length} cache entries in batches of ${batchSize}`);
 
-	const totalBatches = Math.ceil(assets.length / batchSize);
 	let totalWritten = 0;
 	let totalFailed = 0;
 
 	for (const batchIndex of tqdm(Array.from({ length: totalBatches }, (_, i) => i))) {
 		const batchAssets = assets.slice(batchIndex * batchSize, (batchIndex + 1) * batchSize);
 
-		// Prepare entries for this batch
 		const entries = batchAssets.map(({ fullPath, key, buildId, isFetch }) => ({
 			key: computeCacheKey(key, {
 				prefix,
@@ -354,65 +395,62 @@ export async function populateR2IncrementalCacheViaBinding(
 			value: fs.readFileSync(fullPath, "utf8"),
 		}));
 
-		// Send batch with retries
-		let success = false;
-		let lastError: Error | undefined;
+		const result = await sendBatchWithRetry(workerUrl, entries);
 
-		for (let attempt = 0; attempt < maxRetries && !success; attempt++) {
-			if (attempt > 0) {
-				logger.info(`Retrying batch ${batchIndex + 1} (attempt ${attempt + 1}/${maxRetries})...`);
-				await sleep(retryDelayMs * Math.pow(2, attempt - 1)); // Exponential backoff
-			}
+		totalWritten += result.written;
+		totalFailed += result.failed;
 
-			try {
-				const response = await fetch(endpoint, {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						Authorization: `Bearer ${options.token}`,
-					},
-					body: JSON.stringify({ entries }),
-				});
-
-				if (!response.ok && response.status !== 207) {
-					const text = await response.text().catch(() => "");
-					throw new Error(`HTTP ${response.status}: ${text || response.statusText}`);
-				}
-
-				const result = (await response.json()) as {
-					success: boolean;
-					written: number;
-					failed: number;
-					errors?: string[];
-				};
-
-				totalWritten += result.written;
-				totalFailed += result.failed;
-
-				if (result.failed > 0 && result.errors) {
-					logger.warn(`Batch ${batchIndex + 1} had ${result.failed} failures: ${result.errors.slice(0, 3).join(", ")}`);
-				}
-
-				success = true;
-			} catch (error) {
-				lastError = error instanceof Error ? error : new Error(String(error));
-				logger.warn(`Batch ${batchIndex + 1} failed: ${lastError.message}`);
-			}
-		}
-
-		if (!success) {
-			throw new Error(`Failed to populate batch ${batchIndex + 1} after ${maxRetries} attempts: ${lastError?.message}`);
+		if (result.failed > 0 && result.errors) {
+			logger.warn(
+				`Batch ${batchIndex + 1} had ${result.failed} failures: ${result.errors.slice(0, 3).join(", ")}`
+			);
 		}
 	}
 
-	logger.info(`Successfully populated cache: ${totalWritten} written, ${totalFailed} failed`);
+	if (totalFailed > 0) {
+		logger.warn(
+			`Cache population completed with ${totalFailed} failures out of ${totalWritten + totalFailed} entries`
+		);
+	}
 }
 
 /**
- * Generates a random token for cache population authentication.
+ * Sends a batch of cache entries to the local worker with retry logic.
  */
-export function generateCachePopulateToken(): string {
-	return crypto.randomBytes(32).toString("hex");
+async function sendBatchWithRetry(
+	workerUrl: string,
+	entries: { key: string; value: string }[],
+	maxRetries = 3,
+	retryDelayMs = 1000
+): Promise<{ written: number; failed: number; errors?: string[] }> {
+	let lastError: Error | undefined;
+
+	for (let attempt = 0; attempt < maxRetries; attempt++) {
+		if (attempt > 0) {
+			logger.info(`Retrying batch (attempt ${attempt + 1}/${maxRetries})...`);
+			await sleep(retryDelayMs * Math.pow(2, attempt - 1));
+		}
+
+		try {
+			const response = await fetch(workerUrl, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ entries }),
+			});
+
+			if (!response.ok && response.status !== 207) {
+				const text = await response.text().catch(() => "");
+				throw new Error(`HTTP ${response.status}: ${text || response.statusText}`);
+			}
+
+			return (await response.json()) as { written: number; failed: number; errors?: string[] };
+		} catch (error) {
+			lastError = error instanceof Error ? error : new Error(String(error));
+			logger.warn(`Batch failed: ${lastError.message}`);
+		}
+	}
+
+	throw new Error(`Failed to populate batch after ${maxRetries} attempts: ${lastError?.message}`);
 }
 
 function sleep(ms: number): Promise<void> {

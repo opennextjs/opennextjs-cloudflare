@@ -34,10 +34,6 @@ declare global {
 		// Prefix used for the R2 incremental cache bucket
 		[R2_CACHE_PREFIX_ENV_NAME]?: string;
 
-		// Token for cache population during deployment (auto-generated, temporary)
-		// This token is used by the CLI to authenticate cache population requests
-		OPEN_NEXT_CACHE_POPULATE_TOKEN?: string;
-
 		// D1 db used for the tag cache
 		NEXT_TAG_CACHE_D1?: D1Database;
 
