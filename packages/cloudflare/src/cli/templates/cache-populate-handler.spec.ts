@@ -6,37 +6,23 @@ const mockR2Bucket = {
 };
 
 // Create a mock env
-const createMockEnv = (token?: string) => ({
-	OPEN_NEXT_CACHE_POPULATE_TOKEN: token,
-	NEXT_INC_CACHE_R2_BUCKET: token ? mockR2Bucket : undefined,
+const createMockEnv = (withR2 = true) => ({
+	NEXT_INC_CACHE_R2_BUCKET: withR2 ? mockR2Bucket : undefined,
 });
 
-// Import the handler after setting up mocks
-import { handleCachePopulate, CACHE_POPULATE_PATH, CACHE_POPULATE_TOKEN_ENV_NAME } from "./cache-populate-handler.js";
+import { handleCachePopulate } from "./cache-populate-handler.js";
 
 describe("cache-populate-handler", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
-	describe("CACHE_POPULATE_PATH", () => {
-		test("has the correct path", () => {
-			expect(CACHE_POPULATE_PATH).toBe("/_open-next/cache/populate");
-		});
-	});
-
-	describe("CACHE_POPULATE_TOKEN_ENV_NAME", () => {
-		test("has the correct env name", () => {
-			expect(CACHE_POPULATE_TOKEN_ENV_NAME).toBe("OPEN_NEXT_CACHE_POPULATE_TOKEN");
-		});
-	});
-
 	describe("handleCachePopulate", () => {
 		test("rejects non-POST requests", async () => {
-			const request = new Request("https://example.com/_open-next/cache/populate", {
+			const request = new Request("https://example.com/", {
 				method: "GET",
 			});
-			const env = createMockEnv("test-token") as unknown as CloudflareEnv;
+			const env = createMockEnv() as unknown as { NEXT_INC_CACHE_R2_BUCKET: R2Bucket };
 
 			const response = await handleCachePopulate(request, env);
 
@@ -44,57 +30,25 @@ describe("cache-populate-handler", () => {
 			expect(await response.text()).toBe("Method not allowed");
 		});
 
-		test("returns 403 when token is not configured", async () => {
-			const request = new Request("https://example.com/_open-next/cache/populate", {
+		test("returns 500 when R2 bucket is not configured", async () => {
+			const request = new Request("https://example.com/", {
 				method: "POST",
 				body: JSON.stringify({ entries: [] }),
 			});
-			const env = createMockEnv() as unknown as CloudflareEnv;
+			const env = createMockEnv(false) as unknown as { NEXT_INC_CACHE_R2_BUCKET: R2Bucket };
 
 			const response = await handleCachePopulate(request, env);
 
-			expect(response.status).toBe(403);
-			expect(await response.text()).toBe("Cache population not enabled");
-		});
-
-		test("returns 401 when token is missing from request", async () => {
-			const request = new Request("https://example.com/_open-next/cache/populate", {
-				method: "POST",
-				body: JSON.stringify({ entries: [] }),
-			});
-			const env = createMockEnv("test-token") as unknown as CloudflareEnv;
-
-			const response = await handleCachePopulate(request, env);
-
-			expect(response.status).toBe(401);
-			expect(await response.text()).toBe("Unauthorized");
-		});
-
-		test("returns 401 when token is incorrect", async () => {
-			const request = new Request("https://example.com/_open-next/cache/populate", {
-				method: "POST",
-				headers: {
-					Authorization: "Bearer wrong-token",
-				},
-				body: JSON.stringify({ entries: [] }),
-			});
-			const env = createMockEnv("test-token") as unknown as CloudflareEnv;
-
-			const response = await handleCachePopulate(request, env);
-
-			expect(response.status).toBe(401);
-			expect(await response.text()).toBe("Unauthorized");
+			expect(response.status).toBe(500);
+			expect(await response.text()).toBe("R2 bucket not configured");
 		});
 
 		test("returns 400 for invalid JSON body", async () => {
-			const request = new Request("https://example.com/_open-next/cache/populate", {
+			const request = new Request("https://example.com/", {
 				method: "POST",
-				headers: {
-					Authorization: "Bearer test-token",
-				},
 				body: "not json",
 			});
-			const env = createMockEnv("test-token") as unknown as CloudflareEnv;
+			const env = createMockEnv() as unknown as { NEXT_INC_CACHE_R2_BUCKET: R2Bucket };
 
 			const response = await handleCachePopulate(request, env);
 
@@ -103,15 +57,14 @@ describe("cache-populate-handler", () => {
 		});
 
 		test("returns 400 when entries is not an array", async () => {
-			const request = new Request("https://example.com/_open-next/cache/populate", {
+			const request = new Request("https://example.com/", {
 				method: "POST",
 				headers: {
-					Authorization: "Bearer test-token",
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({ entries: "not an array" }),
 			});
-			const env = createMockEnv("test-token") as unknown as CloudflareEnv;
+			const env = createMockEnv() as unknown as { NEXT_INC_CACHE_R2_BUCKET: R2Bucket };
 
 			const response = await handleCachePopulate(request, env);
 
@@ -122,10 +75,9 @@ describe("cache-populate-handler", () => {
 		test("successfully writes entries to R2", async () => {
 			mockR2Bucket.put.mockResolvedValue(undefined);
 
-			const request = new Request("https://example.com/_open-next/cache/populate", {
+			const request = new Request("https://example.com/", {
 				method: "POST",
 				headers: {
-					Authorization: "Bearer test-token",
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({
@@ -135,7 +87,7 @@ describe("cache-populate-handler", () => {
 					],
 				}),
 			});
-			const env = createMockEnv("test-token") as unknown as CloudflareEnv;
+			const env = createMockEnv() as unknown as { NEXT_INC_CACHE_R2_BUCKET: R2Bucket };
 
 			const response = await handleCachePopulate(request, env);
 
@@ -157,10 +109,9 @@ describe("cache-populate-handler", () => {
 				.mockResolvedValueOnce(undefined)
 				.mockRejectedValueOnce(new Error("R2 error"));
 
-			const request = new Request("https://example.com/_open-next/cache/populate", {
+			const request = new Request("https://example.com/", {
 				method: "POST",
 				headers: {
-					Authorization: "Bearer test-token",
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({
@@ -170,11 +121,11 @@ describe("cache-populate-handler", () => {
 					],
 				}),
 			});
-			const env = createMockEnv("test-token") as unknown as CloudflareEnv;
+			const env = createMockEnv() as unknown as { NEXT_INC_CACHE_R2_BUCKET: R2Bucket };
 
 			const response = await handleCachePopulate(request, env);
 
-			expect(response.status).toBe(207); // Multi-Status for partial success
+			expect(response.status).toBe(207);
 			const body = await response.json();
 			expect(body.success).toBe(false);
 			expect(body.written).toBe(1);
@@ -184,15 +135,14 @@ describe("cache-populate-handler", () => {
 		});
 
 		test("handles empty entries array", async () => {
-			const request = new Request("https://example.com/_open-next/cache/populate", {
+			const request = new Request("https://example.com/", {
 				method: "POST",
 				headers: {
-					Authorization: "Bearer test-token",
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({ entries: [] }),
 			});
-			const env = createMockEnv("test-token") as unknown as CloudflareEnv;
+			const env = createMockEnv() as unknown as { NEXT_INC_CACHE_R2_BUCKET: R2Bucket };
 
 			const response = await handleCachePopulate(request, env);
 

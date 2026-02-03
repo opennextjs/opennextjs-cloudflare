@@ -12,7 +12,6 @@ import { OpenNextConfig } from "../../api/config.js";
 import type { ProjectOptions } from "../project-options.js";
 import { bundleServer } from "./bundle-server.js";
 import { compileCacheAssetsManifestSqlFile } from "./open-next/compile-cache-assets-manifest.js";
-import { compileCachePopulateHandler } from "./open-next/compile-cache-populate-handler.js";
 import { compileEnvFiles } from "./open-next/compile-env-files.js";
 import { compileImages } from "./open-next/compile-images.js";
 import { compileInit } from "./open-next/compile-init.js";
@@ -83,7 +82,6 @@ export async function build(
 	await compileInit(options, wranglerConfig);
 	await compileImages(options);
 	await compileSkewProtection(options, config);
-	await compileCachePopulateHandler(options);
 
 	// Compile middleware
 	await createMiddleware(options, { forceOnlyBuildOnce: true });

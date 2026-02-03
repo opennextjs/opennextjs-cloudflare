@@ -2,35 +2,17 @@
 "@opennextjs/cloudflare": minor
 ---
 
-fix: Use worker binding for R2 cache uploads to avoid API rate limits
+fix: Use remote R2 binding for cache population to avoid API rate limits
 
-For large deployments with 500+ prerendered pages, the R2 incremental cache upload now uses the worker's R2 binding directly instead of wrangler's `r2 bulk put` command. This bypasses the Cloudflare API rate limit of 1,200 requests per 5 minutes.
+For deployments with prerendered pages, the R2 incremental cache is now populated
+using a local wrangler dev worker with a remote R2 binding instead of `wrangler r2 bulk put`.
+This bypasses the Cloudflare API rate limit of 1,200 requests per 5 minutes that caused
+failures for large applications with thousands of prerendered pages.
 
-**New `--cacheMethod` flag:**
-```bash
-# Auto-select based on cache size (default) - uses binding for 500+ entries
-opennextjs-cloudflare deploy --cacheMethod=auto
-
-# Force wrangler CLI (original behavior)
-opennextjs-cloudflare deploy --cacheMethod=wrangler
-
-# Force worker binding (bypasses API rate limits)
-opennextjs-cloudflare deploy --cacheMethod=binding
-```
-
-The new deploy flow for large R2 caches (when using `binding` method):
-1. Deploy worker with a temporary cache populate token
-2. Send cache entries directly to the worker's `/_open-next/cache/populate` endpoint
-3. Worker writes to R2 using its binding (no API rate limits)
-4. Redeploy without the token to secure the endpoint
-
-Features:
-- Automatic threshold: Uses binding approach for caches with 500+ entries (in `auto` mode)
-- Batched uploads with configurable batch size (default: 100)
-- Retry logic with exponential backoff
-- Secure: Temporary token is removed after cache population
-- Full backward compatibility: Use `--cacheMethod=wrangler` to force original behavior
-
-This fixes the "500 Internal Server Error" during R2 cache upload for applications with thousands of prerendered pages.
+The new approach:
+1. Derives a temporary wrangler config from the project's config with the R2 binding set to `remote: true`
+2. Starts a local worker via `wrangler dev` with a POST endpoint
+3. Sends batched cache entries to the local worker, which writes to R2 via the binding
+4. No deployment or authentication tokens required
 
 Closes #1088

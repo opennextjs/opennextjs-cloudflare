@@ -1,6 +1,4 @@
 //@ts-expect-error: Will be resolved by wrangler build
-import { handleCachePopulate, CACHE_POPULATE_PATH } from "./cloudflare/cache-populate-handler.js";
-//@ts-expect-error: Will be resolved by wrangler build
 import { handleImageRequest } from "./cloudflare/images.js";
 //@ts-expect-error: Will be resolved by wrangler build
 import { runWithCloudflareRequestContext } from "./cloudflare/init.js";
@@ -25,13 +23,6 @@ export default {
 			}
 
 			const url = new URL(request.url);
-
-			// Handle cache population requests during deployment.
-			// This endpoint allows the CLI to populate the R2 cache directly via the worker,
-			// bypassing wrangler's rate-limited r2 bulk put command.
-			if (url.pathname === CACHE_POPULATE_PATH) {
-				return handleCachePopulate(request, env);
-			}
 
 			// Serve images in development.
 			// Note: "/cdn-cgi/image/..." requests do not reach production workers.
