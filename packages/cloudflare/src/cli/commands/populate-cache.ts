@@ -1,6 +1,5 @@
-import fs from "node:fs";
-import fsp from "node:fs/promises";
-import os from "node:os";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { setTimeout } from "node:timers/promises";
@@ -16,6 +15,7 @@ import type {
 } from "@opennextjs/aws/types/open-next.js";
 import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides.js";
 import { globSync } from "glob";
+import rclone from "rclone.js";
 import { tqdm } from "ts-tqdm";
 import type { Unstable_Config as WranglerConfig } from "wrangler";
 import { unstable_startWorker } from "wrangler";
@@ -112,8 +112,9 @@ export async function populateCache(
 ) {
 	const { incrementalCache, tagCache } = config.default.override ?? {};
 
-	if (!fs.existsSync(buildOpts.outputDir)) {
-		throw new Error("Unable to populate cache: Open Next build not found");
+	if (!existsSync(buildOpts.outputDir)) {
+		logger.error("Unable to populate cache: Open Next build not found");
+		process.exit(1);
 	}
 
 	if (!config.dangerous?.disableIncrementalCache && incrementalCache) {
@@ -230,16 +231,182 @@ export type PopulateCacheOptions = {
 };
 
 /**
- * Populates the R2 incremental cache by starting a worker with an R2 binding.
- *
- * Flow:
- * 1. Reads the R2 binding configuration from the wrangler config.
- * 2. Collects cache assets from the build output.
- * 3. Starts a worker (via `unstable_startWorker`) with the R2 binding, set to run remotely or locally depending upon the cache target.
- * 4. Sends individual POST requests to the worker.
- *
- * Using a binding bypasses the Cloudflare REST API rate limit that affects `wrangler r2 bulk put`.
+ * Create a temporary configuration file for batch upload from environment variables
+ * @returns Path to the temporary config file or null if env vars not available
  */
+function createTempRcloneConfig(accessKey: string, secretKey: string, accountId: string): string | null {
+	const tempDir = tmpdir();
+	const tempConfigPath = path.join(tempDir, `rclone-config-${Date.now()}.conf`);
+
+	const configContent = `[r2]
+type = s3
+provider = Cloudflare
+access_key_id = ${accessKey}
+secret_access_key = ${secretKey}
+endpoint = https://${accountId}.r2.cloudflarestorage.com
+acl = private
+`;
+
+	/**
+	 * 0o600 is an octal number (the 0o prefix indicates octal in JavaScript)
+	 * that represents Unix file permissions:
+	 *
+	 * - 6 (owner): read (4) + write (2) = readable and writable by the file owner
+	 * - 0 (group): no permissions for the group
+	 * - 0 (others): no permissions for anyone else
+	 *
+	 * In symbolic notation, this is: rw-------
+	 */
+	writeFileSync(tempConfigPath, configContent, { mode: 0o600 });
+	return tempConfigPath;
+}
+
+/**
+ * Populate R2 incremental cache using batch upload for better performance
+ * Uses parallel transfers to significantly speed up cache population
+ */
+async function populateR2IncrementalCacheWithBatchUpload(
+	bucket: string,
+	prefix: string | undefined,
+	assets: CacheAsset[],
+	envVars: WorkerEnvVar
+) {
+	const accessKey = envVars.R2_ACCESS_KEY_ID || null;
+	const secretKey = envVars.R2_SECRET_ACCESS_KEY || null;
+	const accountId = envVars.CF_ACCOUNT_ID || null;
+
+	// Ensure all required env vars are set correctly
+	if (!accessKey || !secretKey || !accountId) {
+		throw new Error(
+			"Please set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and CF_ACCOUNT_ID environment variables to enable batch upload for remote R2 that bypasses Account Rate Limits."
+		);
+	}
+
+	logger.info("\nPopulating remote R2 incremental cache using batch upload...");
+
+	// Create temporary config from env vars - required for batch upload
+	const tempConfigPath = createTempRcloneConfig(accessKey, secretKey, accountId);
+	if (!tempConfigPath) {
+		throw new Error("Failed to create temporary rclone config for R2 batch upload.");
+	}
+
+	const env = {
+		...process.env,
+		RCLONE_CONFIG: tempConfigPath,
+	};
+
+	logger.info("Using batch upload with R2 credentials from environment variables");
+
+	// Create a staging dir in temp directory with proper key paths
+	const tempDir = tmpdir();
+	const stagingDir = path.join(tempDir, `.r2-staging-${Date.now()}`);
+
+	// Track success to ensure cleanup happens correctly
+	let success = null;
+
+	try {
+		mkdirSync(stagingDir, { recursive: true });
+
+		for (const { fullPath, key, buildId, isFetch } of assets) {
+			const cacheKey = computeCacheKey(key, {
+				prefix,
+				buildId,
+				cacheType: isFetch ? "fetch" : "cache",
+			});
+			const destPath = path.join(stagingDir, cacheKey);
+			mkdirSync(path.dirname(destPath), { recursive: true });
+			copyFileSync(fullPath, destPath);
+		}
+
+		// Use rclone.js to sync the R2
+		const remote = `r2:${bucket}`;
+
+		// Using rclone.js Promise-based API for the copy operation
+		await rclone.promises.copy(stagingDir, remote, {
+			progress: true,
+			transfers: 16,
+			checkers: 8,
+			env,
+		});
+
+		logger.info(`Successfully uploaded ${assets.length} assets to R2 using rclone batch upload`);
+		success = true;
+	} finally {
+		try {
+			// Cleanup temporary staging directory
+			rmSync(stagingDir, { recursive: true, force: true });
+		} catch {
+			console.warn(`Failed to remove temporary staging directory at ${stagingDir}`);
+		}
+
+		try {
+			// Cleanup temporary config file
+			rmSync(tempConfigPath);
+		} catch {
+			console.warn(`Failed to remove temporary config at ${tempConfigPath}`);
+		}
+	}
+
+	if (!success) {
+		throw new Error("R2 rclone batch upload failed, falling back to wrangler r2 bulk put uploads...");
+	}
+}
+
+/**
+ * Populate R2 incremental cache using Wrangler's r2 bulk put command
+ * Falls back to this method when batch upload is not available or fails
+ */
+async function populateR2WithWranglerBulkPut(
+	buildOpts: BuildOptions,
+	bucket: string,
+	prefix: string | undefined,
+	assets: CacheAsset[],
+	populateCacheOptions: PopulateCacheOptions,
+	jurisdiction?: string
+) {
+	logger.info("Using Wrangler r2 bulk put for cache uploads.");
+
+	const objectList = assets.map(({ fullPath, key, buildId, isFetch }) => ({
+		key: computeCacheKey(key, {
+			prefix,
+			buildId,
+			cacheType: isFetch ? "fetch" : "cache",
+		}),
+		file: fullPath,
+	}));
+
+	const tempDir = path.join(tmpdir(), `open-next-${Date.now()}`);
+	mkdirSync(tempDir, { recursive: true });
+	const listFile = path.join(tempDir, `r2-bulk-list.json`);
+	writeFileSync(listFile, JSON.stringify(objectList));
+
+	const concurrency = Math.max(1, populateCacheOptions.cacheChunkSize ?? 50);
+	const jurisdictionFlag = jurisdiction ? `--jurisdiction ${jurisdiction}` : "";
+
+	runWrangler(
+		buildOpts,
+		[
+			"r2 bulk put",
+			bucket,
+			`--filename ${quoteShellMeta(listFile)}`,
+			`--concurrency ${concurrency}`,
+			jurisdictionFlag,
+		],
+		{
+			target: populateCacheOptions.target,
+			configPath: populateCacheOptions.wranglerConfigPath,
+			// R2 does not support the environment flag and results in the following error:
+			// Incorrect type for the 'cacheExpiry' field on 'HttpMetadata': the provided value is not of type 'date'.
+			environment: undefined,
+			logging: "error",
+		}
+	);
+
+	rmSync(listFile, { force: true });
+
+	logger.info(`Successfully populated cache with ${assets.length} assets`);
+}
+
 async function populateR2IncrementalCache(
 	buildOpts: BuildOptions,
 	config: WranglerConfig,
@@ -264,221 +431,35 @@ async function populateR2IncrementalCache(
 	const prefix = envVars[R2_CACHE_PREFIX_ENV_NAME];
 	const assets = getCacheAssets(buildOpts);
 
-	if (assets.length === 0) {
-		logger.info("No cache assets to populate");
-		return;
+	// Force sequential upload for local target
+	if (populateCacheOptions.target === "local") {
+		logger.info("Using sequential upload for local R2 (batch upload only works with remote R2)");
+		return await populateR2WithWranglerBulkPut(
+			buildOpts,
+			bucket,
+			prefix,
+			assets,
+			populateCacheOptions,
+			binding.jurisdiction
+		);
 	}
-
-	const currentDir = path.dirname(fileURLToPath(import.meta.url));
-	const handlerPath = path.join(currentDir, "../workers/r2-cache.js");
-	const isRemote = populateCacheOptions.target === "remote";
-
-	if (isRemote) {
-		const result = await ensureR2Bucket(buildOpts.appPath, bucketName, binding.jurisdiction);
-
-		if (!result.success) {
-			throw new Error(
-				`Failed to provision remote R2 bucket "${bucketName}" for binding "${R2_CACHE_BINDING_NAME}": ${result.error}`
-			);
-		}
-	}
-
-	// Start a local worker and proxy it to the Cloudflare network when remote mode is enabled.
-	const worker = await unstable_startWorker({
-		name: "open-next-cache-populate",
-		// Prevent it from discovering the project's wrangler config and leaking unrelated bindings.
-		config: "",
-		entrypoint: handlerPath,
-		compatibilityDate: "2026-01-01",
-		bindings: {
-			R2: {
-				type: "r2_bucket",
-				bucket_name: bucketName,
-				jurisdiction: binding.jurisdiction,
-			},
-		},
-		dev: {
-			remote: isRemote,
-			server: { port: 0 },
-			inspector: false,
-			watch: false,
-			liveReload: false,
-			logLevel: "none",
-		},
-	});
 
 	try {
-		const baseUrl = await worker.url;
-		await sendEntriesToR2Worker({
-			workerUrl: new URL("/populate", baseUrl).href,
-			assets,
+		// Attempt batch upload first (using rclone) - only for remote target
+		return await populateR2IncrementalCacheWithBatchUpload(bucket, prefix, assets, envVars);
+	} catch (error) {
+		logger.warn(`Batch upload failed: ${error instanceof Error ? error.message : error}`);
+		logger.info("Falling back to sequential uploads...");
+
+		// Sequential upload fallback (using Wrangler)
+		return await populateR2WithWranglerBulkPut(
+			buildOpts,
+			bucket,
 			prefix,
-			maxConcurrency: Math.max(1, populateCacheOptions.cacheChunkSize ?? 25),
-		});
-	} catch (e) {
-		if (isRemote) {
-			throw new Error(
-				`Failed to populate remote R2 bucket "${bucketName}" for binding "${R2_CACHE_BINDING_NAME}": ${e instanceof Error ? e.message : String(e)}`
-			);
-		} else {
-			throw new Error(`Failed to populate the local R2 cache: ${e instanceof Error ? e.message : String(e)}`);
-		}
-	} finally {
-		await worker.dispose();
-	}
-
-	logger.info(`Successfully populated cache with ${assets.length} entries`);
-}
-
-/**
- * Sends cache entries to the R2 worker, one entry per request.
- *
- * @param options
- * @param options.workerUrl - The URL of the local R2 worker's `/populate` endpoint.
- * @param options.assets - The cache assets to write, as collected by {@link getCacheAssets}.
- * @param options.prefix - Optional prefix prepended to each R2 key.
- * @param options.maxConcurrency - Maximum number of concurrent in-flight requests.
- * @returns Resolves when all entries have been written successfully.
- * @throws {Error} If any entry fails after all retries or encounters a non-retryable error.
- */
-async function sendEntriesToR2Worker(options: {
-	workerUrl: string;
-	assets: CacheAsset[];
-	prefix: string | undefined;
-	maxConcurrency: number;
-}): Promise<void> {
-	const { workerUrl, assets, prefix, maxConcurrency } = options;
-
-	const pending = new Set<Promise<void>>();
-
-	for (const asset of tqdm(assets)) {
-		const { fullPath, key, buildId, isFetch } = asset;
-
-		const task = sendEntryToR2Worker({
-			workerUrl,
-			key: computeCacheKey(key, {
-				prefix,
-				buildId,
-				cacheType: isFetch ? "fetch" : "cache",
-			}),
-			filename: fullPath,
-		}).finally(() => pending.delete(task));
-
-		pending.add(task);
-
-		// If we've reached the concurrency limit, wait for one to finish.
-		if (pending.size >= maxConcurrency) {
-			await Promise.race(pending);
-		}
-	}
-
-	await Promise.all(pending);
-}
-
-class RetryableWorkerError extends Error {}
-
-/**
- * Sends a single cache entry to the R2 worker.
- *
- * The file is streamed from disk and sent as the raw request body.
- *
- * @param options
- * @param options.workerUrl - The URL of the local R2 worker's `/populate` endpoint.
- * @param options.key - The R2 object key.
- * @param options.filename - Path to the cache file on disk. Read at send time to avoid holding all values in memory.
- * @throws {Error} If the worker reports a failure.
- */
-async function sendEntryToR2Worker(options: {
-	workerUrl: string;
-	key: string;
-	filename: string;
-}): Promise<void> {
-	const { workerUrl, key, filename } = options;
-
-	for (let attempt = 0; attempt < MAX_REQUEST_RETRIES; attempt++) {
-		try {
-			let response: Response;
-
-			try {
-				response = await fetch(workerUrl, {
-					method: "POST",
-					headers: {
-						"x-opennext-cache-key": key,
-						"content-length": fs.statSync(filename).size.toString(),
-						// Include Access Client ID and Secret if they are set in the environment,
-						// so the helper worker can be reached through Cloudflare Access.
-						//
-						// If the workers.dev subdomain (or a parent route) is behind Cloudflare Access,
-						// attach a "Service Auth" policy to the *existing* Access application that already
-						// covers "open-next-cache-populate.<account>.workers.dev" — typically the
-						// "*.<account>.workers.dev" wildcard application. Creating a separate application
-						// scoped to this hostname has been observed to block the upload, even alongside
-						// the wildcard app. The policy should have:
-						//   - Action set to "Service Auth"
-						//   - An Include rule for "Any Access Service Token" or a specific Service Token
-						// See: https://opennext.js.org/cloudflare/cli#populating-remote-bindings-when-workers-are-protected-by-cloudflare-access
-						...(process.env.CLOUDFLARE_ACCESS_CLIENT_ID && process.env.CLOUDFLARE_ACCESS_CLIENT_SECRET
-							? {
-									"CF-Access-Client-Id": process.env.CLOUDFLARE_ACCESS_CLIENT_ID,
-									"CF-Access-Client-Secret": process.env.CLOUDFLARE_ACCESS_CLIENT_SECRET,
-								}
-							: {}),
-					},
-					body: Readable.toWeb(fs.createReadStream(filename)) as unknown as ReadableStream,
-					signal: AbortSignal.timeout(60_000),
-					// @ts-expect-error - `duplex` is required for streaming request bodies in Node.js
-					duplex: "half",
-				});
-			} catch (e) {
-				throw new RetryableWorkerError(
-					`Failed to send request to R2 worker: ${e instanceof Error ? e.message : String(e)}`,
-					{ cause: e }
-				);
-			}
-
-			const body = await response.text();
-			let result: R2Response;
-
-			try {
-				result = JSON.parse(body) as R2Response;
-			} catch (e) {
-				// https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1102
-				if (body.includes("Worker exceeded resource limits")) {
-					throw new RetryableWorkerError("Worker exceeded resource limits", { cause: e });
-				}
-
-				if (response.status >= 500) {
-					throw new RetryableWorkerError(
-						`Worker returned a ${response.status} ${response.statusText} response`,
-						{ cause: e }
-					);
-				}
-
-				throw new Error(`Unexpected ${response.status} response from R2 worker: ${body}`, {
-					cause: e,
-				});
-			}
-
-			if (!result.success) {
-				throw response.status >= 500
-					? new RetryableWorkerError(result.error)
-					: new Error(`Failed to write "${key}" to R2: ${result.error}`);
-			}
-
-			return;
-		} catch (e) {
-			if (e instanceof RetryableWorkerError && attempt < MAX_REQUEST_RETRIES - 1) {
-				logger.error(
-					`Attempt ${attempt + 1} to write "${key}" failed with a retryable error: ${e.message}. Retrying...`
-				);
-				await setTimeout(BASE_RETRY_DELAY_MS * Math.pow(BACKOFF_FACTOR, attempt));
-				continue;
-			}
-
-			throw new Error(`Failed to write "${key}" to R2 after ${MAX_REQUEST_RETRIES} attempts`, {
-				cause: e,
-			});
-		}
+			assets,
+			populateCacheOptions,
+			binding.jurisdiction
+		);
 	}
 }
 
@@ -512,7 +493,8 @@ async function populateKVIncrementalCache(
 		`Inserting ${assets.length} assets to ${populateCacheOptions.target} KV in chunks of ${chunkSize}`
 	);
 
-	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "open-next-"));
+	const tempDir = path.join(tmpdir(), `open-next-${Date.now()}`);
+	mkdirSync(tempDir, { recursive: true });
 
 	for (const i of tqdm(Array.from({ length: totalChunks }, (_, i) => i))) {
 		const chunkPath = path.join(tempDir, `cache-chunk-${i}.json`);
@@ -525,10 +507,10 @@ async function populateKVIncrementalCache(
 					buildId,
 					cacheType: isFetch ? "fetch" : "cache",
 				}),
-				value: fs.readFileSync(fullPath, "utf8"),
+				value: readFileSync(fullPath, "utf8"),
 			}));
 
-		fs.writeFileSync(chunkPath, JSON.stringify(kvMapping));
+		writeFileSync(chunkPath, JSON.stringify(kvMapping));
 
 		const result = runWrangler(
 			buildOpts,
@@ -546,11 +528,7 @@ async function populateKVIncrementalCache(
 			}
 		);
 
-		fs.rmSync(chunkPath, { force: true });
-
-		if (!result.success) {
-			throw new Error(`Wrangler kv bulk put command failed${result.stderr ? `:\n${result.stderr}` : ""}`);
-		}
+		rmSync(chunkPath, { force: true });
 	}
 
 	logger.info(`Successfully populated cache with ${assets.length} entries`);
@@ -621,7 +599,7 @@ function populateD1TagCache(
 function populateStaticAssetsIncrementalCache(options: BuildOptions) {
 	logger.info("\nPopulating Workers static assets...");
 
-	fs.cpSync(
+	cpSync(
 		path.join(options.outputDir, "cache"),
 		path.join(options.outputDir, "assets", STATIC_ASSETS_CACHE_DIR),
 		{ recursive: true }

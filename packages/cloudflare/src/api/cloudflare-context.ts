@@ -83,8 +83,13 @@ declare global {
 		CF_PREVIEW_DOMAIN?: string;
 		// Should have the `Workers Scripts:Read` permission
 		CF_WORKERS_SCRIPTS_API_TOKEN?: string;
-		// Cloudflare account id - needed for skew protection
+
+		// Cloudflare account id - needed for skew protection and R2 batch population
 		CF_ACCOUNT_ID?: string;
+
+		// R2 API credentials for batch cache population (optional, enables faster uploads)
+		R2_ACCESS_KEY_ID?: string;
+		R2_SECRET_ACCESS_KEY?: string;
 	}
 }
 
@@ -200,10 +205,10 @@ function getCloudflareContextSync<
 	if (inSSG()) {
 		throw new Error(
 			`\n\nERROR: \`getCloudflareContext\` has been called in sync mode in either a static route or at the top level of a non-static one,` +
-				` both cases are not allowed but can be solved by either:\n` +
-				`  - make sure that the call is not at the top level and that the route is not static\n` +
-				`  - call \`getCloudflareContext({async: true})\` to use the \`async\` mode\n` +
-				`  - avoid calling \`getCloudflareContext\` in the route\n`
+			` both cases are not allowed but can be solved by either:\n` +
+			`  - make sure that the call is not at the top level and that the route is not static\n` +
+			`  - call \`getCloudflareContext({async: true})\` to use the \`async\` mode\n` +
+			`  - avoid calling \`getCloudflareContext\` in the route\n`
 		);
 	}
 
@@ -252,7 +257,7 @@ export async function initOpenNextCloudflareForDev(options?: GetPlatformProxyOpt
 	if (options?.environment && process.env.NEXT_DEV_WRANGLER_ENV) {
 		console.warn(
 			`'initOpenNextCloudflareForDev' has been called with an environment option while NEXT_DEV_WRANGLER_ENV is set.` +
-				` NEXT_DEV_WRANGLER_ENV will be ignored and the environment will be set to: '${options.environment}'`
+			` NEXT_DEV_WRANGLER_ENV will be ignored and the environment will be set to: '${options.environment}'`
 		);
 	}
 

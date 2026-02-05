@@ -103,28 +103,43 @@ vi.mock("./utils/helpers.js", () => ({
 	quoteShellMeta: vi.fn((s) => s),
 }));
 
-vi.mock("../utils/ensure-r2-bucket.js");
-vi.mock("wrangler");
+// Mock rclone.js promises API to simulate successful copy operations by default
+vi.mock("rclone.js", () => ({
+	default: {
+		promises: {
+			copy: vi.fn(() => Promise.resolve("")),
+		},
+	},
+}));
 
 describe("populateCache", () => {
-	const buildOptions = {
-		appPath: "/test/app",
-		outputDir: "/test/output",
-	} as BuildOptions;
-	const config = defineCloudflareConfig({
-		incrementalCache: r2IncrementalCache,
+	// Test fixtures
+	const createTestBuildOptions = (): BuildOptions =>
+		({
+			outputDir: "/test/output",
+		}) as BuildOptions;
+
+	const createTestOpenNextConfig = () => ({
+		default: {
+			override: {
+				incrementalCache: "cf-r2-incremental-cache",
+			},
+		},
 	});
-	const wranglerConfig = {
+
+	const createTestWranglerConfig = () => ({
 		r2_buckets: [
 			{
 				binding: "NEXT_INC_CACHE_R2_BUCKET",
 				bucket_name: "test-bucket",
-				preview_bucket_name: "preview-bucket",
-				jurisdiction: "eu",
 			},
 		],
-	} as WranglerConfig;
-	const envVars = {} as WorkerEnvVar;
+	});
+
+	const createTestPopulateCacheOptions = () => ({
+		target: "local" as const,
+		shouldUsePreviewId: false,
+	});
 
 	const setupMockFileSystem = () => {
 		mockFs({
@@ -144,324 +159,151 @@ describe("populateCache", () => {
 
 	describe("R2 incremental cache", () => {
 		afterEach(() => {
-			vi.resetAllMocks();
-			vi.useRealTimers();
 			mockFs.restore();
+			vi.unstubAllEnvs();
 		});
 
-		test.each<PopulateCacheOptions>([
-			{ target: "local", shouldUsePreviewId: false },
-			{ target: "remote", shouldUsePreviewId: false },
-			{ target: "remote", shouldUsePreviewId: true },
-		])(
-			`$target (shouldUsePreviewId: $shouldUsePreviewId) - starts worker and sends individual cache entries with the cache key header`,
-			async (populateCacheOptions) => {
-				const bucketName =
-					populateCacheOptions.target === "remote" && populateCacheOptions.shouldUsePreviewId
-						? "preview-bucket"
-						: "test-bucket";
-				const mockWorkerDispose = vi.fn();
+		test("uses sequential upload for local target (skips batch upload)", async () => {
+			const { runWrangler } = await import("../utils/run-wrangler.js");
+			const rcloneModule = (await import("rclone.js")).default;
 
-				setupMockFileSystem();
-				vi.useFakeTimers();
-				// @ts-expect-error - Mock unstable_startWorker to return a mock worker instance
-				vi.mocked(unstable_startWorker).mockResolvedValueOnce({
-					ready: Promise.resolve(),
-					url: Promise.resolve(new URL("http://localhost:12345")),
-					dispose: mockWorkerDispose,
-				});
-				vi.mocked(ensureR2Bucket).mockResolvedValueOnce({ success: true, bucketName });
-
-				// Mock fetch to return a successful response for each individual entry.
-				const fetchMock = vi.spyOn(global, "fetch").mockImplementation(async (_input, init) => {
-					if (init?.body instanceof ReadableStream) {
-						await init.body.cancel();
-					}
-
-					return new Response(JSON.stringify({ success: true }), {
-						status: 200,
-						headers: { "Content-Type": "application/json" },
-					});
-				});
-
-				await populateCache(buildOptions, config, wranglerConfig, populateCacheOptions, envVars);
-
-				expect(unstable_startWorker).toHaveBeenCalledWith(
-					expect.objectContaining({
-						bindings: expect.objectContaining({
-							R2: expect.objectContaining({
-								type: "r2_bucket",
-								bucket_name: bucketName,
-								jurisdiction: "eu",
-							}),
-						}),
-						dev: expect.objectContaining({
-							remote: populateCacheOptions.target === "remote",
-						}),
-					})
-				);
-
-				if (populateCacheOptions.target === "remote") {
-					expect(ensureR2Bucket).toHaveBeenCalledWith("/test/app", bucketName, "eu");
-				} else {
-					expect(ensureR2Bucket).not.toHaveBeenCalled();
-				}
-
-				expect(fetchMock).toHaveBeenCalled();
-
-				for (const [input, init] of fetchMock.mock.calls) {
-					expect(input).toBe("http://localhost:12345/populate");
-					expect(init?.method).toBe("POST");
-					expect(init?.headers).toEqual({
-						"x-opennext-cache-key": expect.any(String),
-						"content-length": expect.any(String),
-					});
-					expect(init?.body).toBeInstanceOf(ReadableStream);
-				}
-
-				// Verify worker was disposed after sending entries.
-				expect(mockWorkerDispose).toHaveBeenCalled();
-			}
-		);
-
-		test("remote - exits when bucket provisioning fails", async () => {
 			setupMockFileSystem();
-			vi.mocked(ensureR2Bucket).mockResolvedValueOnce({
-				success: false,
-				error: "wrangler login failed",
-			});
+			vi.mocked(runWrangler).mockClear();
+			vi.mocked(rcloneModule.promises.copy).mockClear();
 
-			const result = populateCache(
-				buildOptions,
-				config,
-				wranglerConfig,
-				{ target: "remote", shouldUsePreviewId: false },
-				envVars
+			// Test with local target - should skip batch upload even with credentials
+			await populateCache(
+				createTestBuildOptions(),
+				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				{ target: "local" as const, shouldUsePreviewId: false },
+				{
+					R2_ACCESS_KEY_ID: "test_access_key",
+					R2_SECRET_ACCESS_KEY: "test_secret_key",
+					CF_ACCOUNT_ID: "test_account_id",
+				} as any // eslint-disable-line @typescript-eslint/no-explicit-any
 			);
 
-			await expect(result).rejects.toThrow(
-				'Failed to provision remote R2 bucket "test-bucket" for binding "NEXT_INC_CACHE_R2_BUCKET": wrangler login failed'
-			);
-
-			expect(unstable_startWorker).not.toHaveBeenCalled();
+			// Should use sequential upload (runWrangler), not batch upload (rclone.js)
+			expect(runWrangler).toHaveBeenCalled();
+			expect(rcloneModule.promises.copy).not.toHaveBeenCalled();
 		});
 
-		test("retries timed out requests to the R2 worker", async () => {
+		test("uses sequential upload when R2 credentials are not provided", async () => {
+			const { runWrangler } = await import("../utils/run-wrangler.js");
+			const rcloneModule = (await import("rclone.js")).default;
+
 			setupMockFileSystem();
-			vi.useFakeTimers();
+			vi.mocked(runWrangler).mockClear();
+			vi.mocked(rcloneModule.promises.copy).mockClear();
 
-			const mockWorkerDispose = vi.fn();
-			// @ts-expect-error - Mock unstable_startWorker to return a mock worker instance
-			vi.mocked(unstable_startWorker).mockResolvedValueOnce({
-				ready: Promise.resolve(),
-				url: Promise.resolve(new URL("http://localhost:12345")),
-				dispose: mockWorkerDispose,
-			});
-			vi.spyOn(AbortSignal, "timeout");
+			// Test uses partial types for simplicity - full config not needed
+			// Pass empty envVars to simulate no R2 credentials
+			await populateCache(
+				createTestBuildOptions(),
+				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				createTestPopulateCacheOptions(),
+				{} as any // eslint-disable-line @typescript-eslint/no-explicit-any
+			);
 
-			const fetchMock = vi
-				.spyOn(global, "fetch")
-				.mockImplementationOnce(async (_input, init) => {
-					if (init?.body instanceof ReadableStream) {
-						await init.body.cancel();
-					}
+			expect(runWrangler).toHaveBeenCalled();
+			expect(rcloneModule.promises.copy).not.toHaveBeenCalled();
+		});
 
-					const timeoutError = new Error("Request timed out");
-					timeoutError.name = "TimeoutError";
-					throw timeoutError;
+		test("uses batch upload with temporary config for remote target when R2 credentials are provided", async () => {
+			const rcloneModule = (await import("rclone.js")).default;
+
+			setupMockFileSystem();
+			vi.mocked(rcloneModule.promises.copy).mockClear();
+
+			// Test uses partial types for simplicity - full config not needed
+			// Pass envVars with R2 credentials and remote target to enable batch upload
+			await populateCache(
+				createTestBuildOptions(),
+				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				{ target: "remote" as const, shouldUsePreviewId: false },
+				{
+					R2_ACCESS_KEY_ID: "test_access_key",
+					R2_SECRET_ACCESS_KEY: "test_secret_key",
+					CF_ACCOUNT_ID: "test_account_id",
+				} as any // eslint-disable-line @typescript-eslint/no-explicit-any
+			);
+
+			// Verify batch upload was used with correct parameters and temporary config
+			expect(rcloneModule.promises.copy).toHaveBeenCalledWith(
+				expect.any(String), // staging directory
+				"r2:test-bucket",
+				expect.objectContaining({
+					progress: true,
+					transfers: 16,
+					checkers: 8,
+					env: expect.objectContaining({
+						RCLONE_CONFIG: expect.stringMatching(/rclone-config-\d+\.conf$/),
+					}),
 				})
-				.mockImplementationOnce(async (_input, init) => {
-					if (init?.body instanceof ReadableStream) {
-						await init.body.cancel();
-					}
-
-					return new Response(JSON.stringify({ success: true }), {
-						status: 200,
-						headers: { "Content-Type": "application/json" },
-					});
-				});
-
-			const result = populateCache(
-				buildOptions,
-				config,
-				wranglerConfig,
-				{ target: "local", shouldUsePreviewId: false },
-				envVars
 			);
-
-			await vi.waitFor(() => {
-				expect(AbortSignal.timeout).toHaveBeenCalledWith(60_000);
-				expect(fetchMock).toHaveBeenCalledTimes(1);
-			});
-
-			await vi.advanceTimersByTimeAsync(250);
-			await result;
-
-			expect(fetchMock).toHaveBeenCalledTimes(2);
-			expect(mockWorkerDispose).toHaveBeenCalled();
 		});
 
-		test("retries 5xx responses from the R2 worker", async () => {
+		test("handles rclone errors with status > 0 for remote target", async () => {
+			const { runWrangler } = await import("../utils/run-wrangler.js");
+			const rcloneModule = (await import("rclone.js")).default;
+
 			setupMockFileSystem();
-			vi.useFakeTimers();
-			vi.spyOn(AbortSignal, "timeout");
 
-			const mockWorkerDispose = vi.fn();
-			// @ts-expect-error - Mock unstable_startWorker to return a mock worker instance
-			vi.mocked(unstable_startWorker).mockResolvedValueOnce({
-				ready: Promise.resolve(),
-				url: Promise.resolve(new URL("http://localhost:12345")),
-				dispose: mockWorkerDispose,
-			});
-
-			const fetchMock = vi
-				.spyOn(global, "fetch")
-				.mockImplementationOnce(async (_input, init) => {
-					if (init?.body instanceof ReadableStream) {
-						await init.body.cancel();
-					}
-
-					return new Response(
-						JSON.stringify({ success: false, error: "R2 storage error", code: "ERR_WRITE_FAILED" }),
-						{
-							status: 500,
-							headers: { "Content-Type": "application/json" },
-						}
-					);
-				})
-				.mockImplementationOnce(async (_input, init) => {
-					if (init?.body instanceof ReadableStream) {
-						await init.body.cancel();
-					}
-
-					return new Response(JSON.stringify({ success: true }), {
-						status: 200,
-						headers: { "Content-Type": "application/json" },
-					});
-				});
-
-			const result = populateCache(
-				buildOptions,
-				config,
-				wranglerConfig,
-				{ target: "local", shouldUsePreviewId: false },
-				envVars
+			// Mock rclone failure - Promise rejection
+			vi.mocked(rcloneModule.promises.copy).mockRejectedValueOnce(
+				new Error("rclone copy failed with exit code 7")
 			);
 
-			await vi.waitFor(() => {
-				expect(fetchMock).toHaveBeenCalledTimes(1);
-			});
+			vi.mocked(runWrangler).mockClear();
 
-			await vi.advanceTimersByTimeAsync(250);
-			await expect(result).resolves.toBeUndefined();
+			// Pass envVars with R2 credentials and remote target to enable batch upload (which will fail)
+			await populateCache(
+				createTestBuildOptions(),
+				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				{ target: "remote" as const, shouldUsePreviewId: false },
+				{
+					R2_ACCESS_KEY_ID: "test_access_key",
+					R2_SECRET_ACCESS_KEY: "test_secret_key",
+					CF_ACCOUNT_ID: "test_account_id",
+				} as any // eslint-disable-line @typescript-eslint/no-explicit-any
+			);
 
-			expect(fetchMock).toHaveBeenCalledTimes(2);
-			expect(AbortSignal.timeout).toHaveBeenCalledWith(60_000);
-			expect(mockWorkerDispose).toHaveBeenCalled();
+			// Should fall back to sequential upload when batch upload fails
+			expect(runWrangler).toHaveBeenCalled();
 		});
 
-		test("retries worker exceeded resource limits responses", async () => {
+		test("handles rclone errors with stderr output for remote target", async () => {
+			const { runWrangler } = await import("../utils/run-wrangler.js");
+			const rcloneModule = (await import("rclone.js")).default;
+
 			setupMockFileSystem();
-			vi.useFakeTimers();
 
-			const mockWorkerDispose = vi.fn();
-			// @ts-expect-error - Mock unstable_startWorker to return a mock worker instance
-			vi.mocked(unstable_startWorker).mockResolvedValueOnce({
-				ready: Promise.resolve(),
-				url: Promise.resolve(new URL("http://localhost:12345")),
-				dispose: mockWorkerDispose,
-			});
-
-			const fetchMock = vi
-				.spyOn(global, "fetch")
-				.mockImplementationOnce(async (_input, init) => {
-					if (init?.body instanceof ReadableStream) {
-						await init.body.cancel();
-					}
-
-					return new Response(
-						"<!DOCTYPE html><title>Worker exceeded resource limits</title><h1>Error 1102</h1></html>",
-						{
-							status: 200,
-							headers: { "Content-Type": "text/html" },
-						}
-					);
-				})
-				.mockImplementationOnce(async (_input, init) => {
-					if (init?.body instanceof ReadableStream) {
-						await init.body.cancel();
-					}
-
-					return new Response(JSON.stringify({ success: true }), {
-						status: 200,
-						headers: { "Content-Type": "application/json" },
-					});
-				});
-
-			const result = populateCache(
-				buildOptions,
-				config,
-				wranglerConfig,
-				{ target: "local", shouldUsePreviewId: false },
-				envVars
+			// Mock rclone error - Promise rejection with stderr message
+			vi.mocked(rcloneModule.promises.copy).mockRejectedValueOnce(
+				new Error("ERROR : Failed to copy: AccessDenied: Access Denied (403)")
 			);
 
-			await vi.waitFor(() => {
-				expect(fetchMock).toHaveBeenCalledTimes(1);
-			});
+			vi.mocked(runWrangler).mockClear();
 
-			await vi.advanceTimersByTimeAsync(250);
-			await expect(result).resolves.toBeUndefined();
-
-			expect(fetchMock).toHaveBeenCalledTimes(2);
-			expect(mockWorkerDispose).toHaveBeenCalled();
-		});
-
-		test("exhausts all retries with exponential backoff for 5xx responses", async () => {
-			setupMockFileSystem();
-			vi.useFakeTimers();
-
-			const mockWorkerDispose = vi.fn();
-			// @ts-expect-error - Mock unstable_startWorker to return a mock worker instance
-			vi.mocked(unstable_startWorker).mockResolvedValueOnce({
-				ready: Promise.resolve(),
-				url: Promise.resolve(new URL("http://localhost:12345")),
-				dispose: mockWorkerDispose,
-			});
-
-			const fetchMock = vi.spyOn(global, "fetch").mockImplementation(async (_input, init) => {
-				if (init?.body instanceof ReadableStream) {
-					await init.body.cancel();
-				}
-
-				return new Response(
-					JSON.stringify({ success: false, error: "R2 storage error", code: "ERR_WRITE_FAILED" }),
-					{
-						status: 500,
-						headers: { "Content-Type": "application/json" },
-					}
-				);
-			});
-
-			const result = populateCache(
-				buildOptions,
-				config,
-				wranglerConfig,
-				{ target: "local", shouldUsePreviewId: false },
-				envVars
+			// Pass envVars with R2 credentials and remote target to enable batch upload (which will fail)
+			await populateCache(
+				createTestBuildOptions(),
+				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				{ target: "remote" as const, shouldUsePreviewId: false },
+				{
+					R2_ACCESS_KEY_ID: "test_access_key",
+					R2_SECRET_ACCESS_KEY: "test_secret_key",
+					CF_ACCOUNT_ID: "test_account_id",
+				} as any // eslint-disable-line @typescript-eslint/no-explicit-any
 			);
 
-			const resultExpectation = expect(result).rejects.toThrow(
-				new RegExp(
-					`Failed to populate the local R2 cache: Failed to write "incremental-cache\\/buildID\\/[A-Za-z0-9]+\\.cache" to R2 after ${MAX_REQUEST_RETRIES} attempts`
-				)
-			);
-
-			await vi.advanceTimersByTimeAsync(MAX_REQUEST_RETRIES * MAX_RETRY_DELAY_MS);
-			await resultExpectation;
-
-			expect(fetchMock).toHaveBeenCalledTimes(MAX_REQUEST_RETRIES);
-			expect(mockWorkerDispose).toHaveBeenCalled();
+			// Should fall back to standard upload when batch upload fails
+			expect(runWrangler).toHaveBeenCalled();
 		});
 	});
 });
