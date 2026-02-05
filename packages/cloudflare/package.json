@@ -52,7 +52,7 @@
 	},
 	"homepage": "https://github.com/opennextjs/opennextjs-cloudflare",
 	"dependencies": {
-		"@ast-grep/napi": "0.40.0",
+		"@ast-grep/napi": "^0.40.5",
 		"@dotenvx/dotenvx": "catalog:",
 		"@opennextjs/aws": "3.9.14",
 		"cloudflare": "^4.4.1",
