@@ -2,13 +2,13 @@
 "@opennextjs/cloudflare": minor
 ---
 
-feature: optional batch upload via rclone for fast R2 cache population that bypasses Account Level Rate Limits
+feature: optional batch upload via rclone for fast R2 cache population.
 
-This update recovers optional opt in for batch upload support for R2 cache population via rclone, which bypasses Account Level Rate Limits.
+This PR implement batch upload support for R2 cache population via rclone, which is not subject to the R2 REST API limits.
 
 **Key Changes:**
 
-1. **Optional Batch Upload**: Configure R2 credentials via .env or environment variables to opt in to rclone based batch uploads:
+1. **Optional Batch Upload**: Configure R2 credentials via `.env` or secrets to opt in to rclone based batch uploads:
 
 	- `R2_ACCESS_KEY_ID`
 	- `R2_SECRET_ACCESS_KEY`
