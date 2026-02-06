@@ -1,4 +1,5 @@
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import fsp from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
@@ -262,8 +263,8 @@ acl = private
 }
 
 /**
- * Populate R2 incremental cache using batch upload for better performance
- * Uses parallel transfers to significantly speed up cache population
+ * Populate R2 incremental cache using rclone for batch upload
+ * Uses rclone with parallel transfers to significantly speed up cache population
  */
 async function populateR2IncrementalCacheWithBatchUpload(
 	bucket: string,
@@ -431,9 +432,9 @@ async function populateR2IncrementalCache(
 	const prefix = envVars[R2_CACHE_PREFIX_ENV_NAME];
 	const assets = getCacheAssets(buildOpts);
 
-	// Force wrangler r2 bulk upload for local target
+	// Force wrangler r2 bulk put for local target
 	if (populateCacheOptions.target === "local") {
-		logger.info("Using sequential upload for local R2 (batch upload only works with remote R2)");
+		logger.info("Using wrangler r2 bulk put for local R2 (rclone batch upload only works with remote R2)");
 		return await populateR2WithWranglerBulkPut(
 			buildOpts,
 			bucket,
@@ -449,9 +450,9 @@ async function populateR2IncrementalCache(
 		return await populateR2IncrementalCacheWithBatchUpload(bucket, prefix, assets, envVars);
 	} catch (error) {
 		logger.warn(`Batch upload failed: ${error instanceof Error ? error.message : error}`);
-		logger.info("Falling back to sequential uploads...");
+		logger.info("Falling back to wrangler r2 bulk put...");
 
-		// Sequential upload fallback (using Wrangler)
+		// Wrangler r2 bulk put fallback
 		return await populateR2WithWranglerBulkPut(
 			buildOpts,
 			bucket,
@@ -493,8 +494,7 @@ async function populateKVIncrementalCache(
 		`Inserting ${assets.length} assets to ${populateCacheOptions.target} KV in chunks of ${chunkSize}`
 	);
 
-	const tempDir = path.join(tmpdir(), `open-next-${Date.now()}`);
-	mkdirSync(tempDir, { recursive: true });
+	const tempDir = await fsp.mkdtemp(path.join(tmpdir(), "open-next-"));
 
 	for (const i of tqdm(Array.from({ length: totalChunks }, (_, i) => i))) {
 		const chunkPath = path.join(tempDir, `cache-chunk-${i}.json`);
