@@ -209,7 +209,7 @@ type PopulateCacheOptions = {
 };
 
 /**
- * Create a temporary configuration file for batch upload from environment variables
+ * Create a temporary rclone configuration file.
  * @returns Path to the temporary config file or null if env vars not available
  */
 function createTempRcloneConfig(accessKey: string, secretKey: string, accountId: string): string | null {
@@ -225,16 +225,7 @@ endpoint = https://${accountId}.r2.cloudflarestorage.com
 acl = private
 `;
 
-	/**
-	 * 0o600 is an octal number (the 0o prefix indicates octal in JavaScript)
-	 * that represents Unix file permissions:
-	 *
-	 * - 6 (owner): read (4) + write (2) = readable and writable by the file owner
-	 * - 0 (group): no permissions for the group
-	 * - 0 (others): no permissions for anyone else
-	 *
-	 * In symbolic notation, this is: rw-------
-	 */
+	//  0o600 means readable and writable by the file owner
 	writeFileSync(tempConfigPath, configContent, { mode: 0o600 });
 	return tempConfigPath;
 }
@@ -260,7 +251,7 @@ async function populateR2IncrementalCacheWithBatchUpload(
 		);
 	}
 
-	logger.info("\nPopulating remote R2 incremental cache using batch upload...");
+	logger.info("\nPopulating remote R2 incremental cache using rclone...");
 
 	// Create temporary config from env vars - required for batch upload
 	const tempConfigPath = createTempRcloneConfig(accessKey, secretKey, accountId);
@@ -273,7 +264,7 @@ async function populateR2IncrementalCacheWithBatchUpload(
 		RCLONE_CONFIG: tempConfigPath,
 	};
 
-	logger.info("Using batch upload with R2 credentials from environment variables");
+	logger.info("Using rclone with R2 credentials from environment variables");
 
 	// Create a staging dir in temp directory with proper key paths
 	const tempDir = tmpdir();
@@ -307,14 +298,14 @@ async function populateR2IncrementalCacheWithBatchUpload(
 			env,
 		});
 
-		logger.info(`Successfully uploaded ${assets.length} assets to R2 using rclone batch upload`);
+		logger.info(`Successfully uploaded ${assets.length} assets to R2 using rclone`);
 		success = true;
 	} finally {
 		try {
 			// Cleanup temporary staging directory
 			rmSync(stagingDir, { recursive: true, force: true });
 		} catch {
-			console.warn(`Failed to remove temporary staging directory at ${stagingDir}`);
+			logger.info(`Failed to remove temporary staging directory at ${stagingDir}`);
 		}
 
 		try {
@@ -326,13 +317,13 @@ async function populateR2IncrementalCacheWithBatchUpload(
 	}
 
 	if (!success) {
-		throw new Error("R2 rclone batch upload failed, falling back to wrangler r2 bulk put uploads...");
+		throw new Error("R2 rclone failed, falling back to wrangler r2 bulk put uploads...");
 	}
 }
 
 /**
  * Populate R2 incremental cache using Wrangler's r2 bulk put command
- * Falls back to this method when batch upload is not available or fails
+ * Falls back to this method when rclone is not available or fails
  */
 async function populateR2WithWranglerBulkPut(
 	buildOpts: BuildOptions,
