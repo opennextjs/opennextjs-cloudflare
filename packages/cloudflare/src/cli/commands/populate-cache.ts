@@ -1,6 +1,6 @@
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import fs from "node:fs";
 import fsp from "node:fs/promises";
-import { tmpdir } from "node:os";
+import os from "node:os";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
@@ -92,7 +92,7 @@ export async function populateCache(
 ) {
 	const { incrementalCache, tagCache } = config.default.override ?? {};
 
-	if (!existsSync(buildOpts.outputDir)) {
+	if (!fs.existsSync(buildOpts.outputDir)) {
 		logger.error("Unable to populate cache: Open Next build not found");
 		process.exit(1);
 	}
@@ -213,7 +213,7 @@ type PopulateCacheOptions = {
  * @returns Path to the temporary config file or null if env vars not available
  */
 function createTempRcloneConfig(accessKey: string, secretKey: string, accountId: string): string | null {
-	const tempDir = tmpdir();
+	const tempDir = os.tmpdir();
 	const tempConfigPath = path.join(tempDir, `rclone-config-${Date.now()}.conf`);
 
 	const configContent = `[r2]
@@ -226,7 +226,7 @@ acl = private
 `;
 
 	//  0o600 means readable and writable by the file owner
-	writeFileSync(tempConfigPath, configContent, { mode: 0o600 });
+	fs.writeFileSync(tempConfigPath, configContent, { mode: 0o600 });
 	return tempConfigPath;
 }
 
@@ -267,14 +267,14 @@ async function populateR2IncrementalCacheWithBatchUpload(
 	logger.info("Using rclone with R2 credentials from environment variables");
 
 	// Create a staging dir in temp directory with proper key paths
-	const tempDir = tmpdir();
+	const tempDir = os.tmpdir();
 	const stagingDir = path.join(tempDir, `.r2-staging-${Date.now()}`);
 
 	// Track success to ensure cleanup happens correctly
 	let success = null;
 
 	try {
-		mkdirSync(stagingDir, { recursive: true });
+		fs.mkdirSync(stagingDir, { recursive: true });
 
 		for (const { fullPath, key, buildId, isFetch } of assets) {
 			const cacheKey = computeCacheKey(key, {
@@ -283,8 +283,8 @@ async function populateR2IncrementalCacheWithBatchUpload(
 				cacheType: isFetch ? "fetch" : "cache",
 			});
 			const destPath = path.join(stagingDir, cacheKey);
-			mkdirSync(path.dirname(destPath), { recursive: true });
-			copyFileSync(fullPath, destPath);
+			fs.mkdirSync(path.dirname(destPath), { recursive: true });
+			fs.copyFileSync(fullPath, destPath);
 		}
 
 		// Use rclone.js to sync the R2
@@ -303,16 +303,16 @@ async function populateR2IncrementalCacheWithBatchUpload(
 	} finally {
 		try {
 			// Cleanup temporary staging directory
-			rmSync(stagingDir, { recursive: true, force: true });
+			fs.rmSync(stagingDir, { recursive: true, force: true });
 		} catch {
 			logger.info(`Failed to remove temporary staging directory at ${stagingDir}`);
 		}
 
 		try {
 			// Cleanup temporary config file
-			rmSync(tempConfigPath);
+			fs.rmSync(tempConfigPath);
 		} catch {
-			console.warn(`Failed to remove temporary config at ${tempConfigPath}`);
+			logger.warn(`Failed to remove temporary config at ${tempConfigPath}`);
 		}
 	}
 
@@ -344,10 +344,10 @@ async function populateR2WithWranglerBulkPut(
 		file: fullPath,
 	}));
 
-	const tempDir = path.join(tmpdir(), `open-next-${Date.now()}`);
-	mkdirSync(tempDir, { recursive: true });
+	const tempDir = path.join(os.tmpdir(), `open-next-${Date.now()}`);
+	fs.mkdirSync(tempDir, { recursive: true });
 	const listFile = path.join(tempDir, `r2-bulk-list.json`);
-	writeFileSync(listFile, JSON.stringify(objectList));
+	fs.writeFileSync(listFile, JSON.stringify(objectList));
 
 	const concurrency = Math.max(1, populateCacheOptions.cacheChunkSize ?? 50);
 	const jurisdictionFlag = jurisdiction ? `--jurisdiction ${jurisdiction}` : "";
@@ -371,7 +371,7 @@ async function populateR2WithWranglerBulkPut(
 		}
 	);
 
-	rmSync(listFile, { force: true });
+	fs.rmSync(listFile, { force: true });
 
 	logger.info(`Successfully populated cache with ${assets.length} assets`);
 }
@@ -454,7 +454,7 @@ async function populateKVIncrementalCache(
 
 	logger.info(`Inserting ${assets.length} assets to KV in chunks of ${chunkSize}`);
 
-	const tempDir = await fsp.mkdtemp(path.join(tmpdir(), "open-next-"));
+	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "open-next-"));
 
 	for (const i of tqdm(Array.from({ length: totalChunks }, (_, i) => i))) {
 		const chunkPath = path.join(tempDir, `cache-chunk-${i}.json`);
@@ -467,10 +467,10 @@ async function populateKVIncrementalCache(
 					buildId,
 					cacheType: isFetch ? "fetch" : "cache",
 				}),
-				value: readFileSync(fullPath, "utf8"),
+				value: fs.readFileSync(fullPath, "utf8"),
 			}));
 
-		writeFileSync(chunkPath, JSON.stringify(kvMapping));
+		fs.writeFileSync(chunkPath, JSON.stringify(kvMapping));
 
 		runWrangler(
 			buildOpts,
@@ -488,7 +488,7 @@ async function populateKVIncrementalCache(
 			}
 		);
 
-		rmSync(chunkPath, { force: true });
+		fs.rmSync(chunkPath, { force: true });
 	}
 
 	logger.info(`Successfully populated cache with ${assets.length} assets`);
@@ -530,7 +530,7 @@ function populateD1TagCache(
 function populateStaticAssetsIncrementalCache(options: BuildOptions) {
 	logger.info("\nPopulating Workers static assets...");
 
-	cpSync(
+	fs.cpSync(
 		path.join(options.outputDir, "cache"),
 		path.join(options.outputDir, "assets", STATIC_ASSETS_CACHE_DIR),
 		{ recursive: true }
