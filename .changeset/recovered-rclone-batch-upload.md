@@ -2,34 +2,27 @@
 "@opennextjs/cloudflare": minor
 ---
 
-feature: optional batch upload for faster R2 cache population
+feature: optional batch upload via rclone for fast R2 cache population that bypasses Account Level Rate Limits
 
-This update recovers optional batch upload support for R2 cache population, significantly improving upload performance for large caches when enabled via .env or environment variables.
+This update recovers optional opt in for batch upload support for R2 cache population via rclone, which bypasses Account Level Rate Limits.
 
 **Key Changes:**
 
-1. **Optional Batch Upload**: Configure R2 credentials via .env or environment variables to enable faster batch uploads:
+1. **Optional Batch Upload**: Configure R2 credentials via .env or environment variables to opt in to rclone based batch uploads:
 
    - `R2_ACCESS_KEY_ID`
    - `R2_SECRET_ACCESS_KEY`
    - `CF_ACCOUNT_ID`
 
-2. **Automatic Detection**: When credentials are detected, batch upload is automatically used for better performance
+2. **Automatic Detection**: When credentials are detected, batch upload is automatically used
 
-3. **Smart Fallback**: If credentials are not configured, the CLI falls back to standard Wrangler uploads with a helpful message about enabling batch upload for better performance
+3. **Smart Fallback**: If credentials are not configured, the CLI falls back to standard Wrangler uploads with a helpful message about enabling batch upload to bypass Account Level Rate Limits
 
-**All deployment commands support batch upload:**
-
-- `populateCache` - Explicit cache population
-- `deploy` - Deploy with cache population
-- `upload` - Upload version with cache population
-- `preview` - Preview with cache population
-
-**Performance Benefits (when batch upload is enabled):**
+**Benefits (when batch upload is enabled):**
 
 - Parallel transfer capabilities (32 concurrent transfers)
-- Significantly faster for large caches
 - Reduced API calls to Cloudflare
+- Bypassing Account Level Rate Limits
 
 **Usage:**
 
