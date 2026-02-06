@@ -406,7 +406,7 @@ async function populateR2IncrementalCache(
 
 	const assets = getCacheAssets(buildOpts);
 
-	// Force sequential upload for local target
+	// Force wrangler r2 bulk upload for local target
 	if (populateCacheOptions.target === "local") {
 		logger.info("Using sequential upload for local R2 (batch upload only works with remote R2)");
 		return await populateR2WithWranglerBulkPut(
