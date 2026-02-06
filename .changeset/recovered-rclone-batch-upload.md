@@ -39,3 +39,7 @@ You can also set the environment variables for CI builds.
 **Note:**
 
 You can follow documentation https://developers.cloudflare.com/r2/api/tokens/ for creating API tokens with appropriate permissions for R2 access.
+
+**WARNING:**
+
+Approach with rclone batch upload might not be supported on all the platforms.
