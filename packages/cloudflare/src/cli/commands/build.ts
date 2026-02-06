@@ -53,7 +53,7 @@ async function buildCommand(
  */
 export function addBuildCommand<T extends yargs.Argv>(y: T) {
 	return y.command(
-		"build",
+		"build [args..]",
 		"Build an OpenNext Cloudflare worker",
 		(c) =>
 			withWranglerOptions(c)

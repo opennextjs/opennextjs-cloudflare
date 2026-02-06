@@ -52,7 +52,7 @@ export async function previewCommand(
  */
 export function addPreviewCommand<T extends yargs.Argv>(y: T) {
 	return y.command(
-		"preview",
+		"preview [args..]",
 		"Preview a built OpenNext app with a Wrangler dev server",
 		(c) =>
 			withPopulateCacheOptions(c).option("remote", {
