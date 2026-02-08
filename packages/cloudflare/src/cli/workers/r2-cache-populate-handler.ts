@@ -2,9 +2,8 @@
  * Standalone worker for R2 cache population via remote binding.
  *
  * This worker is started locally with `wrangler dev` during cache population.
- * A temporary wrangler config is derived from the project's config with the
- * R2 cache binding set to `remote: true`, allowing this local worker to write
- * directly to the remote R2 bucket.
+ * The R2 cache binding is configured with `remote: true`, allowing this local
+ * worker to write directly to the remote R2 bucket.
  *
  * This bypasses the Cloudflare API rate limit of 1,200 requests per 5 minutes
  * that affects `wrangler r2 bulk put`.
@@ -40,23 +39,12 @@ export interface CachePopulateResponse {
 }
 
 /**
- * Handles cache population requests.
+ * Writes cache entries to R2 via the binding.
  *
- * Accepts batches of cache entries via POST and writes them to R2
- * using the binding (bypassing API rate limits).
- *
- * @param request - The incoming request
- * @param env - The Cloudflare environment bindings
- * @returns Response with the population results
+ * Accepts a POST request with a JSON body containing entries to write.
+ * Returns a JSON response with write results.
  */
-export async function handleCachePopulate(
-	request: Request,
-	env: CachePopulateEnv
-): Promise<Response> {
-	if (request.method !== "POST") {
-		return new Response("Method not allowed", { status: 405 });
-	}
-
+export async function populateCache(request: Request, env: CachePopulateEnv): Promise<Response> {
 	const r2 = env[R2_CACHE_BINDING_NAME];
 	if (!r2) {
 		return new Response("R2 bucket not configured", { status: 500 });
@@ -125,5 +113,11 @@ export async function handleCachePopulate(
 }
 
 export default {
-	fetch: (request: Request, env: CachePopulateEnv) => handleCachePopulate(request, env),
+	async fetch(request: Request, env: CachePopulateEnv): Promise<Response> {
+		const url = new URL(request.url);
+		if (request.method === "POST" && url.pathname === "/populate") {
+			return populateCache(request, env);
+		}
+		return new Response("Not found", { status: 404 });
+	},
 };

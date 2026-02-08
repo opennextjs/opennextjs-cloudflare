@@ -78,6 +78,20 @@ vi.mock("./helpers.js", () => ({
 	quoteShellMeta: vi.fn((s) => s),
 }));
 
+const mockWorkerFetch = vi.fn();
+const mockWorkerDispose = vi.fn();
+
+vi.mock("wrangler", () => ({
+	unstable_startWorker: vi.fn(() =>
+		Promise.resolve({
+			ready: Promise.resolve(),
+			url: Promise.resolve(new URL("http://localhost:12345")),
+			fetch: mockWorkerFetch,
+			dispose: mockWorkerDispose,
+		})
+	),
+}));
+
 describe("populateCache", () => {
 	const setupMockFileSystem = () => {
 		mockFs({
@@ -100,45 +114,66 @@ describe("populateCache", () => {
 		({ target }) => {
 			afterEach(() => {
 				mockFs.restore();
+				vi.clearAllMocks();
 			});
 
-			// Note: R2 cache population now uses wrangler dev with remote bindings
-			// instead of `wrangler r2 bulk put`. Integration tests would be needed
-			// to fully test the wrangler dev flow. These unit tests verify the
-			// populate dispatch logic still routes R2 correctly.
-			test(`${target} - routes to R2 handler`, async () => {
+			test(`${target} - starts worker and sends cache entries`, async () => {
 				setupMockFileSystem();
 
-				// The R2 populate function now starts wrangler dev internally.
-				// We can't easily unit test the full flow without mocking spawn,
-				// so we verify the dispatch logic reaches the R2 case.
-				// Full integration testing should cover the actual wrangler dev flow.
-				await expect(
-					populateCache(
-						{
-							outputDir: "/test/output",
-						} as BuildOptions,
-						{
-							default: {
-								override: {
-									incrementalCache: "cf-r2-incremental-cache",
-								},
+				// Mock fetch to return a successful response for each batch
+				global.fetch = vi.fn().mockResolvedValue(
+					new Response(JSON.stringify({ written: 1, failed: 0 }), {
+						status: 200,
+						headers: { "Content-Type": "application/json" },
+					})
+				);
+
+				await populateCache(
+					{
+						outputDir: "/test/output",
+					} as BuildOptions,
+					{
+						default: {
+							override: {
+								incrementalCache: "cf-r2-incremental-cache",
 							},
-						} as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-						{
-							r2_buckets: [
-								{
-									binding: "NEXT_INC_CACHE_R2_BUCKET",
-									bucket_name: "test-bucket",
-								},
-							],
-						} as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-						{ target, shouldUsePreviewId: false },
-						{} as any // eslint-disable-line @typescript-eslint/no-explicit-any
-					)
-				).rejects.toThrow();
-				// This will throw because wrangler dev can't actually start in test,
-				// but it confirms the R2 cache path is reached.
+						},
+					} as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+					{
+						r2_buckets: [
+							{
+								binding: "NEXT_INC_CACHE_R2_BUCKET",
+								bucket_name: "test-bucket",
+							},
+						],
+					} as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+					{ target, shouldUsePreviewId: false },
+					{} as any // eslint-disable-line @typescript-eslint/no-explicit-any
+				);
+
+				const { unstable_startWorker: startWorker } = await import("wrangler");
+				expect(startWorker).toHaveBeenCalledWith(
+					expect.objectContaining({
+						name: "open-next-cache-populate",
+						compatibilityDate: "2026-01-01",
+						bindings: expect.objectContaining({
+							NEXT_INC_CACHE_R2_BUCKET: expect.objectContaining({
+								type: "r2_bucket",
+								bucket_name: "test-bucket",
+								remote: target === "remote",
+							}),
+						}),
+					})
+				);
+
+				// Verify fetch was called with the /populate URL
+				expect(global.fetch).toHaveBeenCalledWith(
+					"http://localhost:12345/populate",
+					expect.objectContaining({ method: "POST" })
+				);
+
+				// Verify worker was disposed
+				expect(mockWorkerDispose).toHaveBeenCalled();
 			});
 		}
 	);

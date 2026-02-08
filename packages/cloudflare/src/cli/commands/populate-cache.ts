@@ -1,4 +1,3 @@
-import { type ChildProcess, spawn } from "node:child_process";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import os from "node:os";
@@ -16,6 +15,7 @@ import type {
 import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides.js";
 import { globSync } from "glob";
 import { tqdm } from "ts-tqdm";
+import { unstable_startWorker } from "wrangler";
 import type { Unstable_Config as WranglerConfig } from "wrangler";
 import type yargs from "yargs";
 
@@ -198,9 +198,9 @@ type PopulateCacheOptions = {
 	 */
 	wranglerConfigPath?: string;
 	/**
-	 * Chunk sizes to use when populating KV cache. Ignored for R2.
+	 * Chunk sizes to use when populating the cache.
 	 *
-	 * @default 25 for KV, 50 for R2
+	 * @default 25 for KV, 5 for R2
 	 */
 	cacheChunkSize?: number;
 	/**
@@ -210,26 +210,23 @@ type PopulateCacheOptions = {
 };
 
 /**
- * Resolves the path to the cache populate handler file.
+ * Resolves the path to the R2 cache populate handler file.
  *
- * The handler is a standalone worker that wrangler dev can run directly.
- * It's located in the templates directory relative to this file.
+ * The handler is a standalone worker used with `unstable_startWorker`.
+ * It's located in the workers directory relative to this file.
  */
 function getCachePopulateHandlerPath(): string {
 	const currentDir = path.dirname(fileURLToPath(import.meta.url));
-	return path.join(currentDir, "../templates/cache-populate-handler.js");
+	return path.join(currentDir, "../workers/r2-cache-populate-handler.js");
 }
 
 /**
- * Populates the R2 incremental cache using a local wrangler dev worker
- * with a remote R2 binding.
+ * Populates the R2 incremental cache using a local worker with a remote R2 binding.
  *
  * This approach:
- * 1. Derives a temporary wrangler config from the project's config with the
- *    R2 cache binding set to `remote: true` (for remote targets).
- * 2. Starts a local worker via `wrangler dev` with a POST endpoint.
- * 3. Sends batched cache entries to the local worker.
- * 4. The worker writes entries to R2 using the binding (no API rate limits).
+ * 1. Starts a local worker via `unstable_startWorker` with the R2 cache binding.
+ * 2. Sends cache entries to the local worker a few at a time.
+ * 3. The worker writes entries to R2 using the binding (no API rate limits).
  *
  * This bypasses the Cloudflare API rate limit of 1,200 requests per 5 minutes
  * that affects `wrangler r2 bulk put`.
@@ -260,114 +257,43 @@ async function populateR2IncrementalCache(
 	const useRemote = populateCacheOptions.target === "remote";
 	const handlerPath = getCachePopulateHandlerPath();
 
-	// Create a temporary wrangler config derived from the project's config.
-	// Only the R2 cache binding is propagated, with `remote` set appropriately.
-	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "open-next-r2-populate-"));
+	const worker = await unstable_startWorker({
+		name: "open-next-cache-populate",
+		entrypoint: handlerPath,
+		compatibilityDate: "2026-01-01",
+		bindings: {
+			[R2_CACHE_BINDING_NAME]: {
+				type: "r2_bucket",
+				bucket_name: binding.bucket_name,
+				...(binding.jurisdiction && { jurisdiction: binding.jurisdiction }),
+				remote: useRemote,
+			},
+		},
+		dev: {
+			server: { port: 0 },
+			inspector: false,
+			watch: false,
+			liveReload: false,
+		},
+	});
 
 	try {
-		const tempWranglerConfig = {
-			name: "open-next-cache-populate",
-			main: handlerPath,
-			compatibility_date: "2024-12-01",
-			r2_buckets: [
-				{
-					binding: R2_CACHE_BINDING_NAME,
-					bucket_name: binding.bucket_name,
-					...(binding.jurisdiction && { jurisdiction: binding.jurisdiction }),
-					...(useRemote && { remote: true }),
-				},
-			],
-		};
-
-		const configPath = path.join(tempDir, "wrangler.json");
-		fs.writeFileSync(configPath, JSON.stringify(tempWranglerConfig, null, 2));
-
-		// Start a local worker via wrangler dev
-		const { url, stop } = await startWranglerDev(buildOpts, configPath);
-
-		try {
-			await sendCacheEntries(url, assets, prefix, populateCacheOptions.cacheChunkSize);
-		} finally {
-			stop();
-		}
+		await worker.ready;
+		const url = await worker.url;
+		const populateUrl = new URL("/populate", url).href;
+		await sendCacheEntries(populateUrl, assets, prefix, populateCacheOptions.cacheChunkSize);
 	} finally {
-		fs.rmSync(tempDir, { recursive: true, force: true });
+		await worker.dispose();
 	}
 
 	logger.info(`Successfully populated cache with ${assets.length} assets`);
 }
 
 /**
- * Starts `wrangler dev` with the given config and waits for it to be ready.
+ * Sends cache entries to the local populate worker a few at a time.
  *
- * @returns The local URL and a function to stop the worker.
- */
-function startWranglerDev(
-	buildOpts: BuildOptions,
-	configPath: string
-): Promise<{ url: string; stop: () => void }> {
-	return new Promise((resolve, reject) => {
-		const proc: ChildProcess = spawn(
-			buildOpts.packager,
-			[
-				buildOpts.packager === "bun" ? "x" : "exec",
-				"wrangler",
-				"dev",
-				"--config",
-				configPath,
-				"--port",
-				"0",
-			],
-			{
-				shell: true,
-				stdio: ["ignore", "pipe", "pipe"],
-				env: {
-					...process.env,
-					CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: "false",
-				},
-			}
-		);
-
-		let output = "";
-		const timeout = setTimeout(() => {
-			proc.kill();
-			reject(new Error(`wrangler dev timed out waiting for ready signal.\nOutput:\n${output}`));
-		}, 60_000);
-
-		const onData = (data: Buffer) => {
-			output += data.toString();
-			const match = output.match(/http:\/\/(?:localhost|0\.0\.0\.0|127\.0\.0\.1):(\d+)/);
-			if (match?.[1]) {
-				clearTimeout(timeout);
-				const url = `http://localhost:${match[1]}`;
-				resolve({
-					url,
-					stop: () => {
-						proc.kill();
-					},
-				});
-			}
-		};
-
-		proc.stdout?.on("data", onData);
-		proc.stderr?.on("data", onData);
-
-		proc.on("error", (err) => {
-			clearTimeout(timeout);
-			reject(err);
-		});
-
-		proc.on("exit", (code) => {
-			clearTimeout(timeout);
-			if (code !== 0 && code !== null) {
-				reject(new Error(`wrangler dev exited with code ${code}\nOutput:\n${output}`));
-			}
-		});
-	});
-}
-
-/**
- * Sends cache entries to the local populate worker in batches.
+ * Since the worker is local, small batches avoid excessive memory usage
+ * without meaningful overhead.
  */
 async function sendCacheEntries(
 	workerUrl: string,
@@ -375,7 +301,7 @@ async function sendCacheEntries(
 	prefix: string | undefined,
 	cacheChunkSize?: number
 ): Promise<void> {
-	const batchSize = Math.max(1, cacheChunkSize ?? 100);
+	const batchSize = Math.max(1, cacheChunkSize ?? 5);
 	const totalBatches = Math.ceil(assets.length / batchSize);
 
 	logger.info(`Populating ${assets.length} cache entries in batches of ${batchSize}`);
