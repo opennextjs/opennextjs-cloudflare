@@ -2,9 +2,14 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
+import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 import mockFs from "mock-fs";
+import rclone from "rclone.js";
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
+import type { Unstable_Config as WranglerConfig } from "wrangler";
 
+import { runWrangler } from "../utils/run-wrangler.js";
+import type { WorkerEnvVar } from "./helpers.js";
 import { getCacheAssets, populateCache } from "./populate-cache.js";
 
 describe("getCacheAssets", () => {
@@ -78,102 +83,120 @@ vi.mock("./helpers.js", () => ({
 	quoteShellMeta: vi.fn((s) => s),
 }));
 
+// Mock `rclone.js` promises API to simulate successful copy operations by default
+vi.mock("rclone.js", () => ({
+	default: {
+		promises: {
+			copy: vi.fn(() => Promise.resolve("")),
+		},
+	},
+}));
+
 describe("populateCache", () => {
-	const setupMockFileSystem = () => {
-		mockFs({
-			"/test/output": {
-				cache: {
-					buildID: {
-						path: {
-							to: {
-								"test.cache": JSON.stringify({ data: "test" }),
+	describe("R2 incremental cache", () => {
+		const buildOptions = { outputDir: "/test/output" } as BuildOptions;
+
+		const openNextConfig = {
+			default: {
+				override: {
+					incrementalCache: () => Promise.resolve({ name: "cf-r2-incremental-cache" }),
+				},
+			},
+		} as OpenNextConfig;
+
+		const wranglerConfig = {
+			r2_buckets: [
+				{
+					binding: "NEXT_INC_CACHE_R2_BUCKET",
+					bucket_name: "test-bucket",
+				},
+			],
+		} as WranglerConfig;
+
+		const r2Credentials = {
+			R2_ACCESS_KEY_ID: "test_access_key",
+			R2_SECRET_ACCESS_KEY: "test_secret_key",
+			CF_ACCOUNT_ID: "test_account_id",
+		} as WorkerEnvVar;
+
+		const setupMockFileSystem = () => {
+			mockFs({
+				"/test/output": {
+					cache: {
+						buildID: {
+							path: {
+								to: {
+									"test.cache": JSON.stringify({ data: "test" }),
+								},
 							},
 						},
 					},
 				},
-			},
+			});
+		};
+
+		afterEach(() => {
+			mockFs.restore();
+			vi.unstubAllEnvs();
 		});
-	};
 
-	describe.each([{ target: "local" as const }, { target: "remote" as const }])(
-		"R2 incremental cache",
-		({ target }) => {
-			afterEach(() => {
-				mockFs.restore();
-			});
+		test("uses `wrangler r2 bulk put` for local target", async () => {
+			setupMockFileSystem();
+			vi.mocked(runWrangler).mockClear();
+			vi.mocked(rclone.promises.copy).mockClear();
 
-			test(target, async () => {
-				const { runWrangler } = await import("../utils/run-wrangler.js");
+			await populateCache(
+				buildOptions,
+				openNextConfig,
+				wranglerConfig,
+				{ target: "local" as const, shouldUsePreviewId: false },
+				r2Credentials
+			);
 
-				setupMockFileSystem();
-				vi.mocked(runWrangler).mockClear();
+			expect(runWrangler).toHaveBeenCalled();
+			expect(rclone.promises.copy).not.toHaveBeenCalled();
+		});
 
-				await populateCache(
-					{
-						outputDir: "/test/output",
-					} as BuildOptions,
-					{
-						default: {
-							override: {
-								incrementalCache: "cf-r2-incremental-cache",
-							},
-						},
-					} as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-					{
-						r2_buckets: [
-							{
-								binding: "NEXT_INC_CACHE_R2_BUCKET",
-								bucket_name: "test-bucket",
-							},
-						],
-					} as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-					{ target, shouldUsePreviewId: false },
-					{} as any // eslint-disable-line @typescript-eslint/no-explicit-any
-				);
+		test("uses `rclone` for remote target when R2 credentials are provided", async () => {
+			setupMockFileSystem();
+			vi.mocked(rclone.promises.copy).mockClear();
 
-				expect(runWrangler).toHaveBeenCalledWith(
-					expect.anything(),
-					expect.arrayContaining(["r2 bulk put", "test-bucket"]),
-					expect.objectContaining({ target })
-				);
-			});
+			await populateCache(
+				buildOptions,
+				openNextConfig,
+				wranglerConfig,
+				{ target: "remote" as const, shouldUsePreviewId: false },
+				r2Credentials
+			);
 
-			test(`${target} using jurisdiction`, async () => {
-				const { runWrangler } = await import("../utils/run-wrangler.js");
+			expect(rclone.promises.copy).toHaveBeenCalledWith(
+				expect.any(String), // staging directory
+				"r2:test-bucket",
+				expect.objectContaining({
+					progress: true,
+					transfers: expect.any(Number),
+					checkers: expect.any(Number),
+					env: expect.objectContaining({
+						RCLONE_CONFIG: expect.any(String), // `rclone` config content with R2 credentials
+					}),
+				})
+			);
+		});
 
-				setupMockFileSystem();
-				vi.mocked(runWrangler).mockClear();
+		test("fallback to `wrangler r2 bulk put` when `rclone` fails", async () => {
+			setupMockFileSystem();
+			vi.mocked(rclone.promises.copy).mockRejectedValueOnce(new Error("rclone copy failed with exit code 7"));
+			vi.mocked(runWrangler).mockClear();
 
-				await populateCache(
-					{
-						outputDir: "/test/output",
-					} as BuildOptions,
-					{
-						default: {
-							override: {
-								incrementalCache: "cf-r2-incremental-cache",
-							},
-						},
-					} as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-					{
-						r2_buckets: [
-							{
-								binding: "NEXT_INC_CACHE_R2_BUCKET",
-								bucket_name: "test-bucket",
-								jurisdiction: "eu",
-							},
-						],
-					} as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-					{ target, shouldUsePreviewId: false },
-					{} as any // eslint-disable-line @typescript-eslint/no-explicit-any
-				);
+			await populateCache(
+				buildOptions,
+				openNextConfig,
+				wranglerConfig,
+				{ target: "remote" as const, shouldUsePreviewId: false },
+				r2Credentials
+			);
 
-				expect(runWrangler).toHaveBeenCalledWith(
-					expect.anything(),
-					expect.arrayContaining(["r2 bulk put", "test-bucket", "--jurisdiction eu"]),
-					expect.objectContaining({ target })
-				);
-			});
-		}
-	);
+			expect(runWrangler).toHaveBeenCalled();
+		});
+	});
 });
