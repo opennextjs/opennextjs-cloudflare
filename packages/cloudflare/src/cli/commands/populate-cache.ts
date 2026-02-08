@@ -107,7 +107,7 @@ export async function populateCache(
 				await populateKVIncrementalCache(buildOpts, wranglerConfig, populateCacheOptions, envVars);
 				break;
 			case STATIC_ASSETS_CACHE_NAME:
-				populateStaticAssetsIncrementalCache(buildOpts);
+				await populateStaticAssetsIncrementalCache(buildOpts);
 				break;
 			default:
 				logger.info("Incremental cache does not need populating");
@@ -209,12 +209,72 @@ type PopulateCacheOptions = {
 };
 
 /**
- * Create a temporary rclone configuration file.
- * @returns Path to the temporary config file or null if env vars not available
+ * Populates R2 incremental cache
+ *
+ * For remote targets, this function will attempt to use `rclone` first.
+ * If `rclone` fails, it will fall back to using `wrangler r2 bulk put` command.
+ *
+ * For local targets, `wrangler r2 bulk put` command is used directly.
+ *
+ * @param buildOpts The normalized build options for the current Open Next build
+ * @param config The Wrangler configuration object
+ * @param populateCacheOptions The options for populating the cache
+ * @param envVars Environment variables to use when populating the cache
+ * @returns A promise that resolves when the cache population is complete
  */
-function createTempRcloneConfig(accessKey: string, secretKey: string, accountId: string): string | null {
-	const tempDir = os.tmpdir();
-	const tempConfigPath = path.join(tempDir, `rclone-config-${Date.now()}.conf`);
+async function populateR2IncrementalCache(
+	buildOpts: BuildOptions,
+	config: WranglerConfig,
+	populateCacheOptions: PopulateCacheOptions,
+	envVars: WorkerEnvVar
+): Promise<void> {
+	logger.info("Populating R2 incremental cache...");
+
+	const binding = config.r2_buckets.find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
+	if (!binding) {
+		throw new Error(`No R2 binding "${R2_CACHE_BINDING_NAME}" found!`);
+	}
+
+	const bucket = binding.bucket_name;
+	if (!bucket) {
+		throw new Error(`R2 binding "${R2_CACHE_BINDING_NAME}" should have a 'bucket_name'`);
+	}
+
+	const prefix = envVars[R2_CACHE_PREFIX_ENV_NAME];
+
+	const assets = getCacheAssets(buildOpts);
+
+	if (populateCacheOptions.target === "remote") {
+		// Attempt `rclone` first for remote target
+		try {
+			return await populateR2IncrementalCacheWithRclone(bucket, prefix, assets, envVars);
+		} catch (error) {
+			logger.warn(`Batch upload failed: ${error instanceof Error ? error.message : error}`);
+			logger.info("Falling back to wrangler r2 bulk put...");
+		}
+	}
+
+	return await populateR2WithWranglerBulkPut(
+		buildOpts,
+		bucket,
+		prefix,
+		assets,
+		populateCacheOptions,
+		binding.jurisdiction
+	);
+}
+
+/**
+ * Create a temporary `rclone` configuration file.
+ * @returns Path to the temporary config file
+ */
+async function createTempRcloneConfig(
+	accessKey: string,
+	secretKey: string,
+	accountId: string
+): Promise<string> {
+	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "rclone-config-"));
+	const tempConfigPath = path.join(tempDir, "rclone.conf");
 
 	const configContent = `[r2]
 type = s3
@@ -226,56 +286,44 @@ acl = private
 `;
 
 	//  0o600 means readable and writable by the file owner
-	fs.writeFileSync(tempConfigPath, configContent, { mode: 0o600 });
+	await fsp.writeFile(tempConfigPath, configContent, { mode: 0o600 });
 	return tempConfigPath;
 }
 
 /**
- * Populate R2 incremental cache using rclone for batch upload
- * Uses rclone with parallel transfers to significantly speed up cache population
+ * Populate R2 incremental cache using `rclone` for batch upload
+ * Uses `rclone` with parallel transfers to significantly speed up cache population
  */
-async function populateR2IncrementalCacheWithBatchUpload(
+async function populateR2IncrementalCacheWithRclone(
 	bucket: string,
 	prefix: string | undefined,
 	assets: CacheAsset[],
 	envVars: WorkerEnvVar
 ) {
-	const accessKey = envVars.R2_ACCESS_KEY_ID || null;
-	const secretKey = envVars.R2_SECRET_ACCESS_KEY || null;
-	const accountId = envVars.CF_ACCOUNT_ID || null;
+	const accessKey = envVars.R2_ACCESS_KEY_ID;
+	const secretKey = envVars.R2_SECRET_ACCESS_KEY;
+	const accountId = envVars.CF_ACCOUNT_ID;
 
 	// Ensure all required env vars are set correctly
 	if (!accessKey || !secretKey || !accountId) {
 		throw new Error(
-			"Please set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and CF_ACCOUNT_ID environment variables to enable batch upload for remote R2 that bypasses Account Rate Limits."
+			"All of R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and CF_ACCOUNT_ID must be provided to use `rclone`."
 		);
 	}
 
-	logger.info("\nPopulating remote R2 incremental cache using rclone...");
+	logger.info("\nPopulating remote R2 incremental cache using `rclone`...");
 
-	// Create temporary config from env vars - required for batch upload
-	const tempConfigPath = createTempRcloneConfig(accessKey, secretKey, accountId);
-	if (!tempConfigPath) {
-		throw new Error("Failed to create temporary rclone config for R2 batch upload.");
-	}
+	const tempConfigPath = await createTempRcloneConfig(accessKey, secretKey, accountId);
 
 	const env = {
 		...process.env,
 		RCLONE_CONFIG: tempConfigPath,
 	};
 
-	logger.info("Using rclone with R2 credentials from environment variables");
-
 	// Create a staging dir in temp directory with proper key paths
-	const tempDir = os.tmpdir();
-	const stagingDir = path.join(tempDir, `.r2-staging-${Date.now()}`);
-
-	// Track success to ensure cleanup happens correctly
-	let success = null;
+	const stagingDir = await fsp.mkdtemp(path.join(os.tmpdir(), "r2-staging-"));
 
 	try {
-		fs.mkdirSync(stagingDir, { recursive: true });
-
 		for (const { fullPath, key, buildId, isFetch } of assets) {
 			const cacheKey = computeCacheKey(key, {
 				prefix,
@@ -283,47 +331,35 @@ async function populateR2IncrementalCacheWithBatchUpload(
 				cacheType: isFetch ? "fetch" : "cache",
 			});
 			const destPath = path.join(stagingDir, cacheKey);
-			fs.mkdirSync(path.dirname(destPath), { recursive: true });
-			fs.copyFileSync(fullPath, destPath);
+			await fsp.mkdir(path.dirname(destPath), { recursive: true });
+			await fsp.copyFile(fullPath, destPath);
 		}
 
-		// Use rclone.js to sync the R2
-		const remote = `r2:${bucket}`;
-
-		// Using rclone.js Promise-based API for the copy operation
-		await rclone.promises.copy(stagingDir, remote, {
+		await rclone.promises.copy(stagingDir, `r2:${bucket}`, {
 			progress: true,
 			transfers: 16,
 			checkers: 8,
 			env,
 		});
 
-		logger.info(`Successfully uploaded ${assets.length} assets to R2 using rclone`);
-		success = true;
+		logger.info(`Successfully uploaded ${assets.length} assets`);
 	} finally {
 		try {
-			// Cleanup temporary staging directory
-			fs.rmSync(stagingDir, { recursive: true, force: true });
+			await fsp.rm(stagingDir, { recursive: true, force: true });
 		} catch {
 			logger.info(`Failed to remove temporary staging directory at ${stagingDir}`);
 		}
 
 		try {
-			// Cleanup temporary config file
-			fs.rmSync(tempConfigPath);
+			await fsp.rm(path.dirname(tempConfigPath), { recursive: true, force: true });
 		} catch {
 			logger.warn(`Failed to remove temporary config at ${tempConfigPath}`);
 		}
-	}
-
-	if (!success) {
-		throw new Error("R2 rclone failed, falling back to wrangler r2 bulk put uploads...");
 	}
 }
 
 /**
  * Populate R2 incremental cache using Wrangler's r2 bulk put command
- * Falls back to this method when rclone is not available or fails
  */
 async function populateR2WithWranglerBulkPut(
 	buildOpts: BuildOptions,
@@ -344,10 +380,9 @@ async function populateR2WithWranglerBulkPut(
 		file: fullPath,
 	}));
 
-	const tempDir = path.join(os.tmpdir(), `open-next-${Date.now()}`);
-	fs.mkdirSync(tempDir, { recursive: true });
+	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "open-next-"));
 	const listFile = path.join(tempDir, `r2-bulk-list.json`);
-	fs.writeFileSync(listFile, JSON.stringify(objectList));
+	await fsp.writeFile(listFile, JSON.stringify(objectList));
 
 	const concurrency = Math.max(1, populateCacheOptions.cacheChunkSize ?? 50);
 	const jurisdictionFlag = jurisdiction ? `--jurisdiction ${jurisdiction}` : "";
@@ -371,63 +406,7 @@ async function populateR2WithWranglerBulkPut(
 		}
 	);
 
-	fs.rmSync(listFile, { force: true });
-
-	logger.info(`Successfully populated cache with ${assets.length} assets`);
-}
-
-async function populateR2IncrementalCache(
-	buildOpts: BuildOptions,
-	config: WranglerConfig,
-	populateCacheOptions: PopulateCacheOptions,
-	envVars: WorkerEnvVar
-) {
-	logger.info("\nPopulating R2 incremental cache...");
-
-	const binding = config.r2_buckets.find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
-	if (!binding) {
-		throw new Error(`No R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} found!`);
-	}
-
-	const bucket = binding.bucket_name;
-	if (!bucket) {
-		throw new Error(`R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} should have a 'bucket_name'`);
-	}
-
-	const prefix = envVars[R2_CACHE_PREFIX_ENV_NAME];
-
-	const assets = getCacheAssets(buildOpts);
-
-	// Force wrangler r2 bulk put for local target
-	if (populateCacheOptions.target === "local") {
-		logger.info("Using wrangler r2 bulk put for local R2 (rclone batch upload only works with remote R2)");
-		return await populateR2WithWranglerBulkPut(
-			buildOpts,
-			bucket,
-			prefix,
-			assets,
-			populateCacheOptions,
-			binding.jurisdiction
-		);
-	}
-
-	try {
-		// Attempt batch upload first (using rclone) - only for remote target
-		return await populateR2IncrementalCacheWithBatchUpload(bucket, prefix, assets, envVars);
-	} catch (error) {
-		logger.warn(`Batch upload failed: ${error instanceof Error ? error.message : error}`);
-		logger.info("Falling back to wrangler r2 bulk put...");
-
-		// Wrangler r2 bulk put fallback
-		return await populateR2WithWranglerBulkPut(
-			buildOpts,
-			bucket,
-			prefix,
-			assets,
-			populateCacheOptions,
-			binding.jurisdiction
-		);
-	}
+	await fsp.rm(listFile, { force: true });
 }
 
 async function populateKVIncrementalCache(
@@ -470,7 +449,7 @@ async function populateKVIncrementalCache(
 				value: fs.readFileSync(fullPath, "utf8"),
 			}));
 
-		fs.writeFileSync(chunkPath, JSON.stringify(kvMapping));
+		await fsp.writeFile(chunkPath, JSON.stringify(kvMapping));
 
 		runWrangler(
 			buildOpts,
@@ -488,7 +467,7 @@ async function populateKVIncrementalCache(
 			}
 		);
 
-		fs.rmSync(chunkPath, { force: true });
+		await fsp.rm(chunkPath, { force: true });
 	}
 
 	logger.info(`Successfully populated cache with ${assets.length} assets`);
@@ -527,10 +506,10 @@ function populateD1TagCache(
 	logger.info("\nSuccessfully created D1 table");
 }
 
-function populateStaticAssetsIncrementalCache(options: BuildOptions) {
+async function populateStaticAssetsIncrementalCache(options: BuildOptions) {
 	logger.info("\nPopulating Workers static assets...");
 
-	fs.cpSync(
+	await fsp.cp(
 		path.join(options.outputDir, "cache"),
 		path.join(options.outputDir, "assets", STATIC_ASSETS_CACHE_DIR),
 		{ recursive: true }

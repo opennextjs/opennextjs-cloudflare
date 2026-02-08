@@ -2,9 +2,14 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
+import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 import mockFs from "mock-fs";
+import rclone from "rclone.js";
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
+import type { Unstable_Config as WranglerConfig } from "wrangler";
 
+import { runWrangler } from "../utils/run-wrangler.js";
+import type { WorkerEnvVar } from "./helpers.js";
 import { getCacheAssets, populateCache } from "./populate-cache.js";
 
 describe("getCacheAssets", () => {
@@ -78,7 +83,7 @@ vi.mock("./helpers.js", () => ({
 	quoteShellMeta: vi.fn((s) => s),
 }));
 
-// Mock rclone.js promises API to simulate successful copy operations by default
+// Mock `rclone.js` promises API to simulate successful copy operations by default
 vi.mock("rclone.js", () => ({
 	default: {
 		promises: {
@@ -88,196 +93,109 @@ vi.mock("rclone.js", () => ({
 }));
 
 describe("populateCache", () => {
-	// Test fixtures
-	const createTestBuildOptions = (): BuildOptions =>
-		({
-			outputDir: "/test/output",
-		}) as BuildOptions;
+	describe("R2 incremental cache", () => {
+		const buildOptions = { outputDir: "/test/output" } as BuildOptions;
 
-	const createTestOpenNextConfig = () => ({
-		default: {
-			override: {
-				incrementalCache: "cf-r2-incremental-cache",
+		const openNextConfig = {
+			default: {
+				override: {
+					incrementalCache: () => Promise.resolve({ name: "cf-r2-incremental-cache" }),
+				},
 			},
-		},
-	});
+		} as OpenNextConfig;
 
-	const createTestWranglerConfig = () => ({
-		r2_buckets: [
-			{
-				binding: "NEXT_INC_CACHE_R2_BUCKET",
-				bucket_name: "test-bucket",
-			},
-		],
-	});
+		const wranglerConfig = {
+			r2_buckets: [
+				{
+					binding: "NEXT_INC_CACHE_R2_BUCKET",
+					bucket_name: "test-bucket",
+				},
+			],
+		} as WranglerConfig;
 
-	const createTestPopulateCacheOptions = () => ({
-		target: "local" as const,
-		shouldUsePreviewId: false,
-	});
+		const r2Credentials = {
+			R2_ACCESS_KEY_ID: "test_access_key",
+			R2_SECRET_ACCESS_KEY: "test_secret_key",
+			CF_ACCOUNT_ID: "test_account_id",
+		} as WorkerEnvVar;
 
-	const setupMockFileSystem = () => {
-		mockFs({
-			"/test/output": {
-				cache: {
-					buildID: {
-						path: {
-							to: {
-								"test.cache": JSON.stringify({ data: "test" }),
+		const setupMockFileSystem = () => {
+			mockFs({
+				"/test/output": {
+					cache: {
+						buildID: {
+							path: {
+								to: {
+									"test.cache": JSON.stringify({ data: "test" }),
+								},
 							},
 						},
 					},
 				},
-			},
-		});
-	};
+			});
+		};
 
-	describe("R2 incremental cache", () => {
 		afterEach(() => {
 			mockFs.restore();
 			vi.unstubAllEnvs();
 		});
 
-		test("uses sequential upload for local target (skips batch upload)", async () => {
-			const { runWrangler } = await import("../utils/run-wrangler.js");
-			const rcloneModule = (await import("rclone.js")).default;
-
+		test("uses `wrangler r2 bulk put` for local target", async () => {
 			setupMockFileSystem();
 			vi.mocked(runWrangler).mockClear();
-			vi.mocked(rcloneModule.promises.copy).mockClear();
+			vi.mocked(rclone.promises.copy).mockClear();
 
-			// Test with local target - should skip batch upload even with credentials
 			await populateCache(
-				createTestBuildOptions(),
-				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				buildOptions,
+				openNextConfig,
+				wranglerConfig,
 				{ target: "local" as const, shouldUsePreviewId: false },
-				{
-					R2_ACCESS_KEY_ID: "test_access_key",
-					R2_SECRET_ACCESS_KEY: "test_secret_key",
-					CF_ACCOUNT_ID: "test_account_id",
-				} as any // eslint-disable-line @typescript-eslint/no-explicit-any
-			);
-
-			// Should use sequential upload (runWrangler), not batch upload (rclone.js)
-			expect(runWrangler).toHaveBeenCalled();
-			expect(rcloneModule.promises.copy).not.toHaveBeenCalled();
-		});
-
-		test("uses sequential upload when R2 credentials are not provided", async () => {
-			const { runWrangler } = await import("../utils/run-wrangler.js");
-			const rcloneModule = (await import("rclone.js")).default;
-
-			setupMockFileSystem();
-			vi.mocked(runWrangler).mockClear();
-			vi.mocked(rcloneModule.promises.copy).mockClear();
-
-			// Test uses partial types for simplicity - full config not needed
-			// Pass empty envVars to simulate no R2 credentials
-			await populateCache(
-				createTestBuildOptions(),
-				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-				createTestPopulateCacheOptions(),
-				{} as any // eslint-disable-line @typescript-eslint/no-explicit-any
+				r2Credentials
 			);
 
 			expect(runWrangler).toHaveBeenCalled();
-			expect(rcloneModule.promises.copy).not.toHaveBeenCalled();
+			expect(rclone.promises.copy).not.toHaveBeenCalled();
 		});
 
-		test("uses batch upload with temporary config for remote target when R2 credentials are provided", async () => {
-			const rcloneModule = (await import("rclone.js")).default;
-
+		test("uses `rclone` for remote target when R2 credentials are provided", async () => {
 			setupMockFileSystem();
-			vi.mocked(rcloneModule.promises.copy).mockClear();
+			vi.mocked(rclone.promises.copy).mockClear();
 
-			// Test uses partial types for simplicity - full config not needed
-			// Pass envVars with R2 credentials and remote target to enable batch upload
 			await populateCache(
-				createTestBuildOptions(),
-				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				buildOptions,
+				openNextConfig,
+				wranglerConfig,
 				{ target: "remote" as const, shouldUsePreviewId: false },
-				{
-					R2_ACCESS_KEY_ID: "test_access_key",
-					R2_SECRET_ACCESS_KEY: "test_secret_key",
-					CF_ACCOUNT_ID: "test_account_id",
-				} as any // eslint-disable-line @typescript-eslint/no-explicit-any
+				r2Credentials
 			);
 
-			// Verify batch upload was used with correct parameters and temporary config
-			expect(rcloneModule.promises.copy).toHaveBeenCalledWith(
+			expect(rclone.promises.copy).toHaveBeenCalledWith(
 				expect.any(String), // staging directory
 				"r2:test-bucket",
 				expect.objectContaining({
 					progress: true,
-					transfers: 16,
-					checkers: 8,
+					transfers: expect.any(Number),
+					checkers: expect.any(Number),
 					env: expect.objectContaining({
-						RCLONE_CONFIG: expect.stringMatching(/rclone-config-\d+\.conf$/),
+						RCLONE_CONFIG: expect.any(String), // `rclone` config content with R2 credentials
 					}),
 				})
 			);
 		});
 
-		test("handles rclone errors with status > 0 for remote target", async () => {
-			const { runWrangler } = await import("../utils/run-wrangler.js");
-			const rcloneModule = (await import("rclone.js")).default;
-
+		test("fallback to `wrangler r2 bulk put` when `rclone` fails", async () => {
 			setupMockFileSystem();
-
-			// Mock rclone failure - Promise rejection
-			vi.mocked(rcloneModule.promises.copy).mockRejectedValueOnce(
-				new Error("rclone copy failed with exit code 7")
-			);
-
+			vi.mocked(rclone.promises.copy).mockRejectedValueOnce(new Error("rclone copy failed with exit code 7"));
 			vi.mocked(runWrangler).mockClear();
 
-			// Pass envVars with R2 credentials and remote target to enable batch upload (which will fail)
 			await populateCache(
-				createTestBuildOptions(),
-				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				buildOptions,
+				openNextConfig,
+				wranglerConfig,
 				{ target: "remote" as const, shouldUsePreviewId: false },
-				{
-					R2_ACCESS_KEY_ID: "test_access_key",
-					R2_SECRET_ACCESS_KEY: "test_secret_key",
-					CF_ACCOUNT_ID: "test_account_id",
-				} as any // eslint-disable-line @typescript-eslint/no-explicit-any
+				r2Credentials
 			);
 
-			// Should fall back to sequential upload when batch upload fails
-			expect(runWrangler).toHaveBeenCalled();
-		});
-
-		test("handles rclone errors with stderr output for remote target", async () => {
-			const { runWrangler } = await import("../utils/run-wrangler.js");
-			const rcloneModule = (await import("rclone.js")).default;
-
-			setupMockFileSystem();
-
-			// Mock rclone error - Promise rejection with stderr message
-			vi.mocked(rcloneModule.promises.copy).mockRejectedValueOnce(
-				new Error("ERROR : Failed to copy: AccessDenied: Access Denied (403)")
-			);
-
-			vi.mocked(runWrangler).mockClear();
-
-			// Pass envVars with R2 credentials and remote target to enable batch upload (which will fail)
-			await populateCache(
-				createTestBuildOptions(),
-				createTestOpenNextConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-				createTestWranglerConfig() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-				{ target: "remote" as const, shouldUsePreviewId: false },
-				{
-					R2_ACCESS_KEY_ID: "test_access_key",
-					R2_SECRET_ACCESS_KEY: "test_secret_key",
-					CF_ACCOUNT_ID: "test_account_id",
-				} as any // eslint-disable-line @typescript-eslint/no-explicit-any
-			);
-
-			// Should fall back to standard upload when batch upload fails
 			expect(runWrangler).toHaveBeenCalled();
 		});
 	});

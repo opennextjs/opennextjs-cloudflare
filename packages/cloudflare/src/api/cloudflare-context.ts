@@ -87,8 +87,10 @@ declare global {
 		// Cloudflare account id - needed for skew protection and R2 batch population
 		CF_ACCOUNT_ID?: string;
 
-		// R2 API credentials
-		// WARNING: these credentials are used only for rclone R2 batch upload, which might not be supported on all the platforms
+		// R2 S3 API credentials used by `rclone`
+		// NOTES:
+		// - `rclone` may not be supported on all platforms
+		// - `rclone` is not supported in development
 		R2_ACCESS_KEY_ID?: string;
 		R2_SECRET_ACCESS_KEY?: string;
 	}
