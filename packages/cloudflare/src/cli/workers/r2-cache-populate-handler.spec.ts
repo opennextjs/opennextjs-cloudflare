@@ -10,63 +10,49 @@ const createMockEnv = (withR2 = true) => ({
 	NEXT_INC_CACHE_R2_BUCKET: withR2 ? mockR2Bucket : undefined,
 });
 
-import { handleCachePopulate } from "./cache-populate-handler.js";
+import handler, { populateCache } from "./r2-cache-populate-handler.js";
 
-describe("cache-populate-handler", () => {
+describe("r2-cache-populate-handler", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
-	describe("handleCachePopulate", () => {
-		test("rejects non-POST requests", async () => {
-			const request = new Request("https://example.com/", {
-				method: "GET",
-			});
-			const env = createMockEnv() as unknown as { NEXT_INC_CACHE_R2_BUCKET: R2Bucket };
-
-			const response = await handleCachePopulate(request, env);
-
-			expect(response.status).toBe(405);
-			expect(await response.text()).toBe("Method not allowed");
-		});
-
+	describe("populateCache", () => {
 		test("returns 500 when R2 bucket is not configured", async () => {
-			const request = new Request("https://example.com/", {
+			const request = new Request("https://example.com/populate", {
 				method: "POST",
 				body: JSON.stringify({ entries: [] }),
 			});
 			const env = createMockEnv(false) as unknown as { NEXT_INC_CACHE_R2_BUCKET: R2Bucket };
 
-			const response = await handleCachePopulate(request, env);
+			const response = await populateCache(request, env);
 
 			expect(response.status).toBe(500);
 			expect(await response.text()).toBe("R2 bucket not configured");
 		});
 
 		test("returns 400 for invalid JSON body", async () => {
-			const request = new Request("https://example.com/", {
+			const request = new Request("https://example.com/populate", {
 				method: "POST",
 				body: "not json",
 			});
 			const env = createMockEnv() as unknown as { NEXT_INC_CACHE_R2_BUCKET: R2Bucket };
 
-			const response = await handleCachePopulate(request, env);
+			const response = await populateCache(request, env);
 
 			expect(response.status).toBe(400);
 			expect(await response.text()).toBe("Invalid JSON body");
 		});
 
 		test("returns 400 when entries is not an array", async () => {
-			const request = new Request("https://example.com/", {
+			const request = new Request("https://example.com/populate", {
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
+				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ entries: "not an array" }),
 			});
 			const env = createMockEnv() as unknown as { NEXT_INC_CACHE_R2_BUCKET: R2Bucket };
 
-			const response = await handleCachePopulate(request, env);
+			const response = await populateCache(request, env);
 
 			expect(response.status).toBe(400);
 			expect(await response.text()).toBe("Invalid request: entries must be an array");
@@ -75,11 +61,9 @@ describe("cache-populate-handler", () => {
 		test("successfully writes entries to R2", async () => {
 			mockR2Bucket.put.mockResolvedValue(undefined);
 
-			const request = new Request("https://example.com/", {
+			const request = new Request("https://example.com/populate", {
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
+				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					entries: [
 						{ key: "cache/key1", value: '{"data":"value1"}' },
@@ -89,7 +73,7 @@ describe("cache-populate-handler", () => {
 			});
 			const env = createMockEnv() as unknown as { NEXT_INC_CACHE_R2_BUCKET: R2Bucket };
 
-			const response = await handleCachePopulate(request, env);
+			const response = await populateCache(request, env);
 
 			expect(response.status).toBe(200);
 			const body = await response.json();
@@ -109,11 +93,9 @@ describe("cache-populate-handler", () => {
 				.mockResolvedValueOnce(undefined)
 				.mockRejectedValueOnce(new Error("R2 error"));
 
-			const request = new Request("https://example.com/", {
+			const request = new Request("https://example.com/populate", {
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
+				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					entries: [
 						{ key: "cache/key1", value: '{"data":"value1"}' },
@@ -123,7 +105,7 @@ describe("cache-populate-handler", () => {
 			});
 			const env = createMockEnv() as unknown as { NEXT_INC_CACHE_R2_BUCKET: R2Bucket };
 
-			const response = await handleCachePopulate(request, env);
+			const response = await populateCache(request, env);
 
 			expect(response.status).toBe(207);
 			const body = await response.json();
@@ -135,16 +117,14 @@ describe("cache-populate-handler", () => {
 		});
 
 		test("handles empty entries array", async () => {
-			const request = new Request("https://example.com/", {
+			const request = new Request("https://example.com/populate", {
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
+				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ entries: [] }),
 			});
 			const env = createMockEnv() as unknown as { NEXT_INC_CACHE_R2_BUCKET: R2Bucket };
 
-			const response = await handleCachePopulate(request, env);
+			const response = await populateCache(request, env);
 
 			expect(response.status).toBe(200);
 			const body = await response.json();
@@ -155,6 +135,45 @@ describe("cache-populate-handler", () => {
 			});
 
 			expect(mockR2Bucket.put).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("fetch handler routing", () => {
+		test("routes POST /populate to populateCache", async () => {
+			mockR2Bucket.put.mockResolvedValue(undefined);
+
+			const request = new Request("https://example.com/populate", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ entries: [{ key: "k", value: "v" }] }),
+			});
+			const env = createMockEnv() as unknown as { NEXT_INC_CACHE_R2_BUCKET: R2Bucket };
+
+			const response = await handler.fetch(request, env);
+
+			expect(response.status).toBe(200);
+			expect(mockR2Bucket.put).toHaveBeenCalledWith("k", "v");
+		});
+
+		test("returns 404 for non-POST requests", async () => {
+			const request = new Request("https://example.com/populate", { method: "GET" });
+			const env = createMockEnv() as unknown as { NEXT_INC_CACHE_R2_BUCKET: R2Bucket };
+
+			const response = await handler.fetch(request, env);
+
+			expect(response.status).toBe(404);
+		});
+
+		test("returns 404 for wrong pathname", async () => {
+			const request = new Request("https://example.com/other", {
+				method: "POST",
+				body: JSON.stringify({ entries: [] }),
+			});
+			const env = createMockEnv() as unknown as { NEXT_INC_CACHE_R2_BUCKET: R2Bucket };
+
+			const response = await handler.fetch(request, env);
+
+			expect(response.status).toBe(404);
 		});
 	});
 });
