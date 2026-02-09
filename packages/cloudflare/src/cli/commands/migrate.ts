@@ -72,18 +72,20 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 	printStepTitle(`${devVarsExists ? "Updating" : "Creating"} .dev.vars file`);
 	conditionalAppendFileSync(
 		".dev.vars",
-		"\nNEXTJS_ENV=development\n",
-		(content) => !/\bNEXTJS_ENV\b/.test(content)
+		"NEXTJS_ENV=development\n",
+		(content) => !/\bNEXTJS_ENV\b/.test(content),
+		"\n"
 	);
 
 	printStepTitle(`${fs.existsSync("public/_headers") ? "Updating" : "Creating"} public/_headers file`);
 	conditionalAppendFileSync(
 		"public/_headers",
-		"\n\n# https://developers.cloudflare.com/workers/static-assets/headers\n" +
+		"# https://developers.cloudflare.com/workers/static-assets/headers\n" +
 			"# https://opennext.js.org/cloudflare/caching#static-assets-caching\n" +
 			"/_next/static/*\n" +
-			"  Cache-Control: public,max-age=31536000,immutable\n\n",
-		(content) => !/^\/_next\/static\/*\b/.test(content)
+			"  Cache-Control: public,max-age=31536000,immutable\n",
+		(content) => !/^\/_next\/static\/*\b/.test(content),
+		"\n\n"
 	);
 
 	printStepTitle("Updating package.json scripts");
@@ -123,15 +125,17 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 	printStepTitle(`${gitIgnoreExists ? "Updating" : "Creating"} .gitignore file`);
 	conditionalAppendFileSync(
 		".gitignore",
-		"\n# OpenNext\n.open-next\n",
-		(content) => !content.includes(".open-next")
+		"# OpenNext\n.open-next\n",
+		(content) => !content.includes(".open-next"),
+		"\n"
 	);
 
 	printStepTitle("Updating Next.js config");
 	conditionalAppendFileSync(
 		findNextConfig({ appPath: projectDir })!,
-		"\nimport('@opennextjs/cloudflare').then(m => m.initOpenNextCloudflareForDev());\n",
-		(content) => !content.includes("initOpenNextCloudflareForDev")
+		"import('@opennextjs/cloudflare').then(m => m.initOpenNextCloudflareForDev());\n",
+		(content) => !content.includes("initOpenNextCloudflareForDev"),
+		"\n"
 	);
 
 	printStepTitle("Checking for edge runtime usage");
