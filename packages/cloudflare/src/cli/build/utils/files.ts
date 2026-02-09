@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { dirname } from "node:path";
 
 /**
  * Appends text to a file
@@ -18,6 +19,8 @@ export function conditionalAppendFileSync(
 	const fileExists = fs.existsSync(filepath);
 
 	if (!fileExists || condition(fs.readFileSync(filepath, "utf8"))) {
+		const dir = dirname(filepath);
+		fs.mkdirSync(dir, { recursive: true });
 		fs.appendFileSync(filepath, text);
 	}
 }
