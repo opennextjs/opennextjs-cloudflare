@@ -73,6 +73,13 @@ declare global {
 		// The API token to use for the cache purge. It should have the `Cache Purge` permission
 		CACHE_PURGE_API_TOKEN?: string;
 
+		// Service binding to an external DO worker.
+		// When set, proxy DO namespaces are automatically injected for
+		// NEXT_TAG_CACHE_DO_SHARDED, NEXT_CACHE_DO_QUEUE, and NEXT_CACHE_DO_PURGE
+		// if those bindings are not directly available.
+		// This enables using DOs with preview URLs / skew protection.
+		OPENNEXT_DO_WORKER?: Service;
+
 		// The following variables must be provided when skew protection is enabled
 		// The name of the worker (as defined in the wrangler configuration)
 		// When a specific wrangler environment is used, it should be appended at the end:
