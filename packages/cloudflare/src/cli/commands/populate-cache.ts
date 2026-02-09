@@ -15,8 +15,8 @@ import type {
 import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides.js";
 import { globSync } from "glob";
 import { tqdm } from "ts-tqdm";
-import { unstable_startWorker } from "wrangler";
 import type { Unstable_Config as WranglerConfig } from "wrangler";
+import { unstable_startWorker } from "wrangler";
 import type yargs from "yargs";
 
 import {
@@ -41,6 +41,7 @@ import {
 import { normalizePath } from "../build/utils/normalize-path.js";
 import type { WranglerTarget } from "../utils/run-wrangler.js";
 import { runWrangler } from "../utils/run-wrangler.js";
+import type { R2Response } from "../workers/r2-cache-types.js";
 import { getEnvFromPlatformProxy, quoteShellMeta, type WorkerEnvVar } from "./helpers.js";
 import type { WithWranglerArgs } from "./utils.js";
 import {
@@ -198,9 +199,11 @@ type PopulateCacheOptions = {
 	 */
 	wranglerConfigPath?: string;
 	/**
-	 * Chunk sizes to use when populating the cache.
+	 * Number of concurrent requests when populating the cache.
+	 * For KV this is the chunk size passed to `wrangler kv bulk put`.
+	 * For R2 this is the number of concurrent requests to the local worker.
 	 *
-	 * @default 25 for KV, 5 for R2
+	 * @default 25
 	 */
 	cacheChunkSize?: number;
 	/**
@@ -210,26 +213,15 @@ type PopulateCacheOptions = {
 };
 
 /**
- * Resolves the path to the R2 cache populate handler file.
+ * Populates the R2 incremental cache by starting a local worker with an R2 binding.
  *
- * The handler is a standalone worker used with `unstable_startWorker`.
- * It's located in the workers directory relative to this file.
- */
-function getCachePopulateHandlerPath(): string {
-	const currentDir = path.dirname(fileURLToPath(import.meta.url));
-	return path.join(currentDir, "../workers/r2-cache-populate-handler.js");
-}
-
-/**
- * Populates the R2 incremental cache using a local worker with a remote R2 binding.
+ * Flow:
+ * 1. Reads the R2 binding configuration from the wrangler config.
+ * 2. Collects cache assets from the build output.
+ * 3. Starts a local worker (via `unstable_startWorker`) with the R2 binding.
+ * 4. Sends individual POST requests to the worker.
  *
- * This approach:
- * 1. Starts a local worker via `unstable_startWorker` with the R2 cache binding.
- * 2. Sends cache entries to the local worker a few at a time.
- * 3. The worker writes entries to R2 using the binding (no API rate limits).
- *
- * This bypasses the Cloudflare API rate limit of 1,200 requests per 5 minutes
- * that affects `wrangler r2 bulk put`.
+ * Using a binding bypasses the Cloudflare REST API rate limit that affects `wrangler r2 bulk put`.
  */
 async function populateR2IncrementalCache(
 	buildOpts: BuildOptions,
@@ -237,13 +229,11 @@ async function populateR2IncrementalCache(
 	populateCacheOptions: PopulateCacheOptions,
 	envVars: WorkerEnvVar
 ) {
-	logger.info("\nPopulating R2 incremental cache...");
+	logger.info(`\nPopulating ${populateCacheOptions.target} R2 incremental cache...`);
 
-	const binding = config.r2_buckets.find(
-		({ binding }: { binding: string }) => binding === R2_CACHE_BINDING_NAME
-	);
+	const binding = config.r2_buckets.find(({ binding }) => binding === R2_CACHE_BINDING_NAME);
 	if (!binding) {
-		throw new Error(`No R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} found!`);
+		throw new Error(`No R2 binding "${R2_CACHE_BINDING_NAME}" found!`);
 	}
 
 	const prefix = envVars[R2_CACHE_PREFIX_ENV_NAME];
@@ -254,19 +244,22 @@ async function populateR2IncrementalCache(
 		return;
 	}
 
-	const useRemote = populateCacheOptions.target === "remote";
-	const handlerPath = getCachePopulateHandlerPath();
+	const currentDir = path.dirname(fileURLToPath(import.meta.url));
+	const handlerPath = path.join(currentDir, "../workers/r2-cache.js");
 
+	const isRemote = populateCacheOptions.target === "remote";
+
+	// Start a local worker with the R2 binding configured for the target environment.
 	const worker = await unstable_startWorker({
 		name: "open-next-cache-populate",
 		entrypoint: handlerPath,
 		compatibilityDate: "2026-01-01",
 		bindings: {
-			[R2_CACHE_BINDING_NAME]: {
+			R2: {
 				type: "r2_bucket",
 				bucket_name: binding.bucket_name,
 				...(binding.jurisdiction && { jurisdiction: binding.jurisdiction }),
-				remote: useRemote,
+				remote: isRemote,
 			},
 		},
 		dev: {
@@ -274,113 +267,139 @@ async function populateR2IncrementalCache(
 			inspector: false,
 			watch: false,
 			liveReload: false,
+			logLevel: "error",
 		},
+	});
+
+	// When targeting remote, wrangler's DevEnv emits an "error" event if the R2 bucket
+	// doesn't exist (Cloudflare API code 10085). In-flight fetch calls hang forever
+	// because the remote proxy session fails (see https://github.com/cloudflare/workers-sdk/issues/11253).
+	// We listen for error events and race against sendEntriesToR2Worker to surface the error.
+	const errorPromise = new Promise<never>((_, reject) => {
+		worker.raw.once("error", (event: { type: string; reason: string; cause: Error }) => {
+			const message = event.cause?.message ?? event.reason ?? "Unknown error";
+			reject(new Error(message));
+		});
 	});
 
 	try {
 		await worker.ready;
-		const url = await worker.url;
-		const populateUrl = new URL("/populate", url).href;
-		await sendCacheEntries(populateUrl, assets, prefix, populateCacheOptions.cacheChunkSize);
+		const baseUrl = await worker.url;
+		await Promise.race([
+			sendEntriesToR2Worker({
+				workerUrl: new URL("/populate", baseUrl).href,
+				assets,
+				prefix,
+				concurrency: Math.max(1, populateCacheOptions.cacheChunkSize ?? 25),
+			}),
+			errorPromise,
+		]);
+	} catch (e) {
+		await worker.dispose();
+		if (isRemote) {
+			logger.error(`Failed to populate the remote R2 cache. Does the bucket "${binding.bucket_name}" exist?`);
+		} else {
+			logger.error(`Failed to populate the local R2 cache: ${e instanceof Error ? e.message : String(e)}`);
+		}
+		process.exit(1);
 	} finally {
 		await worker.dispose();
 	}
 
-	logger.info(`Successfully populated cache with ${assets.length} assets`);
+	logger.info(`Successfully populated cache with ${assets.length} entries`);
 }
 
 /**
- * Sends cache entries to the local populate worker a few at a time.
+ * Sends cache entries to the R2 worker, one entry per request.
  *
- * Since the worker is local, small batches avoid excessive memory usage
- * without meaningful overhead.
+ * Up to `concurrency` requests are in-flight at any given time.
+ * Retry logic for transient R2 write failures is handled by the worker.
+ *
+ * @param options
+ * @param options.workerUrl - The URL of the local R2 worker's `/populate` endpoint.
+ * @param options.assets - The cache assets to write, as collected by {@link getCacheAssets}.
+ * @param options.prefix - Optional prefix prepended to each R2 key.
+ * @param options.concurrency - Maximum number of concurrent in-flight requests.
+ * @returns Resolves when all entries have been written successfully.
+ * @throws {Error} If any entry fails after all retries or encounters a non-retryable error.
  */
-async function sendCacheEntries(
-	workerUrl: string,
-	assets: CacheAsset[],
-	prefix: string | undefined,
-	cacheChunkSize?: number
-): Promise<void> {
-	const batchSize = Math.max(1, cacheChunkSize ?? 5);
-	const totalBatches = Math.ceil(assets.length / batchSize);
+async function sendEntriesToR2Worker(options: {
+	workerUrl: string;
+	assets: CacheAsset[];
+	prefix: string | undefined;
+	concurrency: number;
+}): Promise<void> {
+	const { workerUrl, assets, prefix, concurrency } = options;
 
-	logger.info(`Populating ${assets.length} cache entries in batches of ${batchSize}`);
+	// Build the list of entries to send (key + filename).
+	// File contents are read lazily in sendEntryToR2Worker to avoid
+	// loading all cache values into memory at once.
+	const entries = assets.map(({ fullPath, key, buildId, isFetch }) => ({
+		key: computeCacheKey(key, {
+			prefix,
+			buildId,
+			cacheType: isFetch ? "fetch" : "cache",
+		}),
+		filename: fullPath,
+	}));
 
-	let totalWritten = 0;
-	let totalFailed = 0;
+	// Use a concurrency-limited loop with a progress bar.
+	// `pending` tracks in-flight promises so we can cap concurrency.
+	const pending = new Set<Promise<void>>();
 
-	for (const batchIndex of tqdm(Array.from({ length: totalBatches }, (_, i) => i))) {
-		const batchAssets = assets.slice(batchIndex * batchSize, (batchIndex + 1) * batchSize);
-
-		const entries = batchAssets.map(({ fullPath, key, buildId, isFetch }) => ({
-			key: computeCacheKey(key, {
-				prefix,
-				buildId,
-				cacheType: isFetch ? "fetch" : "cache",
-			}),
-			value: fs.readFileSync(fullPath, "utf8"),
-		}));
-
-		const result = await sendBatchWithRetry(workerUrl, entries);
-
-		totalWritten += result.written;
-		totalFailed += result.failed;
-
-		if (result.failed > 0 && result.errors) {
-			logger.warn(
-				`Batch ${batchIndex + 1} had ${result.failed} failures: ${result.errors.slice(0, 3).join(", ")}`
-			);
+	for (const entry of tqdm(entries)) {
+		// If we've reached the concurrency limit, wait for one to finish.
+		if (pending.size >= concurrency) {
+			await Promise.race(pending);
 		}
+
+		const task = sendEntryToR2Worker({
+			workerUrl,
+			key: entry.key,
+			filename: entry.filename,
+		}).finally(() => pending.delete(task));
+		pending.add(task);
 	}
 
-	if (totalFailed > 0) {
-		logger.warn(
-			`Cache population completed with ${totalFailed} failures out of ${totalWritten + totalFailed} entries`
-		);
-	}
+	await Promise.all(pending);
 }
 
 /**
- * Sends a batch of cache entries to the local worker with retry logic.
+ * Sends a single cache entry to the R2 worker.
+ *
+ * The file is read from disk and sent as FormData. The worker handles
+ * retry logic internally.
+ *
+ * @param options
+ * @param options.workerUrl - The URL of the local R2 worker's `/populate` endpoint.
+ * @param options.key - The R2 object key.
+ * @param options.filename - Path to the cache file on disk. Read at send time to avoid holding all values in memory.
+ * @throws {Error} If the worker reports a failure.
  */
-async function sendBatchWithRetry(
-	workerUrl: string,
-	entries: { key: string; value: string }[],
-	maxRetries = 3,
-	retryDelayMs = 1000
-): Promise<{ written: number; failed: number; errors?: string[] }> {
-	let lastError: Error | undefined;
+async function sendEntryToR2Worker(options: {
+	workerUrl: string;
+	key: string;
+	filename: string;
+}): Promise<void> {
+	const { workerUrl, key, filename } = options;
 
-	for (let attempt = 0; attempt < maxRetries; attempt++) {
-		if (attempt > 0) {
-			logger.info(`Retrying batch (attempt ${attempt + 1}/${maxRetries})...`);
-			await sleep(retryDelayMs * Math.pow(2, attempt - 1));
-		}
+	const formData = new FormData();
+	formData.set("key", key);
+	formData.set("value", fs.readFileSync(filename, "utf8"));
 
-		try {
-			const response = await fetch(workerUrl, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ entries }),
-			});
+	const response = await fetch(workerUrl, {
+		method: "POST",
+		body: formData,
+	});
 
-			if (!response.ok && response.status !== 207) {
-				const text = await response.text().catch(() => "");
-				throw new Error(`HTTP ${response.status}: ${text || response.statusText}`);
-			}
+	const result = (await response.json()) as R2Response;
 
-			return (await response.json()) as { written: number; failed: number; errors?: string[] };
-		} catch (error) {
-			lastError = error instanceof Error ? error : new Error(String(error));
-			logger.warn(`Batch failed: ${lastError.message}`);
-		}
+	if (result.success) {
+		return;
 	}
 
-	throw new Error(`Failed to populate batch after ${maxRetries} attempts: ${lastError?.message}`);
-}
-
-function sleep(ms: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
+	logger.error(`Failed to write "${key}" to R2: ${result.error}`);
+	throw new Error(result.error);
 }
 
 async function populateKVIncrementalCache(
@@ -389,23 +408,29 @@ async function populateKVIncrementalCache(
 	populateCacheOptions: PopulateCacheOptions,
 	envVars: WorkerEnvVar
 ) {
-	logger.info("\nPopulating KV incremental cache...");
+	logger.info(`\nPopulating ${populateCacheOptions.target} KV incremental cache...`);
 
 	const binding = config.kv_namespaces.find(
 		({ binding }: { binding: string }) => binding === KV_CACHE_BINDING_NAME
 	);
 	if (!binding) {
-		throw new Error(`No KV binding ${JSON.stringify(KV_CACHE_BINDING_NAME)} found!`);
+		throw new Error(`No KV binding "${KV_CACHE_BINDING_NAME}" found!`);
 	}
 
 	const prefix = envVars[KV_CACHE_PREFIX_ENV_NAME];
-
 	const assets = getCacheAssets(buildOpts);
+
+	if (assets.length === 0) {
+		logger.info("No cache assets to populate");
+		return;
+	}
 
 	const chunkSize = Math.max(1, populateCacheOptions.cacheChunkSize ?? 25);
 	const totalChunks = Math.ceil(assets.length / chunkSize);
 
-	logger.info(`Inserting ${assets.length} assets to KV in chunks of ${chunkSize}`);
+	logger.info(
+		`Inserting ${assets.length} assets to ${populateCacheOptions.target} KV in chunks of ${chunkSize}`
+	);
 
 	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "open-next-"));
 
@@ -444,7 +469,7 @@ async function populateKVIncrementalCache(
 		fs.rmSync(chunkPath, { force: true });
 	}
 
-	logger.info(`Successfully populated cache with ${assets.length} assets`);
+	logger.info(`Successfully populated cache with ${assets.length} entries`);
 }
 
 function populateD1TagCache(
@@ -458,7 +483,7 @@ function populateD1TagCache(
 		({ binding }: { binding: string }) => binding === D1_TAG_BINDING_NAME
 	);
 	if (!binding) {
-		throw new Error(`No D1 binding ${JSON.stringify(D1_TAG_BINDING_NAME)} found!`);
+		throw new Error(`No D1 binding "${D1_TAG_BINDING_NAME}" found!`);
 	}
 
 	runWrangler(

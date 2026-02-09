@@ -1,3 +1,4 @@
+import EventEmitter from "node:events";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -88,6 +89,7 @@ vi.mock("wrangler", () => ({
 			url: Promise.resolve(new URL("http://localhost:12345")),
 			fetch: mockWorkerFetch,
 			dispose: mockWorkerDispose,
+			raw: new EventEmitter(),
 		})
 	),
 }));
@@ -117,12 +119,12 @@ describe("populateCache", () => {
 				vi.clearAllMocks();
 			});
 
-			test(`${target} - starts worker and sends cache entries`, async () => {
+			test(`${target} - starts worker and sends individual cache entries via FormData`, async () => {
 				setupMockFileSystem();
 
-				// Mock fetch to return a successful response for each batch
+				// Mock fetch to return a successful response for each individual entry.
 				global.fetch = vi.fn().mockResolvedValue(
-					new Response(JSON.stringify({ written: 1, failed: 0 }), {
+					new Response(JSON.stringify({ success: true }), {
 						status: 200,
 						headers: { "Content-Type": "application/json" },
 					})
@@ -151,13 +153,14 @@ describe("populateCache", () => {
 					{} as any // eslint-disable-line @typescript-eslint/no-explicit-any
 				);
 
+				// Verify the worker was started with the correct R2 binding configuration.
 				const { unstable_startWorker: startWorker } = await import("wrangler");
 				expect(startWorker).toHaveBeenCalledWith(
 					expect.objectContaining({
 						name: "open-next-cache-populate",
 						compatibilityDate: "2026-01-01",
 						bindings: expect.objectContaining({
-							NEXT_INC_CACHE_R2_BUCKET: expect.objectContaining({
+							R2: expect.objectContaining({
 								type: "r2_bucket",
 								bucket_name: "test-bucket",
 								remote: target === "remote",
@@ -166,13 +169,20 @@ describe("populateCache", () => {
 					})
 				);
 
-				// Verify fetch was called with the /populate URL
+				// Each cache entry should be sent as an individual POST request with FormData.
 				expect(global.fetch).toHaveBeenCalledWith(
 					"http://localhost:12345/populate",
 					expect.objectContaining({ method: "POST" })
 				);
 
-				// Verify worker was disposed
+				// Verify the body is FormData containing key and value fields.
+				const fetchCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+				const body = fetchCall[1].body;
+				expect(body).toBeInstanceOf(FormData);
+				expect(body.get("key")).toBeTypeOf("string");
+				expect(body.get("value")).toBeTypeOf("string");
+
+				// Verify worker was disposed after sending entries.
 				expect(mockWorkerDispose).toHaveBeenCalled();
 			});
 		}
