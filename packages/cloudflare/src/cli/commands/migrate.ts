@@ -128,15 +128,19 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 		appendPrefix: "\n",
 	});
 
-	printStepTitle("Updating Next.js config");
-	conditionalAppendFileSync(
-		findNextConfig({ appPath: projectDir })!,
-		"import('@opennextjs/cloudflare').then(m => m.initOpenNextCloudflareForDev());\n",
-		{
-			appendIf: (content) => !content.includes("initOpenNextCloudflareForDev"),
-			appendPrefix: "\n",
-		}
-	);
+	const nextConfig = findNextConfig({ appPath: projectDir });
+
+	if (nextConfig) {
+		printStepTitle("Updating Next.js config");
+		conditionalAppendFileSync(
+			nextConfig.path,
+			"import('@opennextjs/cloudflare').then(m => m.initOpenNextCloudflareForDev());\n",
+			{
+				appendIf: (content) => !content.includes("initOpenNextCloudflareForDev"),
+				appendPrefix: "\n",
+			}
+		);
+	}
 
 	printStepTitle("Checking for edge runtime usage");
 	try {
