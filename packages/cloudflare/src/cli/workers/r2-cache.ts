@@ -110,7 +110,6 @@ export default {
 			}
 		}
 
-		// Unreachable: the loop always runs (MAX_RETRIES >= 1) and every iteration returns.
 		throw new Error("Unreachable");
 	},
 };

@@ -267,7 +267,7 @@ async function populateR2IncrementalCache(
 			inspector: false,
 			watch: false,
 			liveReload: false,
-			logLevel: "error",
+			logLevel: "none",
 		},
 	});
 
