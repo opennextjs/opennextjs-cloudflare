@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { dirname } from "node:path";
+import path from "node:path";
 
 /**
  * Appends text to a file
@@ -22,7 +22,7 @@ export function conditionalAppendFileSync(
 	const fileContent = fileExists ? fs.readFileSync(filepath, "utf8") : "";
 
 	if (!fileExists || condition(fileContent)) {
-		const dir = dirname(filepath);
+		const dir = path.dirname(filepath);
 		fs.mkdirSync(dir, { recursive: true });
 		fs.appendFileSync(filepath, `${fileContent.length > 0 ? separator : ""}${text}`);
 	}
