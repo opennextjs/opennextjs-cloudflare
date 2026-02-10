@@ -21,9 +21,12 @@ export function conditionalAppendFileSync(
 	const fileExists = fs.existsSync(filepath);
 	const maybeFileContent = fileExists ? fs.readFileSync(filepath, "utf8") : "";
 
-	if (!fileExists || condition(maybeFileContent)) {
+	if (!fileExists) {
 		const dir = path.dirname(filepath);
 		fs.mkdirSync(dir, { recursive: true });
+	}
+
+	if (!fileExists || condition(maybeFileContent)) {
 		fs.appendFileSync(filepath, `${maybeFileContent.length > 0 ? separator : ""}${text}`);
 	}
 }
