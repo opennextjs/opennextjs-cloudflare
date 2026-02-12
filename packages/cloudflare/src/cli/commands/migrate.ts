@@ -288,7 +288,7 @@ async function ensureNextConfigExists(projectDir: string, skipNextVersionCheck: 
 		process.exit(1);
 	}
 
-	if (!skipNextVersionCheck && !ensureNextjsVersionSupported({ nextVersion: getNextVersion(projectDir) })) {
+	if (!skipNextVersionCheck && !ensureNextjsVersionSupported({ nextVersion })) {
 		logger.error(`Error: Next.js version ${nextVersion} is not compatible with OpenNext.\n`);
 		process.exit(1);
 	}
