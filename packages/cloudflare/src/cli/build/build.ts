@@ -105,7 +105,9 @@ export async function build(
 	logger.info("OpenNext build complete.");
 }
 
-async function ensureNextjsVersionSupported({ nextVersion }: buildHelper.BuildOptions) {
+export async function ensureNextjsVersionSupported({
+	nextVersion,
+}: Pick<buildHelper.BuildOptions, "nextVersion">) {
 	if (buildHelper.compareSemver(nextVersion, "<", "14.2.0")) {
 		logger.error("Next.js version unsupported, please upgrade to version 14.2 or greater.");
 		process.exit(1);
