@@ -245,7 +245,7 @@ function printStepTitle(title: string): void {
 }
 
 /**
- * Creates a default next.config.ts file with the OpenNext Cloudflare dev initialization.
+ * Creates a default next.config.ts file
  *
  * @param appDir The directory where the config file should be created
  */
