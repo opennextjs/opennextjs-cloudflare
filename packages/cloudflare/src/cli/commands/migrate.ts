@@ -17,6 +17,7 @@ import { askConfirmation } from "../utils/ask-confirmation.js";
 import { createOpenNextConfigFile, findOpenNextConfig } from "../utils/open-next-config.js";
 import { createWranglerConfigFile, findWranglerConfig } from "../utils/wrangler-config.js";
 import { printHeaders } from "./utils.js";
+import assert from "node:assert";
 
 /**
  * Implementation of the `opennextjs-cloudflare migrate` command.
@@ -30,7 +31,7 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 
 	const projectDir = process.cwd();
 
-	const nextConfigCreated = await ensureNextConfigExists(projectDir, args.forceInstall);
+	await createNextConfigFileIfMissing(projectDir, args.forceInstall);
 
 	checkRunningInsideNextjsApp({ appPath: projectDir });
 
@@ -133,23 +134,20 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 		appendPrefix: "\n",
 	});
 
-	// Only update the Next.js config if it wasn't just created
-	// (newly created configs already include initOpenNextCloudflareForDev)
-	if (!nextConfigCreated) {
-		const nextConfig = findNextConfig({ appPath: projectDir });
+	const nextConfig = findNextConfig({ appPath: projectDir });
 
-		if (nextConfig) {
-			printStepTitle("Updating Next.js config");
-			conditionalAppendFileSync(
-				nextConfig.path,
-				"import('@opennextjs/cloudflare').then(m => m.initOpenNextCloudflareForDev());\n",
-				{
-					appendIf: (content) => !content.includes("initOpenNextCloudflareForDev"),
-					appendPrefix: "\n",
-				}
-			);
+	// At this point we're sure the next config exists
+	assert(nextConfig);
+
+	printStepTitle("Updating Next.js config");
+	conditionalAppendFileSync(
+		nextConfig.path,
+		"import('@opennextjs/cloudflare').then(m => m.initOpenNextCloudflareForDev());\n",
+		{
+			appendIf: (content) => !content.includes("initOpenNextCloudflareForDev"),
+			appendPrefix: "\n",
 		}
-	}
+	);
 
 	printStepTitle("Checking for edge runtime usage");
 	try {
@@ -245,7 +243,7 @@ function printStepTitle(title: string): void {
 }
 
 /**
- * Creates a default next.config.ts file
+ * Creates a plain next.config.ts file
  *
  * @param appDir The directory where the config file should be created
  */
@@ -256,27 +254,23 @@ function createNextConfigFile(appDir: string): void {
 const nextConfig: NextConfig = {};
 
 export default nextConfig;
-
-import("@opennextjs/cloudflare").then((m) => m.initOpenNextCloudflareForDev());
 `;
 	fs.writeFileSync(nextConfigPath, content);
 }
 
 /**
- * Ensures a Next.js config file exists, creating one if necessary.
+ * Creates a next.config.ts file, after asking for the user's confirmation, if missing in the project's directory.
  *
- * This function also ensures that the "next" package is installed its version is compatible with OpenNext
+ * To be safe, this function also ensures that the "next" package is installed and its version is compatible with OpenNext.
  *
  * @param projectDir The project directory to check
  * @param skipNextVersionCheck Whether to bypass the "next" version compatibility check
- * @returns true if a new config file was created, false if one already existed
  */
-async function ensureNextConfigExists(projectDir: string, skipNextVersionCheck: boolean): Promise<boolean> {
+async function createNextConfigFileIfMissing(projectDir: string, skipNextVersionCheck: boolean) {
 	if (findNextConfig({ appPath: projectDir })) {
-		return false;
+		return;
 	}
 
-	// No config file found - check if Next.js is installed
 	let nextVersion: string;
 	try {
 		nextVersion = getNextVersion(projectDir);
@@ -293,7 +287,6 @@ async function ensureNextConfigExists(projectDir: string, skipNextVersionCheck: 
 		process.exit(1);
 	}
 
-	printStepTitle("Creating next.config.ts");
 	const answer = await askConfirmation("Missing required next.config file. Do you want to create one?");
 
 	if (!answer) {
@@ -303,8 +296,6 @@ async function ensureNextConfigExists(projectDir: string, skipNextVersionCheck: 
 
 	createNextConfigFile(projectDir);
 	logger.info("Created next.config.ts\n");
-
-	return true;
 }
 
 /**
