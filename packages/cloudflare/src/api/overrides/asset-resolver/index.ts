@@ -46,7 +46,7 @@ const resolver: AssetResolver = {
 			headers: Object.fromEntries(response.headers.entries()),
 			// Workers and Node types differ.
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			body: response.body || (new ReadableStream() as any),
+			body: method === "HEAD" ? null : response.body || (new ReadableStream() as any), // // HEAD responses have no body; the `new ReadableStream()` fallback would hang the Worker.
 			isBase64Encoded: false,
 		} satisfies InternalResult;
 	},
