@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 1.16.5
+
+### Patch Changes
+
+- [#1127](https://github.com/opennextjs/opennextjs-cloudflare/pull/1127) [`2b437f1`](https://github.com/opennextjs/opennextjs-cloudflare/commit/2b437f17cc696a65d8bb5b8fb5a230707267dd84) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - In the `migrate` command, add an initial step to create a Next.js config file (required by open-next) if it doesn't exist
+
+- [#1126](https://github.com/opennextjs/opennextjs-cloudflare/pull/1126) [`8c3a36e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8c3a36e35a0c01745054ccf71169ff2859fa18ad) Thanks [@alex-all3dp](https://github.com/alex-all3dp)! - fix: prevent Worker hang on HEAD requests to static assets
+
 ## 1.16.4
 
 ### Patch Changes
