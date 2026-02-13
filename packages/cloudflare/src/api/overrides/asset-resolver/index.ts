@@ -53,10 +53,10 @@ const resolver: AssetResolver = {
 
 /**
  * Returns the response body for an asset result.
- *  
+ *
  * HEAD responses must return `null` because `response.body` is `null` per the HTTP spec
  * and the `new ReadableStream()` fallback would create a stream that never closes, hanging the Worker.
- * 
+ *
  * @param method - The HTTP method of the request.
  * @param response - The response from the ASSETS binding.
  * @returns The body to use in the internal result.
