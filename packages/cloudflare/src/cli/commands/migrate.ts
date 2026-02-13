@@ -31,7 +31,17 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 
 	const projectDir = process.cwd();
 
-	await createNextConfigFileIfMissing(projectDir, args.forceInstall);
+	const nextConfigFileCreated = await createNextConfigFileIfMissing(projectDir, args.forceInstall).catch(
+		(e) => {
+			logger.error(`${e instanceof Error ? e.message : e}\n`);
+			process.exit(1);
+		}
+	);
+
+	if (nextConfigFileCreated === false) {
+		logger.error("The next.config file is required, aborting!\n");
+		process.exit(1);
+	}
 
 	checkRunningInsideNextjsApp({ appPath: projectDir });
 
@@ -265,8 +275,13 @@ export default nextConfig;
  *
  * @param projectDir The project directory to check
  * @param skipNextVersionCheck Whether to bypass the "next" version compatibility check
+ * @returns A boolean representing whether the user has accepter the creation of the config file, undefined if the file already existed
+ * @throws {Error} If "next" is not installed or the Next.js version is incompatible with open-next
  */
-async function createNextConfigFileIfMissing(projectDir: string, skipNextVersionCheck: boolean) {
+async function createNextConfigFileIfMissing(
+	projectDir: string,
+	skipNextVersionCheck: boolean
+): Promise<boolean | undefined> {
 	if (findNextConfig({ appPath: projectDir })) {
 		return;
 	}
@@ -275,27 +290,24 @@ async function createNextConfigFileIfMissing(projectDir: string, skipNextVersion
 	try {
 		nextVersion = getNextVersion(projectDir);
 	} catch {
-		logger.error(
-			"Error: This does not appear to be a Next.js application.\n" +
-				"The 'next' package is not installed and no next.config file was found."
+		throw new Error(
+			"This does not appear to be a Next.js application. The 'next' package is not installed and no next.config file was found."
 		);
-		process.exit(1);
 	}
 
 	if (!skipNextVersionCheck && !ensureNextjsVersionSupported({ nextVersion })) {
-		logger.error(`Error: Next.js version ${nextVersion} is not compatible with OpenNext.\n`);
-		process.exit(1);
+		throw new Error(`Next.js version ${nextVersion} is not compatible with OpenNext.`);
 	}
 
 	const answer = await askConfirmation("Missing required next.config file. Do you want to create one?");
 
 	if (!answer) {
-		logger.error("The next.config file is required, aborting!");
-		process.exit(1);
+		return false;
 	}
 
 	createNextConfigFile(projectDir);
 	logger.info("Created next.config.ts\n");
+	return true;
 }
 
 /**
