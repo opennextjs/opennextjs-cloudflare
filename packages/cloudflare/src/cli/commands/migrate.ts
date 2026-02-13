@@ -31,7 +31,7 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 
 	const projectDir = process.cwd();
 
-	const nextConfigFileCreated = await createNextConfigFileIfMissing(projectDir, args.forceInstall).catch(
+	const nextConfigFileCreated = await maybeCreateNextConfigFileIfMissing(projectDir, args.forceInstall).catch(
 		(e) => {
 			logger.error(`${e instanceof Error ? e.message : e}\n`);
 			process.exit(1);
@@ -278,7 +278,7 @@ export default nextConfig;
  * @returns A boolean representing whether the user has accepter the creation of the config file, undefined if the file already existed
  * @throws {Error} If "next" is not installed or the Next.js version is incompatible with open-next
  */
-async function createNextConfigFileIfMissing(
+async function maybeCreateNextConfigFileIfMissing(
 	projectDir: string,
 	skipNextVersionCheck: boolean
 ): Promise<boolean | undefined> {
