@@ -1,3 +1,4 @@
+import assert from "node:assert";
 import childProcess from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -17,7 +18,6 @@ import { askConfirmation } from "../utils/ask-confirmation.js";
 import { createOpenNextConfigFile, findOpenNextConfig } from "../utils/open-next-config.js";
 import { createWranglerConfigFile, findWranglerConfig } from "../utils/wrangler-config.js";
 import { printHeaders } from "./utils.js";
-import assert from "node:assert";
 
 /**
  * Implementation of the `opennextjs-cloudflare migrate` command.
