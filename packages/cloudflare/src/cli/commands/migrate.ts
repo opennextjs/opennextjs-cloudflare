@@ -295,8 +295,8 @@ async function maybeCreateNextConfigFileIfMissing(
 		);
 	}
 
-	if (!skipNextVersionCheck && !ensureNextjsVersionSupported({ nextVersion })) {
-		throw new Error(`Next.js version ${nextVersion} is not compatible with OpenNext.`);
+	if (!skipNextVersionCheck) {
+		await ensureNextjsVersionSupported({ nextVersion });
 	}
 
 	const answer = await askConfirmation("Missing required next.config file. Do you want to create one?");
