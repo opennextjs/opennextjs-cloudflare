@@ -37,6 +37,8 @@ export function printHeaders(command: string) {
 /**
  * Validates that the Next.js version is supported and checks wrangler compatibility.
  *
+ * Note: this function assumes that wrangler is installed.
+ *
  * @param options.nextVersion The detected Next.js version string
  * @throws {Error} If the Next.js version is unsupported
  */
