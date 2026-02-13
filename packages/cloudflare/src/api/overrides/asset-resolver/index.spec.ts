@@ -1,6 +1,79 @@
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { isUserWorkerFirst } from "./index.js";
+
+const mockAssetsFetch = vi.fn();
+
+vi.mock("../../cloudflare-context.js", () => ({
+	getCloudflareContext: () => ({
+		env: {
+			ASSETS: { fetch: mockAssetsFetch },
+		},
+	}),
+}));
+
+describe("maybeGetAssetResult", () => {
+	let resolver: typeof import("./index.js").default;
+
+	beforeEach(async () => {
+		vi.resetModules();
+		mockAssetsFetch.mockReset();
+		globalThis.__ASSETS_RUN_WORKER_FIRST__ = true;
+		resolver = (await import("./index.js")).default;
+	});
+
+	const makeEvent = (method: string, rawPath: string) =>
+		({
+			method,
+			rawPath,
+			headers: { accept: "*/*" },
+		}) as Parameters<typeof resolver.maybeGetAssetResult>[0];
+
+	test("GET request returns response body", async () => {
+		const body = new ReadableStream();
+		mockAssetsFetch.mockResolvedValue(new Response(body, { status: 200 }));
+
+		const result = await resolver.maybeGetAssetResult(makeEvent("GET", "/style.css"));
+
+		expect(result).toBeDefined();
+		expect(result!.statusCode).toBe(200);
+		expect(result!.body).not.toBeNull();
+	});
+
+	test("HEAD request returns null body", async () => {
+		mockAssetsFetch.mockResolvedValue(new Response(null, { status: 200 }));
+
+		const result = await resolver.maybeGetAssetResult(makeEvent("HEAD", "/style.css"));
+
+		expect(result).toBeDefined();
+		expect(result!.statusCode).toBe(200);
+		expect(result!.body).toBeNull();
+	});
+
+	test("returns undefined for 404 responses", async () => {
+		mockAssetsFetch.mockResolvedValue(new Response(null, { status: 404 }));
+
+		const result = await resolver.maybeGetAssetResult(makeEvent("GET", "/missing.css"));
+
+		expect(result).toBeUndefined();
+	});
+
+	test("returns undefined for POST requests", async () => {
+		const result = await resolver.maybeGetAssetResult(makeEvent("POST", "/style.css"));
+
+		expect(result).toBeUndefined();
+		expect(mockAssetsFetch).not.toHaveBeenCalled();
+	});
+
+	test("returns undefined when run_worker_first is false", async () => {
+		globalThis.__ASSETS_RUN_WORKER_FIRST__ = false;
+
+		const result = await resolver.maybeGetAssetResult(makeEvent("GET", "/style.css"));
+
+		expect(result).toBeUndefined();
+		expect(mockAssetsFetch).not.toHaveBeenCalled();
+	});
+});
 
 describe("isUserWorkerFirst", () => {
 	test("run_worker_first = false", () => {

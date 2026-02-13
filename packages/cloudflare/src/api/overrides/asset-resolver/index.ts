@@ -44,13 +44,32 @@ const resolver: AssetResolver = {
 			type: "core",
 			statusCode: response.status,
 			headers: Object.fromEntries(response.headers.entries()),
-			// Workers and Node types differ.
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			body: response.body || (new ReadableStream() as any),
+			body: getResponseBody(method, response) as any,
 			isBase64Encoded: false,
 		} satisfies InternalResult;
 	},
 };
+
+/**
+ * Returns the response body for an asset result.
+ *
+ * HEAD responses must return `null` because `response.body` is `null` per the HTTP spec
+ * and the `new ReadableStream()` fallback would create a stream that never closes, hanging the Worker.
+ *
+ * @param method - The HTTP method of the request.
+ * @param response - The response from the ASSETS binding.
+ * @returns The body to use in the internal result.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getResponseBody(method: string, response: Response): ReadableStream<any> | null {
+	if (method === "HEAD") {
+		return null;
+	}
+	// Workers and Node ReadableStream types differ.
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	return response.body || (new ReadableStream() as any);
+}
 
 /**
  * @param runWorkerFirst `run_worker_first` config
