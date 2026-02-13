@@ -145,8 +145,9 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 
 	const nextConfig = findNextConfig({ appPath: projectDir });
 
-	// At this point we're sure the next config exists
-	assert(nextConfig);
+	// At this point the next config file should exist (it either
+	// was part of the original project or we've created it)
+	assert(nextConfig, "Next config file unexpectedly missing");
 
 	printStepTitle("Updating Next.js config");
 	conditionalAppendFileSync(
