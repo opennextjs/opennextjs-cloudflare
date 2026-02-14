@@ -2,6 +2,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import logger from "@opennextjs/aws/logger.js";
@@ -14,6 +15,7 @@ import type {
 import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides.js";
 import { globSync } from "glob";
 import { tqdm } from "ts-tqdm";
+import { unstable_startWorker } from "wrangler";
 import type { Unstable_Config as WranglerConfig } from "wrangler";
 import type yargs from "yargs";
 
@@ -196,9 +198,9 @@ type PopulateCacheOptions = {
 	 */
 	wranglerConfigPath?: string;
 	/**
-	 * Chunk sizes to use when populating KV cache. Ignored for R2.
+	 * Chunk sizes to use when populating the cache.
 	 *
-	 * @default 25 for KV, 50 for R2
+	 * @default 25 for KV, 5 for R2
 	 */
 	cacheChunkSize?: number;
 	/**
@@ -207,6 +209,28 @@ type PopulateCacheOptions = {
 	shouldUsePreviewId: boolean;
 };
 
+/**
+ * Resolves the path to the R2 cache populate handler file.
+ *
+ * The handler is a standalone worker used with `unstable_startWorker`.
+ * It's located in the workers directory relative to this file.
+ */
+function getCachePopulateHandlerPath(): string {
+	const currentDir = path.dirname(fileURLToPath(import.meta.url));
+	return path.join(currentDir, "../workers/r2-cache-populate-handler.js");
+}
+
+/**
+ * Populates the R2 incremental cache using a local worker with a remote R2 binding.
+ *
+ * This approach:
+ * 1. Starts a local worker via `unstable_startWorker` with the R2 cache binding.
+ * 2. Sends cache entries to the local worker a few at a time.
+ * 3. The worker writes entries to R2 using the binding (no API rate limits).
+ *
+ * This bypasses the Cloudflare API rate limit of 1,200 requests per 5 minutes
+ * that affects `wrangler r2 bulk put`.
+ */
 async function populateR2IncrementalCache(
 	buildOpts: BuildOptions,
 	config: WranglerConfig,
@@ -222,53 +246,141 @@ async function populateR2IncrementalCache(
 		throw new Error(`No R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} found!`);
 	}
 
-	const bucket = binding.bucket_name;
-	if (!bucket) {
-		throw new Error(`R2 binding ${JSON.stringify(R2_CACHE_BINDING_NAME)} should have a 'bucket_name'`);
-	}
-
 	const prefix = envVars[R2_CACHE_PREFIX_ENV_NAME];
-
 	const assets = getCacheAssets(buildOpts);
 
-	const objectList = assets.map(({ fullPath, key, buildId, isFetch }) => ({
-		key: computeCacheKey(key, {
-			prefix,
-			buildId,
-			cacheType: isFetch ? "fetch" : "cache",
-		}),
-		file: fullPath,
-	}));
+	if (assets.length === 0) {
+		logger.info("No cache assets to populate");
+		return;
+	}
 
-	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "open-next-"));
-	const listFile = path.join(tempDir, `r2-bulk-list.json`);
-	fs.writeFileSync(listFile, JSON.stringify(objectList));
+	const useRemote = populateCacheOptions.target === "remote";
+	const handlerPath = getCachePopulateHandlerPath();
 
-	const concurrency = Math.max(1, populateCacheOptions.cacheChunkSize ?? 50);
-	const jurisdiction = binding.jurisdiction ? `--jurisdiction ${binding.jurisdiction}` : "";
+	const worker = await unstable_startWorker({
+		name: "open-next-cache-populate",
+		entrypoint: handlerPath,
+		compatibilityDate: "2026-01-01",
+		bindings: {
+			[R2_CACHE_BINDING_NAME]: {
+				type: "r2_bucket",
+				bucket_name: binding.bucket_name,
+				...(binding.jurisdiction && { jurisdiction: binding.jurisdiction }),
+				remote: useRemote,
+			},
+		},
+		dev: {
+			server: { port: 0 },
+			inspector: false,
+			watch: false,
+			liveReload: false,
+		},
+	});
 
-	runWrangler(
-		buildOpts,
-		[
-			"r2 bulk put",
-			bucket,
-			`--filename ${quoteShellMeta(listFile)}`,
-			`--concurrency ${concurrency}`,
-			jurisdiction,
-		],
-		{
-			target: populateCacheOptions.target,
-			configPath: populateCacheOptions.wranglerConfigPath,
-			// R2 does not support the environment flag and results in the following error:
-			// Incorrect type for the 'cacheExpiry' field on 'HttpMetadata': the provided value is not of type 'date'.
-			environment: undefined,
-			logging: "error",
-		}
-	);
-
-	fs.rmSync(listFile, { force: true });
+	try {
+		await worker.ready;
+		const url = await worker.url;
+		const populateUrl = new URL("/populate", url).href;
+		await sendCacheEntries(populateUrl, assets, prefix, populateCacheOptions.cacheChunkSize);
+	} finally {
+		await worker.dispose();
+	}
 
 	logger.info(`Successfully populated cache with ${assets.length} assets`);
+}
+
+/**
+ * Sends cache entries to the local populate worker a few at a time.
+ *
+ * Since the worker is local, small batches avoid excessive memory usage
+ * without meaningful overhead.
+ */
+async function sendCacheEntries(
+	workerUrl: string,
+	assets: CacheAsset[],
+	prefix: string | undefined,
+	cacheChunkSize?: number
+): Promise<void> {
+	const batchSize = Math.max(1, cacheChunkSize ?? 5);
+	const totalBatches = Math.ceil(assets.length / batchSize);
+
+	logger.info(`Populating ${assets.length} cache entries in batches of ${batchSize}`);
+
+	let totalWritten = 0;
+	let totalFailed = 0;
+
+	for (const batchIndex of tqdm(Array.from({ length: totalBatches }, (_, i) => i))) {
+		const batchAssets = assets.slice(batchIndex * batchSize, (batchIndex + 1) * batchSize);
+
+		const entries = batchAssets.map(({ fullPath, key, buildId, isFetch }) => ({
+			key: computeCacheKey(key, {
+				prefix,
+				buildId,
+				cacheType: isFetch ? "fetch" : "cache",
+			}),
+			value: fs.readFileSync(fullPath, "utf8"),
+		}));
+
+		const result = await sendBatchWithRetry(workerUrl, entries);
+
+		totalWritten += result.written;
+		totalFailed += result.failed;
+
+		if (result.failed > 0 && result.errors) {
+			logger.warn(
+				`Batch ${batchIndex + 1} had ${result.failed} failures: ${result.errors.slice(0, 3).join(", ")}`
+			);
+		}
+	}
+
+	if (totalFailed > 0) {
+		logger.warn(
+			`Cache population completed with ${totalFailed} failures out of ${totalWritten + totalFailed} entries`
+		);
+	}
+}
+
+/**
+ * Sends a batch of cache entries to the local worker with retry logic.
+ */
+async function sendBatchWithRetry(
+	workerUrl: string,
+	entries: { key: string; value: string }[],
+	maxRetries = 3,
+	retryDelayMs = 1000
+): Promise<{ written: number; failed: number; errors?: string[] }> {
+	let lastError: Error | undefined;
+
+	for (let attempt = 0; attempt < maxRetries; attempt++) {
+		if (attempt > 0) {
+			logger.info(`Retrying batch (attempt ${attempt + 1}/${maxRetries})...`);
+			await sleep(retryDelayMs * Math.pow(2, attempt - 1));
+		}
+
+		try {
+			const response = await fetch(workerUrl, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ entries }),
+			});
+
+			if (!response.ok && response.status !== 207) {
+				const text = await response.text().catch(() => "");
+				throw new Error(`HTTP ${response.status}: ${text || response.statusText}`);
+			}
+
+			return (await response.json()) as { written: number; failed: number; errors?: string[] };
+		} catch (error) {
+			lastError = error instanceof Error ? error : new Error(String(error));
+			logger.warn(`Batch failed: ${lastError.message}`);
+		}
+	}
+
+	throw new Error(`Failed to populate batch after ${maxRetries} attempts: ${lastError?.message}`);
+}
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function populateKVIncrementalCache(
