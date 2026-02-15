@@ -23,7 +23,7 @@ import { ensureNextjsVersionSupported, printHeaders } from "./utils.js";
  *
  * @param args
  */
-async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
+async function migrateCommand(args: { forceInstall: boolean; skipConfirmations: boolean }): Promise<void> {
 	printHeaders("migrate");
 
 	logger.info("🚀 Setting up the OpenNext Cloudflare adapter...\n");
@@ -78,10 +78,20 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 	}
 
 	printStepTitle("Creating wrangler.jsonc");
-	await createWranglerConfigFile("./");
+	const wranglerResult = await createWranglerConfigFile("./", args.skipConfirmations);
+
+	if (!wranglerResult.success) {
+		logger.warn(
+			`Failed to set up a caching solution for your project.\n` +
+				`After the migration completes, please manually create add a caching solution to your wrangler.jsonc and open-next.config.ts files (for more details see: https://opennext.js.org/cloudflare/caching).\n`
+		);
+	}
 
 	printStepTitle("Creating open-next.config.ts");
-	await createOpenNextConfigFile("./");
+	await createOpenNextConfigFile(
+		"./",
+		wranglerResult.success === true && !!wranglerResult.kvFallbackId ? true : undefined
+	);
 
 	const devVarsExists = fs.existsSync(".dev.vars");
 	printStepTitle(`${devVarsExists ? "Updating" : "Creating"} .dev.vars file`);
@@ -209,7 +219,7 @@ interface PackageManager {
 }
 
 const packageManagers = {
-	pnpm: { name: "pnpm", install: "pnpm add", installDev: "pnpm add -D", run: "pnpm" },
+	pnpm: { name: "pnpm", install: "pnpm add", installDev: "pnpm add -D", run: "pnpm run" },
 	npm: { name: "npm", install: "npm install", installDev: "npm install --save-dev", run: "npm run" },
 	bun: { name: "bun", install: "bun add", installDev: "bun add -D", run: "bun" },
 	yarn: { name: "yarn", install: "yarn add", installDev: "yarn add -D", run: "yarn" },
@@ -318,12 +328,19 @@ export function addMigrateCommand<T extends yargs.Argv>(y: T) {
 		"migrate",
 		"Set up the OpenNext Cloudflare adapter in an existing Next.js project",
 		(args) =>
-			args.option("forceInstall", {
-				type: "boolean",
-				alias: "f",
-				desc: "Install the dependencies using the `--force` flag.",
-				default: false,
-			}),
+			args
+				.option("forceInstall", {
+					type: "boolean",
+					alias: "f",
+					desc: "Install the dependencies using the `--force` flag.",
+					default: false,
+				})
+				.option("skipConfirmations", {
+					type: "boolean",
+					alias: "s",
+					desc: "Skip all interactive confirmations.",
+					default: false,
+				}),
 		(args) => migrateCommand(args)
 	);
 }
