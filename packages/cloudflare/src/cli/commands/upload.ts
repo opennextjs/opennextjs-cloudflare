@@ -1,3 +1,4 @@
+import logger from "@opennextjs/aws/logger.js";
 import type yargs from "yargs";
 
 import { DEPLOYMENT_MAPPING_ENV_NAME } from "../templates/skew-protection.js";
@@ -51,7 +52,7 @@ export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 		envVars
 	);
 
-	runWrangler(
+	const result = runWrangler(
 		buildOpts,
 		[
 			"versions upload",
@@ -62,6 +63,11 @@ export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 		],
 		{ logging: "all" }
 	);
+
+	if (!result.success) {
+		logger.error("Wrangler command failed");
+		process.exit(1);
+	}
 }
 
 /**

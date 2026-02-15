@@ -70,7 +70,7 @@ describe("getCacheAssets", () => {
 });
 
 vi.mock("../utils/run-wrangler.js", () => ({
-	runWrangler: vi.fn(),
+	runWrangler: vi.fn(() => ({ success: true, stdout: "", stderr: "" })),
 }));
 
 vi.mock("./helpers.js", () => ({

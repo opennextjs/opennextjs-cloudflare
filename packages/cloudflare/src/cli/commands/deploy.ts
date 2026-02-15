@@ -1,3 +1,4 @@
+import logger from "@opennextjs/aws/logger.js";
 import type yargs from "yargs";
 
 import { DEPLOYMENT_MAPPING_ENV_NAME } from "../templates/skew-protection.js";
@@ -45,7 +46,7 @@ export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 
 	const deploymentMapping = await getDeploymentMapping(buildOpts, config, envVars);
 
-	runWrangler(
+	const result = runWrangler(
 		buildOpts,
 		[
 			"deploy",
@@ -65,6 +66,11 @@ export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 			},
 		}
 	);
+
+	if (!result.success) {
+		logger.error("Wrangler command failed");
+		process.exit(1);
+	}
 }
 
 /**
