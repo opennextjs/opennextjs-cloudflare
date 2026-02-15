@@ -247,7 +247,7 @@ async function populateR2IncrementalCache(
 	const concurrency = Math.max(1, populateCacheOptions.cacheChunkSize ?? 50);
 	const jurisdiction = binding.jurisdiction ? `--jurisdiction ${binding.jurisdiction}` : "";
 
-	runWrangler(
+	const result = runWrangler(
 		buildOpts,
 		[
 			"r2 bulk put",
@@ -267,6 +267,11 @@ async function populateR2IncrementalCache(
 	);
 
 	fs.rmSync(listFile, { force: true });
+
+	if (!result.success) {
+		logger.error("Wrangler command failed");
+		process.exit(1);
+	}
 
 	logger.info(`Successfully populated cache with ${assets.length} assets`);
 }
@@ -313,7 +318,7 @@ async function populateKVIncrementalCache(
 
 		fs.writeFileSync(chunkPath, JSON.stringify(kvMapping));
 
-		runWrangler(
+		const result = runWrangler(
 			buildOpts,
 			[
 				"kv bulk put",
@@ -330,6 +335,11 @@ async function populateKVIncrementalCache(
 		);
 
 		fs.rmSync(chunkPath, { force: true });
+
+		if (!result.success) {
+			logger.error("Wrangler command failed");
+			process.exit(1);
+		}
 	}
 
 	logger.info(`Successfully populated cache with ${assets.length} assets`);
@@ -349,7 +359,7 @@ function populateD1TagCache(
 		throw new Error(`No D1 binding ${JSON.stringify(D1_TAG_BINDING_NAME)} found!`);
 	}
 
-	runWrangler(
+	const result = runWrangler(
 		buildOpts,
 		[
 			"d1 execute",
@@ -364,6 +374,11 @@ function populateD1TagCache(
 			logging: "error",
 		}
 	);
+
+	if (!result.success) {
+		logger.error("Wrangler command failed");
+		process.exit(1);
+	}
 
 	logger.info("\nSuccessfully created D1 table");
 }

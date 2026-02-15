@@ -78,10 +78,17 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 	}
 
 	printStepTitle("Creating wrangler.jsonc");
-	await createWranglerConfigFile("./");
+	const { cachingEnabled } = await createWranglerConfigFile("./");
+
+	if (!cachingEnabled) {
+		logger.warn(
+			`Failed to set up a caching solution for your project.\n` +
+				`After the migration completes, please manually create add a caching solution to your wrangler.jsonc and open-next.config.ts files (for more details see: https://opennext.js.org/cloudflare/caching).\n`
+		);
+	}
 
 	printStepTitle("Creating open-next.config.ts");
-	await createOpenNextConfigFile("./");
+	await createOpenNextConfigFile("./", !cachingEnabled);
 
 	const devVarsExists = fs.existsSync(".dev.vars");
 	printStepTitle(`${devVarsExists ? "Updating" : "Creating"} .dev.vars file`);
@@ -197,7 +204,10 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 		"🎉 OpenNext Cloudflare adapter complete!\n" +
 			"\nNext steps:\n" +
 			`- Run: "${packageManager.run} preview" to build and preview your Cloudflare application locally\n` +
-			`- Run: "${packageManager.run} deploy" to deploy your application to Cloudflare Workers\n`
+			`- Run: "${packageManager.run} deploy" to deploy your application to Cloudflare Workers\n` +
+			(cachingEnabled
+				? ""
+				: `- ⚠️  Add caching solution, see https://opennext.js.org/cloudflare/caching for more details\n`)
 	);
 }
 
@@ -209,7 +219,7 @@ interface PackageManager {
 }
 
 const packageManagers = {
-	pnpm: { name: "pnpm", install: "pnpm add", installDev: "pnpm add -D", run: "pnpm" },
+	pnpm: { name: "pnpm", install: "pnpm add", installDev: "pnpm add -D", run: "pnpm run" },
 	npm: { name: "npm", install: "npm install", installDev: "npm install --save-dev", run: "npm run" },
 	bun: { name: "bun", install: "bun add", installDev: "bun add -D", run: "bun" },
 	yarn: { name: "yarn", install: "yarn add", installDev: "yarn add -D", run: "yarn" },

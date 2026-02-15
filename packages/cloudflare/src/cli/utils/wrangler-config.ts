@@ -1,7 +1,12 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
+import { findPackagerAndRoot } from "@opennextjs/aws/build/helper.js";
+
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
+import { askConfirmation } from "./ask-confirmation.js";
+import { runWrangler } from "./run-wrangler.js";
 
 /**
  * Gets the path to the Wrangler configuration file if it exists.
@@ -27,14 +32,29 @@ export function findWranglerConfig(appDir: string): string | undefined {
  *
  * If a wrangler.jsonc file already exists it will be overridden.
  *
+ * The function attempts to create an R2 bucket for incremental cache. If R2 is not enabled
+ * on the account, it falls back to creating a KV namespace instead.
+ *
  * @param projectDir The target directory for the project
+ * @returns An object containing a `cachingEnabled` which indicates whether caching has been set up during the wrangler
+ *          config file creation or not
  */
-export async function createWranglerConfigFile(projectDir: string) {
-	let wranglerConfig = readFileSync(join(getPackageTemplatesDirPath(), "wrangler.jsonc"), "utf8");
+export async function createWranglerConfigFile(projectDir: string): Promise<{ cachingEnabled: boolean }> {
+	const workerName = getWorkerName(projectDir);
 
-	const appName = getAppNameFromPackageJson(projectDir) ?? "app-name";
+	let r2BucketCreationResult: Awaited<ReturnType<typeof maybeCreateR2Bucket>> | undefined = undefined;
 
-	wranglerConfig = wranglerConfig.replaceAll('"<WORKER_NAME>"', JSON.stringify(appName.replaceAll("_", "-")));
+	const bucketName = `${workerName}-opennext-incremental-cache`;
+	r2BucketCreationResult = await maybeCreateR2Bucket(projectDir, bucketName);
+
+	const cachingEnabled = r2BucketCreationResult.success === true;
+
+	let wranglerConfig = readFileSync(
+		join(getPackageTemplatesDirPath(), !cachingEnabled ? "wrangler.no-cache.jsonc" : "wrangler.jsonc"),
+		"utf8"
+	);
+
+	wranglerConfig = wranglerConfig.replaceAll('"<WORKER_NAME>"', JSON.stringify(workerName));
 
 	const compatDate = await getLatestCompatDate();
 	if (compatDate) {
@@ -44,7 +64,37 @@ export async function createWranglerConfigFile(projectDir: string) {
 		);
 	}
 
+	if (r2BucketCreationResult?.success) {
+		wranglerConfig = wranglerConfig.replace(
+			'"<R2_BUCKET_NAME>"',
+			JSON.stringify(r2BucketCreationResult.bucketName)
+		);
+	}
+
 	writeFileSync(join(projectDir, "wrangler.jsonc"), wranglerConfig);
+
+	return {
+		cachingEnabled,
+	};
+}
+
+/**
+ * Gets a valid worker name from the project's package.json name, falling back to `app-name`
+ * in case the name could not be detected.
+ *
+ * @param projectDir The project directory containing the package.json file
+ * @returns A valid worker name suitable for a Cloudflare Worker
+ */
+function getWorkerName(projectDir: string): string {
+	const appName = getAppNameFromPackageJson(projectDir) ?? "app-name";
+
+	// Remove org prefix if present (e.g., "@org/my-app" -> "my-app")
+	const nameWithoutOrg = appName.replace(/^@[^/]+\//, "");
+
+	return nameWithoutOrg
+		.toLowerCase()
+		.replaceAll("_", "-")
+		.replace(/[^a-z0-9-]/g, "");
 }
 
 function getAppNameFromPackageJson(sourceDir: string): string | undefined {
@@ -78,4 +128,93 @@ async function getLatestCompatDate(): Promise<string | undefined> {
 	} catch {
 		/* empty */
 	}
+}
+
+/**
+ * Checks if the user is logged in to Cloudflare via wrangler.
+ *
+ * @param options The build options containing packager and monorepo root
+ * @returns true if logged in, false otherwise
+ */
+function isWranglerLoggedIn(options: Pick<BuildOptions, "packager" | "monorepoRoot">): boolean {
+	const result = runWrangler(options, ["whoami"], { logging: "none" });
+	const output = result.stdout + result.stderr;
+	return result.success && /You are logged in/.test(output);
+}
+
+/**
+ * Attempts to log in to Cloudflare via wrangler.
+ *
+ * @param options The build options containing packager and monorepo root
+ * @returns true if login was successful, false otherwise
+ */
+function wranglerLogin(options: Pick<BuildOptions, "packager" | "monorepoRoot">): boolean {
+	const result = runWrangler(options, ["login"], { logging: "all" });
+	return result.success;
+}
+
+/**
+ * Ensures the user is authenticated with Cloudflare via wrangler.
+ * If not logged in, prompts the user to log in.
+ *
+ * @param options The build options containing packager and monorepo root
+ * @returns true if authenticated (either already or after login), false otherwise
+ */
+async function ensureWranglerAuth(
+	options: Pick<BuildOptions, "packager" | "monorepoRoot">
+): Promise<boolean> {
+	if (isWranglerLoggedIn(options)) {
+		return true;
+	}
+
+	const shouldLogin = await askConfirmation(
+		"You are not logged in to Cloudflare. Would you like to log in now?"
+	);
+
+	if (!shouldLogin) {
+		return false;
+	}
+
+	return wranglerLogin(options);
+}
+
+/**
+ * Creates an R2 bucket using wrangler CLI.
+ *
+ * @param projectDir The project directory to detect the package manager
+ * @param bucketName The name of the R2 bucket to create
+ * @returns An object indicating success with the bucket name, or failure with a reason
+ */
+async function maybeCreateR2Bucket(
+	projectDir: string,
+	bucketName: string
+): Promise<{ success: true; bucketName: string } | { success: false }> {
+	try {
+		const { packager, root: monorepoRoot } = findPackagerAndRoot(projectDir);
+		const options = { packager, monorepoRoot };
+
+		// Check authentication before attempting to create the bucket
+		const isAuthenticated = await ensureWranglerAuth(options);
+		if (!isAuthenticated) {
+			return { success: false };
+		}
+
+		// Use logging: "all" to allow wrangler to prompt for account selection if needed
+		const result = runWrangler(options, ["r2", "bucket", "create", bucketName], {
+			logging: "all",
+		});
+
+		if (result.success) {
+			return { success: true, bucketName };
+		}
+
+		// Check if the error is because the bucket already exists
+		if (result.stderr.includes("already exists")) {
+			return { success: true, bucketName };
+		}
+	} catch {
+		/* empty */
+	}
+
+	return { success: false };
 }

@@ -20,15 +20,19 @@ export function findOpenNextConfig(appDir: string): string | undefined {
 }
 
 /**
- * Creates a `open-next.config.ts` file in the target directory for the project.
+ * Creates an `open-next.config.ts` file in the target directory by copying
+ * the appropriate template file from the package templates.
  *
- * @param appDir The Next application root
- * @return The path to the created source file
+ * @param appDir The Next.js application root directory
+ * @param noCache Flag indicating whether to not to set up caching
+ * @returns The full path to the created configuration file
  */
-export async function createOpenNextConfigFile(appDir: string): Promise<string> {
+export async function createOpenNextConfigFile(appDir: string, noCache: boolean): Promise<string> {
 	const openNextConfigPath = join(appDir, "open-next.config.ts");
 
-	cpSync(join(getPackageTemplatesDirPath(), "open-next.config.ts"), openNextConfigPath);
+	const templateFileToUse = noCache ? "open-next.config.no-cache.ts" : "open-next.config.ts";
+
+	cpSync(join(getPackageTemplatesDirPath(), templateFileToUse), openNextConfigPath);
 
 	return openNextConfigPath;
 }
