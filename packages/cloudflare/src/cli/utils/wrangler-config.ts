@@ -36,17 +36,17 @@ export function findWranglerConfig(appDir: string): string | undefined {
  * on the account, it falls back to creating a KV namespace instead.
  *
  * @param projectDir The target directory for the project
- * @param skipConfirmations Flag to indicate whether asking for confirmations should be skipped
+ * @param yesForConfirmations Flag to indicate whether default values should be used instead of asking for confirmations
  * @returns An object with `success: true` and optionally `kvFallbackId` if a KV namespace was created
- *          as fallback, or `success: false` if R2 was not enabled and KV creation also failed.
+ *          as fallback, or `success: false` if R2 was not enabled and KV creation also failed
  */
 export async function createWranglerConfigFile(
 	projectDir: string,
-	skipConfirmations = false
+	yesForConfirmations = false
 ): Promise<{ success: true; kvFallbackId?: string } | { success: false }> {
 	const workerName = getWorkerName(projectDir);
 
-	const shouldCreateBucket = skipConfirmations
+	const shouldCreateBucket = yesForConfirmations
 		? true
 		: await askConfirmation(
 				"The Wrangler configuration requires an R2 bucket for incremental cache, do you want to create it now?"
@@ -86,7 +86,7 @@ export async function createWranglerConfigFile(
 			r2BucketCreationResult.success === false &&
 			r2BucketCreationResult.reason === "R2 not enabled"
 		) {
-			shouldCreateKV = skipConfirmations
+			shouldCreateKV = yesForConfirmations
 				? true
 				: await askConfirmation(
 						"The R2 bucket creation has failed because R2 isn't configured for your account. " +

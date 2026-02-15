@@ -23,7 +23,7 @@ import { ensureNextjsVersionSupported, printHeaders } from "./utils.js";
  *
  * @param args
  */
-async function migrateCommand(args: { forceInstall: boolean; skipConfirmations: boolean }): Promise<void> {
+async function migrateCommand(args: { forceInstall: boolean; yes: boolean }): Promise<void> {
 	printHeaders("migrate");
 
 	logger.info("🚀 Setting up the OpenNext Cloudflare adapter...\n");
@@ -78,7 +78,7 @@ async function migrateCommand(args: { forceInstall: boolean; skipConfirmations: 
 	}
 
 	printStepTitle("Creating wrangler.jsonc");
-	const wranglerResult = await createWranglerConfigFile("./", args.skipConfirmations);
+	const wranglerResult = await createWranglerConfigFile("./", args.yes);
 
 	if (!wranglerResult.success) {
 		logger.warn(
@@ -335,10 +335,10 @@ export function addMigrateCommand<T extends yargs.Argv>(y: T) {
 					desc: "Install the dependencies using the `--force` flag.",
 					default: false,
 				})
-				.option("skipConfirmations", {
+				.option("yes", {
 					type: "boolean",
-					alias: "s",
-					desc: "Skip all interactive confirmations.",
+					alias: "y",
+					desc: "Use the default values for all interactive confirmations.",
 					default: false,
 				}),
 		(args) => migrateCommand(args)
