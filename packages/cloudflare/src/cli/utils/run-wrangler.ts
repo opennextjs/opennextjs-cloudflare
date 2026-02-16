@@ -104,6 +104,7 @@ export function runWrangler(
 		}
 	);
 
+	const success = result.status === 0;
 	const stdout = result.stdout?.toString() ?? "";
 	const stderr = result.stderr?.toString() ?? "";
 
@@ -112,8 +113,15 @@ export function runWrangler(
 		process.stderr.write(stderr);
 	}
 
+	if (!success) {
+		if (shouldPipeLogs) {
+			process.stdout.write(stdout);
+			process.stderr.write(stderr);
+		}
+	}
+
 	return {
-		success: result.status === 0,
+		success,
 		stdout,
 		stderr,
 	};

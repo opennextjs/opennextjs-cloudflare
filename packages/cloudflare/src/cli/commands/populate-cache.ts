@@ -269,8 +269,6 @@ async function populateR2IncrementalCache(
 	fs.rmSync(listFile, { force: true });
 
 	if (!result.success) {
-		process.stdout.write(result.stdout);
-		process.stderr.write(result.stderr);
 		logger.error("Wrangler command failed");
 		process.exit(1);
 	}
@@ -339,8 +337,6 @@ async function populateKVIncrementalCache(
 		fs.rmSync(chunkPath, { force: true });
 
 		if (!result.success) {
-			process.stdout.write(result.stdout);
-			process.stderr.write(result.stderr);
 			logger.error("Wrangler command failed");
 			process.exit(1);
 		}
@@ -380,8 +376,6 @@ function populateD1TagCache(
 	);
 
 	if (!result.success) {
-		process.stdout.write(result.stdout);
-		process.stderr.write(result.stderr);
 		logger.error("Wrangler command failed");
 		process.exit(1);
 	}
