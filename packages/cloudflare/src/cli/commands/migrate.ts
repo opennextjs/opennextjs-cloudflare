@@ -197,7 +197,10 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 		"🎉 OpenNext Cloudflare adapter complete!\n" +
 			"\nNext steps:\n" +
 			`- Run: "${packageManager.run} preview" to build and preview your Cloudflare application locally\n` +
-			`- Run: "${packageManager.run} deploy" to deploy your application to Cloudflare Workers\n`
+			`- Run: "${packageManager.run} deploy" to deploy your application to Cloudflare Workers\n` +
+			`\n\n` +
+			`⚠️ Note: This setup doesn't include caching, for best results please enable caching by following\n` +
+			` the instructions in: https://opennext.js.org/cloudflare/caching\n`
 	);
 }
 
