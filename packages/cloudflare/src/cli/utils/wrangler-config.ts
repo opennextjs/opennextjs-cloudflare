@@ -212,17 +212,20 @@ async function maybeCreateR2Bucket(
 			return { success: false };
 		}
 
+		// Check if bucket already exists
+		const infoResult = runWrangler(options, ["r2", "bucket", "info", bucketName], {
+			logging: "none",
+		});
+		if (infoResult.success) {
+			return { success: true, bucketName };
+		}
+
 		// Use logging: "all" to allow wrangler to prompt for account selection if needed
 		const result = runWrangler(options, ["r2", "bucket", "create", bucketName], {
 			logging: "all",
 		});
 
 		if (result.success) {
-			return { success: true, bucketName };
-		}
-
-		// Check if the error is because the bucket already exists
-		if (result.stderr.includes("already exists")) {
 			return { success: true, bucketName };
 		}
 	} catch {
