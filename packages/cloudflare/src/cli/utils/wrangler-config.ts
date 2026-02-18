@@ -211,7 +211,6 @@ async function maybeCreateR2Bucket(
 		}
 
 		// Check if the error is because the bucket already exists
-		// TODO: Use error codes from wrangler if they become available instead of checking stderr string
 		if (result.stderr.includes("already exists")) {
 			return { success: true, bucketName };
 		}
