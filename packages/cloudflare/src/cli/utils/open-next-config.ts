@@ -24,13 +24,13 @@ export function findOpenNextConfig(appDir: string): string | undefined {
  * the appropriate template file from the package templates.
  *
  * @param appDir The Next.js application root directory
- * @param noCache Flag indicating whether to not to set up caching
+ * @param options.cache Whether to set up caching in the configuration
  * @returns The full path to the created configuration file
  */
-export async function createOpenNextConfigFile(appDir: string, noCache: boolean): Promise<string> {
+export async function createOpenNextConfigFile(appDir: string, options: { cache: boolean }): Promise<string> {
 	const openNextConfigPath = join(appDir, "open-next.config.ts");
 
-	const templateFileToUse = noCache ? "open-next.config.no-cache.ts" : "open-next.config.ts";
+	const templateFileToUse = options.cache ? "open-next.config.ts" : "open-next.config.no-cache.ts";
 
 	cpSync(join(getPackageTemplatesDirPath(), templateFileToUse), openNextConfigPath);
 

@@ -83,12 +83,12 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 	if (!cachingEnabled) {
 		logger.warn(
 			`Failed to set up a caching solution for your project.\n` +
-				`After the migration completes, please manually create add a caching solution to your wrangler.jsonc and open-next.config.ts files (for more details see: https://opennext.js.org/cloudflare/caching).\n`
+				`After the migration completes, please manually add a caching solution to your wrangler.jsonc and open-next.config.ts files (for more details see: https://opennext.js.org/cloudflare/caching).\n`
 		);
 	}
 
 	printStepTitle("Creating open-next.config.ts");
-	await createOpenNextConfigFile("./", !cachingEnabled);
+	await createOpenNextConfigFile("./", { cache: cachingEnabled });
 
 	const devVarsExists = fs.existsSync(".dev.vars");
 	printStepTitle(`${devVarsExists ? "Updating" : "Creating"} .dev.vars file`);

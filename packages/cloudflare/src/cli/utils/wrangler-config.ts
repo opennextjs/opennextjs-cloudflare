@@ -32,8 +32,9 @@ export function findWranglerConfig(appDir: string): string | undefined {
  *
  * If a wrangler.jsonc file already exists it will be overridden.
  *
- * The function attempts to create an R2 bucket for incremental cache. If R2 is not enabled
- * on the account, it falls back to creating a KV namespace instead.
+ * The function attempts to create an R2 bucket for incremental cache. If bucket creation
+ * fails (e.g., user not authenticated or R2 not enabled), a configuration without caching
+ * will be created instead.
  *
  * @param projectDir The target directory for the project
  * @returns An object containing a `cachingEnabled` which indicates whether caching has been set up during the wrangler
@@ -42,17 +43,12 @@ export function findWranglerConfig(appDir: string): string | undefined {
 export async function createWranglerConfigFile(projectDir: string): Promise<{ cachingEnabled: boolean }> {
 	const workerName = getWorkerName(projectDir);
 
-	let r2BucketCreationResult: Awaited<ReturnType<typeof maybeCreateR2Bucket>> | undefined = undefined;
-
 	const bucketName = `${workerName}-opennext-incremental-cache`;
-	r2BucketCreationResult = await maybeCreateR2Bucket(projectDir, bucketName);
+	const r2BucketCreationResult = await maybeCreateR2Bucket(projectDir, bucketName);
 
 	const cachingEnabled = r2BucketCreationResult.success === true;
 
-	let wranglerConfig = readFileSync(
-		join(getPackageTemplatesDirPath(), !cachingEnabled ? "wrangler.no-cache.jsonc" : "wrangler.jsonc"),
-		"utf8"
-	);
+	let wranglerConfig = readFileSync(join(getPackageTemplatesDirPath(), "wrangler.jsonc"), "utf8");
 
 	wranglerConfig = wranglerConfig.replaceAll('"<WORKER_NAME>"', JSON.stringify(workerName));
 
@@ -64,10 +60,17 @@ export async function createWranglerConfigFile(projectDir: string): Promise<{ ca
 		);
 	}
 
-	if (r2BucketCreationResult?.success) {
+	if (cachingEnabled) {
+		// Replace R2 bucket name placeholder and remove the markers
+		wranglerConfig = wranglerConfig
+			.replace('"<R2_BUCKET_NAME>"', JSON.stringify(r2BucketCreationResult.bucketName))
+			.replace(/\t\/\/ __R2_CACHE_START__\n/g, "")
+			.replace(/\t\/\/ __R2_CACHE_END__\n/g, "");
+	} else {
+		// Remove the entire R2 cache section (including the markers)
 		wranglerConfig = wranglerConfig.replace(
-			'"<R2_BUCKET_NAME>"',
-			JSON.stringify(r2BucketCreationResult.bucketName)
+			/\t\/\/ __R2_CACHE_START__\n[\s\S]*?\t\/\/ __R2_CACHE_END__\n/g,
+			"\t// For best results consider enabling R2 caching\n\t// See https://opennext.js.org/cloudflare/caching for more details\n"
 		);
 	}
 
@@ -94,7 +97,7 @@ function getWorkerName(projectDir: string): string {
 	return nameWithoutOrg
 		.toLowerCase()
 		.replaceAll("_", "-")
-		.replace(/[^a-z0-9-]/g, "");
+		.replace(/[^a-z0-9-]/gi, "");
 }
 
 function getAppNameFromPackageJson(sourceDir: string): string | undefined {
@@ -136,6 +139,7 @@ async function getLatestCompatDate(): Promise<string | undefined> {
  * @param options The build options containing packager and monorepo root
  * @returns true if logged in, false otherwise
  */
+// TODO: Use `wrangler whoami --json` once we establish a minimum Wrangler version that supports it
 function isWranglerLoggedIn(options: Pick<BuildOptions, "packager" | "monorepoRoot">): boolean {
 	const result = runWrangler(options, ["whoami"], { logging: "none" });
 	const output = result.stdout + result.stderr;
@@ -154,15 +158,13 @@ function wranglerLogin(options: Pick<BuildOptions, "packager" | "monorepoRoot">)
 }
 
 /**
- * Ensures the user is authenticated with Cloudflare via wrangler.
+ * Attempts to authenticate the user with Cloudflare via wrangler.
  * If not logged in, prompts the user to log in.
  *
  * @param options The build options containing packager and monorepo root
  * @returns true if authenticated (either already or after login), false otherwise
  */
-async function ensureWranglerAuth(
-	options: Pick<BuildOptions, "packager" | "monorepoRoot">
-): Promise<boolean> {
+async function tryWranglerAuth(options: Pick<BuildOptions, "packager" | "monorepoRoot">): Promise<boolean> {
 	if (isWranglerLoggedIn(options)) {
 		return true;
 	}
@@ -194,7 +196,7 @@ async function maybeCreateR2Bucket(
 		const options = { packager, monorepoRoot };
 
 		// Check authentication before attempting to create the bucket
-		const isAuthenticated = await ensureWranglerAuth(options);
+		const isAuthenticated = await tryWranglerAuth(options);
 		if (!isAuthenticated) {
 			return { success: false };
 		}
@@ -209,6 +211,7 @@ async function maybeCreateR2Bucket(
 		}
 
 		// Check if the error is because the bucket already exists
+		// TODO: Use error codes from wrangler if they become available instead of checking stderr string
 		if (result.stderr.includes("already exists")) {
 			return { success: true, bucketName };
 		}

@@ -16,6 +16,7 @@
 			"service": "<WORKER_NAME>"
 		}
 	],
+	// __R2_CACHE_START__
 	"r2_buckets": [
 		// Use R2 incremental cache
 		// See https://opennext.js.org/cloudflare/caching
@@ -27,6 +28,7 @@
 			"bucket_name": "<R2_BUCKET_NAME>"
 		}
 	],
+	// __R2_CACHE_END__
 	"images": {
 		// Enable image optimization
 		// see https://opennext.js.org/cloudflare/howtos/image

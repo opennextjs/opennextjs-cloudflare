@@ -68,7 +68,7 @@ export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 	);
 
 	if (!result.success) {
-		logger.error("Wrangler command failed");
+		logger.error(`Wrangler deploy command failed${result.stderr ? `:\n${result.stderr}` : ""}`);
 		process.exit(1);
 	}
 }

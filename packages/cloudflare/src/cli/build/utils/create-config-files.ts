@@ -52,7 +52,7 @@ export async function createOpenNextConfigIfNotExistent(sourceDir: string): Prom
 			throw new Error("The `open-next.config.ts` file is required, aborting!");
 		}
 
-		return createOpenNextConfigFile(sourceDir, false);
+		return createOpenNextConfigFile(sourceDir, { cache: false });
 	}
 
 	return openNextConfigPath;
