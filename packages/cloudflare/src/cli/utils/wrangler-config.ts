@@ -139,11 +139,17 @@ async function getLatestCompatDate(): Promise<string | undefined> {
  * @param options The build options containing packager and monorepo root
  * @returns true if logged in, false otherwise
  */
-// TODO: Use `wrangler whoami --json` once we establish a minimum Wrangler version that supports it
 function isWranglerLoggedIn(options: Pick<BuildOptions, "packager" | "monorepoRoot">): boolean {
-	const result = runWrangler(options, ["whoami"], { logging: "none" });
-	const output = result.stdout + result.stderr;
-	return result.success && /You are logged in/.test(output);
+	const result = runWrangler(options, ["whoami", "--json"], { logging: "none" });
+	if (!result.success) {
+		return false;
+	}
+	try {
+		const json = JSON.parse(result.stdout) as { loggedIn?: boolean };
+		return json.loggedIn === true;
+	} catch {
+		return false;
+	}
 }
 
 /**
