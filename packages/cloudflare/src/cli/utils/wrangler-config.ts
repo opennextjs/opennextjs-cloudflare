@@ -180,7 +180,6 @@ function getApiToken(options: PackagerOptions): string | undefined {
  * @returns The account ID if available, undefined otherwise
  */
 async function getAccountId(client: Cloudflare): Promise<string | undefined> {
-	// 1. Check CLOUDFLARE_ACCOUNT_ID env var
 	if (process.env.CLOUDFLARE_ACCOUNT_ID) {
 		return process.env.CLOUDFLARE_ACCOUNT_ID;
 	}
