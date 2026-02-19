@@ -25,7 +25,7 @@ export function findOpenNextConfig(appDir: string): string | undefined {
  *
  * @param appDir The Next.js application root directory
  * @param options.cache Whether to set up caching in the configuration
- * @returns The full path to the created configuration file
+ * @returns The path to the created configuration file
  */
 export async function createOpenNextConfigFile(appDir: string, options: { cache: boolean }): Promise<string> {
 	const openNextConfigPath = join(appDir, "open-next.config.ts");
