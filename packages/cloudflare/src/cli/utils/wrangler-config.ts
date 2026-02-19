@@ -5,7 +5,6 @@ import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { findPackagerAndRoot } from "@opennextjs/aws/build/helper.js";
 
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
-import { askConfirmation } from "./ask-confirmation.js";
 import { runWrangler } from "./run-wrangler.js";
 
 /**
@@ -44,7 +43,7 @@ export async function createWranglerConfigFile(projectDir: string): Promise<{ ca
 	const workerName = getWorkerName(projectDir);
 
 	const bucketName = `${workerName}-opennext-incremental-cache`;
-	const r2BucketCreationResult = await maybeCreateR2Bucket(projectDir, bucketName);
+	const r2BucketCreationResult = maybeCreateR2Bucket(projectDir, bucketName);
 
 	const cachingEnabled = r2BucketCreationResult.success === true;
 
@@ -140,21 +139,16 @@ async function getLatestCompatDate(): Promise<string | undefined> {
  * @returns true if logged in, false otherwise
  */
 function isWranglerLoggedIn(options: Pick<BuildOptions, "packager" | "monorepoRoot">): boolean {
-	// Try with --json flag first (supported in wrangler >= 4.65.0)
-	const jsonResult = runWrangler(options, ["whoami", "--json"], { logging: "none" });
-	if (jsonResult.success) {
+	const result = runWrangler(options as BuildOptions, ["whoami", "--json"], { logging: "none" });
+	if (result.success) {
 		try {
-			const json = JSON.parse(jsonResult.stdout) as { loggedIn?: boolean };
+			const json = JSON.parse(result.stdout) as { loggedIn?: boolean };
 			return json.loggedIn === true;
 		} catch {
-			// JSON parsing failed, fall through to text-based check
+			return false;
 		}
 	}
-
-	// Fallback to text-based output parsing for older wrangler versions
-	const result = runWrangler(options, ["whoami"], { logging: "none" });
-	const output = result.stdout + result.stderr;
-	return result.success && /You are logged in/.test(output);
+	return false;
 }
 
 /**
@@ -164,28 +158,20 @@ function isWranglerLoggedIn(options: Pick<BuildOptions, "packager" | "monorepoRo
  * @returns true if login was successful, false otherwise
  */
 function wranglerLogin(options: Pick<BuildOptions, "packager" | "monorepoRoot">): boolean {
-	const result = runWrangler(options, ["login"], { logging: "all" });
+	const result = runWrangler(options as BuildOptions, ["login"], { logging: "all" });
 	return result.success;
 }
 
 /**
  * Attempts to authenticate the user with Cloudflare via wrangler.
- * If not logged in, prompts the user to log in.
+ * If not logged in, attempts to log in.
  *
  * @param options The build options containing packager and monorepo root
  * @returns true if authenticated (either already or after login), false otherwise
  */
-async function tryWranglerAuth(options: Pick<BuildOptions, "packager" | "monorepoRoot">): Promise<boolean> {
+function tryWranglerAuth(options: Pick<BuildOptions, "packager" | "monorepoRoot">): boolean {
 	if (isWranglerLoggedIn(options)) {
 		return true;
-	}
-
-	const shouldLogin = await askConfirmation(
-		"You are not logged in to Cloudflare. Would you like to log in now?"
-	);
-
-	if (!shouldLogin) {
-		return false;
 	}
 
 	return wranglerLogin(options);
@@ -198,16 +184,16 @@ async function tryWranglerAuth(options: Pick<BuildOptions, "packager" | "monorep
  * @param bucketName The name of the R2 bucket to create
  * @returns An object indicating success with the bucket name, or failure with a reason
  */
-async function maybeCreateR2Bucket(
+function maybeCreateR2Bucket(
 	projectDir: string,
 	bucketName: string
-): Promise<{ success: true; bucketName: string } | { success: false }> {
+): { success: true; bucketName: string } | { success: false } {
 	try {
 		const { packager, root: monorepoRoot } = findPackagerAndRoot(projectDir);
 		const options = { packager, monorepoRoot };
 
 		// Check authentication before attempting to create the bucket
-		const isAuthenticated = await tryWranglerAuth(options);
+		const isAuthenticated = tryWranglerAuth(options);
 		if (!isAuthenticated) {
 			return { success: false };
 		}
