@@ -247,7 +247,6 @@ async function maybeCreateR2Bucket(
 		// Create Cloudflare SDK client
 		const client = new Cloudflare({ apiToken });
 
-		// Get account ID
 		const accountId = await getAccountId(client);
 		if (!accountId) {
 			return { success: false };
