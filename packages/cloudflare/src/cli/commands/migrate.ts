@@ -82,8 +82,8 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 
 	if (!cachingEnabled) {
 		logger.warn(
-			`Failed to set up a caching solution for your project.\n` +
-				`After the migration completes, please manually add a caching solution to your wrangler.jsonc and open-next.config.ts files (for more details see: https://opennext.js.org/cloudflare/caching).\n`
+			`Failed to set up cache for your project.\n` +
+				`After the migration completes, please manually setup cache in  wrangler.jsonc and open-next.config.ts files (for more details see: https://opennext.js.org/cloudflare/caching).\n`
 		);
 	}
 
@@ -207,7 +207,7 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 			`- Run: "${packageManager.run} deploy" to deploy your application to Cloudflare Workers\n` +
 			(cachingEnabled
 				? ""
-				: `- ⚠️  Add caching solution, see https://opennext.js.org/cloudflare/caching for more details\n`)
+				: `- ⚠️  Setup cache, see https://opennext.js.org/cloudflare/caching for more details\n`)
 	);
 }
 
