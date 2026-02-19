@@ -88,7 +88,7 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 	}
 
 	printStepTitle("Creating open-next.config.ts");
-	await createOpenNextConfigFile("./", { cache: cachingEnabled });
+	createOpenNextConfigFile("./", { cache: cachingEnabled });
 
 	const devVarsExists = fs.existsSync(".dev.vars");
 	printStepTitle(`${devVarsExists ? "Updating" : "Creating"} .dev.vars file`);
