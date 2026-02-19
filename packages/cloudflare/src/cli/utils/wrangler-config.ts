@@ -225,7 +225,6 @@ async function maybeCreateR2Bucket(
 		const { packager, root: monorepoRoot } = findPackagerAndRoot(projectDir);
 		const options = { packager, monorepoRoot };
 
-		// Try to get API token
 		let apiToken = getApiToken(options);
 
 		// If no token available, fall back to wrangler login
