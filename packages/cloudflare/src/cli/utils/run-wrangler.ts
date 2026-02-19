@@ -2,8 +2,15 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { compareSemver } from "@opennextjs/aws/build/helper.js";
+
+/**
+ * Base options for package manager operations.
+ */
+export type PackagerOptions = {
+	packager: "npm" | "pnpm" | "yarn" | "bun";
+	monorepoRoot: string;
+};
 
 export type WranglerTarget = "local" | "remote";
 
@@ -27,7 +34,7 @@ type WranglerOptions = {
  * @param options Build options.
  * @returns Whether yarn modern is used.
  */
-function isYarnModern(options: Pick<BuildOptions, "monorepoRoot">) {
+function isYarnModern(options: Pick<PackagerOptions, "monorepoRoot">) {
 	const packageJson: { packageManager?: string } = JSON.parse(
 		readFileSync(path.join(options.monorepoRoot, "package.json"), "utf-8")
 	);
@@ -48,10 +55,7 @@ function isYarnModern(options: Pick<BuildOptions, "monorepoRoot">) {
  * @param args CLI args.
  * @returns Arguments with a passthrough flag injected when needed.
  */
-function injectPassthroughFlagForArgs(
-	options: Pick<BuildOptions, "packager" | "monorepoRoot">,
-	args: string[]
-) {
+function injectPassthroughFlagForArgs(options: PackagerOptions, args: string[]) {
 	if (options.packager !== "npm" && (options.packager !== "yarn" || isYarnModern(options))) {
 		return args;
 	}
@@ -65,7 +69,7 @@ function injectPassthroughFlagForArgs(
 }
 
 export function runWrangler(
-	options: Pick<BuildOptions, "packager" | "monorepoRoot">,
+	options: PackagerOptions,
 	args: string[],
 	wranglerOpts: WranglerOptions = {}
 ): WranglerCommandResult {

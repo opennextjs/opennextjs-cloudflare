@@ -1,12 +1,11 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { findPackagerAndRoot } from "@opennextjs/aws/build/helper.js";
 import Cloudflare from "cloudflare";
 
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
-import { runWrangler } from "./run-wrangler.js";
+import { type PackagerOptions, runWrangler } from "./run-wrangler.js";
 
 /**
  * Gets the path to the Wrangler configuration file if it exists.
@@ -143,7 +142,7 @@ async function getLatestCompatDate(): Promise<string | undefined> {
  * @param options The build options containing packager and monorepo root
  * @returns The API token if available, undefined otherwise
  */
-function getApiToken(options: Pick<BuildOptions, "packager" | "monorepoRoot">): string | undefined {
+function getApiToken(options: PackagerOptions): string | undefined {
 	// 1. Check CLOUDFLARE_API_TOKEN env var
 	if (process.env.CLOUDFLARE_API_TOKEN) {
 		return process.env.CLOUDFLARE_API_TOKEN;
@@ -197,8 +196,8 @@ async function getAccountId(client: Cloudflare): Promise<string | undefined> {
  * @param options The build options containing packager and monorepo root
  * @returns true if login was successful, false otherwise
  */
-function wranglerLogin(options: Pick<BuildOptions, "packager" | "monorepoRoot">): boolean {
-	const result = runWrangler(options as BuildOptions, ["login"], { logging: "all" });
+function wranglerLogin(options: PackagerOptions): boolean {
+	const result = runWrangler(options, ["login"], { logging: "all" });
 	return result.success;
 }
 
