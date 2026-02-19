@@ -34,7 +34,7 @@ type WranglerOptions = {
  * @param options Build options.
  * @returns Whether yarn modern is used.
  */
-function isYarnModern(options: Pick<PackagerOptions, "monorepoRoot">) {
+function isYarnModern(monorepoRoot: string) {
 	const packageJson: { packageManager?: string } = JSON.parse(
 		readFileSync(path.join(options.monorepoRoot, "package.json"), "utf-8")
 	);
