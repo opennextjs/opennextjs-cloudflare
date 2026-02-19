@@ -274,8 +274,6 @@ async function maybeCreateR2Bucket(
 
 		return { success: true, bucketName };
 	} catch {
-		/* empty */
+	  return { success: false };
 	}
-
-	return { success: false };
 }
