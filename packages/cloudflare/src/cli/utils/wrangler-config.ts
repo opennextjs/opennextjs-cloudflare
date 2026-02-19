@@ -244,7 +244,6 @@ async function maybeCreateR2Bucket(
 			}
 		}
 
-		// Create Cloudflare SDK client
 		const client = new Cloudflare({ apiToken });
 
 		const accountId = await getAccountId(client);
