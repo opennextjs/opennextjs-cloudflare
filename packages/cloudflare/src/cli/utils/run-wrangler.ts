@@ -27,7 +27,7 @@ type WranglerOptions = {
  * @param options Build options.
  * @returns Whether yarn modern is used.
  */
-function isYarnModern(options: BuildOptions) {
+function isYarnModern(options: Pick<BuildOptions, "monorepoRoot">) {
 	const packageJson: { packageManager?: string } = JSON.parse(
 		readFileSync(path.join(options.monorepoRoot, "package.json"), "utf-8")
 	);
@@ -48,7 +48,10 @@ function isYarnModern(options: BuildOptions) {
  * @param args CLI args.
  * @returns Arguments with a passthrough flag injected when needed.
  */
-function injectPassthroughFlagForArgs(options: BuildOptions, args: string[]) {
+function injectPassthroughFlagForArgs(
+	options: Pick<BuildOptions, "packager" | "monorepoRoot">,
+	args: string[]
+) {
 	if (options.packager !== "npm" && (options.packager !== "yarn" || isYarnModern(options))) {
 		return args;
 	}
@@ -62,7 +65,7 @@ function injectPassthroughFlagForArgs(options: BuildOptions, args: string[]) {
 }
 
 export function runWrangler(
-	options: BuildOptions,
+	options: Pick<BuildOptions, "packager" | "monorepoRoot">,
 	args: string[],
 	wranglerOpts: WranglerOptions = {}
 ): WranglerCommandResult {
