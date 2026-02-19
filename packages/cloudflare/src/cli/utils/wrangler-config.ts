@@ -211,7 +211,7 @@ function wranglerLogin(options: PackagerOptions): boolean {
 }
 
 /**
- * Creates an R2 bucket using the Cloudflare SDK.
+ * Creates an R2 bucket.
  *
  * If no API token is available, falls back to wrangler login for OAuth authentication.
  *
