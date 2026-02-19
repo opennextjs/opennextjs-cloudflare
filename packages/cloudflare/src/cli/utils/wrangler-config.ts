@@ -266,7 +266,6 @@ async function maybeCreateR2Bucket(
 			}
 		}
 
-		// Create the bucket
 		await client.r2.buckets.create({
 			account_id: accountId,
 			name: bucketName,
