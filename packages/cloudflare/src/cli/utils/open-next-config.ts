@@ -20,8 +20,7 @@ export function findOpenNextConfig(appDir: string): string | undefined {
 }
 
 /**
- * Creates an `open-next.config.ts` file in the target directory by copying
- * the appropriate template file from the package templates.
+ * Creates an `open-next.config.ts` file for the application.
  *
  * @param appDir The Next.js application root directory
  * @param options.cache Whether to set up caching in the configuration
