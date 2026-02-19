@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { findPackagerAndRoot } from "@opennextjs/aws/build/helper.js";
 import Cloudflare from "cloudflare";
+import { applyEdits, type ModificationOptions, modify } from "jsonc-parser";
 
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
 import { type PackagerOptions, runWrangler } from "./run-wrangler.js";
@@ -49,28 +50,36 @@ export async function createWranglerConfigFile(projectDir: string): Promise<{ ca
 
 	let wranglerConfig = readFileSync(join(getPackageTemplatesDirPath(), "wrangler.jsonc"), "utf8");
 
-	wranglerConfig = wranglerConfig.replaceAll('"<WORKER_NAME>"', JSON.stringify(workerName));
+	const modificationOptions: ModificationOptions = {
+		formattingOptions: {
+			tabSize: 1,
+			insertSpaces: false,
+			eol: "\n",
+		},
+	};
 
+	// Helper to apply a single modification
+	const applyModification = (path: (string | number)[], value: unknown) => {
+		const edits = modify(wranglerConfig, path, value, modificationOptions);
+		wranglerConfig = applyEdits(wranglerConfig, edits);
+	};
+
+	// Update worker name
+	applyModification(["name"], workerName);
+	applyModification(["services", 0, "service"], workerName);
+
+	// Update compatibility_date if we have a newer one
 	const compatDate = await getLatestCompatDate();
 	if (compatDate) {
-		wranglerConfig = wranglerConfig.replace(
-			/"compatibility_date": "\d{4}-\d{2}-\d{2}"/,
-			`"compatibility_date": ${JSON.stringify(compatDate)}`
-		);
+		applyModification(["compatibility_date"], compatDate);
 	}
 
 	if (cachingEnabled) {
-		// Replace R2 bucket name placeholder and remove the markers
-		wranglerConfig = wranglerConfig
-			.replace('"<R2_BUCKET_NAME>"', JSON.stringify(r2BucketCreationResult.bucketName))
-			.replace(/\t\/\/ __R2_CACHE_START__\n/g, "")
-			.replace(/\t\/\/ __R2_CACHE_END__\n/g, "");
+		// Update R2 bucket name
+		applyModification(["r2_buckets", 0, "bucket_name"], r2BucketCreationResult.bucketName);
 	} else {
-		// Remove the entire R2 cache section (including the markers)
-		wranglerConfig = wranglerConfig.replace(
-			/\t\/\/ __R2_CACHE_START__\n[\s\S]*?\t\/\/ __R2_CACHE_END__\n/g,
-			"\t// For best results consider enabling R2 caching\n\t// See https://opennext.js.org/cloudflare/caching for more details\n"
-		);
+		// Remove the r2_buckets property entirely
+		applyModification(["r2_buckets"], undefined);
 	}
 
 	writeFileSync(join(projectDir, "wrangler.jsonc"), wranglerConfig);
