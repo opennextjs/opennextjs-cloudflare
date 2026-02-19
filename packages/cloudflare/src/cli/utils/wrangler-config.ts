@@ -259,7 +259,6 @@ async function maybeCreateR2Bucket(
 			// Bucket exists
 			return { success: true, bucketName };
 		} catch (error) {
-			// If not found, we'll create it
 			if (!(error instanceof Cloudflare.NotFoundError)) {
 				return { success: false };
 			}
