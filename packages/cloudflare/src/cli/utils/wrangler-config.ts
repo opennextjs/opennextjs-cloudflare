@@ -185,7 +185,6 @@ async function getAccountId(client: Cloudflare): Promise<string | undefined> {
 		return process.env.CLOUDFLARE_ACCOUNT_ID;
 	}
 
-	// 2. List accounts using SDK
 	try {
 		const accounts = await client.accounts.list();
 		for await (const account of accounts) {
