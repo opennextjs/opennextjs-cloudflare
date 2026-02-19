@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { findPackagerAndRoot } from "@opennextjs/aws/build/helper.js";
+import Cloudflare from "cloudflare";
 
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
 import { runWrangler } from "./run-wrangler.js";
@@ -43,7 +44,7 @@ export async function createWranglerConfigFile(projectDir: string): Promise<{ ca
 	const workerName = getWorkerName(projectDir);
 
 	const bucketName = `${workerName}-opennext-incremental-cache`;
-	const r2BucketCreationResult = maybeCreateR2Bucket(projectDir, bucketName);
+	const r2BucketCreationResult = await maybeCreateR2Bucket(projectDir, bucketName);
 
 	const cachingEnabled = r2BucketCreationResult.success === true;
 
@@ -133,22 +134,61 @@ async function getLatestCompatDate(): Promise<string | undefined> {
 }
 
 /**
- * Checks if the user is logged in to Cloudflare via wrangler.
+ * Gets the API token for Cloudflare authentication.
+ *
+ * Tries the following sources in order:
+ * 1. CLOUDFLARE_API_TOKEN environment variable
+ * 2. wrangler auth token (stored OAuth token from wrangler login)
  *
  * @param options The build options containing packager and monorepo root
- * @returns true if logged in, false otherwise
+ * @returns The API token if available, undefined otherwise
  */
-function isWranglerLoggedIn(options: Pick<BuildOptions, "packager" | "monorepoRoot">): boolean {
-	const result = runWrangler(options as BuildOptions, ["whoami", "--json"], { logging: "none" });
+function getApiToken(options: Pick<BuildOptions, "packager" | "monorepoRoot">): string | undefined {
+	// 1. Check CLOUDFLARE_API_TOKEN env var
+	if (process.env.CLOUDFLARE_API_TOKEN) {
+		return process.env.CLOUDFLARE_API_TOKEN;
+	}
+
+	// 2. Try to get OAuth token from wrangler auth token
+	const result = runWrangler(options, ["auth", "token"], { logging: "none" });
 	if (result.success) {
-		try {
-			const json = JSON.parse(result.stdout) as { loggedIn?: boolean };
-			return json.loggedIn === true;
-		} catch {
-			return false;
+		const token = result.stdout.trim();
+		if (token) {
+			return token;
 		}
 	}
-	return false;
+
+	return undefined;
+}
+
+/**
+ * Gets the account ID for Cloudflare API calls.
+ *
+ * Tries the following sources in order:
+ * 1. CLOUDFLARE_ACCOUNT_ID environment variable
+ * 2. List accounts using the SDK and return the first one
+ *
+ * @param client The Cloudflare SDK client
+ * @returns The account ID if available, undefined otherwise
+ */
+async function getAccountId(client: Cloudflare): Promise<string | undefined> {
+	// 1. Check CLOUDFLARE_ACCOUNT_ID env var
+	if (process.env.CLOUDFLARE_ACCOUNT_ID) {
+		return process.env.CLOUDFLARE_ACCOUNT_ID;
+	}
+
+	// 2. List accounts using SDK
+	try {
+		const accounts = await client.accounts.list();
+		for await (const account of accounts) {
+			// Return the first account ID
+			return account.id;
+		}
+	} catch {
+		/* empty */
+	}
+
+	return undefined;
 }
 
 /**
@@ -163,57 +203,68 @@ function wranglerLogin(options: Pick<BuildOptions, "packager" | "monorepoRoot">)
 }
 
 /**
- * Attempts to authenticate the user with Cloudflare via wrangler.
- * If not logged in, attempts to log in.
+ * Creates an R2 bucket using the Cloudflare SDK.
  *
- * @param options The build options containing packager and monorepo root
- * @returns true if authenticated (either already or after login), false otherwise
- */
-function tryWranglerAuth(options: Pick<BuildOptions, "packager" | "monorepoRoot">): boolean {
-	if (isWranglerLoggedIn(options)) {
-		return true;
-	}
-
-	return wranglerLogin(options);
-}
-
-/**
- * Creates an R2 bucket using wrangler CLI.
+ * If no API token is available, falls back to wrangler login for OAuth authentication.
  *
  * @param projectDir The project directory to detect the package manager
  * @param bucketName The name of the R2 bucket to create
- * @returns An object indicating success with the bucket name, or failure with a reason
+ * @returns An object indicating success with the bucket name, or failure
  */
-function maybeCreateR2Bucket(
+async function maybeCreateR2Bucket(
 	projectDir: string,
 	bucketName: string
-): { success: true; bucketName: string } | { success: false } {
+): Promise<{ success: true; bucketName: string } | { success: false }> {
 	try {
 		const { packager, root: monorepoRoot } = findPackagerAndRoot(projectDir);
 		const options = { packager, monorepoRoot };
 
-		// Check authentication before attempting to create the bucket
-		const isAuthenticated = tryWranglerAuth(options);
-		if (!isAuthenticated) {
+		// Try to get API token
+		let apiToken = getApiToken(options);
+
+		// If no token available, fall back to wrangler login
+		if (!apiToken) {
+			const loginSuccess = wranglerLogin(options);
+			if (!loginSuccess) {
+				return { success: false };
+			}
+
+			// Get token after login
+			apiToken = getApiToken(options);
+			if (!apiToken) {
+				return { success: false };
+			}
+		}
+
+		// Create Cloudflare SDK client
+		const client = new Cloudflare({ apiToken });
+
+		// Get account ID
+		const accountId = await getAccountId(client);
+		if (!accountId) {
 			return { success: false };
 		}
 
 		// Check if bucket already exists
-		const infoResult = runWrangler(options, ["r2", "bucket", "info", bucketName], {
-			logging: "none",
-		});
-		if (infoResult.success) {
+		try {
+			await client.r2.buckets.get(bucketName, { account_id: accountId });
+			// Bucket exists
 			return { success: true, bucketName };
+		} catch (error) {
+			// If not found, we'll create it
+			if (!(error instanceof Cloudflare.NotFoundError)) {
+				// Some other error occurred
+				return { success: false };
+			}
 		}
 
-		// Use logging: "all" to allow wrangler to prompt for account selection if needed
-		const result = runWrangler(options, ["r2", "bucket", "create", bucketName], {
-			logging: "all",
+		// Create the bucket
+		await client.r2.buckets.create({
+			account_id: accountId,
+			name: bucketName,
 		});
 
-		if (result.success) {
-			return { success: true, bucketName };
-		}
+		return { success: true, bucketName };
 	} catch {
 		/* empty */
 	}
