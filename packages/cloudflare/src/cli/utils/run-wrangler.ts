@@ -5,10 +5,12 @@ import path from "node:path";
 import { compareSemver } from "@opennextjs/aws/build/helper.js";
 
 /**
- * Base options for package manager operations.
+ * Details regarding the package manager in use.
  */
-export type PackagerOptions = {
+export type PackagerDetails = {
+	/** The name of the package manager. */
 	packager: "npm" | "pnpm" | "yarn" | "bun";
+	/** The root directory of the monorepo, used to locate package.json. */
 	monorepoRoot: string;
 };
 
@@ -55,7 +57,7 @@ function isYarnModern(monorepoRoot: string) {
  * @param args CLI args.
  * @returns Arguments with a passthrough flag injected when needed.
  */
-function injectPassthroughFlagForArgs(options: PackagerOptions, args: string[]) {
+function injectPassthroughFlagForArgs(options: PackagerDetails, args: string[]) {
 	if (options.packager !== "npm" && (options.packager !== "yarn" || isYarnModern(options.monorepoRoot))) {
 		return args;
 	}
@@ -69,7 +71,7 @@ function injectPassthroughFlagForArgs(options: PackagerOptions, args: string[]) 
 }
 
 export function runWrangler(
-	options: PackagerOptions,
+	options: PackagerDetails,
 	args: string[],
 	wranglerOpts: WranglerOptions = {}
 ): WranglerCommandResult {

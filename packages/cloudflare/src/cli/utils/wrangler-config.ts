@@ -6,7 +6,7 @@ import Cloudflare from "cloudflare";
 import { applyEdits, type ModificationOptions, modify } from "jsonc-parser";
 
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
-import { type PackagerOptions, runWrangler } from "./run-wrangler.js";
+import { type PackagerDetails, runWrangler } from "./run-wrangler.js";
 
 /**
  * Gets the path to the Wrangler configuration file if it exists.
@@ -151,7 +151,7 @@ async function getLatestCompatDate(): Promise<string | undefined> {
  * @param options The build options containing packager and monorepo root
  * @returns The API token if available, undefined otherwise
  */
-function getApiToken(options: PackagerOptions): string | undefined {
+function getApiToken(options: PackagerDetails): string | undefined {
 	// 1. Check CLOUDFLARE_API_TOKEN env var
 	if (process.env.CLOUDFLARE_API_TOKEN) {
 		return process.env.CLOUDFLARE_API_TOKEN;
@@ -203,7 +203,7 @@ async function getAccountId(client: Cloudflare): Promise<string | undefined> {
  * @param options The build options containing packager and monorepo root
  * @returns true if login was successful, false otherwise
  */
-function wranglerLogin(options: PackagerOptions): boolean {
+function wranglerLogin(options: PackagerDetails): boolean {
 	const result = runWrangler(options, ["login"], { logging: "all" });
 	return result.success;
 }
