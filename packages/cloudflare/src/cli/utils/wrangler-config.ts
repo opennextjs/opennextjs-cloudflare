@@ -57,25 +57,49 @@ function getAppNameFromPackageJson(sourceDir: string): string | undefined {
 	}
 }
 
+/**
+ * Fetches the list of published `workerd` versions from npm and returns the
+ * compatibility date derived from the latest version whose date is not in
+ * the future.
+ *
+ * @returns The latest non-future compatibility date in `YYYY-MM-DD` format,
+ *          or `undefined` if the fetch fails or no suitable version is found.
+ */
 async function getLatestCompatDate(): Promise<string | undefined> {
 	try {
-		const resp = await fetch(`https://registry.npmjs.org/workerd`);
-		const latestWorkerdVersion = (
-			(await resp.json()) as {
-				"dist-tags": { latest: string };
-			}
-		)["dist-tags"].latest;
+		const resp = await fetch("https://registry.npmjs.org/workerd");
+		const data = (await resp.json()) as { versions: Record<string, unknown> };
 
-		// The format of the workerd version is `major.yyyymmdd.patch`.
-		const match = latestWorkerdVersion.match(/\d+\.(\d{4})(\d{2})(\d{2})\.\d+/);
-
-		if (match) {
-			const [, year, month, date] = match;
-			const compatDate = `${year}-${month}-${date}`;
-
-			return compatDate;
-		}
+		const today = new Date().toISOString().slice(0, 10);
+		return getLatestNonFutureCompatDate(Object.keys(data.versions), today);
 	} catch {
 		/* empty */
 	}
+}
+
+/**
+ * Given a list of workerd version strings (format `major.yyyymmdd.patch`),
+ * returns the compatibility date from the latest version whose date is not
+ * in the future relative to `today`.
+ *
+ * @param versions List of workerd version strings
+ * @param today Today's date in `YYYY-MM-DD` format
+ * @returns The latest non-future compatibility date, or undefined if none found
+ */
+export function getLatestNonFutureCompatDate(versions: string[], today: string): string | undefined {
+	const versionPattern = /\d+\.(\d{4})(\d{2})(\d{2})\.\d+/;
+
+	const compatDates: string[] = [];
+	for (const version of versions) {
+		const match = version.match(versionPattern);
+		if (match) {
+			const [, year, month, date] = match;
+			compatDates.push(`${year}-${month}-${date}`);
+		}
+	}
+
+	// Sort descending so the most recent date comes first.
+	compatDates.sort((a, b) => (a > b ? -1 : a < b ? 1 : 0));
+
+	return compatDates.find((d) => d <= today);
 }
