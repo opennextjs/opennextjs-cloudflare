@@ -36,7 +36,7 @@ type WranglerOptions = {
  */
 function isYarnModern(monorepoRoot: string) {
 	const packageJson: { packageManager?: string } = JSON.parse(
-		readFileSync(path.join(options.monorepoRoot, "package.json"), "utf-8")
+		readFileSync(path.join(monorepoRoot, "package.json"), "utf-8")
 	);
 
 	if (!packageJson.packageManager?.startsWith("yarn")) return false;
@@ -56,7 +56,7 @@ function isYarnModern(monorepoRoot: string) {
  * @returns Arguments with a passthrough flag injected when needed.
  */
 function injectPassthroughFlagForArgs(options: PackagerOptions, args: string[]) {
-	if (options.packager !== "npm" && (options.packager !== "yarn" || isYarnModern(options))) {
+	if (options.packager !== "npm" && (options.packager !== "yarn" || isYarnModern(options.monorepoRoot))) {
 		return args;
 	}
 
