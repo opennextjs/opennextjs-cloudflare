@@ -2,17 +2,31 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { compareSemver } from "@opennextjs/aws/build/helper.js";
-import logger from "@opennextjs/aws/logger.js";
+
+/**
+ * Details regarding the package manager in use.
+ */
+export type PackagerDetails = {
+	/** The name of the package manager. */
+	packager: "npm" | "pnpm" | "yarn" | "bun";
+	/** The root directory of the monorepo, used to locate package.json. */
+	monorepoRoot: string;
+};
 
 export type WranglerTarget = "local" | "remote";
+
+export type WranglerCommandResult = {
+	success: boolean;
+	stdout: string;
+	stderr: string;
+};
 
 type WranglerOptions = {
 	target?: WranglerTarget;
 	environment?: string;
 	configPath?: string;
-	logging?: "all" | "error";
+	logging?: "all" | "error" | "none";
 	env?: Record<string, string>;
 };
 
@@ -22,9 +36,9 @@ type WranglerOptions = {
  * @param options Build options.
  * @returns Whether yarn modern is used.
  */
-function isYarnModern(options: BuildOptions) {
+function isYarnModern(monorepoRoot: string) {
 	const packageJson: { packageManager?: string } = JSON.parse(
-		readFileSync(path.join(options.monorepoRoot, "package.json"), "utf-8")
+		readFileSync(path.join(monorepoRoot, "package.json"), "utf-8")
 	);
 
 	if (!packageJson.packageManager?.startsWith("yarn")) return false;
@@ -43,8 +57,8 @@ function isYarnModern(options: BuildOptions) {
  * @param args CLI args.
  * @returns Arguments with a passthrough flag injected when needed.
  */
-function injectPassthroughFlagForArgs(options: BuildOptions, args: string[]) {
-	if (options.packager !== "npm" && (options.packager !== "yarn" || isYarnModern(options))) {
+function injectPassthroughFlagForArgs(options: PackagerDetails, args: string[]) {
+	if (options.packager !== "npm" && (options.packager !== "yarn" || isYarnModern(options.monorepoRoot))) {
 		return args;
 	}
 
@@ -56,7 +70,12 @@ function injectPassthroughFlagForArgs(options: BuildOptions, args: string[]) {
 	return args;
 }
 
-export function runWrangler(options: BuildOptions, args: string[], wranglerOpts: WranglerOptions = {}) {
+export function runWrangler(
+	options: PackagerDetails,
+	args: string[],
+	wranglerOpts: WranglerOptions = {}
+): WranglerCommandResult {
+	const noLogs = wranglerOpts.logging === "none";
 	const shouldPipeLogs = wranglerOpts.logging === "error";
 
 	const result = spawnSync(
@@ -77,7 +96,10 @@ export function runWrangler(options: BuildOptions, args: string[], wranglerOpts:
 		],
 		{
 			shell: true,
-			stdio: shouldPipeLogs ? ["ignore", "pipe", "pipe"] : "inherit",
+			// Always pipe stderr so that we can capture it for inspection.
+			// Keep stdin and stdout as "inherit" when not piping logs to maintain TTY detection
+			// (wrangler checks `process.stdin.isTTY && process.stdout.isTTY` for interactive mode).
+			stdio: shouldPipeLogs || noLogs ? ["ignore", "pipe", "pipe"] : ["inherit", "inherit", "pipe"],
 			env: {
 				...process.env,
 				...wranglerOpts.env,
@@ -89,15 +111,27 @@ export function runWrangler(options: BuildOptions, args: string[], wranglerOpts:
 		}
 	);
 
-	if (result.status !== 0) {
-		if (shouldPipeLogs) {
-			process.stdout.write(result.stdout.toString());
-			process.stderr.write(result.stderr.toString());
+	const success = result.status === 0;
+	const stdout = result.stdout?.toString() ?? "";
+	const stderr = result.stderr?.toString() ?? "";
+
+	if (!noLogs) {
+		// When not piping logs, stderr is captured but should still be visible to the user
+		if (!shouldPipeLogs && stderr) {
+			process.stderr.write(stderr);
 		}
 
-		logger.error("Wrangler command failed");
-		process.exit(1);
+		if (!success && shouldPipeLogs) {
+			process.stdout.write(stdout);
+			process.stderr.write(stderr);
+		}
 	}
+
+	return {
+		success,
+		stdout,
+		stderr,
+	};
 }
 
 export function isWranglerTarget(v: string | undefined): v is WranglerTarget {

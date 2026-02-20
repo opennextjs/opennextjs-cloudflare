@@ -1,3 +1,4 @@
+import logger from "@opennextjs/aws/logger.js";
 import type yargs from "yargs";
 
 import { runWrangler } from "../utils/run-wrangler.js";
@@ -42,7 +43,12 @@ export async function previewCommand(
 		envVars
 	);
 
-	runWrangler(buildOpts, ["dev", ...args.wranglerArgs], { logging: "all" });
+	const result = runWrangler(buildOpts, ["dev", ...args.wranglerArgs], { logging: "all" });
+
+	if (!result.success) {
+		logger.error(`Wrangler dev command failed${result.stderr ? `:\n${result.stderr}` : ""}`);
+		process.exit(1);
+	}
 }
 
 /**
