@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { findPackagerAndRoot } from "@opennextjs/aws/build/helper.js";
 import Cloudflare from "cloudflare";
-import { applyEdits, type ModificationOptions, modify } from "jsonc-parser";
+import { type CommentObject, parse, stringify } from "comment-json";
 
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
 import { type PackagerDetails, runWrangler } from "./run-wrangler.js";
@@ -28,6 +28,39 @@ export function findWranglerConfig(appDir: string): string | undefined {
 }
 
 /**
+ * Applies a modification to a parsed JSONC object at the specified path.
+ * If value is undefined, the property at the path will be deleted.
+ *
+ * @param config The parsed JSONC object to modify
+ * @param path The path to the property to modify (e.g., ["services", 0, "service"])
+ * @param value The value to set (or undefined to delete)
+ */
+function applyModification(config: CommentObject, path: (string | number)[], value: unknown): void {
+	if (path.length === 0) return;
+
+	let current: unknown = config;
+
+	// Navigate to the parent of the target property
+	for (let i = 0; i < path.length - 1; i++) {
+		const key = path[i] as string | number;
+		if (current === null || typeof current !== "object") return;
+		current = (current as Record<string | number, unknown>)[key];
+	}
+
+	if (current === null || typeof current !== "object") return;
+
+	const lastKey = path[path.length - 1] as string | number;
+
+	if (value === undefined) {
+		// Delete the property
+		delete (current as Record<string | number, unknown>)[lastKey];
+	} else {
+		// Set the value
+		(current as Record<string | number, unknown>)[lastKey] = value;
+	}
+}
+
+/**
  * Creates a wrangler.jsonc config file in the target directory for the project.
  *
  * If a wrangler.jsonc file already exists it will be overridden.
@@ -48,41 +81,27 @@ export async function createWranglerConfigFile(projectDir: string): Promise<{ ca
 
 	const cachingEnabled = r2BucketCreationResult.success === true;
 
-	let wranglerConfig = readFileSync(join(getPackageTemplatesDirPath(), "wrangler.jsonc"), "utf8");
+	const wranglerConfigStr = readFileSync(join(getPackageTemplatesDirPath(), "wrangler.jsonc"), "utf8");
+	const wranglerConfig = parse(wranglerConfigStr) as CommentObject;
 
-	const modificationOptions: ModificationOptions = {
-		formattingOptions: {
-			tabSize: 1,
-			insertSpaces: false,
-			eol: "\n",
-		},
-	};
-
-	// Helper to apply a single modification
-	const applyModification = (path: (string | number)[], value: unknown) => {
-		const edits = modify(wranglerConfig, path, value, modificationOptions);
-		wranglerConfig = applyEdits(wranglerConfig, edits);
-	};
-
-	// Update worker name
-	applyModification(["name"], workerName);
-	applyModification(["services", 0, "service"], workerName);
+	applyModification(wranglerConfig, ["name"], workerName);
+	applyModification(wranglerConfig, ["services", 0, "service"], workerName);
 
 	// Update compatibility_date if we have a newer one
 	const compatDate = await getLatestCompatDate();
 	if (compatDate) {
-		applyModification(["compatibility_date"], compatDate);
+		applyModification(wranglerConfig, ["compatibility_date"], compatDate);
 	}
 
 	if (cachingEnabled) {
 		// Update R2 bucket name
-		applyModification(["r2_buckets", 0, "bucket_name"], r2BucketCreationResult.bucketName);
+		applyModification(wranglerConfig, ["r2_buckets", 0, "bucket_name"], r2BucketCreationResult.bucketName);
 	} else {
 		// Remove the r2_buckets property entirely
-		applyModification(["r2_buckets"], undefined);
+		applyModification(wranglerConfig, ["r2_buckets"], undefined);
 	}
 
-	writeFileSync(join(projectDir, "wrangler.jsonc"), wranglerConfig);
+	writeFileSync(join(projectDir, "wrangler.jsonc"), stringify(wranglerConfig, null, "\t"));
 
 	return {
 		cachingEnabled,
