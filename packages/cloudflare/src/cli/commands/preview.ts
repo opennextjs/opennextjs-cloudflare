@@ -46,7 +46,7 @@ export async function previewCommand(
 	const result = runWrangler(buildOpts, ["dev", ...args.wranglerArgs], { logging: "all" });
 
 	if (!result.success) {
-		logger.error("Wrangler command failed");
+		logger.error(`Wrangler dev command failed${result.stderr ? `:\n${result.stderr}` : ""}`);
 		process.exit(1);
 	}
 }

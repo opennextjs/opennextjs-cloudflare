@@ -65,7 +65,7 @@ export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 	);
 
 	if (!result.success) {
-		logger.error("Wrangler command failed");
+		logger.error(`Wrangler versions upload command failed${result.stderr ? `:\n${result.stderr}` : ""}`);
 		process.exit(1);
 	}
 }

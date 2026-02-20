@@ -269,7 +269,7 @@ async function populateR2IncrementalCache(
 	fs.rmSync(listFile, { force: true });
 
 	if (!result.success) {
-		logger.error("Wrangler command failed");
+		logger.error(`Wrangler r2 bulk put command failed${result.stderr ? `:\n${result.stderr}` : ""}`);
 		process.exit(1);
 	}
 
@@ -337,7 +337,7 @@ async function populateKVIncrementalCache(
 		fs.rmSync(chunkPath, { force: true });
 
 		if (!result.success) {
-			logger.error("Wrangler command failed");
+			logger.error(`Wrangler kv bulk put command failed${result.stderr ? `:\n${result.stderr}` : ""}`);
 			process.exit(1);
 		}
 	}
@@ -376,7 +376,7 @@ function populateD1TagCache(
 	);
 
 	if (!result.success) {
-		logger.error("Wrangler command failed");
+		logger.error(`Wrangler d1 execute command failed${result.stderr ? `:\n${result.stderr}` : ""}`);
 		process.exit(1);
 	}
 
