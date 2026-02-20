@@ -173,15 +173,15 @@ function getApiToken(options: PackagerOptions): string | undefined {
  * Gets the account ID for Cloudflare API calls.
  *
  * Tries the following sources in order:
- * 1. CLOUDFLARE_ACCOUNT_ID environment variable
+ * 1. CLOUDFLARE_ACCOUNT_ID or CF_ACCOUNT_ID environment variable
  * 2. List accounts using the SDK and return the first one
  *
  * @param client The Cloudflare SDK client
  * @returns The account ID if available, undefined otherwise
  */
 async function getAccountId(client: Cloudflare): Promise<string | undefined> {
-	if (process.env.CLOUDFLARE_ACCOUNT_ID) {
-		return process.env.CLOUDFLARE_ACCOUNT_ID;
+	if (process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID) {
+		return process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID;
 	}
 
 	try {
@@ -266,6 +266,6 @@ async function maybeCreateR2Bucket(
 
 		return { success: true, bucketName };
 	} catch {
-	  return { success: false };
+		return { success: false };
 	}
 }
