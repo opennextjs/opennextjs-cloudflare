@@ -6,6 +6,7 @@ import Cloudflare from "cloudflare";
 import { type CommentObject, parse, stringify } from "comment-json";
 
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
+import { askAccountSelection } from "./ask-account-selection.js";
 import { type PackagerDetails, runWrangler } from "./run-wrangler.js";
 
 /**
@@ -224,11 +225,21 @@ async function getAccountId(client: Cloudflare): Promise<string | undefined> {
 	}
 
 	try {
-		const accounts = await client.accounts.list();
-		for await (const account of accounts) {
-			// Return the first account ID
-			return account.id;
+		const accountsList = await client.accounts.list();
+		const accounts: { id: string; name: string }[] = [];
+		for await (const account of accountsList) {
+			accounts.push({ id: account.id, name: account.name });
 		}
+
+		if (accounts.length === 0) {
+			return undefined;
+		}
+
+		if (accounts.length === 1 && accounts[0]) {
+			return accounts[0].id;
+		}
+
+		return await askAccountSelection(accounts);
 	} catch {
 		/* empty */
 	}
