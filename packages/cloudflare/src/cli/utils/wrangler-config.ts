@@ -142,28 +142,48 @@ async function getLatestCompatDate(): Promise<string | undefined> {
 }
 
 /**
- * Gets the API token for Cloudflare authentication.
+ * Auth credentials returned by `wrangler auth token --json`.
  *
- * Tries the following sources in order:
+ * Can be either:
+ * - A token (OAuth or API token): `{ type: "token"; token: string }`
+ * - An API key/email pair: `{ type: "api_key"; apiKey: string; apiEmail: string }`
+ */
+type AuthCredentials =
+	| { type: "token"; token: string }
+	| { type: "api_key"; apiKey: string; apiEmail: string };
+
+/**
+ * Gets the authentication credentials for Cloudflare API calls.
+ *
+ * Uses `wrangler auth token --json` which checks the following sources in order:
  * 1. CLOUDFLARE_API_TOKEN environment variable
- * 2. wrangler auth token (stored OAuth token from wrangler login)
+ * 2. CLOUDFLARE_API_KEY + CLOUDFLARE_EMAIL environment variables
+ * 3. OAuth token from `wrangler login`
  *
  * @param options The build options containing packager and monorepo root
- * @returns The API token if available, undefined otherwise
+ * @returns The auth credentials if available, undefined otherwise
  */
-function getApiToken(options: PackagerDetails): string | undefined {
-	// 1. Check CLOUDFLARE_API_TOKEN env var
-	if (process.env.CLOUDFLARE_API_TOKEN) {
-		return process.env.CLOUDFLARE_API_TOKEN;
+function getAuthCredentials(options: PackagerDetails): AuthCredentials | undefined {
+	const result = runWrangler(options, ["auth", "token", "--json"], { logging: "none" });
+	if (!result.success) {
+		return undefined;
 	}
 
-	// 2. Try to get OAuth token from wrangler auth token
-	const result = runWrangler(options, ["auth", "token"], { logging: "none" });
-	if (result.success) {
-		const token = result.stdout.trim();
-		if (token) {
-			return token;
+	try {
+		const json = JSON.parse(result.stdout) as
+			| { type: "oauth" | "api_token"; token: string }
+			| { type: "api_key"; key: string; email: string };
+
+		if (json.type === "api_key") {
+			return { type: "api_key", apiKey: json.key, apiEmail: json.email };
 		}
+
+		// Both "oauth" and "api_token" types have a token field
+		if (json.token) {
+			return { type: "token", token: json.token };
+		}
+	} catch {
+		/* empty */
 	}
 
 	return undefined;
@@ -211,7 +231,7 @@ function wranglerLogin(options: PackagerDetails): boolean {
 /**
  * Creates an R2 bucket.
  *
- * If no API token is available, falls back to wrangler login for OAuth authentication.
+ * If no auth credentials are available, falls back to wrangler login for OAuth authentication.
  *
  * @param projectDir The project directory to detect the package manager
  * @param bucketName The name of the R2 bucket to create
@@ -225,23 +245,26 @@ async function maybeCreateR2Bucket(
 		const { packager, root: monorepoRoot } = findPackagerAndRoot(projectDir);
 		const options = { packager, monorepoRoot };
 
-		let apiToken = getApiToken(options);
+		let authCredentials = getAuthCredentials(options);
 
-		// If no token available, fall back to wrangler login
-		if (!apiToken) {
+		// If no credentials available, fall back to wrangler login
+		if (!authCredentials) {
 			const loginSuccess = wranglerLogin(options);
 			if (!loginSuccess) {
 				return { success: false };
 			}
 
-			// Get token after login
-			apiToken = getApiToken(options);
-			if (!apiToken) {
+			// Get credentials after login
+			authCredentials = getAuthCredentials(options);
+			if (!authCredentials) {
 				return { success: false };
 			}
 		}
 
-		const client = new Cloudflare({ apiToken });
+		const client =
+			authCredentials.type === "api_key"
+				? new Cloudflare({ apiKey: authCredentials.apiKey, apiEmail: authCredentials.apiEmail })
+				: new Cloudflare({ apiToken: authCredentials.token });
 
 		const accountId = await getAccountId(client);
 		if (!accountId) {
