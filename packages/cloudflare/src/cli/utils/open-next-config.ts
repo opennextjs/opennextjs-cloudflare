@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
+
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
 
 /**
@@ -32,18 +34,31 @@ export function createOpenNextConfigFile(appDir: string, options: { cache: boole
 	let content = readFileSync(join(getPackageTemplatesDirPath(), "open-next.config.ts"), "utf8");
 
 	if (!options.cache) {
-		// Remove the r2IncrementalCache import line
-		content = content.replace(/^import r2IncrementalCache.*\n/m, "");
-		// Replace the incrementalCache config with a comment
-		content = content.replace(
-			/\tincrementalCache: r2IncrementalCache,\n/,
-			"\t// For best results consider enabling R2 caching\n\t// See https://opennext.js.org/cloudflare/caching for more details\n"
-		);
-		// Update import path (config version uses /config, no-cache uses root)
-		content = content.replace("@opennextjs/cloudflare/config", "@opennextjs/cloudflare");
+		content = patchCode(content, removeR2ImportRule);
+		content = patchCode(content, removeIncrementalCacheRule);
+		content = content.replace(/<TO_DELETE>\n/g, "");
 	}
 
 	writeFileSync(openNextConfigPath, content);
 
 	return openNextConfigPath;
 }
+
+// Note: We cannot use an empty line for the fix field since it would cause an error (`no fix to apply`) (see: https://github.com/opennextjs/opennextjs-aws/blob/e49782af/packages/open-next/src/build/patch/astCodePatcher.ts#L47)
+//       we also need to remove the line entirely (including the newline at the end) which is something that ast-grep doesn't seem to support, so the
+//       rule here sets a `<TO_DELETE>` placeholder that we will then remove
+const removeR2ImportRule = `
+rule:
+  pattern: import $ID from "@opennextjs/cloudflare/overrides/incremental-cache/r2-incremental-cache";
+fix: '<TO_DELETE>'
+`;
+
+const removeIncrementalCacheRule = `
+rule:
+  pattern: '{ incrementalCache: $ID }'
+fix: |-
+  {
+  	// For best results consider enabling R2 caching
+  	// See https://opennext.js.org/cloudflare/caching for more details
+  }
+`;
