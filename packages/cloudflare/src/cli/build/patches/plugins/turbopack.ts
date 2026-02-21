@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { CodePatcher } from "@opennextjs/aws/build/patch/codePatcher.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
@@ -10,6 +13,130 @@ fix:
   requireChunk(chunkPath)
 `;
 
+/**
+ * Discover Turbopack external module mappings by reading symlinks in .next/node_modules/.
+ *
+ * Turbopack externalizes packages listed in serverExternalPackages and creates hashed
+ * identifiers (e.g. "shiki-43d062b67f27bbdc") with symlinks in .next/node_modules/ pointing
+ * to the real packages (e.g. ../../node_modules/shiki). At runtime, externalImport() does
+ * `await import("shiki-43d062b67f27bbdc/wasm")` which fails on workerd because those hashed
+ * names are not real modules. This function discovers the mappings so we can intercept them.
+ */
+function discoverExternalModuleMappings(filePath: string): Map<string, string> {
+	// filePath is like: .../.next/server/chunks/ssr/[turbopack]_runtime.js
+	// We need: .../.next/node_modules/
+	const dotNextDir = filePath.replace(/\/server\/chunks\/.*$/, "");
+	const nodeModulesDir = path.join(dotNextDir, "node_modules");
+
+	const mappings = new Map<string, string>();
+
+	if (!fs.existsSync(nodeModulesDir)) {
+		return mappings;
+	}
+
+	for (const entry of fs.readdirSync(nodeModulesDir)) {
+		const entryPath = path.join(nodeModulesDir, entry);
+		try {
+			const stat = fs.lstatSync(entryPath);
+			if (stat.isSymbolicLink()) {
+				const target = fs.readlinkSync(entryPath);
+				// target is like "../../node_modules/shiki" — extract package name
+				const match = target.match(/node_modules\/(.+)$/);
+				if (match?.[1]) {
+					mappings.set(entry, match[1]);
+				}
+			}
+		} catch {
+			// skip entries we can't read
+		}
+	}
+
+	return mappings;
+}
+
+/**
+ * Build a dynamic inlineExternalImportRule that includes cases for all discovered
+ * Turbopack external module hashes, mapping them back to their real package names.
+ *
+ * We use a switch for exact matches (including bare + subpath cases) and a fallback
+ * for the default case. Since switch/case can only match exact strings, we enumerate
+ * known subpaths from the traced files to cover cases like "shiki-hash/wasm".
+ */
+function buildExternalImportRule(mappings: Map<string, string>, tracedFiles: string[]): string {
+	const cases: string[] = [];
+
+	// Always include the @vercel/og rewrite
+	cases.push(`    case "next/dist/compiled/@vercel/og/index.node.js":
+      $RAW = await import("next/dist/compiled/@vercel/og/index.edge.js");
+      break;`);
+
+	// Add case for each discovered external module mapping (bare import)
+	for (const [hashedName, realName] of mappings) {
+		cases.push(`    case "${hashedName}":
+      $RAW = await import("${realName}");
+      break;`);
+	}
+
+	// Discover subpath imports from the traced chunk files.
+	// Chunks reference external modules like "shiki-hash/wasm" — scan for these patterns.
+	const subpathCases = discoverExternalSubpaths(mappings, tracedFiles);
+	for (const [hashedSubpath, realSubpath] of subpathCases) {
+		cases.push(`    case "${hashedSubpath}":
+      $RAW = await import("${realSubpath}");
+      break;`);
+	}
+
+	return `
+rule:
+  pattern: "$RAW = await import($ID)"
+  inside:
+    regex: "externalImport"
+    kind: function_declaration
+    stopBy: end
+fix: |-
+  switch ($ID) {
+${cases.join("\n")}
+    default:
+      $RAW = await import($ID);
+  }
+`;
+}
+
+/**
+ * Scan traced chunk files for external module subpath imports.
+ * E.g. find "shiki-43d062b67f27bbdc/wasm" in chunk code and map it to "shiki/wasm".
+ *
+ * Only scans files with "[externals]" in the name since those are the chunks that
+ * contain externalImport calls.
+ */
+function discoverExternalSubpaths(mappings: Map<string, string>, tracedFiles: string[]): Map<string, string> {
+	const subpaths = new Map<string, string>();
+
+	const externalChunks = tracedFiles.filter((f) => f.includes("[externals]"));
+
+	for (const [hashedName, realName] of mappings) {
+		const pattern = new RegExp(`"(${hashedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/[^"]*)"`, "g");
+
+		for (const filePath of externalChunks) {
+			try {
+				const content = fs.readFileSync(filePath, "utf-8");
+				for (const match of content.matchAll(pattern)) {
+					const fullHashedPath = match[1];
+					if (fullHashedPath) {
+						const subpath = fullHashedPath.slice(hashedName.length);
+						const realSubpath = realName + subpath;
+						subpaths.set(fullHashedPath, realSubpath);
+					}
+				}
+			} catch {
+				// skip files we can't read
+			}
+		}
+	}
+
+	return subpaths;
+}
+
 export const patchTurbopackRuntime: CodePatcher = {
 	name: "inline-turbopack-chunks",
 	patches: [
@@ -19,8 +146,10 @@ export const patchTurbopackRuntime: CodePatcher = {
 				escape: false,
 			}),
 			contentFilter: /loadRuntimeChunkPath/,
-			patchCode: async ({ code, tracedFiles }) => {
-				let patched = patchCode(code, inlineExternalImportRule);
+			patchCode: async ({ code, tracedFiles, filePath }) => {
+				const mappings = discoverExternalModuleMappings(filePath);
+				const externalImportRule = buildExternalImportRule(mappings, tracedFiles);
+				let patched = patchCode(code, externalImportRule);
 				patched = patchCode(patched, inlineChunksRule);
 
 				return `${patched}\n${inlineChunksFn(tracedFiles)}`;
@@ -63,27 +192,3 @@ ${chunks
   }
 `;
 }
-
-// Turbopack imports `og` via `externalImport`.
-// We patch it to:
-// - add the explicit path so that the file is inlined by wrangler
-// - use the edge version of the module instead of the node version.
-//
-// Modules that are not inlined (no added to the switch), would generate an error similar to:
-// Failed to load external module path/to/module: Error: No such module "path/to/module"
-const inlineExternalImportRule = `
-rule:
-  pattern: "$RAW = await import($ID)"
-  inside:
-    regex: "externalImport"
-    kind: function_declaration
-    stopBy: end
-fix: |-
-  switch ($ID) {
-    case "next/dist/compiled/@vercel/og/index.node.js":
-      $RAW = await import("next/dist/compiled/@vercel/og/index.edge.js");
-      break;
-    default:
-      $RAW = await import($ID);
-  }
-`;
