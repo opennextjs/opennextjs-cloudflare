@@ -86,6 +86,18 @@ function buildExternalImportRule(mappings: Map<string, string>, tracedFiles: str
       break;`);
 	}
 
+	// Discover bare external imports from chunk files (e.g. externalImport("shiki")).
+	// These need explicit switch cases so the bundler can statically resolve them.
+	const bareImports = discoverBareExternalImports(tracedFiles);
+	const alreadyCased = new Set(cases.map((c) => c.match(/case "([^"]+)"/)?.[1]).filter(Boolean));
+	for (const [moduleName, realName] of bareImports) {
+		if (!alreadyCased.has(moduleName)) {
+			cases.push(`    case "${moduleName}":
+      $RAW = await import("${realName}");
+      break;`);
+		}
+	}
+
 	return `
 rule:
   pattern: "$RAW = await import($ID)"
@@ -100,6 +112,40 @@ ${cases.join("\n")}
       $RAW = await import($ID);
   }
 `;
+}
+
+/**
+ * Scan traced chunk files for bare external module imports (e.g. `externalImport("shiki")`).
+ *
+ * In some Turbopack versions, externalized packages are referenced by their real names
+ * (not hashed). On workerd, the default `await import(id)` with a variable `id` can't be
+ * statically analyzed by the bundler. By adding explicit switch cases with string literals,
+ * we make these imports statically discoverable so they get bundled into the worker.
+ */
+function discoverBareExternalImports(tracedFiles: string[]): Map<string, string> {
+	const bareImports = new Map<string, string>();
+
+	// Turbopack compiles `externalImport(id)` calls as `.y("moduleName")` in chunks.
+	// We scan all chunk files (not just [externals] ones) to find these patterns.
+	const chunkFiles = tracedFiles.filter((f) => f.includes(".next/server/chunks/"));
+
+	for (const filePath of chunkFiles) {
+		try {
+			const content = fs.readFileSync(filePath, "utf-8");
+			// Match patterns like .y("shiki") or .y("some-package/subpath")
+			for (const match of content.matchAll(/\.y\("([^"]+)"\)/g)) {
+				const moduleName = match[1];
+				if (moduleName) {
+					// Identity mapping — the module name is already the real name
+					bareImports.set(moduleName, moduleName);
+				}
+			}
+		} catch {
+			// skip files we can't read
+		}
+	}
+
+	return bareImports;
 }
 
 /**

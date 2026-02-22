@@ -21,7 +21,8 @@
 		"@example/shared": "workspace:*",
 		"next": "catalog:e2e",
 		"react": "catalog:e2e",
-		"react-dom": "catalog:e2e"
+		"react-dom": "catalog:e2e",
+		"shiki": "^3.22.0"
 	},
 	"devDependencies": {
 		"@playwright/test": "catalog:",
