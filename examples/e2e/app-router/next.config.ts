@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
 	poweredByHeader: false,
 	cleanDistDir: true,
 	transpilePackages: ["@example/shared"],
+	serverExternalPackages: ["shiki"],
 	output: "standalone",
 	// outputFileTracingRoot: "../sst",
 	typescript: {
