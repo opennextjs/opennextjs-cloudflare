@@ -62,7 +62,11 @@ function discoverExternalModuleMappings(filePath: string): Map<string, string> {
  * for the default case. Since switch/case can only match exact strings, we enumerate
  * known subpaths from the traced files to cover cases like "shiki-hash/wasm".
  */
-function buildExternalImportRule(mappings: Map<string, string>, tracedFiles: string[]): string {
+function buildExternalImportRule(
+	mappings: Map<string, string>,
+	tracedFiles: string[],
+	runtimeCode: string
+): string {
 	const cases: string[] = [];
 
 	// Always include the @vercel/og rewrite
@@ -88,7 +92,7 @@ function buildExternalImportRule(mappings: Map<string, string>, tracedFiles: str
 
 	// Discover bare external imports from chunk files (e.g. externalImport("shiki")).
 	// These need explicit switch cases so the bundler can statically resolve them.
-	const bareImports = discoverBareExternalImports(tracedFiles);
+	const bareImports = discoverBareExternalImports(tracedFiles, runtimeCode);
 	const alreadyCased = new Set(cases.map((c) => c.match(/case "([^"]+)"/)?.[1]).filter(Boolean));
 	for (const [moduleName, realName] of bareImports) {
 		if (!alreadyCased.has(moduleName)) {
@@ -122,18 +126,27 @@ ${cases.join("\n")}
  * statically analyzed by the bundler. By adding explicit switch cases with string literals,
  * we make these imports statically discoverable so they get bundled into the worker.
  */
-function discoverBareExternalImports(tracedFiles: string[]): Map<string, string> {
+function discoverBareExternalImports(tracedFiles: string[], runtimeCode: string): Map<string, string> {
 	const bareImports = new Map<string, string>();
 
-	// Turbopack compiles `externalImport(id)` calls as `.y("moduleName")` in chunks.
-	// We scan all chunk files (not just [externals] ones) to find these patterns.
+	// Turbopack assigns `externalImport` to a single-letter property on the context prototype,
+	// e.g. `contextPrototype.y = externalImport`. The property name could change between versions,
+	// so we extract it dynamically from the runtime code rather than hardcoding `.y`.
+	const propMatch = runtimeCode.match(/contextPrototype\.(\w+)\s*=\s*externalImport/);
+	if (!propMatch?.[1]) {
+		return bareImports;
+	}
+	const prop = propMatch[1];
+
+	// Chunks call externalImport as e.g. `.y("shiki")` — build a regex using the discovered property name.
+	const callPattern = new RegExp(`\\.${prop}\\("([^"]+)"\\)`, "g");
+
 	const chunkFiles = tracedFiles.filter((f) => f.includes(".next/server/chunks/"));
 
 	for (const filePath of chunkFiles) {
 		try {
 			const content = fs.readFileSync(filePath, "utf-8");
-			// Match patterns like .y("shiki") or .y("some-package/subpath")
-			for (const match of content.matchAll(/\.y\("([^"]+)"\)/g)) {
+			for (const match of content.matchAll(callPattern)) {
 				const moduleName = match[1];
 				if (moduleName) {
 					// Identity mapping — the module name is already the real name
@@ -194,7 +207,7 @@ export const patchTurbopackRuntime: CodePatcher = {
 			contentFilter: /loadRuntimeChunkPath/,
 			patchCode: async ({ code, tracedFiles, filePath }) => {
 				const mappings = discoverExternalModuleMappings(filePath);
-				const externalImportRule = buildExternalImportRule(mappings, tracedFiles);
+				const externalImportRule = buildExternalImportRule(mappings, tracedFiles, code);
 				let patched = patchCode(code, externalImportRule);
 				patched = patchCode(patched, inlineChunksRule);
 
