@@ -115,6 +115,14 @@ function getNameFromPackageJson(sourceDir: string): string | undefined {
 	}
 }
 
+/**
+ * Fetches the latest compatibility date from the npm registry based on the latest `workerd` version.
+ *
+ * The workerd version format is `major.yyyymmdd.patch`. The date portion is extracted and formatted
+ * as `YYYY-MM-DD`. If the extracted date is in the future, today's date is returned instead.
+ *
+ * @returns The compatibility date as a `YYYY-MM-DD` string, or `undefined` if the fetch or parsing fails.
+ */
 async function getLatestCompatDate(): Promise<string | undefined> {
 	try {
 		const resp = await fetch(`https://registry.npmjs.org/workerd`);
@@ -128,10 +136,12 @@ async function getLatestCompatDate(): Promise<string | undefined> {
 		const match = latestWorkerdVersion.match(/\d+\.(\d{4})(\d{2})(\d{2})\.\d+/);
 
 		if (match) {
-			const [, year, month, date] = match;
-			const compatDate = `${year}-${month}-${date}`;
+			const [, year, month, day] = match;
+			const compatDate = `${year}-${month}-${day}`;
 
-			return compatDate;
+			const currentDate = new Date().toISOString().slice(0, 10);
+
+			return compatDate < currentDate ? compatDate : currentDate;
 		}
 	} catch {
 		/* empty */
