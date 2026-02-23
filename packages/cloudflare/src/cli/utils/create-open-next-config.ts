@@ -25,7 +25,7 @@ export function findOpenNextConfig(appDir: string): string | undefined {
  * Creates an `open-next.config.ts` file for the application.
  *
  * @param appDir The Next.js application root directory
- * @param options.cache Whether to set up caching in the configuration
+ * @param options.cache Whether to set up caching
  * @returns The path to the created configuration file
  */
 export function createOpenNextConfigFile(appDir: string, options: { cache: boolean }): string {
@@ -34,9 +34,8 @@ export function createOpenNextConfigFile(appDir: string, options: { cache: boole
 	let content = readFileSync(join(getPackageTemplatesDirPath(), "open-next.config.ts"), "utf8");
 
 	if (!options.cache) {
-		content = patchCode(content, removeR2ImportRule);
-		content = patchCode(content, removeIncrementalCacheRule);
-		content = content.replace(/<TO_DELETE>\n/g, "");
+		content = patchCode(content, commentOutR2ImportRule);
+		content = patchCode(content, commentOutIncrementalCacheRule);
 	}
 
 	writeFileSync(openNextConfigPath, content);
@@ -44,21 +43,20 @@ export function createOpenNextConfigFile(appDir: string, options: { cache: boole
 	return openNextConfigPath;
 }
 
-// Note: We cannot use an empty line for the fix field since it would cause an error (`no fix to apply`) (see: https://github.com/opennextjs/opennextjs-aws/blob/e49782af/packages/open-next/src/build/patch/astCodePatcher.ts#L47)
-//       we also need to remove the line entirely (including the newline at the end) which is something that ast-grep doesn't seem to support, so the
-//       rule here sets a `<TO_DELETE>` placeholder that we will then remove
-const removeR2ImportRule = `
+const commentOutR2ImportRule = `
 rule:
   pattern: import $ID from "@opennextjs/cloudflare/overrides/incremental-cache/r2-incremental-cache";
-fix: '<TO_DELETE>'
+fix: |-
+  // import $ID from "@opennextjs/cloudflare/overrides/incremental-cache/r2-incremental-cache";
 `;
 
-const removeIncrementalCacheRule = `
+const commentOutIncrementalCacheRule = `
 rule:
   pattern: '{ incrementalCache: $ID }'
 fix: |-
   {
   	// For best results consider enabling R2 caching
   	// See https://opennext.js.org/cloudflare/caching for more details
+  	// incrementalCache: $ID
   }
 `;
