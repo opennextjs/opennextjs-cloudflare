@@ -49,34 +49,30 @@ export async function createWranglerConfigFile(
 ): Promise<{ cachingEnabled: boolean }> {
 	const workerName = getWorkerName(projectDir);
 	const compatibilityDate = (await getLatestCompatDate()) ?? defaultCompatDate;
-	const bucketName = `${workerName}-opennext-cache`;
-
-	const r2BucketCreationResult = await maybeCreateR2Bucket(projectDir, bucketName);
-	const cachingEnabled = r2BucketCreationResult.success === true;
 
 	const wranglerConfigStr = readFileSync(join(getPackageTemplatesDirPath(), "wrangler.jsonc"), "utf8")
 		.replaceAll("<WORKER_NAME>", workerName)
-		.replaceAll("<COMPATIBILITY_DATE>", compatibilityDate)
-		.replaceAll("<R2_BUCKET_NAME>", bucketName);
+		.replaceAll("<COMPATIBILITY_DATE>", compatibilityDate);
 
 	const wranglerConfig = parse(wranglerConfigStr) as CommentObject;
 
 	assert(Array.isArray(wranglerConfig.r2_buckets));
+	assert(wranglerConfig.r2_buckets[0] != null && typeof wranglerConfig.r2_buckets[0] === "object");
+	assert(
+		"bucket_name" in wranglerConfig.r2_buckets[0] &&
+			typeof wranglerConfig.r2_buckets[0].bucket_name === "string"
+	);
 
-	if (cachingEnabled) {
-		assert(wranglerConfig.r2_buckets[0] != null && typeof wranglerConfig.r2_buckets[0] === "object");
-		assert("bucket_name" in wranglerConfig.r2_buckets[0]);
-		wranglerConfig.r2_buckets[0].bucket_name = r2BucketCreationResult.bucketName;
-	} else {
-		assert(Array.isArray(wranglerConfig.r2_buckets));
+	const bucketName = wranglerConfig.r2_buckets[0].bucket_name;
+	const { success: cachingEnabled } = await maybeCreateR2Bucket(projectDir, bucketName);
+
+	if (!cachingEnabled) {
 		delete wranglerConfig.r2_buckets;
 	}
 
 	writeFileSync(join(projectDir, "wrangler.jsonc"), stringify(wranglerConfig, null, "\t"));
 
-	return {
-		cachingEnabled,
-	};
+	return { cachingEnabled };
 }
 
 /**
