@@ -87,7 +87,7 @@ export async function createWranglerConfigFile(
  * @returns A valid worker name suitable for a Cloudflare Worker
  */
 function getWorkerName(projectDir: string): string {
-	const appName = getAppNameFromPackageJson(projectDir) ?? "app-name";
+	const appName = getNameFromPackageJson(projectDir) ?? "app-name";
 
 	return (
 		appName
@@ -99,7 +99,13 @@ function getWorkerName(projectDir: string): string {
 	);
 }
 
-function getAppNameFromPackageJson(sourceDir: string): string | undefined {
+/**
+ * Reads the `name` field from the `package.json` in the given directory.
+ *
+ * @param sourceDir - The directory containing the `package.json` file.
+ * @returns The package name if found, `undefined` otherwise.
+ */
+function getNameFromPackageJson(sourceDir: string): string | undefined {
 	try {
 		const packageJsonStr = readFileSync(join(sourceDir, "package.json"), "utf8");
 		const packageJson: Record<string, string> = JSON.parse(packageJsonStr);
