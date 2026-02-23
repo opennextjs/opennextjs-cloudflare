@@ -36,11 +36,11 @@ import {
 	BINDING_NAME as D1_TAG_BINDING_NAME,
 	NAME as D1_TAG_NAME,
 } from "../../api/overrides/tag-cache/d1-next-tag-cache.js";
-import { normalizePath } from "../build/utils/normalize-path.js";
-import type { WranglerTarget } from "../utils/run-wrangler.js";
-import { runWrangler } from "../utils/run-wrangler.js";
-import { getEnvFromPlatformProxy, quoteShellMeta, type WorkerEnvVar } from "./helpers.js";
-import type { WithWranglerArgs } from "./utils.js";
+import { normalizePath } from "../utils/normalize-path.js";
+import { getEnvFromPlatformProxy, quoteShellMeta, type WorkerEnvVar } from "./utils/helpers.js";
+import type { WranglerTarget } from "./utils/run-wrangler.js";
+import { runWrangler } from "./utils/run-wrangler.js";
+import type { WithWranglerArgs } from "./utils/utils.js";
 import {
 	getNormalizedOptions,
 	printHeaders,
@@ -48,7 +48,7 @@ import {
 	retrieveCompiledConfig,
 	withWranglerOptions,
 	withWranglerPassthroughArgs,
-} from "./utils.js";
+} from "./utils/utils.js";
 
 /**
  * Implementation of the `opennextjs-cloudflare populateCache` command.

@@ -5,14 +5,14 @@ import url from "node:url";
 
 import { compileOpenNextConfig } from "@opennextjs/aws/build/compileConfig.js";
 import { normalizeOptions } from "@opennextjs/aws/build/helper.js";
-import * as buildHelper from "@opennextjs/aws/build/helper.js";
 import { printHeader, showWarningOnWindows } from "@opennextjs/aws/build/utils.js";
 import logger from "@opennextjs/aws/logger.js";
 import { unstable_readConfig } from "wrangler";
 import type yargs from "yargs";
 
-import type { OpenNextConfig } from "../../api/config.js";
-import { createOpenNextConfigIfNotExistent, ensureCloudflareConfig } from "../build/utils/index.js";
+import type { OpenNextConfig } from "../../../api/config.js";
+import { ensureCloudflareConfig } from "../../build/utils/ensure-cf-config.js";
+import { createOpenNextConfigIfNotExistent } from "../../utils/create-config-files.js";
 
 export type WithWranglerArgs<T = unknown> = T & {
 	// Array of arguments that can be given to wrangler commands, including the `--config` and `--env` args.
@@ -32,37 +32,6 @@ export function printHeaders(command: string) {
 	printHeader(`Cloudflare ${command}`);
 
 	showWarningOnWindows();
-}
-
-/**
- * Validates that the Next.js version is supported and checks wrangler compatibility.
- *
- * Note: this function assumes that wrangler is installed.
- *
- * @param options.nextVersion The detected Next.js version string
- * @throws {Error} If the Next.js version is unsupported
- */
-export async function ensureNextjsVersionSupported({
-	nextVersion,
-}: Pick<buildHelper.BuildOptions, "nextVersion">) {
-	if (buildHelper.compareSemver(nextVersion, "<", "14.2.0")) {
-		throw new Error("Next.js version unsupported, please upgrade to version 14.2 or greater.");
-	}
-
-	const {
-		default: { version: wranglerVersion },
-	} = await import("wrangler/package.json", { with: { type: "json" } });
-
-	// We need a version of workerd that has a fix for setImmediate for Next.js 16.1+
-	// See:
-	// - https://github.com/cloudflare/workerd/pull/5869
-	// - https://github.com/opennextjs/opennextjs-cloudflare/issues/1049
-	if (
-		buildHelper.compareSemver(nextVersion, ">=", "16.1.0") &&
-		buildHelper.compareSemver(wranglerVersion, "<", "4.59.2")
-	) {
-		logger.warn(`Next.js 16.1+ requires wrangler 4.59.2 or greater (${wranglerVersion} detected).`);
-	}
 }
 
 /**

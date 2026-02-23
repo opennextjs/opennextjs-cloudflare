@@ -6,7 +6,7 @@ import { patchCode, type RuleConfig } from "@opennextjs/aws/build/patch/astCodeP
 import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
-import { normalizePath } from "../../utils/normalize-path.js";
+import { normalizePath } from "../../../utils/normalize-path.js";
 
 async function getPagesManifests(serverDir: string): Promise<string[]> {
 	try {

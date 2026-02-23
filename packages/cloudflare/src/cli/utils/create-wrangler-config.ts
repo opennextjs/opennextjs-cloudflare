@@ -6,8 +6,8 @@ import Cloudflare from "cloudflare";
 import { type CommentObject, parse, stringify } from "comment-json";
 
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
+import { type PackagerDetails, runWrangler } from "../commands/utils/run-wrangler.js";
 import { askAccountSelection } from "./ask-account-selection.js";
-import { type PackagerDetails, runWrangler } from "./run-wrangler.js";
 
 /**
  * Gets the path to the Wrangler configuration file if it exists.

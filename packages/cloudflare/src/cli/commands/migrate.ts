@@ -12,11 +12,12 @@ import {
 import logger from "@opennextjs/aws/logger.js";
 import type yargs from "yargs";
 
-import { conditionalAppendFileSync } from "../build/utils/files.js";
 import { askConfirmation } from "../utils/ask-confirmation.js";
-import { createOpenNextConfigFile, findOpenNextConfig } from "../utils/open-next-config.js";
-import { createWranglerConfigFile, findWranglerConfig } from "../utils/wrangler-config.js";
-import { ensureNextjsVersionSupported, printHeaders } from "./utils.js";
+import { createOpenNextConfigFile, findOpenNextConfig } from "../utils/create-open-next-config.js";
+import { createWranglerConfigFile, findWranglerConfig } from "../utils/create-wrangler-config.js";
+import { ensureNextjsVersionSupported } from "../utils/nextjs-support.js";
+import { conditionalAppendFileSync } from "./utils/files.js";
+import { printHeaders } from "./utils/utils.js";
 
 /**
  * Implementation of the `opennextjs-cloudflare migrate` command.

@@ -1,7 +1,7 @@
-import type { ProjectOptions } from "../../project-options.js";
-import { askConfirmation } from "../../utils/ask-confirmation.js";
-import { createOpenNextConfigFile, findOpenNextConfig } from "../../utils/open-next-config.js";
-import { createWranglerConfigFile, findWranglerConfig } from "../../utils/wrangler-config.js";
+import type { ProjectOptions } from "../project-options.js";
+import { askConfirmation } from "./ask-confirmation.js";
+import { createOpenNextConfigFile, findOpenNextConfig } from "./create-open-next-config.js";
+import { createWranglerConfigFile, findWranglerConfig } from "./create-wrangler-config.js";
 
 /**
  * Creates a `wrangler.jsonc` file for the user if a wrangler config file doesn't already exist,

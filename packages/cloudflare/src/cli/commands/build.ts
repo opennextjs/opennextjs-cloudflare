@@ -1,8 +1,8 @@
 import type yargs from "yargs";
 
 import { build as buildImpl } from "../build/build.js";
-import { createWranglerConfigIfNonExistent } from "../build/utils/index.js";
-import type { WithWranglerArgs } from "./utils.js";
+import { createWranglerConfigIfNonExistent } from "../utils/create-config-files.js";
+import type { WithWranglerArgs } from "./utils/utils.js";
 import {
 	compileConfig,
 	getNormalizedOptions,
@@ -11,7 +11,7 @@ import {
 	readWranglerConfig,
 	withWranglerOptions,
 	withWranglerPassthroughArgs,
-} from "./utils.js";
+} from "./utils/utils.js";
 
 /**
  * Implementation of the `opennextjs-cloudflare build` command.

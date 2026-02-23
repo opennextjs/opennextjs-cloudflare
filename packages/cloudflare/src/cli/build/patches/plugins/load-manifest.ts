@@ -13,7 +13,7 @@ import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-upd
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import { glob } from "glob";
 
-import { normalizePath } from "../../utils/normalize-path.js";
+import { normalizePath } from "../../../utils/normalize-path.js";
 
 export function inlineLoadManifest(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
 	return updater.updateContent("inline-load-manifest", [

@@ -69,11 +69,11 @@ describe("getCacheAssets", () => {
 	});
 });
 
-vi.mock("../utils/run-wrangler.js", () => ({
+vi.mock("./utils/run-wrangler.js", () => ({
 	runWrangler: vi.fn(() => ({ success: true, stdout: "", stderr: "" })),
 }));
 
-vi.mock("./helpers.js", () => ({
+vi.mock("./utils/helpers.js", () => ({
 	getEnvFromPlatformProxy: vi.fn(async () => ({})),
 	quoteShellMeta: vi.fn((s) => s),
 }));
@@ -103,7 +103,7 @@ describe("populateCache", () => {
 			});
 
 			test(target, async () => {
-				const { runWrangler } = await import("../utils/run-wrangler.js");
+				const { runWrangler } = await import("./utils/run-wrangler.js");
 
 				setupMockFileSystem();
 				vi.mocked(runWrangler).mockClear();
@@ -139,7 +139,7 @@ describe("populateCache", () => {
 			});
 
 			test(`${target} using jurisdiction`, async () => {
-				const { runWrangler } = await import("../utils/run-wrangler.js");
+				const { runWrangler } = await import("./utils/run-wrangler.js");
 
 				setupMockFileSystem();
 				vi.mocked(runWrangler).mockClear();

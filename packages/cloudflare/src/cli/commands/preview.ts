@@ -1,17 +1,17 @@
 import logger from "@opennextjs/aws/logger.js";
 import type yargs from "yargs";
 
-import { runWrangler } from "../utils/run-wrangler.js";
-import { getEnvFromPlatformProxy } from "./helpers.js";
 import { populateCache, withPopulateCacheOptions } from "./populate-cache.js";
-import type { WithWranglerArgs } from "./utils.js";
+import { getEnvFromPlatformProxy } from "./utils/helpers.js";
+import { runWrangler } from "./utils/run-wrangler.js";
+import type { WithWranglerArgs } from "./utils/utils.js";
 import {
 	getNormalizedOptions,
 	printHeaders,
 	readWranglerConfig,
 	retrieveCompiledConfig,
 	withWranglerPassthroughArgs,
-} from "./utils.js";
+} from "./utils/utils.js";
 
 /**
  * Implementation of the `opennextjs-cloudflare preview` command.
