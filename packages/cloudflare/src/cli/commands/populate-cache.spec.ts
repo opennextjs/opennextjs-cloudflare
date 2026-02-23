@@ -1,3 +1,4 @@
+import EventEmitter from "node:events";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -78,6 +79,21 @@ vi.mock("./helpers.js", () => ({
 	quoteShellMeta: vi.fn((s) => s),
 }));
 
+const mockWorkerFetch = vi.fn();
+const mockWorkerDispose = vi.fn();
+
+vi.mock("wrangler", () => ({
+	unstable_startWorker: vi.fn(() =>
+		Promise.resolve({
+			ready: Promise.resolve(),
+			url: Promise.resolve(new URL("http://localhost:12345")),
+			fetch: mockWorkerFetch,
+			dispose: mockWorkerDispose,
+			raw: new EventEmitter(),
+		})
+	),
+}));
+
 describe("populateCache", () => {
 	const setupMockFileSystem = () => {
 		mockFs({
@@ -100,13 +116,19 @@ describe("populateCache", () => {
 		({ target }) => {
 			afterEach(() => {
 				mockFs.restore();
+				vi.clearAllMocks();
 			});
 
-			test(target, async () => {
-				const { runWrangler } = await import("../utils/run-wrangler.js");
-
+			test(`${target} - starts worker and sends individual cache entries via FormData`, async () => {
 				setupMockFileSystem();
-				vi.mocked(runWrangler).mockClear();
+
+				// Mock fetch to return a successful response for each individual entry.
+				global.fetch = vi.fn().mockResolvedValue(
+					new Response(JSON.stringify({ success: true }), {
+						status: 200,
+						headers: { "Content-Type": "application/json" },
+					})
+				);
 
 				await populateCache(
 					{
@@ -131,48 +153,37 @@ describe("populateCache", () => {
 					{} as any // eslint-disable-line @typescript-eslint/no-explicit-any
 				);
 
-				expect(runWrangler).toHaveBeenCalledWith(
-					expect.anything(),
-					expect.arrayContaining(["r2 bulk put", "test-bucket"]),
-					expect.objectContaining({ target })
-				);
-			});
-
-			test(`${target} using jurisdiction`, async () => {
-				const { runWrangler } = await import("../utils/run-wrangler.js");
-
-				setupMockFileSystem();
-				vi.mocked(runWrangler).mockClear();
-
-				await populateCache(
-					{
-						outputDir: "/test/output",
-					} as BuildOptions,
-					{
-						default: {
-							override: {
-								incrementalCache: "cf-r2-incremental-cache",
-							},
-						},
-					} as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-					{
-						r2_buckets: [
-							{
-								binding: "NEXT_INC_CACHE_R2_BUCKET",
+				// Verify the worker was started with the correct R2 binding configuration.
+				const { unstable_startWorker: startWorker } = await import("wrangler");
+				expect(startWorker).toHaveBeenCalledWith(
+					expect.objectContaining({
+						name: "open-next-cache-populate",
+						compatibilityDate: "2026-01-01",
+						bindings: expect.objectContaining({
+							R2: expect.objectContaining({
+								type: "r2_bucket",
 								bucket_name: "test-bucket",
-								jurisdiction: "eu",
-							},
-						],
-					} as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-					{ target, shouldUsePreviewId: false },
-					{} as any // eslint-disable-line @typescript-eslint/no-explicit-any
+								remote: target === "remote",
+							}),
+						}),
+					})
 				);
 
-				expect(runWrangler).toHaveBeenCalledWith(
-					expect.anything(),
-					expect.arrayContaining(["r2 bulk put", "test-bucket", "--jurisdiction eu"]),
-					expect.objectContaining({ target })
+				// Each cache entry should be sent as an individual POST request with FormData.
+				expect(global.fetch).toHaveBeenCalledWith(
+					"http://localhost:12345/populate",
+					expect.objectContaining({ method: "POST" })
 				);
+
+				// Verify the body is FormData containing key and value fields.
+				const fetchCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+				const body = fetchCall[1].body;
+				expect(body).toBeInstanceOf(FormData);
+				expect(body.get("key")).toBeTypeOf("string");
+				expect(body.get("value")).toBeTypeOf("string");
+
+				// Verify worker was disposed after sending entries.
+				expect(mockWorkerDispose).toHaveBeenCalled();
 			});
 		}
 	);
