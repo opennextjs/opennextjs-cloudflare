@@ -73,7 +73,9 @@ async function getLatestCompatDate(): Promise<string | undefined> {
 			const [, year, month, date] = match;
 			const compatDate = `${year}-${month}-${date}`;
 
-			return compatDate;
+			const currentDate = new Date().toISOString().slice(0, 10);
+
+			return compatDate > currentDate ? currentDate : compatDate;
 		}
 	} catch {
 		/* empty */
