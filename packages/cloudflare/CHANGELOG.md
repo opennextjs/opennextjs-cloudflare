@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.16.6
+
+### Patch Changes
+
+- [#1138](https://github.com/opennextjs/opennextjs-cloudflare/pull/1138) [`4487f1f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/4487f1f64fbf14175a13d6e54928bc1a35d39fdf) Thanks [@james-elicx](https://github.com/james-elicx)! - Fix the CLI potentially setting a future compatibility date in the wrangler config when workerd has published a version matching a future date, by capping to the current date.
+
 ## 1.16.5
 
 ### Patch Changes
