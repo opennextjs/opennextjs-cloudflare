@@ -1,3 +1,4 @@
+import assert from "node:assert";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -29,39 +30,6 @@ export function findWranglerConfig(appDir: string): string | undefined {
 }
 
 /**
- * Applies a modification to a parsed JSONC object at the specified path.
- * If value is undefined, the property at the path will be deleted.
- *
- * @param config The parsed JSONC object to modify
- * @param path The path to the property to modify (e.g., ["services", 0, "service"])
- * @param value The value to set (or undefined to delete)
- */
-function applyModification(config: CommentObject, path: (string | number)[], value: unknown): void {
-	if (path.length === 0) return;
-
-	let current: unknown = config;
-
-	// Navigate to the parent of the target property
-	for (let i = 0; i < path.length - 1; i++) {
-		const key = path[i] as string | number;
-		if (current === null || typeof current !== "object") return;
-		current = (current as Record<string | number, unknown>)[key];
-	}
-
-	if (current === null || typeof current !== "object") return;
-
-	const lastKey = path[path.length - 1] as string | number;
-
-	if (value === undefined) {
-		// Delete the property
-		delete (current as Record<string | number, unknown>)[lastKey];
-	} else {
-		// Set the value
-		(current as Record<string | number, unknown>)[lastKey] = value;
-	}
-}
-
-/**
  * Creates a wrangler.jsonc config file in the target directory for the project.
  *
  * If a wrangler.jsonc file already exists it will be overridden.
@@ -71,35 +39,37 @@ function applyModification(config: CommentObject, path: (string | number)[], val
  * will be created instead.
  *
  * @param projectDir The target directory for the project
+ * @param defaultCompatDate The default YYYY-MM-DD compatibility date to use in the config (used if fetching the latest workerd version date fails)
  * @returns An object containing a `cachingEnabled` which indicates whether caching has been set up during the wrangler
  *          config file creation or not
  */
-export async function createWranglerConfigFile(projectDir: string): Promise<{ cachingEnabled: boolean }> {
+export async function createWranglerConfigFile(
+	projectDir: string,
+	defaultCompatDate = "2026-02-01"
+): Promise<{ cachingEnabled: boolean }> {
 	const workerName = getWorkerName(projectDir);
+	const compatibilityDate = (await getLatestCompatDate()) ?? defaultCompatDate;
+	const bucketName = `${workerName}-opennext-cache`;
 
-	const bucketName = `${workerName}-opennext-incremental-cache`;
 	const r2BucketCreationResult = await maybeCreateR2Bucket(projectDir, bucketName);
-
 	const cachingEnabled = r2BucketCreationResult.success === true;
 
-	const wranglerConfigStr = readFileSync(join(getPackageTemplatesDirPath(), "wrangler.jsonc"), "utf8");
+	const wranglerConfigStr = readFileSync(join(getPackageTemplatesDirPath(), "wrangler.jsonc"), "utf8")
+		.replaceAll("<WORKER_NAME>", workerName)
+		.replaceAll("<COMPATIBILITY_DATE>", compatibilityDate)
+		.replaceAll("<R2_BUCKET_NAME>", bucketName);
+
 	const wranglerConfig = parse(wranglerConfigStr) as CommentObject;
 
-	applyModification(wranglerConfig, ["name"], workerName);
-	applyModification(wranglerConfig, ["services", 0, "service"], workerName);
-
-	// Update compatibility_date if we have a newer one
-	const compatDate = await getLatestCompatDate();
-	if (compatDate) {
-		applyModification(wranglerConfig, ["compatibility_date"], compatDate);
-	}
+	assert(Array.isArray(wranglerConfig.r2_buckets));
 
 	if (cachingEnabled) {
-		// Update R2 bucket name
-		applyModification(wranglerConfig, ["r2_buckets", 0, "bucket_name"], r2BucketCreationResult.bucketName);
+		assert(wranglerConfig.r2_buckets[0] != null && typeof wranglerConfig.r2_buckets[0] === "object");
+		assert("bucket_name" in wranglerConfig.r2_buckets[0]);
+		wranglerConfig.r2_buckets[0].bucket_name = r2BucketCreationResult.bucketName;
 	} else {
-		// Remove the r2_buckets property entirely
-		applyModification(wranglerConfig, ["r2_buckets"], undefined);
+		assert(Array.isArray(wranglerConfig.r2_buckets));
+		delete wranglerConfig.r2_buckets;
 	}
 
 	writeFileSync(join(projectDir, "wrangler.jsonc"), stringify(wranglerConfig, null, "\t"));
@@ -119,13 +89,14 @@ export async function createWranglerConfigFile(projectDir: string): Promise<{ ca
 function getWorkerName(projectDir: string): string {
 	const appName = getAppNameFromPackageJson(projectDir) ?? "app-name";
 
-	// Remove org prefix if present (e.g., "@org/my-app" -> "my-app")
-	const nameWithoutOrg = appName.replace(/^@[^/]+\//, "");
-
-	return nameWithoutOrg
-		.toLowerCase()
-		.replaceAll("_", "-")
-		.replace(/[^a-z0-9-]/gi, "");
+	return (
+		appName
+			.toLowerCase()
+			// Remove org prefix if present (e.g., "@org/my-app" -> "my-app")
+			.replace(/^@[^/]+\//, "")
+			.replaceAll("_", "-")
+			.replace(/[^a-z0-9-]/g, "")
+	);
 }
 
 function getAppNameFromPackageJson(sourceDir: string): string | undefined {

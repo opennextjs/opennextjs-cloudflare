@@ -112,7 +112,7 @@ describe("createWranglerConfigFile", () => {
 						// Create the bucket before deploying
 						// You can change the bucket name if you want
 						// See https://developers.cloudflare.com/workers/wrangler/commands/#r2-bucket-create
-						"bucket_name": "next-app-opennext-incremental-cache"
+						"bucket_name": "next-app-opennext-cache"
 					}
 				],
 				"images": {
