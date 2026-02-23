@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.17.0
+
+### Minor Changes
+
+- [#1133](https://github.com/opennextjs/opennextjs-cloudflare/pull/1133) [`25d5835`](https://github.com/opennextjs/opennextjs-cloudflare/commit/25d5835b1c006d6400141f3a5aa93332b26b04e3) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - Update the `migrate` command to attempt to create an R2 bucket for caching, if that is not possible an application without caching enabled will be generated instead.
+
 ## 1.16.6
 
 ### Patch Changes
