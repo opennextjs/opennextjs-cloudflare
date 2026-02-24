@@ -4,7 +4,7 @@
 
 ### Patch Changes
 
-- [#1148](https://github.com/opennextjs/opennextjs-cloudflare/pull/1148) [`50b5284`](https://github.com/opennextjs/opennextjs-cloudflare/commit/50b528479ad14fb4e868e8d28ac3397eafaa25fd) Thanks [@vicb](https://github.com/vicb)! - make dev /cdn-cgi/image behaves like prod for consistency (in #1147)
+- [#1147](https://github.com/opennextjs/opennextjs-cloudflare/pull/1147) [`f5bd138`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f5bd138fd3c77e02f2aa4b9c76d55681e59e98b4) Thanks [@vicb](https://github.com/vicb)! - make dev /cdn-cgi/image behaves like prod for consistency
 
 ## 1.17.0
 
@@ -116,8 +116,8 @@
 
 - [#1071](https://github.com/opennextjs/opennextjs-cloudflare/pull/1071) [`886c742`](https://github.com/opennextjs/opennextjs-cloudflare/commit/886c742f8e735843196a4a1c758a9e5b1cb5464e) Thanks [@vicb](https://github.com/vicb)! - fix: patch Next config for missing fields.
 
-  There was a regression in Next 16.1.0 (https://github.com/vercel/next.js/pull/86830) and some fields were missing in the config.
-  The Next team fixed that in 16.1.4 (https://github.com/vercel/next.js/pull/88733).
+  There was a regression in Next 16.1.0 (<https://github.com/vercel/next.js/pull/86830>) and some fields were missing in the config.
+  The Next team fixed that in 16.1.4 (<https://github.com/vercel/next.js/pull/88733>).
 
   This PR introduce a patch for 16.1.0-16.1.3
 
@@ -307,7 +307,7 @@
 
   **Note:**
 
-  You can follow documentation https://developers.cloudflare.com/r2/api/tokens/ for creating API tokens with appropriate permissions for R2 access.
+  You can follow documentation <https://developers.cloudflare.com/r2/api/tokens/> for creating API tokens with appropriate permissions for R2 access.
 
 ### Patch Changes
 
@@ -686,7 +686,7 @@
 
 - [#674](https://github.com/opennextjs/opennextjs-cloudflare/pull/674) [`ec9ea58`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ec9ea58764fa344b6a47df33b4ae05063d9a1c07) Thanks [@conico974](https://github.com/conico974)! - fix blockConcurrencyWhile on DO queue
 
-- [#672](https://github.com/opennextjs/opennextjs-cloudflare/pull/672) [`9188e67`](https://github.com/opennextjs/opennextjs-cloudflare/commit/9188e679cc70d14bc2dedfa2428926b51c1a1ba9) Thanks [@conico974](https://github.com/conico974)! - bump aws to 3.6.2. More details about the fixes can be found here: https://github.com/opennextjs/opennextjs-aws/blob/main/packages/open-next/CHANGELOG.md#362
+- [#672](https://github.com/opennextjs/opennextjs-cloudflare/pull/672) [`9188e67`](https://github.com/opennextjs/opennextjs-cloudflare/commit/9188e679cc70d14bc2dedfa2428926b51c1a1ba9) Thanks [@conico974](https://github.com/conico974)! - bump aws to 3.6.2. More details about the fixes can be found here: <https://github.com/opennextjs/opennextjs-aws/blob/main/packages/open-next/CHANGELOG.md#362>
 
 ## 1.0.3
 
