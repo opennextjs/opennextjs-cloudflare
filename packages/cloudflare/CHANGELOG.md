@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.17.1
+
+### Patch Changes
+
+- [#1148](https://github.com/opennextjs/opennextjs-cloudflare/pull/1148) [`50b5284`](https://github.com/opennextjs/opennextjs-cloudflare/commit/50b528479ad14fb4e868e8d28ac3397eafaa25fd) Thanks [@vicb](https://github.com/vicb)! - make dev /cdn-cgi/image behaves like prod for consistency (in #1147)
+
 ## 1.17.0
 
 ### Minor Changes
