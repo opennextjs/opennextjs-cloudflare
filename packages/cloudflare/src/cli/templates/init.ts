@@ -77,7 +77,10 @@ function initRuntime() {
 		return __original_fetch(input, init);
 	};
 
-	const CustomRequest = class extends globalThis.Request {
+	// workerd calls toString() on plain objects instead of reading .url,
+	// so capture the native constructor for instanceof checks.
+	const OriginalRequest = globalThis.Request;
+	const CustomRequest = class extends OriginalRequest {
 		constructor(input: RequestInfo | URL, init?: RequestInit) {
 			if (init) {
 				delete (init as { cache: unknown }).cache;
@@ -88,7 +91,21 @@ function initRuntime() {
 					value: init.body instanceof stream.Readable ? ReadableStream.from(init.body) : init.body,
 				});
 			}
-			super(input, init);
+			if (typeof input === "string" || input instanceof URL || input instanceof OriginalRequest) {
+				super(input, init);
+			} else {
+				// Plain Request like object from third-party middleware or edge adapters
+				// extract .url and merge properties so they aren't lost.
+				const req = input as unknown as Request;
+				const merged = {
+					method: req.method,
+					headers: req.headers,
+					body: req.body,
+					...(req.body ? { duplex: "half" as const } : {}),
+					...init,
+				};
+				super(req.url, merged as RequestInit);
+			}
 		}
 	};
 
