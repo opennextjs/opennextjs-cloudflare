@@ -64,9 +64,13 @@ function loadManifest($PATH, $$$ARGS) {
   $PATH = $PATH.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
   if ($PATH.endsWith(".next/BUILD_ID")) {
     return process.env.NEXT_BUILD_ID;
-	}
+\t}
   ${returnManifests}
-  throw new Error(\`Unexpected loadManifest(\${$PATH}) call!\`);
+  // Return an empty object for manifests not found during the build-time scan.
+  // This handles optional manifests (e.g. subresource-integrity-manifest.json when
+  // experimental.sri is not configured) and manifests generated in a different build
+  // phase (e.g. per-route react-loadable-manifest.json with Turbopack).
+  return {};
 }`,
 	} satisfies RuleConfig;
 }
@@ -110,7 +114,7 @@ function evalManifest($PATH, $$$ARGS) {
 function evalManifest($PATH, $$$ARGS) {
   $PATH = $PATH.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
   ${returnManifests}
-  throw new Error(\`Unexpected evalManifest(\${$PATH}) call!\`);
+  return {};
 }`,
 	} satisfies RuleConfig;
 }
