@@ -1,5 +1,54 @@
 # @opennextjs/cloudflare
 
+## 1.17.1
+
+### Patch Changes
+
+- [#1147](https://github.com/opennextjs/opennextjs-cloudflare/pull/1147) [`f5bd138`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f5bd138fd3c77e02f2aa4b9c76d55681e59e98b4) Thanks [@vicb](https://github.com/vicb)! - make dev /cdn-cgi/image behaves like prod for consistency
+
+## 1.17.0
+
+### Minor Changes
+
+- [#1133](https://github.com/opennextjs/opennextjs-cloudflare/pull/1133) [`25d5835`](https://github.com/opennextjs/opennextjs-cloudflare/commit/25d5835b1c006d6400141f3a5aa93332b26b04e3) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - Update the `migrate` command to attempt to create an R2 bucket for caching, if that is not possible an application without caching enabled will be generated instead.
+
+## 1.16.6
+
+### Patch Changes
+
+- [#1138](https://github.com/opennextjs/opennextjs-cloudflare/pull/1138) [`4487f1f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/4487f1f64fbf14175a13d6e54928bc1a35d39fdf) Thanks [@james-elicx](https://github.com/james-elicx)! - Fix the CLI potentially setting a future compatibility date in the wrangler config when workerd has published a version matching a future date, by capping to the current date.
+
+## 1.16.5
+
+### Patch Changes
+
+- [#1127](https://github.com/opennextjs/opennextjs-cloudflare/pull/1127) [`2b437f1`](https://github.com/opennextjs/opennextjs-cloudflare/commit/2b437f17cc696a65d8bb5b8fb5a230707267dd84) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - In the `migrate` command, add an initial step to create a Next.js config file (required by open-next) if it doesn't exist
+
+- [#1126](https://github.com/opennextjs/opennextjs-cloudflare/pull/1126) [`8c3a36e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8c3a36e35a0c01745054ccf71169ff2859fa18ad) Thanks [@alex-all3dp](https://github.com/alex-all3dp)! - fix: prevent Worker hang on HEAD requests to static assets
+
+## 1.16.4
+
+### Patch Changes
+
+- [#1122](https://github.com/opennextjs/opennextjs-cloudflare/pull/1122) [`6c94a4a`](https://github.com/opennextjs/opennextjs-cloudflare/commit/6c94a4aae9563942fea853b4bb4297dff62a5331) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - In `migrate` command, avoid adding unnecessary newlines when creating files
+
+- [#1122](https://github.com/opennextjs/opennextjs-cloudflare/pull/1122) [`6c94a4a`](https://github.com/opennextjs/opennextjs-cloudflare/commit/6c94a4aae9563942fea853b4bb4297dff62a5331) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - fix `migrate` command incorrectly erroring if the target application doesn't have a `public` directory
+
+- [#1122](https://github.com/opennextjs/opennextjs-cloudflare/pull/1122) [`6c94a4a`](https://github.com/opennextjs/opennextjs-cloudflare/commit/6c94a4aae9563942fea853b4bb4297dff62a5331) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - Bump `@opennextjs/aws` to 3.9.16
+
+  - Fix `migrate` command not updating Next.js config files
+  - Fixes [#1062](https://github.com/opennextjs/opennextjs-cloudflare/issues/1062), [#1115](https://github.com/opennextjs/opennextjs-cloudflare/issues/1115)
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v3.9.16>
+
+- [#1097](https://github.com/opennextjs/opennextjs-cloudflare/pull/1097) [`fea645f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/fea645f01e95b58e728ae6f429601c3fa06dd8bc) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - Add `--help` and `--version` to the `opennextjs-cloudflare` CLI
+
+  Improve the `opennextjs-cloudflare` CLI by:
+
+  - ensuring that unknown commands (e.g., `opennextjs-cloudflare foo`) display a clear and helpful error message
+  - adding a `-h`|`--help` flag to display the CLI's help message
+  - adding a `-v`|`--version` flag to display the package's version
+
 ## 1.16.3
 
 ### Patch Changes
@@ -67,8 +116,8 @@
 
 - [#1071](https://github.com/opennextjs/opennextjs-cloudflare/pull/1071) [`886c742`](https://github.com/opennextjs/opennextjs-cloudflare/commit/886c742f8e735843196a4a1c758a9e5b1cb5464e) Thanks [@vicb](https://github.com/vicb)! - fix: patch Next config for missing fields.
 
-  There was a regression in Next 16.1.0 (https://github.com/vercel/next.js/pull/86830) and some fields were missing in the config.
-  The Next team fixed that in 16.1.4 (https://github.com/vercel/next.js/pull/88733).
+  There was a regression in Next 16.1.0 (<https://github.com/vercel/next.js/pull/86830>) and some fields were missing in the config.
+  The Next team fixed that in 16.1.4 (<https://github.com/vercel/next.js/pull/88733>).
 
   This PR introduce a patch for 16.1.0-16.1.3
 
@@ -258,7 +307,7 @@
 
   **Note:**
 
-  You can follow documentation https://developers.cloudflare.com/r2/api/tokens/ for creating API tokens with appropriate permissions for R2 access.
+  You can follow documentation <https://developers.cloudflare.com/r2/api/tokens/> for creating API tokens with appropriate permissions for R2 access.
 
 ### Patch Changes
 
@@ -637,7 +686,7 @@
 
 - [#674](https://github.com/opennextjs/opennextjs-cloudflare/pull/674) [`ec9ea58`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ec9ea58764fa344b6a47df33b4ae05063d9a1c07) Thanks [@conico974](https://github.com/conico974)! - fix blockConcurrencyWhile on DO queue
 
-- [#672](https://github.com/opennextjs/opennextjs-cloudflare/pull/672) [`9188e67`](https://github.com/opennextjs/opennextjs-cloudflare/commit/9188e679cc70d14bc2dedfa2428926b51c1a1ba9) Thanks [@conico974](https://github.com/conico974)! - bump aws to 3.6.2. More details about the fixes can be found here: https://github.com/opennextjs/opennextjs-aws/blob/main/packages/open-next/CHANGELOG.md#362
+- [#672](https://github.com/opennextjs/opennextjs-cloudflare/pull/672) [`9188e67`](https://github.com/opennextjs/opennextjs-cloudflare/commit/9188e679cc70d14bc2dedfa2428926b51c1a1ba9) Thanks [@conico974](https://github.com/conico974)! - bump aws to 3.6.2. More details about the fixes can be found here: <https://github.com/opennextjs/opennextjs-aws/blob/main/packages/open-next/CHANGELOG.md#362>
 
 ## 1.0.3
 

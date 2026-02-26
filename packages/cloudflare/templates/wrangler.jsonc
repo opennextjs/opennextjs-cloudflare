@@ -2,7 +2,7 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"main": ".open-next/worker.js",
 	"name": "<WORKER_NAME>",
-	"compatibility_date": "2025-12-01",
+	"compatibility_date": "<COMPATIBILITY_DATE>",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"assets": {
 		"directory": ".open-next/assets",
@@ -24,7 +24,7 @@
 			// Create the bucket before deploying
 			// You can change the bucket name if you want
 			// See https://developers.cloudflare.com/workers/wrangler/commands/#r2-bucket-create
-			"bucket_name": "cache"
+			"bucket_name": "<WORKER_NAME>-opennext-cache"
 		}
 	],
 	"images": {

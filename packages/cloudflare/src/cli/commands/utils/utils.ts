@@ -10,8 +10,10 @@ import logger from "@opennextjs/aws/logger.js";
 import { unstable_readConfig } from "wrangler";
 import type yargs from "yargs";
 
-import type { OpenNextConfig } from "../../api/config.js";
-import { createOpenNextConfigIfNotExistent, ensureCloudflareConfig } from "../build/utils/index.js";
+import type { OpenNextConfig } from "../../../api/config.js";
+import { ensureCloudflareConfig } from "../../build/utils/ensure-cf-config.js";
+import { askConfirmation } from "../../utils/ask-confirmation.js";
+import { createOpenNextConfigFile, findOpenNextConfig } from "../../utils/create-open-next-config.js";
 
 export type WithWranglerArgs<T = unknown> = T & {
 	// Array of arguments that can be given to wrangler commands, including the `--config` and `--env` args.
@@ -41,16 +43,30 @@ export function printHeaders(command: string) {
  *
  * When users specify a custom config file but it doesn't exist, we throw an Error.
  *
+ * @throws If a custom config path is provided but the file does not exist.
+ * @throws If no config file is found and the user declines to create one.
+ *
  * @param configPath Optional path to the config file. Absolute or relative to cwd.
- * @returns OpenNext config.
+ * @returns The compiled OpenNext config and the build directory.
+ *
  */
 export async function compileConfig(configPath: string | undefined) {
 	if (configPath && !existsSync(configPath)) {
 		throw new Error(`Custom config file not found at ${configPath}`);
 	}
 
+	configPath ??= findOpenNextConfig(nextAppDir);
+
 	if (!configPath) {
-		configPath = await createOpenNextConfigIfNotExistent(nextAppDir);
+		const answer = await askConfirmation(
+			"Missing required `open-next.config.ts` file, do you want to create one?"
+		);
+
+		if (!answer) {
+			throw new Error("The `open-next.config.ts` file is required, aborting!");
+		}
+
+		configPath = createOpenNextConfigFile(nextAppDir, { cache: false });
 	}
 
 	const { config, buildDir } = await compileOpenNextConfig(configPath, { compileEdge: true });
@@ -142,7 +158,12 @@ type WranglerInputArgs = {
  * @param args
  * @returns An array of arguments that can be given to wrangler commands, including the `--config` and `--env` args.
  */
-function getWranglerArgs(args: WranglerInputArgs & { _: (string | number)[] }): string[] {
+function getWranglerArgs(
+	args: WranglerInputArgs & {
+		_: (string | number)[];
+		args?: (string | number)[];
+	}
+): string[] {
 	if (args.configPath) {
 		logger.warn("The `--configPath` flag is deprecated, please use `--config` instead.");
 
@@ -159,8 +180,8 @@ function getWranglerArgs(args: WranglerInputArgs & { _: (string | number)[] }): 
 		...(args.config ? ["--config", args.config] : []),
 		...(args.env ? ["--env", args.env] : []),
 		...(args.remote ? ["--remote"] : []),
-		// Note: the first args in `_` will be the commands.
-		...args._.slice(args._[0] === "populateCache" ? 2 : 1).map((a) => `${a}`),
+		// Note: the `args` array contains unrecognised flags.
+		...(args.args?.map((a) => `${a}`) ?? []),
 	];
 }
 

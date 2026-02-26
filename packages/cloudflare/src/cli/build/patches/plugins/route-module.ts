@@ -13,7 +13,7 @@ import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
-import { normalizePath } from "../../utils/index.js";
+import { normalizePath } from "../../../utils/normalize-path.js";
 
 export function patchRouteModules(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
 	return updater.updateContent("route-module", [

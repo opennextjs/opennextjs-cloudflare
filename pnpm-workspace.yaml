@@ -35,7 +35,7 @@ catalog:
   typescript: ^5.9.3
   typescript-eslint: ^8.48.0
   vitest: ^2.1.1
-  wrangler: ^4.59.2
+  wrangler: ^4.65.0
   yargs: ^18.0.0
 
 catalogs:

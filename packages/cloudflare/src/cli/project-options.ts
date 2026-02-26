@@ -1,4 +1,4 @@
-import type { WranglerTarget } from "./utils/run-wrangler.js";
+import type { WranglerTarget } from "./commands/utils/run-wrangler.js";
 
 export type ProjectOptions = {
 	// Next app root folder

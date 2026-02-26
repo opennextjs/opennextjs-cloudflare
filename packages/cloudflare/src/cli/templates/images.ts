@@ -89,20 +89,11 @@ export async function handleImageRequest(
 		}
 	}
 
-	const [contentTypeImageStream, imageStream] = imageResponse.body.tee();
-	const imageHeaderBytes = new Uint8Array(32);
-	const contentTypeImageReader = contentTypeImageStream.getReader({
-		mode: "byob",
-	});
-	const readImageHeaderBytesResult = await contentTypeImageReader.readAtLeast(32, imageHeaderBytes);
-	if (readImageHeaderBytesResult.value === undefined) {
-		await imageResponse.body.cancel();
-
-		return new Response('"url" parameter is valid but upstream response is invalid', {
-			status: 400,
-		});
+	const readHeaderResult = await readImageHeader(imageResponse);
+	if (readHeaderResult instanceof Response) {
+		return readHeaderResult;
 	}
-	const contentType = detectImageContentType(readImageHeaderBytesResult.value);
+	const { contentType, imageStream } = readHeaderResult;
 	if (contentType === null) {
 		warn(`Failed to detect content type of "${parseResult.url}"`);
 		return new Response('"url" parameter is valid but image type is not allowed', {
@@ -181,6 +172,141 @@ export async function handleImageRequest(
 	});
 
 	return response;
+}
+
+/**
+ * Handles requests to /cdn-cgi/image/ in development.
+ *
+ * Extracts the image URL, fetches the image, and checks the content type against
+ * Cloudflare's supported input formats.
+ *
+ * @param requestURL The full request URL.
+ * @param env The Cloudflare environment bindings.
+ * @returns A promise that resolves to the image response.
+ */
+export async function handleCdnCgiImageRequest(requestURL: URL, env: CloudflareEnv): Promise<Response> {
+	const parseResult = parseCdnCgiImageRequest(requestURL.pathname);
+
+	if (!parseResult.ok) {
+		return new Response(parseResult.message, {
+			status: 400,
+		});
+	}
+
+	let imageResponse: Response;
+	if (parseResult.url.startsWith("/")) {
+		if (env.ASSETS === undefined) {
+			return new Response("env.ASSETS binding is not defined", {
+				status: 404,
+			});
+		}
+		const absoluteURL = new URL(parseResult.url, requestURL);
+		imageResponse = await env.ASSETS.fetch(absoluteURL);
+	} else {
+		imageResponse = await fetch(parseResult.url);
+	}
+
+	if (!imageResponse.ok || imageResponse.body === null) {
+		return new Response('"url" parameter is valid but upstream response is invalid', {
+			status: imageResponse.status,
+		});
+	}
+
+	const readHeaderResult = await readImageHeader(imageResponse);
+	if (readHeaderResult instanceof Response) {
+		return readHeaderResult;
+	}
+	const { contentType, imageStream } = readHeaderResult;
+	if (contentType === null || !SUPPORTED_CDN_CGI_INPUT_TYPES.has(contentType)) {
+		return new Response('"url" parameter is valid but image type is not allowed', {
+			status: 400,
+		});
+	}
+
+	if (contentType === SVG && !__IMAGES_ALLOW_SVG__) {
+		return new Response('"url" parameter is valid but image type is not allowed', {
+			status: 400,
+		});
+	}
+
+	return new Response(imageStream, {
+		headers: { "Content-Type": contentType },
+	});
+}
+
+/**
+ * Parses a /cdn-cgi/image/ request URL.
+ *
+ * Extracts the image URL from the `/cdn-cgi/image/<options>/<image-url>` path format.
+ * Rejects protocol-relative URLs (`//...`). The cdn-cgi options are not parsed or
+ * validated as they are Cloudflare's concern.
+ *
+ * @param pathname The URL pathname (e.g. `/cdn-cgi/image/width=640,quality=75,format=auto/path/to/image.png`).
+ * @returns the parsed URL result or an error.
+ */
+export function parseCdnCgiImageRequest(
+	pathname: string
+): { ok: true; url: string; static: boolean } | ErrorResult {
+	const match = pathname.match(/^\/cdn-cgi\/image\/(?<options>[^/]+)\/(?<url>.+)$/);
+	if (
+		match === null ||
+		// Valid URLs have at least one option
+		!match.groups?.options ||
+		!match.groups?.url
+	) {
+		return { ok: false, message: "Invalid /cdn-cgi/image/ URL format" };
+	}
+
+	const imageUrl = match.groups.url;
+
+	// The regex separator consumes one `/`, so if imageUrl starts with `/`
+	// the original URL segment was protocol-relative (`//...`).
+	if (imageUrl.startsWith("/")) {
+		return { ok: false, message: '"url" parameter cannot be a protocol-relative URL (//)' };
+	}
+
+	// Resolve the image URL: it may be absolute (https://...) or relative.
+	let resolvedUrl: string;
+	if (imageUrl.match(/^https?:\/\//)) {
+		resolvedUrl = imageUrl;
+	} else {
+		// Relative URLs need a leading slash.
+		resolvedUrl = `/${imageUrl}`;
+	}
+
+	return {
+		ok: true,
+		url: resolvedUrl,
+		static: false,
+	};
+}
+
+/**
+ * Reads the first 32 bytes of an image response to detect its content type.
+ *
+ * Tees the response body so the image stream can still be consumed after detection.
+ *
+ * @param imageResponse The image response whose body to read.
+ * @returns The detected content type and image stream, or an error Response if the header bytes
+ *   could not be read.
+ */
+async function readImageHeader(
+	imageResponse: Response
+): Promise<{ contentType: ImageContentType | null; imageStream: ReadableStream } | Response> {
+	// Note: imageResponse.body is non-null — callers check before calling.
+	const [contentTypeStream, imageStream] = imageResponse.body!.tee();
+	const headerBytes = new Uint8Array(32);
+	const reader = contentTypeStream.getReader({ mode: "byob" });
+	const readResult = await reader.readAtLeast(32, headerBytes);
+	if (readResult.value === undefined) {
+		await imageResponse.body!.cancel();
+		return new Response('"url" parameter is valid but upstream response is invalid', {
+			status: 400,
+		});
+	}
+
+	const contentType = detectImageContentType(readResult.value);
+	return { contentType, imageStream };
 }
 
 /**
@@ -352,6 +478,9 @@ type ErrorResult = {
 /**
  * Validates that there is exactly one "url" query parameter.
  *
+ * Checks length, protocol-relative URLs, local/remote pattern matching, recursion, and protocol.
+ *
+ * @param requestURL The request URL containing the "url" query parameter.
  * @returns the validated URL or an error result.
  */
 function validateUrlQueryParameter(requestURL: URL): ErrorResult | { url: string; static: boolean } {
@@ -372,8 +501,8 @@ function validateUrlQueryParameter(requestURL: URL): ErrorResult | { url: string
 		return result;
 	}
 
-	// The url parameter value should be a valid URL or a valid relative URL.
 	const url = urls[0]!;
+
 	if (url.length > 3072) {
 		const result: ErrorResult = {
 			ok: false,
@@ -630,6 +759,13 @@ const ICO = "image/x-icon";
 const ICNS = "image/x-icns";
 const TIFF = "image/tiff";
 const BMP = "image/bmp";
+
+/**
+ * Image content types supported as input by Cloudflare's cdn-cgi image transformation.
+ *
+ * @see https://developers.cloudflare.com/images/transform-images/#supported-input-formats
+ */
+const SUPPORTED_CDN_CGI_INPUT_TYPES: ReadonlySet<string> = new Set([JPEG, PNG, GIF, WEBP, SVG, HEIC]);
 
 type ImageContentType =
 	| "image/avif"
