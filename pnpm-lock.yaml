@@ -491,9 +491,6 @@ importers:
       react-dom:
         specifier: catalog:e2e
         version: 19.0.4(react@19.0.4)
-      shiki:
-        specifier: ^3.22.0
-        version: 3.22.0
     devDependencies:
       '@playwright/test':
         specifier: 'catalog:'
@@ -957,6 +954,9 @@ importers:
       react-dom:
         specifier: 19.2.4
         version: 19.2.4(react@19.2.4)
+      shiki:
+        specifier: ^3.22.0
+        version: 3.22.0
     devDependencies:
       '@opennextjs/cloudflare':
         specifier: workspace:*
