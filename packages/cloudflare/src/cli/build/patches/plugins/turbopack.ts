@@ -39,16 +39,15 @@ function discoverExternalModuleMappings(filePath: string): Map<string, string> {
 		return mappings;
 	}
 
-	for (const entry of fs.readdirSync(nodeModulesDir)) {
-		const entryPath = path.join(nodeModulesDir, entry);
+	for (const entry of fs.readdirSync(nodeModulesDir, { withFileTypes: true })) {
 		try {
-			const stat = fs.lstatSync(entryPath);
-			if (stat.isSymbolicLink()) {
+			if (entry.isSymbolicLink()) {
+				const entryPath = path.join(nodeModulesDir, entry.name);
 				const target = fs.readlinkSync(entryPath);
 				// target is like "../../node_modules/shiki" — extract package name
 				const match = target.match(/node_modules\/(.+)$/);
 				if (match?.[1]) {
-					mappings.set(entry, match[1]);
+					mappings.set(entry.name, match[1]);
 				}
 			}
 		} catch {
