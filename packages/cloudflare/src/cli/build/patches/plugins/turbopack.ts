@@ -179,7 +179,12 @@ function discoverExternalSubpaths(mappings: Map<string, string>, tracedFiles: st
 	const externalChunks = tracedFiles.filter((f) => f.includes("[externals]"));
 
 	for (const [hashedName, realName] of mappings) {
-		const pattern = new RegExp(`"(${hashedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/[^"]*)"`, "g");
+		// Build a regex to find quoted subpath imports of this hashed module in chunk source code.
+		// E.g. for hashedName "shiki-43d062b67f27bbdc", this matches strings like
+		// "shiki-43d062b67f27bbdc/wasm" or "shiki-43d062b67f27bbdc/engine/javascript".
+		// The hashedName is escaped to safely use it as a literal in the regex pattern.
+		const escaped = hashedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		const pattern = new RegExp(`"(${escaped}/[^"]*)"`, "g");
 
 		for (const filePath of externalChunks) {
 			try {
