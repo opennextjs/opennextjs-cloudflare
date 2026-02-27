@@ -2,9 +2,9 @@
 "@opennextjs/cloudflare": patch
 ---
 
-Fix Turbopack external module resolution on workerd by dynamically discovering external imports at build time.
+Fix Turbopack external module resolution by dynamically discovering external imports at build time.
 
-When packages are listed in `serverExternalPackages`, Turbopack externalizes them via `externalImport()` which uses dynamic `await import(id)`. On workerd, the bundler can't statically analyze `import(id)` with a variable, so these modules aren't included in the worker bundle.
+When packages are listed in `serverExternalPackages`, Turbopack externalizes them via `externalImport()` which uses dynamic `await import(id)`. The bundler (ESBuild) can't statically analyze `import(id)` with a variable, so these modules aren't included in the worker bundle.
 
 This patch:
 
