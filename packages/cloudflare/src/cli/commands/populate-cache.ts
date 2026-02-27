@@ -253,6 +253,7 @@ async function populateR2IncrementalCache(
 	const worker = await unstable_startWorker({
 		name: "open-next-cache-populate",
 		entrypoint: handlerPath,
+		// TODO: do we need a date for local ?
 		compatibilityDate: "2026-01-01",
 		bindings: {
 			R2: {
