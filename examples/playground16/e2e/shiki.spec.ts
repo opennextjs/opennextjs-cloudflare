@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-// Regression test for Turbopack external module resolution on workerd.
+// Regression test for Turbopack external module resolution.
 // When shiki is in serverExternalPackages, Turbopack externalizes it via `externalImport()`,
-// which does `await import("shiki")` with a dynamic variable. On workerd, the bundler can't
-// statically analyze `import(id)`, so the module isn't included. The patch adds explicit
-// switch cases (e.g. `case "shiki": await import("shiki")`) so the bundler can trace them.
+// which does `await import("shiki")` with a dynamic variable. The bundler can't statically
+// analyze `import(id)`, so the module isn't included. The patch adds explicit switch cases
+// (e.g. `case "shiki": await import("shiki")`) so the bundler can trace them.
 // This also covers subpath imports like "shiki/engine/javascript".
 test("shiki syntax highlighting via API route", async ({ request }) => {
 	const response = await request.get("/api/shiki");
