@@ -127,16 +127,16 @@ ${indentedCases}
  * Scan traced chunk files for bare external module imports (e.g. `externalImport("shiki")`).
  *
  * In some Turbopack versions, externalized packages are referenced by their real names
- * (not hashed). On workerd, the default `await import(id)` with a variable `id` can't be
- * statically analyzed by the bundler. By adding explicit switch cases with string literals,
+ * (not hashed). The default `await import(id)` with a variable `id` can't be statically
+ * analyzed by the bundler (ESBuild). By adding explicit switch cases with string literals,
  * we make these imports statically discoverable so they get bundled into the worker.
  */
 function discoverBareExternalImports(tracedFiles: string[], runtimeCode: string): Map<string, string> {
 	const bareImports = new Map<string, string>();
 
-	// Turbopack assigns `externalImport` to a single-letter property on the context prototype,
+	// Turbopack assigns `externalImport` to a property on the context prototype,
 	// e.g. `contextPrototype.y = externalImport`. The property name could change between versions,
-	// so we extract it dynamically from the runtime code rather than hardcoding `.y`.
+	// so we extract it dynamically from the runtime code rather than hardcoding it.
 	const propMatch = runtimeCode.match(/contextPrototype\.(\w+)\s*=\s*externalImport/);
 	if (!propMatch?.[1]) {
 		return bareImports;
