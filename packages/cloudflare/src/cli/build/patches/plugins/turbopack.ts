@@ -19,8 +19,13 @@ fix:
  * Turbopack externalizes packages listed in serverExternalPackages and creates hashed
  * identifiers (e.g. "shiki-43d062b67f27bbdc") with symlinks in .next/node_modules/ pointing
  * to the real packages (e.g. ../../node_modules/shiki). At runtime, externalImport() does
- * `await import("shiki-43d062b67f27bbdc/wasm")` which fails on workerd because those hashed
- * names are not real modules. This function discovers the mappings so we can intercept them.
+ * `await import("shiki-43d062b67f27bbdc/wasm")` which fails because the bundler can't
+ * statically analyze those hashed names. This function discovers the mappings so we can
+ * generate explicit switch cases for the bundler.
+ *
+ * @param filePath Absolute path to the Turbopack runtime file (e.g. `.next/server/chunks/ssr/[turbopack]_runtime.js`),
+ *                 used to locate the `.next/node_modules/` directory.
+ * @returns A map from hashed identifiers to real package names (e.g. "shiki-43d062b67f27bbdc" -> "shiki").
  */
 function discoverExternalModuleMappings(filePath: string): Map<string, string> {
 	// filePath is like: .../.next/server/chunks/ssr/[turbopack]_runtime.js
