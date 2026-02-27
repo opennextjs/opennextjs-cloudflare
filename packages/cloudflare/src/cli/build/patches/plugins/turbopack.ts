@@ -71,40 +71,41 @@ function buildExternalImportRule(
 	tracedFiles: string[],
 	runtimeCode: string
 ): string {
+	// Tracks module names that already have a switch case, to avoid duplicates.
+	const casedModules = new Set<string>();
 	const cases: string[] = [];
 
+	function addCase(moduleName: string, importPath: string) {
+		if (!casedModules.has(moduleName)) {
+			casedModules.add(moduleName);
+			cases.push(`case "${moduleName}":\n  $RAW = await import("${importPath}");\n  break;`);
+		}
+	}
+
 	// Always include the @vercel/og rewrite
-	cases.push(`    case "next/dist/compiled/@vercel/og/index.node.js":
-      $RAW = await import("next/dist/compiled/@vercel/og/index.edge.js");
-      break;`);
+	addCase("next/dist/compiled/@vercel/og/index.node.js", "next/dist/compiled/@vercel/og/index.edge.js");
 
 	// Add case for each discovered external module mapping (bare import)
 	for (const [hashedName, realName] of mappings) {
-		cases.push(`    case "${hashedName}":
-      $RAW = await import("${realName}");
-      break;`);
+		addCase(hashedName, realName);
 	}
 
 	// Discover subpath imports from the traced chunk files.
 	// Chunks reference external modules like "shiki-hash/wasm" — scan for these patterns.
 	const subpathCases = discoverExternalSubpaths(mappings, tracedFiles);
 	for (const [hashedSubpath, realSubpath] of subpathCases) {
-		cases.push(`    case "${hashedSubpath}":
-      $RAW = await import("${realSubpath}");
-      break;`);
+		addCase(hashedSubpath, realSubpath);
 	}
 
 	// Discover bare external imports from chunk files (e.g. externalImport("shiki")).
 	// These need explicit switch cases so the bundler can statically resolve them.
 	const bareImports = discoverBareExternalImports(tracedFiles, runtimeCode);
-	const alreadyCased = new Set(cases.map((c) => c.match(/case "([^"]+)"/)?.[1]).filter(Boolean));
 	for (const [moduleName, realName] of bareImports) {
-		if (!alreadyCased.has(moduleName)) {
-			cases.push(`    case "${moduleName}":
-      $RAW = await import("${realName}");
-      break;`);
-		}
+		addCase(moduleName, realName);
 	}
+
+	// Indent each case line by 4 spaces to align with the switch body in the YAML fix block.
+	const indentedCases = cases.map((c) => c.replace(/^/gm, "    ")).join("\n");
 
 	return `
 rule:
@@ -115,7 +116,7 @@ rule:
     stopBy: end
 fix: |-
   switch ($ID) {
-${cases.join("\n")}
+${indentedCases}
     default:
       $RAW = await import($ID);
   }
