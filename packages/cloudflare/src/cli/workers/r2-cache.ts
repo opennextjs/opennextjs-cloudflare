@@ -21,8 +21,8 @@ import {
 
 // Maximum number of write attempts before giving up.
 const MAX_RETRIES = 5;
-// Backoff starts at 200ms and doubles with each retry.
-const RETRY_DELAY_MS = 200;
+// Base backoff delay.
+const RETRY_DELAY_MS = 100;
 
 /**
  * Worker fetch handler.
@@ -89,15 +89,22 @@ export default {
 		// Write the entry to R2 with retry logic.
 		for (let remainingAttempts = MAX_RETRIES - 1; remainingAttempts >= 0; remainingAttempts--) {
 			try {
+				const putStart = Date.now();
 				await r2.put(key, value);
+				console.log(`[r2.put] ${key} ${Date.now() - putStart}ms`);
 				return Response.json({ success: true }, { status: 200 });
 			} catch (e) {
 				if (remainingAttempts > 0) {
+					console.error(
+						`Write to R2 failed for key "${key}", retrying... (${remainingAttempts} attempts left)`,
+						e
+					);
 					await new Promise((resolve) =>
-						setTimeout(resolve, RETRY_DELAY_MS * Math.pow(2, MAX_RETRIES - 1 - remainingAttempts))
+						setTimeout(resolve, RETRY_DELAY_MS * Math.pow(1.2, MAX_RETRIES - 1 - remainingAttempts))
 					);
 					continue;
 				}
+				console.error(`Failed to write key "${key}" to R2 after ${MAX_RETRIES} attempts:`, e);
 				const detail = e instanceof Error ? e.message : String(e);
 				return Response.json(
 					{
