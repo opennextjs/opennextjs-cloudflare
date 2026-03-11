@@ -177,4 +177,82 @@ describe("populateCache", () => {
 			});
 		}
 	);
+
+	describe("retry on partial failures", () => {
+		afterEach(() => {
+			mockFs.restore();
+			vi.clearAllMocks();
+		});
+
+		test("retries failed entries from 207 response", async () => {
+			setupMockFileSystem();
+
+			// First call: partial failure (207), second call: success
+			global.fetch = vi
+				.fn()
+				.mockResolvedValueOnce(
+					new Response(
+						JSON.stringify({
+							written: 0,
+							failed: 1,
+							errors: [
+								"incremental-cache/buildID/abc123.cache: put: Unspecified error (0)",
+							],
+						}),
+						{ status: 207, headers: { "Content-Type": "application/json" } }
+					)
+				)
+				.mockResolvedValue(
+					new Response(JSON.stringify({ written: 1, failed: 0 }), {
+						status: 200,
+						headers: { "Content-Type": "application/json" },
+					})
+				);
+
+			await populateCache(
+				{ outputDir: "/test/output" } as BuildOptions,
+				{
+					default: { override: { incrementalCache: "cf-r2-incremental-cache" } },
+				} as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				{
+					r2_buckets: [{ binding: "NEXT_INC_CACHE_R2_BUCKET", bucket_name: "test-bucket" }],
+				} as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				{ target: "remote", shouldUsePreviewId: false },
+				{} as any // eslint-disable-line @typescript-eslint/no-explicit-any
+			);
+
+			// Should have been called at least twice (initial + retry)
+			expect(global.fetch).toHaveBeenCalledTimes(2);
+		});
+
+		test("retries on network errors", async () => {
+			setupMockFileSystem();
+
+			// First call: network error, second call: success
+			global.fetch = vi
+				.fn()
+				.mockRejectedValueOnce(new Error("fetch failed"))
+				.mockResolvedValue(
+					new Response(JSON.stringify({ written: 1, failed: 0 }), {
+						status: 200,
+						headers: { "Content-Type": "application/json" },
+					})
+				);
+
+			await populateCache(
+				{ outputDir: "/test/output" } as BuildOptions,
+				{
+					default: { override: { incrementalCache: "cf-r2-incremental-cache" } },
+				} as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				{
+					r2_buckets: [{ binding: "NEXT_INC_CACHE_R2_BUCKET", bucket_name: "test-bucket" }],
+				} as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+				{ target: "remote", shouldUsePreviewId: false },
+				{} as any // eslint-disable-line @typescript-eslint/no-explicit-any
+			);
+
+			// Should have been called at least twice (initial + retry)
+			expect(global.fetch).toHaveBeenCalledTimes(2);
+		});
+	});
 });

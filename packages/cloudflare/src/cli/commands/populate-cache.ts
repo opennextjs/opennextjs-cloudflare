@@ -355,6 +355,11 @@ async function sendCacheEntries(
 
 /**
  * Sends a batch of cache entries to the local worker with retry logic.
+ *
+ * Retries on:
+ * - HTTP errors (non-200/207 responses)
+ * - Network failures
+ * - Partial failures (207 responses) — only the failed entries are retried
  */
 async function sendBatchWithRetry(
 	workerUrl: string,
@@ -363,10 +368,12 @@ async function sendBatchWithRetry(
 	retryDelayMs = 1000
 ): Promise<{ written: number; failed: number; errors?: string[] }> {
 	let lastError: Error | undefined;
+	let totalWritten = 0;
+	let remainingEntries = entries;
 
 	for (let attempt = 0; attempt < maxRetries; attempt++) {
 		if (attempt > 0) {
-			logger.info(`Retrying batch (attempt ${attempt + 1}/${maxRetries})...`);
+			logger.info(`Retrying ${remainingEntries.length} failed entries (attempt ${attempt + 1}/${maxRetries})...`);
 			await sleep(retryDelayMs * Math.pow(2, attempt - 1));
 		}
 
@@ -374,7 +381,7 @@ async function sendBatchWithRetry(
 			const response = await fetch(workerUrl, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ entries }),
+				body: JSON.stringify({ entries: remainingEntries }),
 			});
 
 			if (!response.ok && response.status !== 207) {
@@ -382,14 +389,31 @@ async function sendBatchWithRetry(
 				throw new Error(`HTTP ${response.status}: ${text || response.statusText}`);
 			}
 
-			return (await response.json()) as { written: number; failed: number; errors?: string[] };
+			const result = (await response.json()) as { written: number; failed: number; errors?: string[] };
+			totalWritten += result.written;
+
+			if (result.failed === 0) {
+				return { written: totalWritten, failed: 0 };
+			}
+
+			// Extract the keys that failed so we can retry just those
+			const failedKeys = new Set(result.errors?.map((e) => e.split(":")[0]?.trim()).filter(Boolean));
+			if (failedKeys.size > 0) {
+				remainingEntries = remainingEntries.filter((e) => failedKeys.has(e.key));
+			}
+
+			lastError = new Error(`${result.failed} entries failed: ${result.errors?.slice(0, 3).join(", ")}`);
 		} catch (error) {
 			lastError = error instanceof Error ? error : new Error(String(error));
 			logger.warn(`Batch failed: ${lastError.message}`);
 		}
 	}
 
-	throw new Error(`Failed to populate batch after ${maxRetries} attempts: ${lastError?.message}`);
+	return {
+		written: totalWritten,
+		failed: remainingEntries.length,
+		errors: lastError ? [lastError.message] : undefined,
+	};
 }
 
 function sleep(ms: number): Promise<void> {
