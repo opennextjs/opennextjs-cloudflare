@@ -257,33 +257,46 @@ async function populateR2IncrementalCache(
 	const useRemote = populateCacheOptions.target === "remote";
 	const handlerPath = getCachePopulateHandlerPath();
 
-	const worker = await unstable_startWorker({
-		name: "open-next-cache-populate",
-		entrypoint: handlerPath,
-		compatibilityDate: "2026-01-01",
-		bindings: {
-			[R2_CACHE_BINDING_NAME]: {
-				type: "r2_bucket",
-				bucket_name: binding.bucket_name,
-				...(binding.jurisdiction && { jurisdiction: binding.jurisdiction }),
-				remote: useRemote,
-			},
-		},
-		dev: {
-			server: { port: 0 },
-			inspector: false,
-			watch: false,
-			liveReload: false,
-		},
-	});
+	// Start the worker from a temp directory to prevent unstable_startWorker
+	// from picking up the project's wrangler.jsonc (which would merge in all
+	// bindings like DOs, KV, services, AI, etc. and cause hangs/errors).
+	const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "open-next-r2-populate-"));
+	const originalCwd = process.cwd();
 
 	try {
-		await worker.ready;
-		const url = await worker.url;
-		const populateUrl = new URL("/populate", url).href;
-		await sendCacheEntries(populateUrl, assets, prefix, populateCacheOptions.cacheChunkSize);
+		process.chdir(tempDir);
+
+		const worker = await unstable_startWorker({
+			name: "open-next-cache-populate",
+			entrypoint: handlerPath,
+			compatibilityDate: "2026-01-01",
+			bindings: {
+				[R2_CACHE_BINDING_NAME]: {
+					type: "r2_bucket",
+					bucket_name: binding.bucket_name,
+					...(binding.jurisdiction && { jurisdiction: binding.jurisdiction }),
+					remote: useRemote,
+				},
+			},
+			dev: {
+				server: { port: 0 },
+				inspector: false,
+				watch: false,
+				liveReload: false,
+			},
+		});
+
+		try {
+			await worker.ready;
+			const url = await worker.url;
+			const populateUrl = new URL("/populate", url).href;
+			await sendCacheEntries(populateUrl, assets, prefix, populateCacheOptions.cacheChunkSize);
+		} finally {
+			await worker.dispose();
+		}
 	} finally {
-		await worker.dispose();
+		process.chdir(originalCwd);
+		fs.rmSync(tempDir, { recursive: true, force: true });
 	}
 
 	logger.info(`Successfully populated cache with ${assets.length} assets`);
