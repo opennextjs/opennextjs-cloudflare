@@ -37,7 +37,7 @@ async function getLoadManifestRule(buildOpts: BuildOptions) {
 	const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts));
 	const dotNextDir = join(baseDir, ".next");
 
-	const manifests = await glob(join(dotNextDir, "**/{*-manifest,required-server-files}.json"), {
+	const manifests = await glob(join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints}.json"), {
 		windowsPathsNoEscape: true,
 	});
 
