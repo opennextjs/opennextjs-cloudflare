@@ -79,6 +79,17 @@ vi.mock("./utils/helpers.js", () => ({
 	quoteShellMeta: vi.fn((s) => s),
 }));
 
+const { mockEnsureR2Bucket } = vi.hoisted(() => ({
+	mockEnsureR2Bucket: vi.fn<() => Promise<{ success: boolean; bucketName?: string }>>(async () => ({
+		success: true,
+		bucketName: "test-bucket",
+	})),
+}));
+
+vi.mock("../utils/ensure-r2-bucket.js", () => ({
+	ensureR2Bucket: mockEnsureR2Bucket,
+}));
+
 const mockWorkerFetch = vi.fn();
 const mockWorkerDispose = vi.fn();
 
@@ -132,6 +143,7 @@ describe("populateCache", () => {
 
 				await populateCache(
 					{
+						appPath: "/test/app",
 						outputDir: "/test/output",
 					} as BuildOptions,
 					{
@@ -163,8 +175,10 @@ describe("populateCache", () => {
 							R2: expect.objectContaining({
 								type: "r2_bucket",
 								bucket_name: "test-bucket",
-								remote: target === "remote",
 							}),
+						}),
+						dev: expect.objectContaining({
+							remote: target === "remote",
 						}),
 					})
 				);
@@ -174,6 +188,12 @@ describe("populateCache", () => {
 					"http://localhost:12345/populate",
 					expect.objectContaining({ method: "POST" })
 				);
+
+				if (target === "remote") {
+					expect(mockEnsureR2Bucket).toHaveBeenCalledWith("/test/app", "test-bucket");
+				} else {
+					expect(mockEnsureR2Bucket).not.toHaveBeenCalled();
+				}
 
 				// Verify the body is FormData containing key and value fields.
 				const fetchCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
@@ -187,4 +207,39 @@ describe("populateCache", () => {
 			});
 		}
 	);
+
+	test("remote - exits when bucket provisioning fails", async () => {
+		setupMockFileSystem();
+		mockEnsureR2Bucket.mockResolvedValueOnce({ success: false });
+		const result = populateCache(
+			{
+				appPath: "/test/app",
+				outputDir: "/test/output",
+			} as BuildOptions,
+			{
+				default: {
+					override: {
+						incrementalCache: "cf-r2-incremental-cache",
+					},
+				},
+			} as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+			{
+				r2_buckets: [
+					{
+						binding: "NEXT_INC_CACHE_R2_BUCKET",
+						bucket_name: "test-bucket",
+					},
+				],
+			} as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+			{ target: "remote", shouldUsePreviewId: false },
+			{} as any // eslint-disable-line @typescript-eslint/no-explicit-any
+		);
+
+		await expect(result).rejects.toThrow(
+			'Failed to provision remote R2 bucket "test-bucket" for binding "NEXT_INC_CACHE_R2_BUCKET".'
+		);
+
+		const { unstable_startWorker: startWorker } = await import("wrangler");
+		expect(startWorker).not.toHaveBeenCalled();
+	});
 });

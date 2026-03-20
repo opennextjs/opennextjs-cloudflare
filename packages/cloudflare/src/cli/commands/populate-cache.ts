@@ -38,6 +38,7 @@ import {
 	BINDING_NAME as D1_TAG_BINDING_NAME,
 	NAME as D1_TAG_NAME,
 } from "../../api/overrides/tag-cache/d1-next-tag-cache.js";
+import { ensureR2Bucket } from "../utils/ensure-r2-bucket.js";
 import { normalizePath } from "../utils/normalize-path.js";
 import type { R2Response } from "../workers/r2-cache-types.js";
 import { getEnvFromPlatformProxy, quoteShellMeta, type WorkerEnvVar } from "./utils/helpers.js";
@@ -70,19 +71,24 @@ async function populateCacheCommand(
 	const wranglerConfig = await readWranglerConfig(args);
 	const envVars = await getEnvFromPlatformProxy(config, buildOpts);
 
-	await populateCache(
-		buildOpts,
-		config,
-		wranglerConfig,
-		{
-			target,
-			environment: args.env,
-			wranglerConfigPath: args.wranglerConfigPath,
-			cacheChunkSize: args.cacheChunkSize,
-			shouldUsePreviewId: false,
-		},
-		envVars
-	);
+	try {
+		await populateCache(
+			buildOpts,
+			config,
+			wranglerConfig,
+			{
+				target,
+				environment: args.env,
+				wranglerConfigPath: args.wranglerConfigPath,
+				cacheChunkSize: args.cacheChunkSize,
+				shouldUsePreviewId: false,
+			},
+			envVars
+		);
+	} catch (error) {
+		logger.error(error instanceof Error ? error.message : String(error));
+		process.exit(1);
+	}
 }
 
 export async function populateCache(
@@ -95,8 +101,7 @@ export async function populateCache(
 	const { incrementalCache, tagCache } = config.default.override ?? {};
 
 	if (!fs.existsSync(buildOpts.outputDir)) {
-		logger.error("Unable to populate cache: Open Next build not found");
-		process.exit(1);
+		throw new Error("Unable to populate cache: Open Next build not found");
 	}
 
 	if (!config.dangerous?.disableIncrementalCache && incrementalCache) {
@@ -236,6 +241,10 @@ async function populateR2IncrementalCache(
 		throw new Error(`No R2 binding "${R2_CACHE_BINDING_NAME}" found!`);
 	}
 
+	if (typeof binding.bucket_name !== "string") {
+		throw new Error(`R2 binding "${R2_CACHE_BINDING_NAME}" is missing a bucket_name.`);
+	}
+
 	const prefix = envVars[R2_CACHE_PREFIX_ENV_NAME];
 	const assets = getCacheAssets(buildOpts);
 
@@ -246,24 +255,32 @@ async function populateR2IncrementalCache(
 
 	const currentDir = path.dirname(fileURLToPath(import.meta.url));
 	const handlerPath = path.join(currentDir, "../workers/r2-cache.js");
-
 	const isRemote = populateCacheOptions.target === "remote";
 
-	// Start a local worker with the R2 binding configured for the target environment.
+	if (isRemote) {
+		const { success } = await ensureR2Bucket(buildOpts.appPath, binding.bucket_name);
+
+		if (!success) {
+			throw new Error(
+				`Failed to provision remote R2 bucket "${binding.bucket_name}" for binding "${R2_CACHE_BINDING_NAME}".`
+			);
+		}
+	}
+
+	// Start a local worker and proxy it to the Cloudflare network when remote mode is enabled.
 	const worker = await unstable_startWorker({
 		name: "open-next-cache-populate",
 		entrypoint: handlerPath,
-		// TODO: do we need a date for local ?
 		compatibilityDate: "2026-01-01",
 		bindings: {
 			R2: {
 				type: "r2_bucket",
 				bucket_name: binding.bucket_name,
 				...(binding.jurisdiction && { jurisdiction: binding.jurisdiction }),
-				remote: isRemote,
 			},
 		},
 		dev: {
+			remote: isRemote,
 			server: { port: 0 },
 			inspector: false,
 			watch: false,
@@ -272,37 +289,24 @@ async function populateR2IncrementalCache(
 		},
 	});
 
-	// When targeting remote, wrangler's DevEnv emits an "error" event if the R2 bucket
-	// doesn't exist (Cloudflare API code 10085). In-flight fetch calls hang forever
-	// because the remote proxy session fails (see https://github.com/cloudflare/workers-sdk/issues/11253).
-	// We listen for error events and race against sendEntriesToR2Worker to surface the error.
-	const errorPromise = new Promise<never>((_, reject) => {
-		worker.raw.once("error", (event: { type: string; reason: string; cause: Error }) => {
-			const message = event.cause?.message ?? event.reason ?? "Unknown error";
-			reject(new Error(message));
-		});
-	});
-
 	try {
 		await worker.ready;
 		const baseUrl = await worker.url;
-		await Promise.race([
-			sendEntriesToR2Worker({
-				workerUrl: new URL("/populate", baseUrl).href,
-				assets,
-				prefix,
-				concurrency: Math.max(1, populateCacheOptions.cacheChunkSize ?? 25),
-			}),
-			errorPromise,
-		]);
+		await sendEntriesToR2Worker({
+			workerUrl: new URL("/populate", baseUrl).href,
+			assets,
+			prefix,
+			concurrency: Math.max(1, populateCacheOptions.cacheChunkSize ?? 25),
+		});
 	} catch (e) {
 		await worker.dispose();
 		if (isRemote) {
-			logger.error(`Failed to populate the remote R2 cache. Does the bucket "${binding.bucket_name}" exist?`);
+			throw new Error(
+				`Failed to populate remote R2 bucket "${binding.bucket_name}" for binding "${R2_CACHE_BINDING_NAME}": ${e instanceof Error ? e.message : String(e)}`
+			);
 		} else {
-			logger.error(`Failed to populate the local R2 cache: ${e instanceof Error ? e.message : String(e)}`);
+			throw new Error(`Failed to populate the local R2 cache: ${e instanceof Error ? e.message : String(e)}`);
 		}
-		process.exit(1);
 	} finally {
 		await worker.dispose();
 	}
@@ -470,8 +474,7 @@ async function populateKVIncrementalCache(
 		fs.rmSync(chunkPath, { force: true });
 
 		if (!result.success) {
-			logger.error(`Wrangler kv bulk put command failed${result.stderr ? `:\n${result.stderr}` : ""}`);
-			process.exit(1);
+			throw new Error(`Wrangler kv bulk put command failed${result.stderr ? `:\n${result.stderr}` : ""}`);
 		}
 	}
 
@@ -509,8 +512,7 @@ function populateD1TagCache(
 	);
 
 	if (!result.success) {
-		logger.error(`Wrangler d1 execute command failed${result.stderr ? `:\n${result.stderr}` : ""}`);
-		process.exit(1);
+		throw new Error(`Wrangler d1 execute command failed${result.stderr ? `:\n${result.stderr}` : ""}`);
 	}
 
 	logger.info("\nSuccessfully created D1 table");

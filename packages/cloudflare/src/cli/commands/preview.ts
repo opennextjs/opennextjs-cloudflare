@@ -29,19 +29,24 @@ export async function previewCommand(
 	const wranglerConfig = await readWranglerConfig(args);
 	const envVars = await getEnvFromPlatformProxy(config, buildOpts);
 
-	await populateCache(
-		buildOpts,
-		config,
-		wranglerConfig,
-		{
-			target: args.remote ? "remote" : "local",
-			environment: args.env,
-			wranglerConfigPath: args.wranglerConfigPath,
-			cacheChunkSize: args.cacheChunkSize,
-			shouldUsePreviewId: args.remote,
-		},
-		envVars
-	);
+	try {
+		await populateCache(
+			buildOpts,
+			config,
+			wranglerConfig,
+			{
+				target: args.remote ? "remote" : "local",
+				environment: args.env,
+				wranglerConfigPath: args.wranglerConfigPath,
+				cacheChunkSize: args.cacheChunkSize,
+				shouldUsePreviewId: args.remote,
+			},
+			envVars
+		);
+	} catch (error) {
+		logger.error(error instanceof Error ? error.message : String(error));
+		process.exit(1);
+	}
 
 	const result = runWrangler(buildOpts, ["dev", ...args.wranglerArgs], { logging: "all" });
 
