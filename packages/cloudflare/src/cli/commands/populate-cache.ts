@@ -270,6 +270,8 @@ async function populateR2IncrementalCache(
 	// Start a local worker and proxy it to the Cloudflare network when remote mode is enabled.
 	const worker = await unstable_startWorker({
 		name: "open-next-cache-populate",
+		// Prevent it from discovering the project's wrangler config and leaking unrelated bindings.
+		config: "",
 		entrypoint: handlerPath,
 		compatibilityDate: "2026-01-01",
 		bindings: {
