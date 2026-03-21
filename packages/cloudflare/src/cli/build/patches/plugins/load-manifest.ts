@@ -66,6 +66,23 @@ function loadManifest($PATH, $$$ARGS) {
     return process.env.NEXT_BUILD_ID;
 	}
   ${returnManifests}
+  // Known optional manifests \u2014 Next.js loads these with handleMissing: true
+  // (see vercel/next.js packages/next/src/server/route-modules/route-module.ts).
+  // Return {} to match Next.js behaviour instead of crashing the worker.
+  // Note: Some manifest constants in Next.js omit the .json extension
+  // (e.g. SUBRESOURCE_INTEGRITY_MANIFEST, DYNAMIC_CSS_MANIFEST), so we
+  // strip .json before matching to handle both forms.
+  {
+    const p = $PATH.replace(/\\.json$/, "");
+    if (p.endsWith("react-loadable-manifest") ||
+        p.endsWith("subresource-integrity-manifest") ||
+        p.endsWith("server-reference-manifest") ||
+        p.endsWith("dynamic-css-manifest") ||
+        p.endsWith("fallback-build-manifest") ||
+        p.endsWith("prefetch-hints")) {
+      return {};
+    }
+  }
   throw new Error(\`Unexpected loadManifest(\${$PATH}) call!\`);
 }`,
 	} satisfies RuleConfig;
@@ -110,6 +127,11 @@ function evalManifest($PATH, $$$ARGS) {
 function evalManifest($PATH, $$$ARGS) {
   $PATH = $PATH.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
   ${returnManifests}
+  // client-reference-manifest is optional for static metadata routes
+  // (see vercel/next.js route-module.ts, loaded with handleMissing: true)
+  if ($PATH.endsWith("_client-reference-manifest.js")) {
+    return { __RSC_MANIFEST: {} };
+  }
   throw new Error(\`Unexpected evalManifest(\${$PATH}) call!\`);
 }`,
 	} satisfies RuleConfig;
