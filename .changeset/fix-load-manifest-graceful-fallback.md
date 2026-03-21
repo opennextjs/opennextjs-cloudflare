@@ -10,12 +10,17 @@ generated, so the patched function threw at runtime, crashing dynamic routes wit
 
 Instead of a blanket catch-all, handle only the specific optional manifests from Next.js
 `route-module.ts`:
-- `react-loadable-manifest.json` (Turbopack per-route, not all routes have dynamic imports)
-- `subresource-integrity-manifest.json` (only when `experimental.sri` configured)
-- `server-reference-manifest.json` (App Router only)
-- `dynamic-css-manifest.json` (Pages Router + Webpack only)
-- `fallback-build-manifest.json` (only for `/_error` page)
-- `_client-reference-manifest.js` (optional for static metadata routes)
+
+- `react-loadable-manifest` (Turbopack per-route, not all routes have dynamic imports)
+- `subresource-integrity-manifest` (only when `experimental.sri` configured)
+- `server-reference-manifest` (App Router only)
+- `dynamic-css-manifest` (Pages Router + Webpack only)
+- `fallback-build-manifest` (only for `/_error` page)
+- `prefetch-hints` (new in Next.js 16.2)
+- `_client-reference-manifest.js` (optional for static metadata routes, evalManifest)
+
+Manifest matching strips `.json` before comparison since some Next.js constants omit
+the extension (`SUBRESOURCE_INTEGRITY_MANIFEST`, `DYNAMIC_CSS_MANIFEST`, etc.).
 
 Unknown manifests still throw to surface genuine errors.
 

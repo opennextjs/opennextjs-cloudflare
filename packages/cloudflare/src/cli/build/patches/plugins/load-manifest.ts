@@ -69,12 +69,19 @@ function loadManifest($PATH, $$$ARGS) {
   // Known optional manifests \u2014 Next.js loads these with handleMissing: true
   // (see vercel/next.js packages/next/src/server/route-modules/route-module.ts).
   // Return {} to match Next.js behaviour instead of crashing the worker.
-  if ($PATH.endsWith("react-loadable-manifest.json") ||
-      $PATH.endsWith("subresource-integrity-manifest.json") ||
-      $PATH.endsWith("server-reference-manifest.json") ||
-      $PATH.endsWith("dynamic-css-manifest.json") ||
-      $PATH.endsWith("fallback-build-manifest.json")) {
-    return {};
+  // Note: Some manifest constants in Next.js omit the .json extension
+  // (e.g. SUBRESOURCE_INTEGRITY_MANIFEST, DYNAMIC_CSS_MANIFEST), so we
+  // strip .json before matching to handle both forms.
+  {
+    const p = $PATH.replace(/\\.json$/, "");
+    if (p.endsWith("react-loadable-manifest") ||
+        p.endsWith("subresource-integrity-manifest") ||
+        p.endsWith("server-reference-manifest") ||
+        p.endsWith("dynamic-css-manifest") ||
+        p.endsWith("fallback-build-manifest") ||
+        p.endsWith("prefetch-hints")) {
+      return {};
+    }
   }
   throw new Error(\`Unexpected loadManifest(\${$PATH}) call!\`);
 }`,
