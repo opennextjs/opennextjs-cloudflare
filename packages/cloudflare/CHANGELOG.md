@@ -1,5 +1,15 @@
 # @opennextjs/cloudflare
 
+## 1.17.3
+
+### Patch Changes
+
+- [#1160](https://github.com/opennextjs/opennextjs-cloudflare/pull/1160) [`161e726`](https://github.com/opennextjs/opennextjs-cloudflare/commit/161e726a02f063e3fa80aeb8fc629dad605a8b7d) Thanks [@matthewvolk](https://github.com/matthewvolk)! - fix(patches): include `prefetch-hints.json` in loadManifest build-time inlining
+
+  Next.js 16.2.0 introduced `prefetch-hints.json` as a new server manifest loaded unconditionally
+  by `NextNodeServer.getPrefetchHints()`. The file exists in the build output but wasn't matched by
+  the glob pattern `*-manifest.json`, causing the patched `loadManifest()` to throw at runtime.
+
 ## 1.17.2
 
 ### Patch Changes
