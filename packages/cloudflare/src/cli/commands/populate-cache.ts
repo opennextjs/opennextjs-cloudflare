@@ -302,7 +302,7 @@ async function populateR2IncrementalCache(
 			workerUrl: new URL("/populate", baseUrl).href,
 			assets,
 			prefix,
-			concurrency: Math.max(1, populateCacheOptions.cacheChunkSize ?? 25),
+			maxConcurrency: Math.max(1, populateCacheOptions.cacheChunkSize ?? 25),
 		});
 	} catch (e) {
 		await worker.dispose();
@@ -338,9 +338,9 @@ async function sendEntriesToR2Worker(options: {
 	workerUrl: string;
 	assets: CacheAsset[];
 	prefix: string | undefined;
-	concurrency: number;
+	maxConcurrency: number;
 }): Promise<void> {
-	const { workerUrl, assets, prefix, concurrency } = options;
+	const { workerUrl, assets, prefix, maxConcurrency } = options;
 
 	// Build the list of entries to send (key + filename).
 	// File contents are read lazily in sendEntryToR2Worker to avoid
@@ -358,10 +358,17 @@ async function sendEntriesToR2Worker(options: {
 	// `pending` tracks in-flight promises so we can cap concurrency.
 	const pending = new Set<Promise<void>>();
 
+	let concurrency = 1;
+
 	for (const entry of tqdm(entries)) {
 		// If we've reached the concurrency limit, wait for one to finish.
 		if (pending.size >= concurrency) {
 			await Promise.race(pending);
+			// Increase concurrency gradually to avoid overwhelming the worker
+			// with too many requests at once.
+			if (concurrency < maxConcurrency) {
+				concurrency++;
+			}
 		}
 
 		const task = sendEntryToR2Worker({
