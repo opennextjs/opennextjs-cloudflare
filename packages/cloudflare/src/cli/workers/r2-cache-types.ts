@@ -4,7 +4,7 @@
 
 /** The R2 bucket binding is not configured in the worker environment. */
 export const ERR_BINDING_NOT_FOUND = "ERR_BINDING_NOT_FOUND";
-/** The request body is not valid FormData or is missing required fields. */
+/** The request is missing required cache metadata or body. */
 export const ERR_INVALID_REQUEST = "ERR_INVALID_REQUEST";
 /** The R2 put operation failed. */
 export const ERR_WRITE_FAILED = "ERR_WRITE_FAILED";

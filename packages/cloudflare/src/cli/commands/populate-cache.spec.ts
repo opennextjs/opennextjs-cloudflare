@@ -130,7 +130,7 @@ describe("populateCache", () => {
 				vi.clearAllMocks();
 			});
 
-			test(`${target} - starts worker and sends individual cache entries via FormData`, async () => {
+			test(`${target} - starts worker and sends individual cache entries with the cache key header`, async () => {
 				setupMockFileSystem();
 
 				// Mock fetch to return a successful response for each individual entry.
@@ -183,7 +183,7 @@ describe("populateCache", () => {
 					})
 				);
 
-				// Each cache entry should be sent as an individual POST request with FormData.
+				// Each cache entry should be sent as an individual POST request.
 				expect(global.fetch).toHaveBeenCalledWith(
 					"http://localhost:12345/populate",
 					expect.objectContaining({ method: "POST" })
@@ -195,12 +195,12 @@ describe("populateCache", () => {
 					expect(mockEnsureR2Bucket).not.toHaveBeenCalled();
 				}
 
-				// Verify the body is FormData containing key and value fields.
+				// Verify the cache key is sent as a header and the cache value as the raw body.
 				const fetchCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
-				const body = fetchCall[1].body;
-				expect(body).toBeInstanceOf(FormData);
-				expect(body.get("key")).toBeTypeOf("string");
-				expect(body.get("value")).toBeTypeOf("string");
+				expect(fetchCall[1].headers).toEqual({
+					"x-opennext-cache-key": expect.any(String),
+				});
+				expect(fetchCall[1].body).toBeInstanceOf(Buffer);
 
 				// Verify worker was disposed after sending entries.
 				expect(mockWorkerDispose).toHaveBeenCalled();
