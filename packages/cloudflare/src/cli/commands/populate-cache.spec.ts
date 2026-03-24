@@ -194,15 +194,10 @@ describe("populateCache", () => {
 				for (const [input, init] of fetchMock.mock.calls) {
 					expect(input).toBe("http://localhost:12345/populate");
 					expect(init?.method).toBe("POST");
-
-					const formData = init?.body;
-					if (formData instanceof FormData) {
-						// Verify the body is FormData containing key and value fields.
-						expect(formData.get("key")).toBeTypeOf("string");
-						expect(formData.get("value")).toBeTypeOf("string");
-					} else {
-						expect.unreachable("Expected request body to be FormData");
-					}
+					expect(init?.headers).toEqual({
+						"x-opennext-cache-key": expect.any(String),
+					});
+					expect(init?.body).toBeInstanceOf(Buffer);
 				}
 
 				// Verify worker was disposed after sending entries.

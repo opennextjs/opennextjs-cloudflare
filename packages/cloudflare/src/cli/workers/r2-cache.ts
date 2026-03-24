@@ -1,9 +1,9 @@
 /**
  * This worker writes a cache entry to R2 with retry logic.
  *
- * It handles POST requests to /populate with a FormData body containing:
- * - `key`: the R2 object key (string, required).
- * - `value`: the cache value to store (string, required).
+ * It handles POST requests to /populate with:
+ * - `x-opennext-cache-key`: the R2 object key (header, required).
+ * - request body: the cache value to store (required).
  *
  * The worker validates the R2 binding and request body, then writes the entry
  * to R2, retrying transient write failures with exponential backoff.
@@ -28,7 +28,7 @@ const RETRY_DELAY_MS = 100;
  * Worker fetch handler.
  *
  * Routes `POST /populate` to the cache population logic.
- * Validates the R2 binding and FormData body, then writes the entry to R2
+ * Validates the R2 binding, request metadata, and request body, then writes the entry to R2
  * with retry logic for transient write failures.
  *
  * Response format:
@@ -57,41 +57,25 @@ export default {
 			);
 		}
 
-		// Parse and validate the FormData body.
-		let formData: FormData;
-		try {
-			formData = await request.formData();
-		} catch {
+		const key = request.headers.get("x-opennext-cache-key");
+
+		if (!key || request.body === null) {
 			return Response.json(
 				{
 					success: false,
-					error: "Invalid FormData body",
+					error: "Request must include x-opennext-cache-key header and a body",
 					code: ERR_INVALID_REQUEST,
 				} satisfies R2ErrorResponse,
 				{ status: 400 }
 			);
 		}
 
-		const key = formData.get("key");
-		const value = formData.get("value");
-
-		if (typeof key !== "string" || typeof value !== "string") {
-			return Response.json(
-				{
-					success: false,
-					error: "FormData must contain 'key' (string) and 'value' (string)",
-					code: ERR_INVALID_REQUEST,
-				} satisfies R2ErrorResponse,
-				{ status: 400 }
-			);
-		}
+		const value = await request.arrayBuffer();
 
 		// Write the entry to R2 with retry logic.
 		for (let remainingAttempts = MAX_RETRIES - 1; remainingAttempts >= 0; remainingAttempts--) {
 			try {
-				const putStart = Date.now();
 				await r2.put(key, value);
-				console.log(`[r2.put] ${key} ${Date.now() - putStart}ms`);
 				return Response.json({ success: true }, { status: 200 });
 			} catch (e) {
 				if (remainingAttempts > 0) {

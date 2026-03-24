@@ -378,7 +378,7 @@ async function sendEntriesToR2Worker(options: {
 /**
  * Sends a single cache entry to the R2 worker.
  *
- * The file is read from disk and sent as FormData. The worker handles
+ * The file is read from disk and sent as the raw request body. The worker handles
  * retry logic internally.
  *
  * @param options
@@ -394,23 +394,29 @@ async function sendEntryToR2Worker(options: {
 }): Promise<void> {
 	const { workerUrl, key, filename } = options;
 
-	const formData = new FormData();
-	formData.set("key", key);
-	formData.set("value", fs.readFileSync(filename, "utf8"));
-
 	const response = await fetch(workerUrl, {
 		method: "POST",
-		body: formData,
+		headers: {
+			"x-opennext-cache-key": key,
+		},
+		body: fs.readFileSync(filename),
 	});
 
-	const result = (await response.json()) as R2Response;
+	const body = await response.text();
+	let result: R2Response;
 
-	if (result.success) {
-		return;
+	try {
+		result = JSON.parse(body) as R2Response;
+	} catch (e) {
+		throw new Error(`Unexpected response from R2 worker: ${body}`, {
+			cause: e,
+		});
 	}
 
-	logger.error(`Failed to write "${key}" to R2: ${result.error}`);
-	throw new Error(result.error);
+	if (!result.success) {
+		logger.error(`Failed to write "${key}" to R2: ${result.error}`);
+		throw new Error(result.error);
+	}
 }
 
 async function populateKVIncrementalCache(

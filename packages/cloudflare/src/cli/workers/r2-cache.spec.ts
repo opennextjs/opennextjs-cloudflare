@@ -23,7 +23,8 @@ describe("r2-cache worker", () => {
 		test("returns 404 for wrong pathname", async () => {
 			const request = new Request("https://example.com/other", {
 				method: "POST",
-				body: new FormData(),
+				headers: { "x-opennext-cache-key": "k" },
+				body: "v",
 			});
 
 			const response = await handler.fetch(request, { R2: mockR2Bucket });
@@ -33,12 +34,10 @@ describe("r2-cache worker", () => {
 
 	describe("binding validation", () => {
 		test("returns ERR_BINDING_NOT_FOUND when R2 binding is missing", async () => {
-			const formData = new FormData();
-			formData.set("key", "k");
-			formData.set("value", "v");
 			const request = new Request("https://example.com/populate", {
 				method: "POST",
-				body: formData,
+				headers: { "x-opennext-cache-key": "k" },
+				body: "v",
 			});
 
 			const response = await handler.fetch(request, { R2: undefined });
@@ -53,11 +52,11 @@ describe("r2-cache worker", () => {
 		});
 	});
 
-	describe("FormData validation", () => {
-		test("returns ERR_INVALID_REQUEST for non-FormData body", async () => {
+	describe("request validation", () => {
+		test("returns ERR_INVALID_REQUEST when key header is missing", async () => {
 			const request = new Request("https://example.com/populate", {
 				method: "POST",
-				body: "not form data",
+				body: "value",
 			});
 
 			const response = await handler.fetch(request, { R2: mockR2Bucket });
@@ -66,47 +65,15 @@ describe("r2-cache worker", () => {
 			const body = await response.json();
 			expect(body).toEqual({
 				success: false,
-				error: "Invalid FormData body",
+				error: "Request must include x-opennext-cache-key header and a body",
 				code: ERR_INVALID_REQUEST,
 			});
 		});
 
-		test("returns ERR_INVALID_REQUEST when key is missing", async () => {
-			const formData = new FormData();
-			formData.set("value", "v");
+		test("returns ERR_INVALID_REQUEST when body is missing", async () => {
 			const request = new Request("https://example.com/populate", {
 				method: "POST",
-				body: formData,
-			});
-
-			const response = await handler.fetch(request, { R2: mockR2Bucket });
-			expect(response.status).toBe(400);
-
-			const body = await response.json();
-			expect(body.success).toBe(false);
-			expect(body.code).toBe(ERR_INVALID_REQUEST);
-		});
-
-		test("returns ERR_INVALID_REQUEST when value is missing", async () => {
-			const formData = new FormData();
-			formData.set("key", "k");
-			const request = new Request("https://example.com/populate", {
-				method: "POST",
-				body: formData,
-			});
-
-			const response = await handler.fetch(request, { R2: mockR2Bucket });
-			expect(response.status).toBe(400);
-
-			const body = await response.json();
-			expect(body.success).toBe(false);
-			expect(body.code).toBe(ERR_INVALID_REQUEST);
-		});
-
-		test("returns ERR_INVALID_REQUEST when both key and value are missing", async () => {
-			const request = new Request("https://example.com/populate", {
-				method: "POST",
-				body: new FormData(),
+				headers: { "x-opennext-cache-key": "k" },
 			});
 
 			const response = await handler.fetch(request, { R2: mockR2Bucket });
@@ -122,12 +89,10 @@ describe("r2-cache worker", () => {
 		test("returns success for a valid key/value write", async () => {
 			mockPut.mockResolvedValue(undefined);
 
-			const formData = new FormData();
-			formData.set("key", "cache/key1");
-			formData.set("value", '{"data":"value1"}');
 			const request = new Request("https://example.com/populate", {
 				method: "POST",
-				body: formData,
+				headers: { "x-opennext-cache-key": "cache/key1" },
+				body: '{"data":"value1"}',
 			});
 
 			const response = await handler.fetch(request, { R2: mockR2Bucket });
@@ -135,19 +100,22 @@ describe("r2-cache worker", () => {
 
 			const body = await response.json();
 			expect(body).toEqual({ success: true });
+			expect(mockPut).toBeCalledTimes(1);
 
-			expect(mockPut).toHaveBeenCalledWith("cache/key1", '{"data":"value1"}');
+			for (const [key, value] of mockPut.mock.calls) {
+				expect(key).toBe("cache/key1");
+				expect(value).toBeInstanceOf(ArrayBuffer);
+				expect(new TextDecoder().decode(value)).toBe('{"data":"value1"}');
+			}
 		});
 
 		test("returns ERR_WRITE_FAILED when R2 put fails after all retries", async () => {
 			mockPut.mockRejectedValue(new Error("R2 storage error"));
 
-			const formData = new FormData();
-			formData.set("key", "cache/key1");
-			formData.set("value", "v");
 			const request = new Request("https://example.com/populate", {
 				method: "POST",
-				body: formData,
+				headers: { "x-opennext-cache-key": "cache/key1" },
+				body: "v",
 			});
 
 			// Advance through all retry delays: 200, 400, 800, 1600 ms
@@ -173,11 +141,12 @@ describe("r2-cache worker", () => {
 		test("retries on transient R2 write failure and succeeds", async () => {
 			mockPut.mockRejectedValueOnce(new Error("transient error")).mockResolvedValueOnce(undefined);
 
-			const formData = new FormData();
-			formData.set("key", "cache/key1");
-			formData.set("value", "v");
 			const fetchPromise = handler.fetch(
-				new Request("https://example.com/populate", { method: "POST", body: formData }),
+				new Request("https://example.com/populate", {
+					method: "POST",
+					headers: { "x-opennext-cache-key": "cache/key1" },
+					body: "v",
+				}),
 				{ R2: mockR2Bucket }
 			);
 
@@ -195,11 +164,12 @@ describe("r2-cache worker", () => {
 		test("exhausts all retries with exponential backoff", async () => {
 			mockPut.mockRejectedValue(new Error("persistent error"));
 
-			const formData = new FormData();
-			formData.set("key", "cache/key1");
-			formData.set("value", "v");
 			const fetchPromise = handler.fetch(
-				new Request("https://example.com/populate", { method: "POST", body: formData }),
+				new Request("https://example.com/populate", {
+					method: "POST",
+					headers: { "x-opennext-cache-key": "cache/key1" },
+					body: "v",
+				}),
 				{ R2: mockR2Bucket }
 			);
 
@@ -231,11 +201,12 @@ describe("r2-cache worker", () => {
 				.mockRejectedValueOnce(new Error("fail 4"))
 				.mockResolvedValueOnce(undefined);
 
-			const formData = new FormData();
-			formData.set("key", "cache/key1");
-			formData.set("value", "v");
 			const fetchPromise = handler.fetch(
-				new Request("https://example.com/populate", { method: "POST", body: formData }),
+				new Request("https://example.com/populate", {
+					method: "POST",
+					headers: { "x-opennext-cache-key": "cache/key1" },
+					body: "v",
+				}),
 				{ R2: mockR2Bucket }
 			);
 
