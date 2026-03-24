@@ -133,6 +133,7 @@ describe("populateCache", () => {
 	describe("R2 incremental cache", () => {
 		afterEach(() => {
 			vi.resetAllMocks();
+			vi.useRealTimers();
 			mockFs.restore();
 		});
 
@@ -150,6 +151,7 @@ describe("populateCache", () => {
 				const mockWorkerDispose = vi.fn();
 
 				setupMockFileSystem();
+				vi.useFakeTimers();
 				// @ts-expect-error - Mock unstable_startWorker to return a mock worker instance
 				vi.mocked(unstable_startWorker).mockResolvedValueOnce({
 					ready: Promise.resolve(),

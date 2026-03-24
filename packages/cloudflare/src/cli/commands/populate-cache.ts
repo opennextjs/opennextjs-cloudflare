@@ -2,6 +2,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { setTimeout } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
@@ -361,6 +362,14 @@ async function sendEntriesToR2Worker(options: {
 	let concurrency = 1;
 
 	for (const entry of tqdm(entries)) {
+		const task = sendEntryToR2Worker({
+			workerUrl,
+			key: entry.key,
+			filename: entry.filename,
+		}).finally(() => pending.delete(task));
+
+		pending.add(task);
+
 		// If we've reached the concurrency limit, wait for one to finish.
 		if (pending.size >= concurrency) {
 			await Promise.race(pending);
@@ -370,17 +379,12 @@ async function sendEntriesToR2Worker(options: {
 				concurrency++;
 			}
 		}
-
-		const task = sendEntryToR2Worker({
-			workerUrl,
-			key: entry.key,
-			filename: entry.filename,
-		}).finally(() => pending.delete(task));
-		pending.add(task);
 	}
 
 	await Promise.all(pending);
 }
+
+class RetryableWorkerError extends Error {}
 
 /**
  * Sends a single cache entry to the R2 worker.
@@ -400,30 +404,62 @@ async function sendEntryToR2Worker(options: {
 	filename: string;
 }): Promise<void> {
 	const { workerUrl, key, filename } = options;
+	const payload = fs.readFileSync(filename);
 
-	const response = await fetch(workerUrl, {
-		method: "POST",
-		headers: {
-			"x-opennext-cache-key": key,
-		},
-		body: fs.readFileSync(filename),
-	});
+	const CLIENT_RETRY_ATTEMPTS = 4;
+	const CLIENT_RETRY_BASE_DELAY_MS = 250;
 
-	const body = await response.text();
-	let result: R2Response;
+	for (let attempt = 0; attempt < CLIENT_RETRY_ATTEMPTS; attempt++) {
+		try {
+			const response = await fetch(workerUrl, {
+				method: "POST",
+				headers: {
+					"x-opennext-cache-key": key,
+				},
+				body: payload,
+			});
 
-	try {
-		result = JSON.parse(body) as R2Response;
-	} catch (e) {
-		throw new Error(`Unexpected response from R2 worker: ${body}`, {
-			cause: e,
-		});
+			const body = await response.text();
+			let result: R2Response;
+
+			try {
+				result = JSON.parse(body) as R2Response;
+			} catch (e) {
+				if (body.includes("Worker exceeded resource limits")) {
+					throw new RetryableWorkerError("Worker exceeded resource limits", { cause: e });
+				}
+
+				if (response.status > 500) {
+					throw new RetryableWorkerError(
+						`Worker returned a ${response.status} ${response.statusText} response`,
+						{ cause: e }
+					);
+				}
+
+				throw new Error(`Unexpected ${response.status} response from R2 worker: ${body}`, {
+					cause: e,
+				});
+			}
+
+			if (!result.success) {
+				throw new Error(`Failed to write "${key}" to R2: ${result.error}`);
+			}
+
+			return;
+		} catch (e) {
+			if (e instanceof RetryableWorkerError && attempt < CLIENT_RETRY_ATTEMPTS - 1) {
+				logger.error(
+					`Attempt ${attempt + 1} to write "${key}" failed with a retryable error: ${e.message}. Retrying...`
+				);
+				await setTimeout(CLIENT_RETRY_BASE_DELAY_MS * Math.pow(2, attempt));
+				continue;
+			}
+
+			throw e;
+		}
 	}
 
-	if (!result.success) {
-		logger.error(`Failed to write "${key}" to R2: ${result.error}`);
-		throw new Error(result.error);
-	}
+	throw new Error(`Failed to write "${key}" to R2 after ${CLIENT_RETRY_ATTEMPTS} attempts`);
 }
 
 async function populateKVIncrementalCache(
