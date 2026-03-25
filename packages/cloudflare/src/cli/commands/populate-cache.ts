@@ -413,7 +413,7 @@ async function sendEntryToR2Worker(options: {
 						"content-length": fs.statSync(filename).size.toString(),
 					},
 					body: Readable.toWeb(fs.createReadStream(filename)) as ReadableStream,
-					signal: AbortSignal.timeout(30_000),
+					signal: AbortSignal.timeout(60_000),
 					// @ts-expect-error - `duplex` is required for streaming request bodies in Node.js
 					duplex: "half",
 				});

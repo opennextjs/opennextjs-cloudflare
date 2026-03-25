@@ -271,7 +271,7 @@ describe("populateCache", () => {
 			);
 
 			await vi.waitFor(() => {
-				expect(AbortSignal.timeout).toHaveBeenCalledWith(30_000);
+				expect(AbortSignal.timeout).toHaveBeenCalledWith(60_000);
 				expect(fetchMock).toHaveBeenCalledTimes(1);
 			});
 
@@ -336,7 +336,7 @@ describe("populateCache", () => {
 			await expect(result).resolves.toBeUndefined();
 
 			expect(fetchMock).toHaveBeenCalledTimes(2);
-			expect(AbortSignal.timeout).toHaveBeenCalledWith(30_000);
+			expect(AbortSignal.timeout).toHaveBeenCalledWith(60_000);
 			expect(mockWorkerDispose).toHaveBeenCalled();
 		});
 
