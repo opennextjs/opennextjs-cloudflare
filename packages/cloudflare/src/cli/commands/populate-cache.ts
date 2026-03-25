@@ -465,11 +465,11 @@ async function sendEntryToR2Worker(options: {
 				continue;
 			}
 
-			throw e;
+			throw new Error(`Failed to write "${key}" to R2 after ${CLIENT_RETRY_ATTEMPTS} attempts`, {
+				cause: e,
+			});
 		}
 	}
-
-	throw new Error(`Failed to write "${key}" to R2 after ${CLIENT_RETRY_ATTEMPTS} attempts`);
 }
 
 async function populateKVIncrementalCache(
