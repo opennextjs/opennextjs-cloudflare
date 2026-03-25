@@ -195,6 +195,7 @@ describe("populateCache", () => {
 					expect(init?.method).toBe("POST");
 					expect(init?.headers).toEqual({
 						"x-opennext-cache-key": expect.any(String),
+						"content-length": expect.any(String),
 					});
 					expect(init?.body).toBeInstanceOf(ReadableStream);
 				}
@@ -445,7 +446,9 @@ describe("populateCache", () => {
 
 			await vi.advanceTimersByTimeAsync(500 + 1000 + 2000);
 
-			await expect(result).rejects.toThrow("R2 storage error");
+			await expect(result).rejects.toThrow(
+				/Failed to populate the local R2 cache: Failed to write "incremental-cache\/buildID\/[A-Za-z0-9]+.cache" to R2 after 5 attempts/
+			);
 
 			expect(fetchMock).toHaveBeenCalledTimes(5);
 			expect(mockWorkerDispose).toHaveBeenCalled();

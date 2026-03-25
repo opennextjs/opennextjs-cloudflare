@@ -410,6 +410,7 @@ async function sendEntryToR2Worker(options: {
 					method: "POST",
 					headers: {
 						"x-opennext-cache-key": key,
+						"content-length": fs.statSync(filename).size.toString(),
 					},
 					body: Readable.toWeb(fs.createReadStream(filename)) as ReadableStream,
 					signal: AbortSignal.timeout(30_000),
