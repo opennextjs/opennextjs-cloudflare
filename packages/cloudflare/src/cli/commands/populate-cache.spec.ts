@@ -142,7 +142,7 @@ describe("populateCache", () => {
 			{ target: "remote", shouldUsePreviewId: false },
 			{ target: "remote", shouldUsePreviewId: true },
 		])(
-			`$target (shouldUsePreviewId: $shouldUsePreviewId) - starts worker and sends individual cache entries via FormData`,
+			`$target (shouldUsePreviewId: $shouldUsePreviewId) - starts worker and sends individual cache entries with the cache key header`,
 			async (populateCacheOptions) => {
 				const bucketName =
 					populateCacheOptions.target === "remote" && populateCacheOptions.shouldUsePreviewId
@@ -209,7 +209,10 @@ describe("populateCache", () => {
 
 		test("remote - exits when bucket provisioning fails", async () => {
 			setupMockFileSystem();
-			vi.mocked(ensureR2Bucket).mockResolvedValueOnce({ success: false });
+			vi.mocked(ensureR2Bucket).mockResolvedValueOnce({
+				success: false,
+				error: "wrangler login failed",
+			});
 
 			const result = populateCache(
 				buildOptions,
@@ -220,10 +223,54 @@ describe("populateCache", () => {
 			);
 
 			await expect(result).rejects.toThrow(
-				'Failed to provision remote R2 bucket "test-bucket" for binding "NEXT_INC_CACHE_R2_BUCKET".'
+				'Failed to provision remote R2 bucket "test-bucket" for binding "NEXT_INC_CACHE_R2_BUCKET": wrangler login failed'
 			);
 
 			expect(unstable_startWorker).not.toHaveBeenCalled();
+		});
+
+		test("remote - retries timed out requests to the R2 worker", async () => {
+			setupMockFileSystem();
+			vi.useFakeTimers();
+
+			const mockWorkerDispose = vi.fn();
+			// @ts-expect-error - Mock unstable_startWorker to return a mock worker instance
+			vi.mocked(unstable_startWorker).mockResolvedValueOnce({
+				ready: Promise.resolve(),
+				url: Promise.resolve(new URL("http://localhost:12345")),
+				dispose: mockWorkerDispose,
+			});
+			vi.mocked(ensureR2Bucket).mockResolvedValueOnce({
+				success: true,
+				bucketName: "test-bucket",
+			});
+
+			const timeoutError = new Error("Timed out waiting for worker response");
+			timeoutError.name = "TimeoutError";
+
+			const fetchMock = vi
+				.spyOn(global, "fetch")
+				.mockRejectedValueOnce(timeoutError)
+				.mockResolvedValueOnce(
+					new Response(JSON.stringify({ success: true }), {
+						status: 200,
+						headers: { "Content-Type": "application/json" },
+					})
+				);
+
+			const result = populateCache(
+				buildOptions,
+				config,
+				wranglerConfig,
+				{ target: "remote", shouldUsePreviewId: false },
+				envVars
+			);
+
+			await vi.advanceTimersByTimeAsync(250);
+			await result;
+
+			expect(fetchMock).toHaveBeenCalledTimes(2);
+			expect(mockWorkerDispose).toHaveBeenCalled();
 		});
 	});
 });

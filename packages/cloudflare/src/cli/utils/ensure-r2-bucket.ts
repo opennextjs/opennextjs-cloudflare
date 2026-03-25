@@ -15,6 +15,10 @@ type AuthCredentials =
 	| { type: "token"; token: string }
 	| { type: "api_key"; apiKey: string; apiEmail: string };
 
+function getErrorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
+
 /**
  * Gets the authentication credentials for Cloudflare API calls.
  *
@@ -114,7 +118,7 @@ export async function ensureR2Bucket(
 	projectDir: string,
 	bucketName: string,
 	jurisdiction?: string
-): Promise<{ success: true; bucketName: string } | { success: false; error?: string }> {
+): Promise<{ success: true; bucketName: string } | { success: false; error: string }> {
 	try {
 		const { packager, root: monorepoRoot } = findPackagerAndRoot(projectDir);
 		const options = { packager, monorepoRoot };
@@ -125,13 +129,13 @@ export async function ensureR2Bucket(
 		if (!authCredentials) {
 			const loginSuccess = wranglerLogin(options);
 			if (!loginSuccess) {
-				return { success: false };
+				return { success: false, error: "wrangler login failed" };
 			}
 
 			// Get credentials after login
 			authCredentials = getAuthCredentials(options);
 			if (!authCredentials) {
-				return { success: false };
+				return { success: false, error: "Could not determine Cloudflare auth credentials after login" };
 			}
 		}
 
@@ -142,7 +146,7 @@ export async function ensureR2Bucket(
 
 		const accountId = await getAccountId(client);
 		if (!accountId) {
-			return { success: false };
+			return { success: false, error: "Could not determine Cloudflare account ID" };
 		}
 
 		// Check if bucket already exists
@@ -156,7 +160,10 @@ export async function ensureR2Bucket(
 			return { success: true, bucketName };
 		} catch (error) {
 			if (!(error instanceof Cloudflare.NotFoundError)) {
-				return { success: false };
+				return {
+					success: false,
+					error: `Failed to check whether bucket exists: ${getErrorMessage(error)}`,
+				};
 			}
 		}
 
@@ -168,7 +175,7 @@ export async function ensureR2Bucket(
 		});
 
 		return { success: true, bucketName };
-	} catch {
-		return { success: false };
+	} catch (error) {
+		return { success: false, error: getErrorMessage(error) };
 	}
 }

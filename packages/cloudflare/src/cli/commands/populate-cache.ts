@@ -263,11 +263,11 @@ async function populateR2IncrementalCache(
 	const isRemote = populateCacheOptions.target === "remote";
 
 	if (isRemote) {
-		const { success } = await ensureR2Bucket(buildOpts.appPath, bucketName, binding.jurisdiction);
+		const result = await ensureR2Bucket(buildOpts.appPath, bucketName, binding.jurisdiction);
 
-		if (!success) {
+		if (!result.success) {
 			throw new Error(
-				`Failed to provision remote R2 bucket "${bucketName}" for binding "${R2_CACHE_BINDING_NAME}".`
+				`Failed to provision remote R2 bucket "${bucketName}" for binding "${R2_CACHE_BINDING_NAME}": ${result.error}`
 			);
 		}
 	}
@@ -306,7 +306,6 @@ async function populateR2IncrementalCache(
 			maxConcurrency: Math.max(1, populateCacheOptions.cacheChunkSize ?? 25),
 		});
 	} catch (e) {
-		await worker.dispose();
 		if (isRemote) {
 			throw new Error(
 				`Failed to populate remote R2 bucket "${bucketName}" for binding "${R2_CACHE_BINDING_NAME}": ${e instanceof Error ? e.message : String(e)}`
@@ -386,6 +385,10 @@ async function sendEntriesToR2Worker(options: {
 
 class RetryableWorkerError extends Error {}
 
+function isTimeoutError(error: unknown): error is Error {
+	return error instanceof Error && error.name === "TimeoutError";
+}
+
 /**
  * Sends a single cache entry to the R2 worker.
  *
@@ -417,8 +420,8 @@ async function sendEntryToR2Worker(options: {
 					"x-opennext-cache-key": key,
 				},
 				body: payload,
+				signal: AbortSignal.timeout(30_000),
 			});
-
 			const body = await response.text();
 			let result: R2Response;
 
@@ -447,7 +450,7 @@ async function sendEntryToR2Worker(options: {
 
 			return;
 		} catch (e) {
-			if (e instanceof RetryableWorkerError && attempt < CLIENT_RETRY_ATTEMPTS - 1) {
+			if ((e instanceof RetryableWorkerError || isTimeoutError(e)) && attempt < CLIENT_RETRY_ATTEMPTS - 1) {
 				logger.error(
 					`Attempt ${attempt + 1} to write "${key}" failed with a retryable error: ${e.message}. Retrying...`
 				);
