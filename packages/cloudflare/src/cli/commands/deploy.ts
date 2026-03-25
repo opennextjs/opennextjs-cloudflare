@@ -30,24 +30,19 @@ export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 
 	const envVars = await getEnvFromPlatformProxy(config, buildOpts);
 
-	try {
-		await populateCache(
-			buildOpts,
-			config,
-			wranglerConfig,
-			{
-				target: "remote",
-				environment: args.env,
-				wranglerConfigPath: args.wranglerConfigPath,
-				cacheChunkSize: args.cacheChunkSize,
-				shouldUsePreviewId: false,
-			},
-			envVars
-		);
-	} catch (error) {
-		logger.error(error instanceof Error ? error.message : String(error));
-		process.exit(1);
-	}
+	await populateCache(
+		buildOpts,
+		config,
+		wranglerConfig,
+		{
+			target: "remote",
+			environment: args.env,
+			wranglerConfigPath: args.wranglerConfigPath,
+			cacheChunkSize: args.cacheChunkSize,
+			shouldUsePreviewId: false,
+		},
+		envVars
+	);
 
 	const deploymentMapping = await getDeploymentMapping(buildOpts, config, envVars);
 

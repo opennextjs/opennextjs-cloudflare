@@ -2,12 +2,13 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
-import { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
 import mockFs from "mock-fs";
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 import type { Unstable_Config as WranglerConfig } from "wrangler";
 import { unstable_startWorker } from "wrangler";
 
+import { defineCloudflareConfig } from "../../api/config.js";
+import r2IncrementalCache from "../../api/overrides/incremental-cache/r2-incremental-cache.js";
 import { ensureR2Bucket } from "../utils/ensure-r2-bucket.js";
 import { getCacheAssets, populateCache, PopulateCacheOptions } from "./populate-cache.js";
 import { WorkerEnvVar } from "./utils/helpers.js";
@@ -87,21 +88,14 @@ vi.mock("../utils/ensure-r2-bucket.js");
 vi.mock("wrangler");
 
 describe("populateCache", () => {
-	// @ts-expect-error - Partial mock of OpenNextConfig for testing
-	const buildOptions: BuildOptions = {
+	const buildOptions = {
 		appPath: "/test/app",
 		outputDir: "/test/output",
-	};
-	const config: OpenNextConfig = {
-		default: {
-			override: {
-				// @ts-expect-error - Use R2 incremental cache
-				incrementalCache: "cf-r2-incremental-cache",
-			},
-		},
-	};
-	// @ts-expect-error - Partial mock of WranglerConfig for testing
-	const wranglerConfig: WranglerConfig = {
+	} as BuildOptions;
+	const config = defineCloudflareConfig({
+		incrementalCache: r2IncrementalCache,
+	});
+	const wranglerConfig = {
 		r2_buckets: [
 			{
 				binding: "NEXT_INC_CACHE_R2_BUCKET",
@@ -110,9 +104,8 @@ describe("populateCache", () => {
 				jurisdiction: "eu",
 			},
 		],
-	};
-	// @ts-expect-error - Use partial WorkerEnvVar for testing
-	const envVars: WorkerEnvVar = {};
+	} as WranglerConfig;
+	const envVars = {} as WorkerEnvVar;
 
 	const setupMockFileSystem = () => {
 		mockFs({
@@ -161,12 +154,16 @@ describe("populateCache", () => {
 				vi.mocked(ensureR2Bucket).mockResolvedValueOnce({ success: true, bucketName });
 
 				// Mock fetch to return a successful response for each individual entry.
-				const fetchMock = vi.spyOn(global, "fetch").mockResolvedValue(
-					new Response(JSON.stringify({ success: true }), {
+				const fetchMock = vi.spyOn(global, "fetch").mockImplementation(async (_input, init) => {
+					if (init?.body instanceof ReadableStream) {
+						await init.body.cancel();
+					}
+
+					return new Response(JSON.stringify({ success: true }), {
 						status: 200,
 						headers: { "Content-Type": "application/json" },
-					})
-				);
+					});
+				});
 
 				await populateCache(buildOptions, config, wranglerConfig, populateCacheOptions, envVars);
 
@@ -199,7 +196,7 @@ describe("populateCache", () => {
 					expect(init?.headers).toEqual({
 						"x-opennext-cache-key": expect.any(String),
 					});
-					expect(init?.body).toBeInstanceOf(Buffer);
+					expect(init?.body).toBeInstanceOf(ReadableStream);
 				}
 
 				// Verify worker was disposed after sending entries.
@@ -229,7 +226,7 @@ describe("populateCache", () => {
 			expect(unstable_startWorker).not.toHaveBeenCalled();
 		});
 
-		test("remote - retries timed out requests to the R2 worker", async () => {
+		test("retries timed out requests to the R2 worker", async () => {
 			setupMockFileSystem();
 			vi.useFakeTimers();
 
@@ -240,36 +237,217 @@ describe("populateCache", () => {
 				url: Promise.resolve(new URL("http://localhost:12345")),
 				dispose: mockWorkerDispose,
 			});
-			vi.mocked(ensureR2Bucket).mockResolvedValueOnce({
-				success: true,
-				bucketName: "test-bucket",
-			});
-
-			const timeoutError = new Error("Timed out waiting for worker response");
-			timeoutError.name = "TimeoutError";
+			vi.spyOn(AbortSignal, "timeout");
 
 			const fetchMock = vi
 				.spyOn(global, "fetch")
-				.mockRejectedValueOnce(timeoutError)
-				.mockResolvedValueOnce(
-					new Response(JSON.stringify({ success: true }), {
+				.mockImplementationOnce(async (_input, init) => {
+					if (init?.body instanceof ReadableStream) {
+						await init.body.cancel();
+					}
+
+					const timeoutError = new Error("Request timed out");
+					timeoutError.name = "TimeoutError";
+					throw timeoutError;
+				})
+				.mockImplementationOnce(async (_input, init) => {
+					if (init?.body instanceof ReadableStream) {
+						await init.body.cancel();
+					}
+
+					return new Response(JSON.stringify({ success: true }), {
 						status: 200,
 						headers: { "Content-Type": "application/json" },
-					})
-				);
+					});
+				});
 
 			const result = populateCache(
 				buildOptions,
 				config,
 				wranglerConfig,
-				{ target: "remote", shouldUsePreviewId: false },
+				{ target: "local", shouldUsePreviewId: false },
 				envVars
 			);
+
+			await vi.waitFor(() => {
+				expect(AbortSignal.timeout).toHaveBeenCalledWith(30_000);
+				expect(fetchMock).toHaveBeenCalledTimes(1);
+			});
 
 			await vi.advanceTimersByTimeAsync(250);
 			await result;
 
 			expect(fetchMock).toHaveBeenCalledTimes(2);
+			expect(mockWorkerDispose).toHaveBeenCalled();
+		});
+
+		test("retries 5xx responses from the R2 worker", async () => {
+			setupMockFileSystem();
+			vi.useFakeTimers();
+
+			const mockWorkerDispose = vi.fn();
+			// @ts-expect-error - Mock unstable_startWorker to return a mock worker instance
+			vi.mocked(unstable_startWorker).mockResolvedValueOnce({
+				ready: Promise.resolve(),
+				url: Promise.resolve(new URL("http://localhost:12345")),
+				dispose: mockWorkerDispose,
+			});
+
+			const fetchMock = vi
+				.spyOn(global, "fetch")
+				.mockImplementationOnce(async (_input, init) => {
+					if (init?.body instanceof ReadableStream) {
+						await init.body.cancel();
+					}
+
+					return new Response(
+						JSON.stringify({ success: false, error: "R2 storage error", code: "ERR_WRITE_FAILED" }),
+						{
+							status: 500,
+							headers: { "Content-Type": "application/json" },
+						}
+					);
+				})
+				.mockImplementationOnce(async (_input, init) => {
+					if (init?.body instanceof ReadableStream) {
+						await init.body.cancel();
+					}
+
+					return new Response(JSON.stringify({ success: true }), {
+						status: 200,
+						headers: { "Content-Type": "application/json" },
+					});
+				});
+
+			const result = populateCache(
+				buildOptions,
+				config,
+				wranglerConfig,
+				{ target: "local", shouldUsePreviewId: false },
+				envVars
+			);
+
+			await vi.waitFor(() => {
+				expect(fetchMock).toHaveBeenCalledTimes(1);
+			});
+
+			await vi.advanceTimersByTimeAsync(250);
+			await expect(result).resolves.toBeUndefined();
+
+			expect(fetchMock).toHaveBeenCalledTimes(2);
+			expect(AbortSignal.timeout).toHaveBeenCalledWith(30_000);
+			expect(mockWorkerDispose).toHaveBeenCalled();
+		});
+
+		test("retries worker exceeded resource limits responses", async () => {
+			setupMockFileSystem();
+			vi.useFakeTimers();
+
+			const mockWorkerDispose = vi.fn();
+			// @ts-expect-error - Mock unstable_startWorker to return a mock worker instance
+			vi.mocked(unstable_startWorker).mockResolvedValueOnce({
+				ready: Promise.resolve(),
+				url: Promise.resolve(new URL("http://localhost:12345")),
+				dispose: mockWorkerDispose,
+			});
+
+			const fetchMock = vi
+				.spyOn(global, "fetch")
+				.mockImplementationOnce(async (_input, init) => {
+					if (init?.body instanceof ReadableStream) {
+						await init.body.cancel();
+					}
+
+					return new Response(
+						"<!DOCTYPE html><title>Worker exceeded resource limits</title><h1>Error 1102</h1></html>",
+						{
+							status: 200,
+							headers: { "Content-Type": "text/html" },
+						}
+					);
+				})
+				.mockImplementationOnce(async (_input, init) => {
+					if (init?.body instanceof ReadableStream) {
+						await init.body.cancel();
+					}
+
+					return new Response(JSON.stringify({ success: true }), {
+						status: 200,
+						headers: { "Content-Type": "application/json" },
+					});
+				});
+
+			const result = populateCache(
+				buildOptions,
+				config,
+				wranglerConfig,
+				{ target: "local", shouldUsePreviewId: false },
+				envVars
+			);
+
+			await vi.waitFor(() => {
+				expect(fetchMock).toHaveBeenCalledTimes(1);
+			});
+
+			await vi.advanceTimersByTimeAsync(250);
+			await expect(result).resolves.toBeUndefined();
+
+			expect(fetchMock).toHaveBeenCalledTimes(2);
+			expect(mockWorkerDispose).toHaveBeenCalled();
+		});
+
+		test("exhausts all retries with exponential backoff for 5xx responses", async () => {
+			setupMockFileSystem();
+			vi.useFakeTimers();
+
+			const mockWorkerDispose = vi.fn();
+			// @ts-expect-error - Mock unstable_startWorker to return a mock worker instance
+			vi.mocked(unstable_startWorker).mockResolvedValueOnce({
+				ready: Promise.resolve(),
+				url: Promise.resolve(new URL("http://localhost:12345")),
+				dispose: mockWorkerDispose,
+			});
+
+			const fetchMock = vi.spyOn(global, "fetch").mockImplementation(async (_input, init) => {
+				if (init?.body instanceof ReadableStream) {
+					await init.body.cancel();
+				}
+
+				return new Response(
+					JSON.stringify({ success: false, error: "R2 storage error", code: "ERR_WRITE_FAILED" }),
+					{
+						status: 500,
+						headers: { "Content-Type": "application/json" },
+					}
+				);
+			});
+
+			const result = populateCache(
+				buildOptions,
+				config,
+				wranglerConfig,
+				{ target: "local", shouldUsePreviewId: false },
+				envVars
+			);
+
+			await vi.waitFor(() => {
+				expect(fetchMock).toHaveBeenCalledTimes(1);
+			});
+
+			await vi.advanceTimersByTimeAsync(249);
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersByTimeAsync(1);
+
+			await vi.waitFor(() => {
+				expect(fetchMock).toHaveBeenCalledTimes(2);
+			});
+
+			await vi.advanceTimersByTimeAsync(500 + 1000 + 2000);
+
+			await expect(result).rejects.toThrow("R2 storage error");
+
+			expect(fetchMock).toHaveBeenCalledTimes(5);
 			expect(mockWorkerDispose).toHaveBeenCalled();
 		});
 	});

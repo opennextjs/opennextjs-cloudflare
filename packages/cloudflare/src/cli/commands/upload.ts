@@ -38,24 +38,19 @@ export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 
 	const deploymentMapping = await getDeploymentMapping(buildOpts, config, envVars);
 
-	try {
-		await populateCache(
-			buildOpts,
-			config,
-			wranglerConfig,
-			{
-				target: "remote",
-				environment: args.env,
-				wranglerConfigPath: args.wranglerConfigPath,
-				cacheChunkSize: args.cacheChunkSize,
-				shouldUsePreviewId: false,
-			},
-			envVars
-		);
-	} catch (error) {
-		logger.error(error instanceof Error ? error.message : String(error));
-		process.exit(1);
-	}
+	await populateCache(
+		buildOpts,
+		config,
+		wranglerConfig,
+		{
+			target: "remote",
+			environment: args.env,
+			wranglerConfigPath: args.wranglerConfigPath,
+			cacheChunkSize: args.cacheChunkSize,
+			shouldUsePreviewId: false,
+		},
+		envVars
+	);
 
 	const result = runWrangler(
 		buildOpts,

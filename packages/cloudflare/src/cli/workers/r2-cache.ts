@@ -1,12 +1,12 @@
 /**
- * This worker writes a cache entry to R2 with retry logic.
+ * This worker writes a cache entry to R2.
  *
  * It handles POST requests to /populate with:
  * - `x-opennext-cache-key`: the R2 object key (header, required).
  * - request body: the cache value to store (required).
  *
  * The worker validates the R2 binding and request body, then writes the entry
- * to R2, retrying transient write failures with exponential backoff.
+ * to R2.
  *
  * This is used by the `populate-cache` command to bypass REST API rate limits when populating large caches.
  */
@@ -19,17 +19,11 @@ import {
 	type R2ErrorResponse,
 } from "./r2-cache-types.js";
 
-// Maximum number of write attempts before giving up.
-const MAX_RETRIES = 5;
-// Base backoff delay.
-const RETRY_DELAY_MS = 100;
-
 /**
  * Worker fetch handler.
  *
  * Routes `POST /populate` to the cache population logic.
- * Validates the R2 binding, request metadata, and request body, then writes the entry to R2
- * with retry logic for transient write failures.
+ * Validates the R2 binding, request metadata, and request body, then writes the entry to R2.
  *
  * Response format:
  * - 200 with `{ success: true }` on success.
@@ -70,37 +64,19 @@ export default {
 			);
 		}
 
-		const value = await request.arrayBuffer();
-
-		// Write the entry to R2 with retry logic.
-		for (let remainingAttempts = MAX_RETRIES - 1; remainingAttempts >= 0; remainingAttempts--) {
-			try {
-				await r2.put(key, value);
-				return Response.json({ success: true }, { status: 200 });
-			} catch (e) {
-				if (remainingAttempts > 0) {
-					console.error(
-						`Write to R2 failed for key "${key}", retrying... (${remainingAttempts} attempts left)`,
-						e
-					);
-					await new Promise((resolve) =>
-						setTimeout(resolve, RETRY_DELAY_MS * Math.pow(1.2, MAX_RETRIES - 1 - remainingAttempts))
-					);
-					continue;
-				}
-				console.error(`Failed to write key "${key}" to R2 after ${MAX_RETRIES} attempts:`, e);
-				const detail = e instanceof Error ? e.message : String(e);
-				return Response.json(
-					{
-						success: false,
-						error: `Failed to write key "${key}" after ${MAX_RETRIES} attempts: ${detail}`,
-						code: ERR_WRITE_FAILED,
-					} satisfies R2ErrorResponse,
-					{ status: 500 }
-				);
-			}
+		try {
+			await r2.put(key, request.body);
+			return Response.json({ success: true }, { status: 200 });
+		} catch (e) {
+			const detail = e instanceof Error ? e.message : String(e);
+			return Response.json(
+				{
+					success: false,
+					error: `Failed to write key "${key}": ${detail}`,
+					code: ERR_WRITE_FAILED,
+				} satisfies R2ErrorResponse,
+				{ status: 500 }
+			);
 		}
-
-		throw new Error("Unreachable");
 	},
 };

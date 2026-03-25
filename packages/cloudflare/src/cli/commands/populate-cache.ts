@@ -2,6 +2,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { Readable } from "node:stream";
 import { setTimeout } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
@@ -72,24 +73,19 @@ async function populateCacheCommand(
 	const wranglerConfig = await readWranglerConfig(args);
 	const envVars = await getEnvFromPlatformProxy(config, buildOpts);
 
-	try {
-		await populateCache(
-			buildOpts,
-			config,
-			wranglerConfig,
-			{
-				target,
-				environment: args.env,
-				wranglerConfigPath: args.wranglerConfigPath,
-				cacheChunkSize: args.cacheChunkSize,
-				shouldUsePreviewId: false,
-			},
-			envVars
-		);
-	} catch (error) {
-		logger.error(error instanceof Error ? error.message : String(error));
-		process.exit(1);
-	}
+	await populateCache(
+		buildOpts,
+		config,
+		wranglerConfig,
+		{
+			target,
+			environment: args.env,
+			wranglerConfigPath: args.wranglerConfigPath,
+			cacheChunkSize: args.cacheChunkSize,
+			shouldUsePreviewId: false,
+		},
+		envVars
+	);
 }
 
 export async function populateCache(
@@ -219,12 +215,12 @@ export type PopulateCacheOptions = {
 };
 
 /**
- * Populates the R2 incremental cache by starting a local worker with an R2 binding.
+ * Populates the R2 incremental cache by starting a worker with an R2 binding.
  *
  * Flow:
  * 1. Reads the R2 binding configuration from the wrangler config.
  * 2. Collects cache assets from the build output.
- * 3. Starts a local worker (via `unstable_startWorker`) with the R2 binding.
+ * 3. Starts a worker (via `unstable_startWorker`) with the R2 binding, set to run remotely or locally depending upon the cache target.
  * 4. Sends individual POST requests to the worker.
  *
  * Using a binding bypasses the Cloudflare REST API rate limit that affects `wrangler r2 bulk put`.
@@ -297,7 +293,6 @@ async function populateR2IncrementalCache(
 	});
 
 	try {
-		await worker.ready;
 		const baseUrl = await worker.url;
 		await sendEntriesToR2Worker({
 			workerUrl: new URL("/populate", baseUrl).href,
@@ -388,8 +383,7 @@ class RetryableWorkerError extends Error {}
 /**
  * Sends a single cache entry to the R2 worker.
  *
- * The file is read from disk and sent as the raw request body. The worker handles
- * retry logic internally.
+ * The file is streamed from disk and sent as the raw request body.
  *
  * @param options
  * @param options.workerUrl - The URL of the local R2 worker's `/populate` endpoint.
@@ -403,9 +397,8 @@ async function sendEntryToR2Worker(options: {
 	filename: string;
 }): Promise<void> {
 	const { workerUrl, key, filename } = options;
-	const payload = fs.readFileSync(filename);
 
-	const CLIENT_RETRY_ATTEMPTS = 4;
+	const CLIENT_RETRY_ATTEMPTS = 5;
 	const CLIENT_RETRY_BASE_DELAY_MS = 250;
 
 	for (let attempt = 0; attempt < CLIENT_RETRY_ATTEMPTS; attempt++) {
@@ -418,8 +411,10 @@ async function sendEntryToR2Worker(options: {
 					headers: {
 						"x-opennext-cache-key": key,
 					},
-					body: payload,
+					body: Readable.toWeb(fs.createReadStream(filename)) as ReadableStream,
 					signal: AbortSignal.timeout(30_000),
+					// @ts-expect-error - `duplex` is required for streaming request bodies in Node.js
+					duplex: "half",
 				});
 			} catch (e) {
 				throw new RetryableWorkerError(
@@ -440,7 +435,7 @@ async function sendEntryToR2Worker(options: {
 					throw new RetryableWorkerError("Worker exceeded resource limits", { cause: e });
 				}
 
-				if (response.status > 500) {
+				if (response.status >= 500) {
 					throw new RetryableWorkerError(
 						`Worker returned a ${response.status} ${response.statusText} response`,
 						{ cause: e }
@@ -450,6 +445,10 @@ async function sendEntryToR2Worker(options: {
 				throw new Error(`Unexpected ${response.status} response from R2 worker: ${body}`, {
 					cause: e,
 				});
+			}
+
+			if (!result.success && response.status >= 500) {
+				throw new RetryableWorkerError(result.error);
 			}
 
 			if (!result.success) {
