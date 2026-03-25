@@ -385,10 +385,6 @@ async function sendEntriesToR2Worker(options: {
 
 class RetryableWorkerError extends Error {}
 
-function isTimeoutError(error: unknown): error is Error {
-	return error instanceof Error && error.name === "TimeoutError";
-}
-
 /**
  * Sends a single cache entry to the R2 worker.
  *
@@ -414,14 +410,26 @@ async function sendEntryToR2Worker(options: {
 
 	for (let attempt = 0; attempt < CLIENT_RETRY_ATTEMPTS; attempt++) {
 		try {
-			const response = await fetch(workerUrl, {
-				method: "POST",
-				headers: {
-					"x-opennext-cache-key": key,
-				},
-				body: payload,
-				signal: AbortSignal.timeout(30_000),
-			});
+			let response: Response;
+
+			try {
+				response = await fetch(workerUrl, {
+					method: "POST",
+					headers: {
+						"x-opennext-cache-key": key,
+					},
+					body: payload,
+					signal: AbortSignal.timeout(30_000),
+				});
+			} catch (e) {
+				throw new RetryableWorkerError(
+					`Failed to send request to R2 worker: ${e instanceof Error ? e.message : String(e)}`,
+					{
+						cause: e,
+					}
+				);
+			}
+
 			const body = await response.text();
 			let result: R2Response;
 
@@ -450,7 +458,7 @@ async function sendEntryToR2Worker(options: {
 
 			return;
 		} catch (e) {
-			if ((e instanceof RetryableWorkerError || isTimeoutError(e)) && attempt < CLIENT_RETRY_ATTEMPTS - 1) {
+			if (e instanceof RetryableWorkerError && attempt < CLIENT_RETRY_ATTEMPTS - 1) {
 				logger.error(
 					`Attempt ${attempt + 1} to write "${key}" failed with a retryable error: ${e.message}. Retrying...`
 				);
