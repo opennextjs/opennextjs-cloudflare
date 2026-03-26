@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 1.18.0
+
+### Minor Changes
+
+- [#1159](https://github.com/opennextjs/opennextjs-cloudflare/pull/1159) [`75f5f0a`](https://github.com/opennextjs/opennextjs-cloudflare/commit/75f5f0a75a2ff15ccf3c84c6d66ca7675a99dcde) Thanks [@edmundhung](https://github.com/edmundhung)! - Use remote dev for R2 cache population
+
+  Using remote dev is not subject to the Cloudflare API rate limit of 1,200 requests per 5 minutes that caused failures for large applications with thousands of prerendered pages.
+
 ## 1.17.3
 
 ### Patch Changes
