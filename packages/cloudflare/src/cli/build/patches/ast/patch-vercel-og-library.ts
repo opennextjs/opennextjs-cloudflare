@@ -6,7 +6,7 @@ import { getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { parseFile } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import { globSync } from "glob";
 
-import { patchVercelOgFallbackFont, patchVercelOgImport } from "./vercel-og.js";
+import { patchVercelOgFallbackFont, patchVercelOgImport, patchVercelOgWasmImport } from "./vercel-og.js";
 
 type TraceInfo = { version: number; files: string[] };
 
@@ -52,8 +52,9 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions): boolean {
 		// Change font fetches in the library to use imports.
 		{
 			const ast = parseFile(outputEdgePath);
-			const { edits, matches } = patchVercelOgFallbackFont(ast);
-			writeFileSync(outputEdgePath, ast.commitEdits(edits));
+			const { edits: fallbackFontEdits, matches } = patchVercelOgFallbackFont(ast);
+			const patchedCode = patchVercelOgWasmImport(ast.commitEdits(fallbackFontEdits));
+			writeFileSync(outputEdgePath, patchedCode);
 
 			if (matches.length > 0) {
 				const fontFileName = matches[0]!.getMatch("PATH")!.text();

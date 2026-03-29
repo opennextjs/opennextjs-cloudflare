@@ -63,3 +63,20 @@ fix: |-
 export function patchVercelOgFallbackFont(root: SgNode) {
 	return applyRule(vercelOgFallbackFontRule, root);
 }
+
+/**
+ * Patches absolute @vercel/og wasm imports back to local relative imports.
+ *
+ * Next.js 16.2 emits absolute `yoga.wasm?module` imports in `index.edge.js`.
+ * Wrangler later treats those module specifiers as relative to the worker entry,
+ * producing a doubled path and an ENOENT during deploy.
+ *
+ * @param root Root node.
+ * @returns Patched code.
+ */
+export function patchVercelOgWasmImport(code: string) {
+	return code.replaceAll(
+		/import\("([^"]*\/next\/dist\/compiled\/@vercel\/og\/([^"/]+\.wasm\?module))"\)/g,
+		'import("./$2")'
+	);
+}

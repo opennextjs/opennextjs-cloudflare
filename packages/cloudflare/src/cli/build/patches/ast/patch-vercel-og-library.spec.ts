@@ -34,7 +34,10 @@ describe("patchVercelOgLibrary", () => {
 		);
 		writeFileSync(
 			path.join(nodeModulesVercelOgDir, "index.edge.js"),
-			`var fallbackFont = fetch(new URL("./noto-sans-v27-latin-regular.ttf", import.meta.url)).then((res) => res.arrayBuffer());`
+			[
+				`var fallbackFont = fetch(new URL("./noto-sans-v27-latin-regular.ttf", import.meta.url)).then((res) => res.arrayBuffer());`,
+				`var yogaWasm = import("/home/user/project/.open-next/server-functions/default/node_modules/.pnpm/next@16.2.1/node_modules/next/dist/compiled/@vercel/og/yoga.wasm?module");`,
+			].join("\n")
 		);
 		writeFileSync(openNextOgRoutePath, `e.exports=import("next/dist/compiled/@vercel/og/index.node.js")`);
 		writeFileSync(path.join(openNextVercelOgDir, "index.node.js"), "");
@@ -61,7 +64,8 @@ describe("patchVercelOgLibrary", () => {
         return (await import("./noto-sans-v27-latin-regular.ttf.bin")).default;
       }
 
-      var fallbackFont = getFallbackFont();"
+      var fallbackFont = getFallbackFont();
+      var yogaWasm = import("./yoga.wasm?module");"
     `);
 
 		expect(readFileSync(openNextOgRoutePath, { encoding: "utf-8" })).toMatchInlineSnapshot(

@@ -1,7 +1,7 @@
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import { describe, expect, it } from "vitest";
 
-import { vercelOgFallbackFontRule, vercelOgImportRule } from "./vercel-og.js";
+import { patchVercelOgWasmImport, vercelOgFallbackFontRule, vercelOgImportRule } from "./vercel-og.js";
 
 describe("vercelOgImportRule", () => {
 	it("should rewrite a node import to an edge import", () => {
@@ -23,5 +23,14 @@ describe("vercelOgFallbackFontRule", () => {
 
       var fallbackFont = getFallbackFont();"
     `);
+	});
+});
+
+describe("patchVercelOgWasmImport", () => {
+	it("should rewrite an absolute wasm import to a relative import", () => {
+		const code = `var yogaWasm = import("/home/user/project/.open-next/server-functions/default/node_modules/.pnpm/next@16.2.1/node_modules/next/dist/compiled/@vercel/og/yoga.wasm?module");`;
+		expect(patchVercelOgWasmImport(code)).toMatchInlineSnapshot(
+			`"var yogaWasm = import("./yoga.wasm?module");"`
+		);
 	});
 });
