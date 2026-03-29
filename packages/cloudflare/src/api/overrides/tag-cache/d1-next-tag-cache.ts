@@ -42,11 +42,12 @@ export class D1NextModeTagCache implements NextModeTagCache {
 			return false;
 		}
 		try {
+			const now = Date.now();
 			const result = await db
 				.prepare(
-					`SELECT 1 FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")}) AND revalidatedAt > ? LIMIT 1`
+					`SELECT 1 FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")}) AND ((expiry IS NOT NULL AND expiry <= ? AND expiry > ?) OR (expiry IS NULL AND revalidatedAt > ?)) LIMIT 1`
 				)
-				.bind(...tags.map((tag) => this.getCacheKey(tag)), lastModified ?? Date.now())
+				.bind(...tags.map((tag) => this.getCacheKey(tag)), now, lastModified ?? 0, lastModified ?? now)
 				.raw();
 
 			const revalidated = result.length > 0;

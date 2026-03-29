@@ -186,11 +186,13 @@ describe("D1NextModeTagCache", () => {
 
 			expect(result).toBe(true);
 			expect(mockPrepare).toHaveBeenCalledWith(
-				"SELECT 1 FROM revalidations WHERE tag IN (?, ?) AND revalidatedAt > ? LIMIT 1"
+				"SELECT 1 FROM revalidations WHERE tag IN (?, ?) AND ((expiry IS NOT NULL AND expiry <= ? AND expiry > ?) OR (expiry IS NULL AND revalidatedAt > ?)) LIMIT 1"
 			);
 			expect(mockBind).toHaveBeenCalledWith(
 				`${FALLBACK_BUILD_ID}/tag1`,
 				`${FALLBACK_BUILD_ID}/tag2`,
+				expect.any(Number),
+				lastModified,
 				lastModified
 			);
 		});
@@ -210,7 +212,7 @@ describe("D1NextModeTagCache", () => {
 
 			await tagCache.hasBeenRevalidated(["tag1"]);
 
-			expect(mockBind).toHaveBeenCalledWith(`${FALLBACK_BUILD_ID}/tag1`, currentTime);
+			expect(mockBind).toHaveBeenCalledWith(`${FALLBACK_BUILD_ID}/tag1`, currentTime, 0, currentTime);
 		});
 
 		it("should return false when database query throws an error", async () => {

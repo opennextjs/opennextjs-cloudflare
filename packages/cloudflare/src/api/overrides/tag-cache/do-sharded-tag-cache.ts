@@ -194,15 +194,17 @@ class ShardedDOTagCache implements NextModeTagCache {
 			return false;
 		}
 		try {
+			const now = Date.now();
 			const shardedTagGroups = this.groupTagsByDO({ tags });
 			const shardedTagRevalidationOutcomes = await Promise.all(
 				shardedTagGroups.map(async ({ doId, tags }) => {
 					const cachedValues = await this.getFromRegionalCache({ doId, tags });
 
 					// If one of the cached values is newer than the lastModified, we can return true
-					const cacheHasBeenRevalidated = cachedValues.some(
-						({ revalidatedAt }) => revalidatedAt > (lastModified ?? Date.now())
-					);
+					const cacheHasBeenRevalidated = cachedValues.some(({ revalidatedAt, expiry }) => {
+						if (expiry != null) return expiry <= now && expiry > (lastModified ?? 0);
+						return revalidatedAt > (lastModified ?? now);
+					});
 
 					if (cacheHasBeenRevalidated) {
 						debugCache(
@@ -227,9 +229,10 @@ class ShardedDOTagCache implements NextModeTagCache {
 					const stub = this.getDurableObjectStub(doId);
 					const tagData = await stub.getTagData(remainingTags);
 
-					const doHasBeenRevalidated = Object.values(tagData).some(
-						({ revalidatedAt }) => revalidatedAt > (lastModified ?? Date.now())
-					);
+					const doHasBeenRevalidated = Object.values(tagData).some(({ revalidatedAt, expiry }) => {
+						if (expiry != null) return expiry <= now && expiry > (lastModified ?? 0);
+						return revalidatedAt > (lastModified ?? now);
+					});
 
 					getCloudflareContext().ctx.waitUntil(
 						this.putToRegionalCache({ doId, tags: remainingTags }, stub)

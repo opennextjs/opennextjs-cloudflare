@@ -78,12 +78,29 @@ export class KVNextModeTagCache implements NextModeTagCache {
 	}
 
 	async hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean> {
-		const revalidated = (await this.#getLastRevalidated(tags)) > (lastModified ?? Date.now());
-		debugCache(
-			"KVNextModeTagCache",
-			`hasBeenRevalidated tags=${tags} lastModified=${lastModified} -> ${revalidated}`
-		);
-		return revalidated;
+		const kv = this.getKv();
+		if (!kv || tags.length === 0) {
+			return false;
+		}
+		try {
+			const keys = tags.map((tag) => this.getCacheKey(tag));
+			const now = Date.now();
+			const result: Map<string, KVTagValue | null> = await kv.get(keys, { type: "json" });
+			const revalidated = [...result.values()].some((v) => {
+				if (v == null) return false;
+				const expiry = getExpiry(v);
+				if (expiry != null) return expiry <= now && expiry > (lastModified ?? 0);
+				return getRevalidatedAt(v) > (lastModified ?? now);
+			});
+			debugCache(
+				"KVNextModeTagCache",
+				`hasBeenRevalidated tags=${tags} lastModified=${lastModified} -> ${revalidated}`
+			);
+			return revalidated;
+		} catch (e) {
+			error(e);
+			return false;
+		}
 	}
 
 	async writeTags(tags: NextModeTagCacheWriteInput[]): Promise<void> {
