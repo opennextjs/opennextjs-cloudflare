@@ -150,7 +150,10 @@ export class KVNextModeTagCache implements NextModeTagCache {
 				return expiry == null || expiry > now;
 			});
 
-			debugCache("KVNextModeTagCache", `hasBeenStale tags=${tags} lastModified=${lastModified} -> ${hasStale}`);
+			debugCache(
+				"KVNextModeTagCache",
+				`hasBeenStale tags=${tags} lastModified=${lastModified} -> ${hasStale}`
+			);
 			return hasStale;
 		} catch (e) {
 			error(e);

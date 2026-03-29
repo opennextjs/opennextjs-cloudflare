@@ -234,9 +234,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 						return revalidatedAt > (lastModified ?? now);
 					});
 
-					getCloudflareContext().ctx.waitUntil(
-						this.putToRegionalCache({ doId, tags: remainingTags }, stub)
-					);
+					getCloudflareContext().ctx.waitUntil(this.putToRegionalCache({ doId, tags: remainingTags }, stub));
 
 					debugCache(
 						"ShardedDOTagCache",
@@ -293,9 +291,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 						return expiry == null || expiry > now;
 					});
 
-					getCloudflareContext().ctx.waitUntil(
-						this.putToRegionalCache({ doId, tags: remainingTags }, stub)
-					);
+					getCloudflareContext().ctx.waitUntil(this.putToRegionalCache({ doId, tags: remainingTags }, stub));
 
 					debugCache(
 						"ShardedDOTagCache",
@@ -403,10 +399,20 @@ class ShardedDOTagCache implements NextModeTagCache {
 						const parsed: unknown = JSON.parse(cachedText);
 						if (typeof parsed === "number") {
 							// Backward compat: old format stored a plain revalidatedAt number
-							return { tag, revalidatedAt: parsed, stale: parsed as number | null, expiry: null as number | null };
+							return {
+								tag,
+								revalidatedAt: parsed,
+								stale: parsed as number | null,
+								expiry: null as number | null,
+							};
 						}
 						const data = parsed as TagData;
-						return { tag, revalidatedAt: data.revalidatedAt ?? 0, stale: data.stale ?? null, expiry: data.expiry ?? null };
+						return {
+							tag,
+							revalidatedAt: data.revalidatedAt ?? 0,
+							stale: data.stale ?? null,
+							expiry: data.expiry ?? null,
+						};
 					} catch (e) {
 						debugCache("Error while parsing cached value", e);
 						return null;
@@ -448,8 +454,8 @@ class ShardedDOTagCache implements NextModeTagCache {
 							"cache-control": `max-age=${this.opts.regionalCacheTtlSec ?? 5}`,
 							...(tags.length > 0
 								? {
-									"cache-tag": tags.join(","),
-								}
+										"cache-tag": tags.join(","),
+									}
 								: {}),
 						},
 					})
@@ -581,23 +587,23 @@ class ShardedDOTagCache implements NextModeTagCache {
 		// If we have regional replication enabled, we need to further duplicate the shards in all the regions
 		const regionalReplicasInAllRegions = generateAllReplicas
 			? regionalReplicas.flatMap(({ doId, tag }) => {
-				return AVAILABLE_REGIONS.map((region) => {
-					return {
-						doId: new DOId({
-							baseShardId: doId.options.baseShardId,
-							numberOfReplicas: numReplicas,
-							shardType,
-							replicaId: doId.replicaId,
-							region,
-						}),
-						tag,
-					};
-				});
-			})
+					return AVAILABLE_REGIONS.map((region) => {
+						return {
+							doId: new DOId({
+								baseShardId: doId.options.baseShardId,
+								numberOfReplicas: numReplicas,
+								shardType,
+								replicaId: doId.replicaId,
+								region,
+							}),
+							tag,
+						};
+					});
+				})
 			: regionalReplicas.map(({ doId, tag }) => {
-				doId.region = this.getClosestRegion();
-				return { doId, tag };
-			});
+					doId.region = this.getClosestRegion();
+					return { doId, tag };
+				});
 		return regionalReplicasInAllRegions;
 	}
 
@@ -634,9 +640,9 @@ class ShardedDOTagCache implements NextModeTagCache {
 		return !db || isDisabled
 			? { isDisabled: true as const }
 			: {
-				isDisabled: false as const,
-				db,
-			};
+					isDisabled: false as const,
+					db,
+				};
 	}
 }
 
@@ -664,6 +670,5 @@ interface CacheTagKeyOptions {
 	doId: DOId;
 	tags: string[];
 }
-
 
 export default (opts?: ShardedDOTagCacheOptions) => new ShardedDOTagCache(opts);

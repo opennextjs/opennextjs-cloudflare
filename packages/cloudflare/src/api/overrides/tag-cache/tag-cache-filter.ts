@@ -31,12 +31,12 @@ export function withFilter({ tagCache, filterFn }: WithFilterOptions): NextModeT
 		},
 		getPathsByTags: tagCache.getPathsByTags
 			? async (tags) => {
-				const filteredTags = tags.filter(filterFn);
-				if (filteredTags.length === 0) {
-					return [];
+					const filteredTags = tags.filter(filterFn);
+					if (filteredTags.length === 0) {
+						return [];
+					}
+					return tagCache.getPathsByTags!(filteredTags);
 				}
-				return tagCache.getPathsByTags!(filteredTags);
-			}
 			: undefined,
 		hasBeenRevalidated: async (tags, lastModified) => {
 			const filteredTags = tags.filter(filterFn);

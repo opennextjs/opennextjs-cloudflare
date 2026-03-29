@@ -78,15 +78,12 @@ test("Revalidate tag - stale data served first", async ({ page, request }) => {
 	}
 
 	let responsePromise = page.waitForResponse(
-		(response) =>
-			response.url().includes("/revalidate-tag/stale") &&
-			response.status() === 200,
+		(response) => response.url().includes("/revalidate-tag/stale") && response.status() === 200
 	);
 	await page.goto("/revalidate-tag/stale");
 	const warmupResponse = await responsePromise;
 	const warmupHeaders = warmupResponse.headers();
-	const warmupCache =
-		warmupHeaders["x-nextjs-cache"] ?? warmupHeaders["x-opennext-cache"];
+	const warmupCache = warmupHeaders["x-nextjs-cache"] ?? warmupHeaders["x-opennext-cache"];
 	// Must be cached after warm-up
 	expect(warmupCache).toMatch(/^(HIT|STALE)$/);
 
@@ -102,15 +99,12 @@ test("Revalidate tag - stale data served first", async ({ page, request }) => {
 
 	// First request after revalidation — expect STALE header and OLD content
 	responsePromise = page.waitForResponse(
-		(response) =>
-			response.url().includes("/revalidate-tag/stale") &&
-			response.status() === 200,
+		(response) => response.url().includes("/revalidate-tag/stale") && response.status() === 200
 	);
 	await page.goto("/revalidate-tag/stale");
 	const staleResponse = await responsePromise;
 	const staleHeaders = staleResponse.headers();
-	const staleCache =
-		staleHeaders["x-nextjs-cache"] ?? staleHeaders["x-opennext-cache"];
+	const staleCache = staleHeaders["x-nextjs-cache"] ?? staleHeaders["x-opennext-cache"];
 	expect(staleCache).toMatch(/^(STALE|HIT)$/);
 
 	const staleTime = await page.getByTestId("cached-time").textContent();

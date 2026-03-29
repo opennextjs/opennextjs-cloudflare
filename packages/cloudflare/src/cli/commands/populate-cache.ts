@@ -378,7 +378,7 @@ async function sendEntriesToR2Worker(options: {
 	await Promise.all(pending);
 }
 
-class RetryableWorkerError extends Error { }
+class RetryableWorkerError extends Error {}
 
 /**
  * Sends a single cache entry to the R2 worker.

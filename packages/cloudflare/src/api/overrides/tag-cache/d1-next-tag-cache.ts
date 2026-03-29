@@ -76,9 +76,7 @@ export class D1NextModeTagCache implements NextModeTagCache {
 				const stale = typeof tag === "string" ? nowMs : (tag.stale ?? nowMs);
 				const expiry = typeof tag === "string" ? null : (tag.expiry ?? null);
 				return db
-					.prepare(
-						`INSERT INTO revalidations (tag, revalidatedAt, stale, expiry) VALUES (?, ?, ?, ?)`
-					)
+					.prepare(`INSERT INTO revalidations (tag, revalidatedAt, stale, expiry) VALUES (?, ?, ?, ?)`)
 					.bind(this.getCacheKey(tagStr), stale, stale, expiry);
 			})
 		);
@@ -125,9 +123,9 @@ export class D1NextModeTagCache implements NextModeTagCache {
 		return !db || isDisabled
 			? { isDisabled: true as const }
 			: {
-				isDisabled: false as const,
-				db,
-			};
+					isDisabled: false as const,
+					db,
+				};
 	}
 
 	protected getCacheKey(key: string) {

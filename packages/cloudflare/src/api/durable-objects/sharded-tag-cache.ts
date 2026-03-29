@@ -15,10 +15,14 @@ export class DOShardedTagCache extends DurableObject<CloudflareEnv> {
 			// Schema migration: add stale and expiry columns (idempotent, safe for existing deployments)
 			try {
 				this.sql.exec(`ALTER TABLE revalidations ADD COLUMN stale INTEGER`);
-			} catch { }
+			} catch {
+				//Ignore error
+			}
 			try {
 				this.sql.exec(`ALTER TABLE revalidations ADD COLUMN expiry INTEGER`);
-			} catch { }
+			} catch {
+				//Ignore error
+			}
 		});
 	}
 
