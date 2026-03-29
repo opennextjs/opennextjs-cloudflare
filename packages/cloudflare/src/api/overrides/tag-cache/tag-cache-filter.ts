@@ -1,4 +1,4 @@
-import { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
+import type { NextModeTagCache, NextModeTagCacheWriteInput } from "@opennextjs/aws/types/overrides.js";
 
 interface WithFilterOptions {
 	/**
@@ -11,7 +11,7 @@ interface WithFilterOptions {
 	 * @param tag The tag to filter.
 	 * @returns true if the tag should be forwarded, false otherwise.
 	 */
-	filterFn: (tag: string) => boolean;
+	filterFn: (tag: string | NextModeTagCacheWriteInput) => boolean;
 }
 
 /**
@@ -31,12 +31,12 @@ export function withFilter({ tagCache, filterFn }: WithFilterOptions): NextModeT
 		},
 		getPathsByTags: tagCache.getPathsByTags
 			? async (tags) => {
-					const filteredTags = tags.filter(filterFn);
-					if (filteredTags.length === 0) {
-						return [];
-					}
-					return tagCache.getPathsByTags!(filteredTags);
+				const filteredTags = tags.filter(filterFn);
+				if (filteredTags.length === 0) {
+					return [];
 				}
+				return tagCache.getPathsByTags!(filteredTags);
+			}
 			: undefined,
 		hasBeenRevalidated: async (tags, lastModified) => {
 			const filteredTags = tags.filter(filterFn);
@@ -60,6 +60,9 @@ export function withFilter({ tagCache, filterFn }: WithFilterOptions): NextModeT
  * This is used to filter out internal soft tags.
  * Can be used if `revalidatePath` is not used.
  */
-export function softTagFilter(tag: string): boolean {
-	return !tag.startsWith("_N_T_");
+export function softTagFilter(tag: string | NextModeTagCacheWriteInput): boolean {
+	if (typeof tag === "string") {
+		return !tag.startsWith("_N_T_");
+	}
+	return !tag.tag.startsWith("_N_T_");
 }
