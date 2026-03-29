@@ -1,5 +1,5 @@
 import { error } from "@opennextjs/aws/adapters/logger.js";
-import type { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
+import type { NextModeTagCache, NextModeTagCacheWriteInput } from "@opennextjs/aws/types/overrides.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
 import { debugCache, FALLBACK_BUILD_ID, isPurgeCacheEnabled, purgeCacheByTags } from "../internal.js";
@@ -63,25 +63,54 @@ export class D1NextModeTagCache implements NextModeTagCache {
 		}
 	}
 
-	async writeTags(tags: string[]): Promise<void> {
+	async writeTags(tags: NextModeTagCacheWriteInput[]): Promise<void> {
 		const { isDisabled, db } = this.getConfig();
 		if (isDisabled || tags.length === 0) return Promise.resolve();
 
 		const nowMs = Date.now();
 
 		await db.batch(
-			tags.map((tag) =>
-				db
-					.prepare(`INSERT INTO revalidations (tag, revalidatedAt) VALUES (?, ?)`)
-					.bind(this.getCacheKey(tag), nowMs)
-			)
+			tags.map((tag) => {
+				const tagStr = typeof tag === "string" ? tag : tag.tag;
+				const stale = typeof tag === "string" ? nowMs : (tag.stale ?? nowMs);
+				const expiry = typeof tag === "string" ? null : (tag.expiry ?? null);
+				return db
+					.prepare(
+						`INSERT INTO revalidations (tag, revalidatedAt, stale, expiry) VALUES (?, ?, ?, ?)`
+					)
+					.bind(this.getCacheKey(tagStr), stale, stale, expiry);
+			})
 		);
 
-		debugCache("D1NextModeTagCache", `writeTags tags=${tags} time=${nowMs}`);
+		const tagStrings = tags.map((t) => (typeof t === "string" ? t : t.tag));
+		debugCache("D1NextModeTagCache", `writeTags tags=${tagStrings} time=${nowMs}`);
 
 		// TODO: See https://github.com/opennextjs/opennextjs-aws/issues/986
 		if (isPurgeCacheEnabled()) {
-			await purgeCacheByTags(tags);
+			await purgeCacheByTags(tagStrings);
+		}
+	}
+
+	async hasBeenStale(tags: string[], lastModified?: number): Promise<boolean> {
+		const { isDisabled, db } = this.getConfig();
+		if (isDisabled || tags.length === 0) {
+			return false;
+		}
+		try {
+			const now = Date.now();
+			const result = await db
+				.prepare(
+					`SELECT 1 FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")}) AND stale > ? AND (expiry IS NULL OR expiry > ?) LIMIT 1`
+				)
+				.bind(...tags.map((tag) => this.getCacheKey(tag)), lastModified ?? now, now)
+				.raw();
+
+			const hasStale = result.length > 0;
+			debugCache("D1NextModeTagCache", `hasBeenStale tags=${tags} at=${lastModified} -> ${hasStale}`);
+			return hasStale;
+		} catch (e) {
+			error(e);
+			return false;
 		}
 	}
 
@@ -95,9 +124,9 @@ export class D1NextModeTagCache implements NextModeTagCache {
 		return !db || isDisabled
 			? { isDisabled: true as const }
 			: {
-					isDisabled: false as const,
-					db,
-				};
+				isDisabled: false as const,
+				db,
+			};
 	}
 
 	protected getCacheKey(key: string) {

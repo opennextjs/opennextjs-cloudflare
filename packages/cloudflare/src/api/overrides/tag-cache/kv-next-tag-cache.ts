@@ -1,5 +1,5 @@
 import { error } from "@opennextjs/aws/adapters/logger.js";
-import type { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
+import type { NextModeTagCache, NextModeTagCacheWriteInput } from "@opennextjs/aws/types/overrides.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
 import { debugCache, FALLBACK_BUILD_ID, isPurgeCacheEnabled, purgeCacheByTags } from "../internal.js";
@@ -7,6 +7,26 @@ import { debugCache, FALLBACK_BUILD_ID, isPurgeCacheEnabled, purgeCacheByTags } 
 export const NAME = "kv-next-mode-tag-cache";
 
 export const BINDING_NAME = "NEXT_TAG_CACHE_KV";
+
+/**
+ * Stored value shape for KV entries.
+ * - Old format: a plain number (the revalidatedAt timestamp) — stored as `String(nowMs)`, reads back as a number via `type:"json"`.
+ * - New format: a JSON object with full tag data.
+ */
+type KVTagValue = number | { revalidatedAt: number; stale?: number | null; expiry?: number | null };
+
+function getRevalidatedAt(value: KVTagValue): number {
+	return typeof value === "number" ? value : (value.revalidatedAt ?? 0);
+}
+
+function getStale(value: KVTagValue): number | null {
+	// Backward compat: old format stored a plain number meaning revalidatedAt = stale
+	return typeof value === "number" ? value : (value.stale ?? null);
+}
+
+function getExpiry(value: KVTagValue): number | null {
+	return typeof value === "number" ? null : (value.expiry ?? null);
+}
 
 /**
  * Tag Cache based on a KV namespace
@@ -43,10 +63,11 @@ export class KVNextModeTagCache implements NextModeTagCache {
 
 		try {
 			const keys = tags.map((tag) => this.getCacheKey(tag));
-			// Use the `json` type to get back numbers/null
-			const result: Map<string, number | null> = await kv.get(keys, { type: "json" });
+			const result: Map<string, KVTagValue | null> = await kv.get(keys, { type: "json" });
 
-			const revalidations = [...result.values()].filter((v) => v != null);
+			const revalidations = [...result.values()]
+				.filter((v): v is KVTagValue => v != null)
+				.map(getRevalidatedAt);
 			return revalidations.length === 0 ? 0 : Math.max(...revalidations);
 		} catch (e) {
 			// By default we don't want to crash here, so we return false
@@ -65,7 +86,7 @@ export class KVNextModeTagCache implements NextModeTagCache {
 		return revalidated;
 	}
 
-	async writeTags(tags: string[]): Promise<void> {
+	async writeTags(tags: NextModeTagCacheWriteInput[]): Promise<void> {
 		const kv = this.getKv();
 		if (!kv || tags.length === 0) {
 			return Promise.resolve();
@@ -75,15 +96,48 @@ export class KVNextModeTagCache implements NextModeTagCache {
 
 		await Promise.all(
 			tags.map(async (tag) => {
-				await kv.put(this.getCacheKey(tag), String(nowMs));
+				if (typeof tag === "string") {
+					// Old format: store plain number string for backward compat
+					await kv.put(this.getCacheKey(tag), String(nowMs));
+				} else {
+					const stale = tag.stale ?? nowMs;
+					const value: KVTagValue = { revalidatedAt: stale, stale, expiry: tag.expiry ?? null };
+					await kv.put(this.getCacheKey(tag.tag), JSON.stringify(value));
+				}
 			})
 		);
 
-		debugCache("KVNextModeTagCache", `writeTags tags=${tags} time=${nowMs}`);
+		const tagStrings = tags.map((t) => (typeof t === "string" ? t : t.tag));
+		debugCache("KVNextModeTagCache", `writeTags tags=${tagStrings} time=${nowMs}`);
 
 		// TODO: See https://github.com/opennextjs/opennextjs-aws/issues/986
 		if (isPurgeCacheEnabled()) {
-			await purgeCacheByTags(tags);
+			await purgeCacheByTags(tagStrings);
+		}
+	}
+
+	async hasBeenStale(tags: string[], lastModified?: number): Promise<boolean> {
+		const kv = this.getKv();
+		if (!kv || tags.length === 0) return false;
+
+		try {
+			const keys = tags.map((tag) => this.getCacheKey(tag));
+			const now = Date.now();
+			const result: Map<string, KVTagValue | null> = await kv.get(keys, { type: "json" });
+
+			const hasStale = [...result.values()].some((v) => {
+				if (v == null) return false;
+				const stale = getStale(v);
+				if (stale == null || stale <= (lastModified ?? now)) return false;
+				const expiry = getExpiry(v);
+				return expiry == null || expiry > now;
+			});
+
+			debugCache("KVNextModeTagCache", `hasBeenStale tags=${tags} lastModified=${lastModified} -> ${hasStale}`);
+			return hasStale;
+		} catch (e) {
+			error(e);
+			return false;
 		}
 	}
 

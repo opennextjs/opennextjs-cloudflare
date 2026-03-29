@@ -273,10 +273,23 @@ describe("D1NextModeTagCache", () => {
 			// Verify the prepared statements were created correctly
 			expect(mockPrepare).toHaveBeenCalledTimes(2);
 			expect(mockPrepare).toHaveBeenCalledWith(
-				"INSERT INTO revalidations (tag, revalidatedAt) VALUES (?, ?)"
+				"INSERT INTO revalidations (tag, revalidatedAt, stale, expiry) VALUES (?, ?, ?, ?)"
 			);
 
 			expect(purgeCacheByTags).toHaveBeenCalledWith(tags);
+		});
+
+		it("should write object tags with explicit stale and expiry", async () => {
+			const currentTime = 1000;
+			vi.spyOn(Date, "now").mockReturnValue(currentTime);
+
+			await tagCache.writeTags([{ tag: "tag1", stale: 500, expiry: 9999 }]);
+
+			expect(mockPrepare).toHaveBeenCalledWith(
+				"INSERT INTO revalidations (tag, revalidatedAt, stale, expiry) VALUES (?, ?, ?, ?)"
+			);
+			expect(mockBind).toHaveBeenCalledWith(`${FALLBACK_BUILD_ID}/tag1`, 500, 500, 9999);
+			expect(purgeCacheByTags).toHaveBeenCalledWith(["tag1"]);
 		});
 
 		it("should handle single tag", async () => {
@@ -292,6 +305,66 @@ describe("D1NextModeTagCache", () => {
 			]);
 
 			expect(purgeCacheByTags).toHaveBeenCalledWith(["single-tag"]);
+		});
+	});
+
+	describe("hasBeenStale", () => {
+		it("should return false when cache is disabled", async () => {
+			(
+				globalThis as { openNextConfig?: { dangerous?: { disableTagCache?: boolean } } }
+			).openNextConfig!.dangerous!.disableTagCache = true;
+
+			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+
+			expect(result).toBe(false);
+			expect(mockPrepare).not.toHaveBeenCalled();
+		});
+
+		it("should return false when no database is available", async () => {
+			vi.mocked(getCloudflareContext).mockReturnValue({
+				env: {},
+			} as ReturnType<typeof getCloudflareContext>);
+
+			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+
+			expect(result).toBe(false);
+		});
+
+		it("should return false when tags array is empty", async () => {
+			const result = await tagCache.hasBeenStale([], 1000);
+			expect(result).toBe(false);
+			expect(mockPrepare).not.toHaveBeenCalled();
+		});
+
+		it("should return true when a tag has a stale value newer than lastModified", async () => {
+			const now = 2000;
+			vi.spyOn(Date, "now").mockReturnValue(now);
+			mockRaw.mockResolvedValue([[1]]);
+
+			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+
+			expect(result).toBe(true);
+			expect(mockPrepare).toHaveBeenCalledWith(
+				"SELECT 1 FROM revalidations WHERE tag IN (?) AND stale > ? AND (expiry IS NULL OR expiry > ?) LIMIT 1"
+			);
+			expect(mockBind).toHaveBeenCalledWith(`${FALLBACK_BUILD_ID}/tag1`, 1000, now);
+		});
+
+		it("should return false when no tags have a stale value newer than lastModified", async () => {
+			mockRaw.mockResolvedValue([]);
+
+			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+
+			expect(result).toBe(false);
+		});
+
+		it("should return false when database query throws an error", async () => {
+			mockRaw.mockRejectedValue(new Error("db error"));
+
+			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+
+			expect(result).toBe(false);
+			expect(error).toHaveBeenCalled();
 		});
 	});
 

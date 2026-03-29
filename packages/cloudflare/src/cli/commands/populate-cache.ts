@@ -378,7 +378,7 @@ async function sendEntriesToR2Worker(options: {
 	await Promise.all(pending);
 }
 
-class RetryableWorkerError extends Error {}
+class RetryableWorkerError extends Error { }
 
 /**
  * Sends a single cache entry to the R2 worker.
@@ -579,6 +579,26 @@ function populateD1TagCache(
 
 	if (!result.success) {
 		throw new Error(`Wrangler d1 execute command failed${result.stderr ? `:\n${result.stderr}` : ""}`);
+	}
+
+	// Schema migration: add stale and expiry columns (idempotent, safe for existing deployments).
+	// These commands are intentionally non-throwing — they fail harmlessly if the columns already exist.
+	for (const column of ["stale", "expiry"]) {
+		runWrangler(
+			buildOpts,
+			[
+				"d1 execute",
+				D1_TAG_BINDING_NAME,
+				`--command "ALTER TABLE revalidations ADD COLUMN ${column} INTEGER;"`,
+				`--preview ${populateCacheOptions.shouldUsePreviewId}`,
+			],
+			{
+				target: populateCacheOptions.target,
+				environment: populateCacheOptions.environment,
+				configPath: populateCacheOptions.wranglerConfigPath,
+				logging: "error",
+			}
+		);
 	}
 
 	logger.info("\nSuccessfully created D1 table");
