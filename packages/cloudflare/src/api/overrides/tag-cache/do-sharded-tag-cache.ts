@@ -139,42 +139,13 @@ class ShardedDOTagCache implements NextModeTagCache {
 		}
 		const deduplicatedTags = Array.from(new Set(tags)); // We deduplicate the tags to avoid unnecessary requests
 		try {
-			const shardedTagGroups = this.groupTagsByDO({ tags: deduplicatedTags });
-			const shardedTagRevalidationOutcomes = await Promise.all(
-				shardedTagGroups.map(async ({ doId, tags }) => {
-					const cachedValues = await this.getFromRegionalCache({ doId, tags });
-					// If all values were found in the regional cache, return the max revalidatedAt
-					if (cachedValues.length === tags.length) {
-						const timeMs = Math.max(0, ...cachedValues.map(({ revalidatedAt }) => revalidatedAt));
-						debugCache("ShardedDOTagCache", `getLastRevalidated tags=${tags} -> ${timeMs} (regional cache)`);
-						return timeMs;
-					}
-					// Fetch missing tags from DO
-					const filteredTags = deduplicatedTags.filter(
-						(tag) => !cachedValues.some((item) => item.tag === tag)
-					);
-
-					const stub = this.getDurableObjectStub(doId);
-					const tagData = await stub.getTagData(filteredTags);
-
-					const maxFromDO = Object.values(tagData).reduce(
-						(max, { revalidatedAt }) => Math.max(max, revalidatedAt),
-						0
-					);
-					const maxFromCache = cachedValues.reduce(
-						(max, { revalidatedAt }) => Math.max(max, revalidatedAt),
-						0
-					);
-					const timeMs = Math.max(maxFromCache, maxFromDO);
-
-					// We then need to populate the regional cache with the missing tags
-					getCloudflareContext().ctx.waitUntil(this.putToRegionalCache({ doId, tags }, stub));
-
-					debugCache("ShardedDOTagCache", `getLastRevalidated tags=${tags} -> ${timeMs}`);
-					return timeMs;
-				})
+			const tagData = await this.#resolveTagData(deduplicatedTags);
+			const timeMs = Math.max(
+				0,
+				...[...tagData.values()].filter((d): d is TagData => d != null).map((d) => d.revalidatedAt)
 			);
-			return Math.max(0, ...shardedTagRevalidationOutcomes);
+			debugCache("ShardedDOTagCache", `getLastRevalidated tags=${tags} -> ${timeMs}`);
+			return timeMs;
 		} catch (e) {
 			error("Error while checking revalidation", e);
 			return 0;
@@ -195,56 +166,15 @@ class ShardedDOTagCache implements NextModeTagCache {
 		}
 		try {
 			const now = Date.now();
-			const shardedTagGroups = this.groupTagsByDO({ tags });
-			const shardedTagRevalidationOutcomes = await Promise.all(
-				shardedTagGroups.map(async ({ doId, tags }) => {
-					const cachedValues = await this.getFromRegionalCache({ doId, tags });
-
-					// If one of the cached values is newer than the lastModified, we can return true
-					const cacheHasBeenRevalidated = cachedValues.some(({ revalidatedAt, expiry }) => {
-						if (expiry != null) return expiry <= now && expiry > (lastModified ?? 0);
-						return revalidatedAt > (lastModified ?? now);
-					});
-
-					if (cacheHasBeenRevalidated) {
-						debugCache(
-							"ShardedDOTagCache",
-							`hasBeenRevalidated tags=${tags} at=${lastModified} -> true (regional cache)`
-						);
-						return true;
-					}
-
-					const cachedTagNames = new Set(cachedValues.map(({ tag }) => tag));
-					const remainingTags = tags.filter((tag) => !cachedTagNames.has(tag));
-
-					if (remainingTags.length === 0) {
-						// All tags were in regional cache but none were recently revalidated
-						debugCache(
-							"ShardedDOTagCache",
-							`hasBeenRevalidated tags=${tags} at=${lastModified} -> false (regional cache, complete)`
-						);
-						return false;
-					}
-
-					const stub = this.getDurableObjectStub(doId);
-					const tagData = await stub.getTagData(remainingTags);
-
-					const doHasBeenRevalidated = Object.values(tagData).some(({ revalidatedAt, expiry }) => {
-						if (expiry != null) return expiry <= now && expiry > (lastModified ?? 0);
-						return revalidatedAt > (lastModified ?? now);
-					});
-
-					getCloudflareContext().ctx.waitUntil(this.putToRegionalCache({ doId, tags: remainingTags }, stub));
-
-					debugCache(
-						"ShardedDOTagCache",
-						`hasBeenRevalidated tags=${tags} at=${lastModified} -> ${doHasBeenRevalidated}`
-					);
-
-					return doHasBeenRevalidated;
-				})
-			);
-			return shardedTagRevalidationOutcomes.some((result) => result);
+			const tagData = await this.#resolveTagData(tags);
+			const result = [...tagData.values()].some((data) => {
+				if (data == null) return false;
+				const { revalidatedAt, expiry } = data;
+				if (expiry != null) return expiry <= now && expiry > (lastModified ?? 0);
+				return revalidatedAt > (lastModified ?? now);
+			});
+			debugCache("ShardedDOTagCache", `hasBeenRevalidated tags=${tags} at=${lastModified} -> ${result}`);
+			return result;
 		} catch (e) {
 			error("Error while checking revalidation", e);
 			return false;
@@ -258,49 +188,15 @@ class ShardedDOTagCache implements NextModeTagCache {
 		}
 		try {
 			const now = Date.now();
-			const shardedTagGroups = this.groupTagsByDO({ tags });
-			const outcomes = await Promise.all(
-				shardedTagGroups.map(async ({ doId, tags }) => {
-					const cachedValues = await this.getFromRegionalCache({ doId, tags });
-
-					const cacheHasBeenStale = cachedValues.some(({ stale, expiry }) => {
-						if (stale == null || stale <= (lastModified ?? now)) return false;
-						return expiry == null || expiry > now;
-					});
-
-					if (cacheHasBeenStale) {
-						debugCache(
-							"ShardedDOTagCache",
-							`hasBeenStale tags=${tags} at=${lastModified} -> true (regional cache)`
-						);
-						return true;
-					}
-
-					const cachedTagNames = new Set(cachedValues.map(({ tag }) => tag));
-					const remainingTags = tags.filter((tag) => !cachedTagNames.has(tag));
-
-					if (remainingTags.length === 0) {
-						return false;
-					}
-
-					const stub = this.getDurableObjectStub(doId);
-					const tagData = await stub.getTagData(remainingTags);
-
-					const doHasBeenStale = Object.values(tagData).some(({ stale, expiry }) => {
-						if (stale == null || stale <= (lastModified ?? now)) return false;
-						return expiry == null || expiry > now;
-					});
-
-					getCloudflareContext().ctx.waitUntil(this.putToRegionalCache({ doId, tags: remainingTags }, stub));
-
-					debugCache(
-						"ShardedDOTagCache",
-						`hasBeenStale tags=${tags} at=${lastModified} -> ${doHasBeenStale}`
-					);
-					return doHasBeenStale;
-				})
-			);
-			return outcomes.some(Boolean);
+			const tagData = await this.#resolveTagData(tags);
+			const result = [...tagData.values()].some((data) => {
+				if (data == null) return false;
+				const { stale, expiry } = data;
+				if (stale == null || stale <= (lastModified ?? now)) return false;
+				return expiry == null || expiry > now;
+			});
+			debugCache("ShardedDOTagCache", `hasBeenStale tags=${tags} at=${lastModified} -> ${result}`);
+			return result;
 		} catch (e) {
 			error("Error while checking stale", e);
 			return false;
@@ -454,8 +350,8 @@ class ShardedDOTagCache implements NextModeTagCache {
 							"cache-control": `max-age=${this.opts.regionalCacheTtlSec ?? 5}`,
 							...(tags.length > 0
 								? {
-										"cache-tag": tags.join(","),
-									}
+									"cache-tag": tags.join(","),
+								}
 								: {}),
 						},
 					})
@@ -530,6 +426,70 @@ class ShardedDOTagCache implements NextModeTagCache {
 
 	// Private methods
 
+	/**
+	 * Fetches tag data for the given tags by consulting the regional cache first and falling back
+	 * to Durable Object stubs for any misses. Returns a map of tag → TagData (null for tags not found).
+	 */
+	async #fetchTagDataFromShards(tags: string[]): Promise<Map<string, TagData | null>> {
+		const result = new Map<string, TagData | null>();
+		const shardedTagGroups = this.groupTagsByDO({ tags });
+
+		await Promise.all(
+			shardedTagGroups.map(async ({ doId, tags: shardTags }) => {
+				const cachedValues = await this.getFromRegionalCache({ doId, tags: shardTags });
+				for (const { tag, revalidatedAt, stale, expiry } of cachedValues) {
+					result.set(tag, { revalidatedAt, stale, expiry });
+				}
+
+				const cachedTagNames = new Set(cachedValues.map(({ tag }) => tag));
+				const remainingTags = shardTags.filter((tag) => !cachedTagNames.has(tag));
+				if (remainingTags.length === 0) return;
+
+				const stub = this.getDurableObjectStub(doId);
+				const tagData = await stub.getTagData(remainingTags);
+				for (const tag of remainingTags) {
+					result.set(tag, tagData[tag] ?? null);
+				}
+
+				getCloudflareContext().ctx.waitUntil(this.putToRegionalCache({ doId, tags: remainingTags }, stub));
+			})
+		);
+
+		return result;
+	}
+
+	/**
+	 * Resolves tag data from the per-request in-memory cache, falling back to
+	 * `#fetchTagDataFromShards` for any misses. Results are stored back so repeated
+	 * calls within the same request avoid duplicate shard fetches.
+	 */
+	async #resolveTagData(tags: string[]): Promise<Map<string, TagData | null>> {
+		const store = globalThis.__openNextAls?.getStore();
+		const itemsCache = store?.requestCache.getOrCreate<string, TagData | null>("do-sharded:tagItems");
+
+		const result = new Map<string, TagData | null>();
+		const uncachedTags: string[] = [];
+
+		for (const tag of tags) {
+			if (itemsCache?.has(tag)) {
+				result.set(tag, itemsCache.get(tag) ?? null);
+			} else {
+				uncachedTags.push(tag);
+			}
+		}
+
+		if (uncachedTags.length > 0) {
+			const fetched = await this.#fetchTagDataFromShards(uncachedTags);
+			for (const tag of uncachedTags) {
+				const value = fetched.get(tag) ?? null;
+				itemsCache?.set(tag, value);
+				result.set(tag, value);
+			}
+		}
+
+		return result;
+	}
+
 	private getDurableObjectStub(doId: DOId) {
 		const durableObject = getCloudflareContext().env.NEXT_TAG_CACHE_DO_SHARDED;
 		if (!durableObject) throw new IgnorableError("No durable object binding for cache revalidation");
@@ -587,23 +547,23 @@ class ShardedDOTagCache implements NextModeTagCache {
 		// If we have regional replication enabled, we need to further duplicate the shards in all the regions
 		const regionalReplicasInAllRegions = generateAllReplicas
 			? regionalReplicas.flatMap(({ doId, tag }) => {
-					return AVAILABLE_REGIONS.map((region) => {
-						return {
-							doId: new DOId({
-								baseShardId: doId.options.baseShardId,
-								numberOfReplicas: numReplicas,
-								shardType,
-								replicaId: doId.replicaId,
-								region,
-							}),
-							tag,
-						};
-					});
-				})
-			: regionalReplicas.map(({ doId, tag }) => {
-					doId.region = this.getClosestRegion();
-					return { doId, tag };
+				return AVAILABLE_REGIONS.map((region) => {
+					return {
+						doId: new DOId({
+							baseShardId: doId.options.baseShardId,
+							numberOfReplicas: numReplicas,
+							shardType,
+							replicaId: doId.replicaId,
+							region,
+						}),
+						tag,
+					};
 				});
+			})
+			: regionalReplicas.map(({ doId, tag }) => {
+				doId.region = this.getClosestRegion();
+				return { doId, tag };
+			});
 		return regionalReplicasInAllRegions;
 	}
 
@@ -640,9 +600,9 @@ class ShardedDOTagCache implements NextModeTagCache {
 		return !db || isDisabled
 			? { isDisabled: true as const }
 			: {
-					isDisabled: false as const,
-					db,
-				};
+				isDisabled: false as const,
+				db,
+			};
 	}
 }
 

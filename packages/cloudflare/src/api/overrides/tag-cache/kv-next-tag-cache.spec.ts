@@ -96,8 +96,8 @@ describe("KVNextModeTagCache", () => {
 			const mockTime = 1234567890;
 			mockGet.mockResolvedValue(
 				new Map([
-					["tag1", mockTime],
-					["tag2", mockTime - 100],
+					[`${FALLBACK_BUILD_ID}/tag1`, mockTime],
+					[`${FALLBACK_BUILD_ID}/tag2`, mockTime - 100],
 				])
 			);
 
@@ -165,8 +165,8 @@ describe("KVNextModeTagCache", () => {
 		it("should return true when tags have been revalidated after lastModified", async () => {
 			mockGet.mockResolvedValue(
 				new Map([
-					["tag1", 1000],
-					["tag2", null],
+					[`${FALLBACK_BUILD_ID}/tag1`, 1000],
+					[`${FALLBACK_BUILD_ID}/tag2`, null],
 				])
 			);
 
