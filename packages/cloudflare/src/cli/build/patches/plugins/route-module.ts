@@ -16,24 +16,25 @@ import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import { normalizePath } from "../../../utils/normalize-path.js";
 
 export function patchRouteModules(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
-	return updater.updateContent("route-module", [
-		{
-			filter: getCrossPlatformPathRegex(String.raw`/next/dist/compiled/next-server/.*?\.runtime\.prod\.js$`, {
-				escape: false,
-			}),
-			versions: ">=15.4.0",
-			contentFilter: /getIncrementalCache\(/,
-			callback: async ({ contents }) => {
-				const { outputDir } = buildOpts;
+  return updater.updateContent("route-module", [
+    {
+      filter: getCrossPlatformPathRegex(String.raw`/next/dist/compiled/next-server/.*?\.runtime\.prod\.js$`, {
+        escape: false,
+      }),
+      versions: ">=15.4.0",
+      // app route doesn't have getIncrementalCache, but we still need to patch the composable cache handlers there
+      contentFilter: /(getIncrementalCache\(|loadCustomCacheHandlers\()/,
+      callback: async ({ contents }) => {
+        const { outputDir } = buildOpts;
 
-				const outputPath = path.join(outputDir, "server-functions/default");
-				const cacheHandler = path.join(outputPath, getPackagePath(buildOpts), "cache.cjs");
-				contents = patchCode(contents, getIncrementalCacheRule(cacheHandler));
-				contents = patchCode(contents, forceTrustHostHeader);
-				return contents;
-			},
-		},
-	]);
+        const outputPath = path.join(outputDir, "server-functions/default");
+        const cacheHandler = path.join(outputPath, getPackagePath(buildOpts), "cache.cjs");
+        contents = patchCode(contents, getIncrementalCacheRule(cacheHandler));
+        contents = patchCode(contents, forceTrustHostHeader);
+        return contents;
+      },
+    },
+  ]);
 }
 
 /**
@@ -46,7 +47,7 @@ export function patchRouteModules(updater: ContentUpdater, buildOpts: BuildOptio
  * instantiated with a dynamic require that uses a string literal for the path.
  */
 export function getIncrementalCacheRule(handlerPath: string) {
-	return `
+  return `
 rule:
   pattern: "let $CACHE_HANDLER, { cacheHandler: $HANDLER_PATH } = $C"
   inside:
