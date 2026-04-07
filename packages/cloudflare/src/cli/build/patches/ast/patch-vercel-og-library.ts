@@ -47,6 +47,15 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions): boolean {
 			);
 
 			copyFileSync(tracedEdgePath, outputEdgePath);
+
+			// On Next 16.2 and above, we also need to copy the yoga.wasm file used by the library.
+			const tracedWasmPath = path.join(
+				path.dirname(traceInfoPath),
+				tracedNodePath.replace("index.node.js", "yoga.wasm")
+			);
+			if (existsSync(tracedWasmPath)) {
+				copyFileSync(tracedWasmPath, path.join(outputDir, "yoga.wasm"));
+			}
 		}
 
 		// Change font fetches in the library to use imports.
