@@ -267,7 +267,7 @@ class NextNodeServer extends _baseserver.default {
            constructor(options){
                // Initialize super class
                super(options);
-      @@ -35,9 +34,15 @@
+      @@ -35,9 +34,16 @@
                const manifest = require(this.middlewareManifestPath);
                return manifest;
            }
@@ -279,6 +279,7 @@ class NextNodeServer extends _baseserver.default {
       +const handlersSetSymbol = Symbol.for('@next/cache-handlers-set');
       +globalThis[handlersMapSymbol] = new Map();
       +globalThis[handlersMapSymbol].set("default", require('manifest').default);
+      +globalThis[handlersMapSymbol].set("remote", require('manifest').default);
       +globalThis[handlersSetSymbol] = new Set(globalThis[handlersMapSymbol].values());
                if (!cacheHandlers) return;
                // If we've already initialized the cache handlers interface, don't do it
@@ -296,7 +297,7 @@ class NextNodeServer extends _baseserver.default {
 			===================================================================
 			--- next-server.js
 			+++ next-server.js
-			@@ -1,10 +1,15 @@
+			@@ -1,10 +1,16 @@
 			-
 			 class NextNodeServer extends _baseserver.default {
 			     // ...
@@ -309,6 +310,7 @@ class NextNodeServer extends _baseserver.default {
 			+const handlersSetSymbol = Symbol.for('@next/cache-handlers-set');
 			+globalThis[handlersMapSymbol] = new Map();
 			+globalThis[handlersMapSymbol].set("default", require('manifest').default);
+			+globalThis[handlersMapSymbol].set("remote", require('manifest').default);
 			+globalThis[handlersSetSymbol] = new Set(globalThis[handlersMapSymbol].values());
 			         if (!cacheHandlers) return;
 			         // If we've already initialized the cache handlers interface, don't do it

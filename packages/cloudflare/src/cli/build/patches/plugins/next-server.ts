@@ -121,6 +121,7 @@ fix: |-
   const handlersSetSymbol = Symbol.for('@next/cache-handlers-set');
   globalThis[handlersMapSymbol] = new Map();
   globalThis[handlersMapSymbol].set("default", require('${normalizePath(handlerPath)}').default);
+  globalThis[handlersMapSymbol].set("remote", require('${normalizePath(handlerPath)}').default);
   globalThis[handlersSetSymbol] = new Set(globalThis[handlersMapSymbol].values());
 `;
 }
