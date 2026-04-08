@@ -4,7 +4,7 @@
 
 ### Patch Changes
 
-- [#1180](https://github.com/opennextjs/opennextjs-cloudflare/pull/1180) [`82b4fe1`](https://github.com/opennextjs/opennextjs-cloudflare/commit/82b4fe18ca04a2f780dc349e3bed5e29a5758f4a) Thanks [@vicb](https://github.com/vicb)! - fix for OG with Next 16.2.2 (#1176)
+- [#1176](https://github.com/opennextjs/opennextjs-cloudflare/pull/1176) [`2232651`](https://github.com/opennextjs/opennextjs-cloudflare/commit/22326513042bd0a075661c5f3c175de77b084f2c) Thanks [@conico974](https://github.com/conico974)! - fix for OG with Next 16.2.2
 
 - [#1166](https://github.com/opennextjs/opennextjs-cloudflare/pull/1166) [`f89fba1`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f89fba1bb2867c9b6aecc810a3b94f17e6f04e51) Thanks [@ash1day](https://github.com/ash1day)! - fix: sort `.endsWith()` checks by path length descending to prevent suffix collisions in dynamic requires
 
@@ -537,12 +537,12 @@
   import { withRegionalCache } from "@opennextjs/cloudflare/overrides/incremental-cache/regional-cache";
 
   export default defineCloudflareConfig({
-  	incrementalCache: withRegionalCache(r2IncrementalCache, {
-  		mode: "long-lived",
-  		bypassTagCacheOnCacheHit: true,
-  	}),
-  	tagCache: d1NextTagCache,
-  	queue: memoryQueue,
+   incrementalCache: withRegionalCache(r2IncrementalCache, {
+    mode: "long-lived",
+    bypassTagCacheOnCacheHit: true,
+   }),
+   tagCache: d1NextTagCache,
+   queue: memoryQueue,
   });
   ```
 
@@ -780,17 +780,17 @@
   export type CacheEntryType = "cache" | "fetch" | "composable";
 
   export type IncrementalCache = {
-  	get<CacheType extends CacheEntryType = "cache">(
-  		key: string,
-  		cacheType?: CacheType
-  	): Promise<WithLastModified<CacheValue<CacheType>> | null>;
-  	set<CacheType extends CacheEntryType = "cache">(
-  		key: string,
-  		value: CacheValue<CacheType>,
-  		isFetch?: CacheType
-  	): Promise<void>;
-  	delete(key: string): Promise<void>;
-  	name: string;
+   get<CacheType extends CacheEntryType = "cache">(
+    key: string,
+    cacheType?: CacheType
+   ): Promise<WithLastModified<CacheValue<CacheType>> | null>;
+   set<CacheType extends CacheEntryType = "cache">(
+    key: string,
+    value: CacheValue<CacheType>,
+    isFetch?: CacheType
+   ): Promise<void>;
+   delete(key: string): Promise<void>;
+   name: string;
   };
   ```
 
@@ -910,9 +910,9 @@
 
   ```ts
   initOpenNextCloudflareForDev({
-  	persist: {
-  		path: "../../.wrangler/state/v3/custom-dir",
-  	},
+   persist: {
+    path: "../../.wrangler/state/v3/custom-dir",
+   },
   });
   ```
 
@@ -1049,12 +1049,12 @@
 
   ```json
   {
-  	"services": [
-  		{
-  			"binding": "NEXT_CACHE_REVALIDATION_WORKER",
-  			"service": "<WORKER_NAME>"
-  		}
-  	]
+   "services": [
+    {
+     "binding": "NEXT_CACHE_REVALIDATION_WORKER",
+     "service": "<WORKER_NAME>"
+    }
+   ]
   }
   ```
 
@@ -1095,7 +1095,7 @@
   import kvIncrementalCache from "@opennextjs/cloudflare/kv-cache";
 
   export default defineCloudflareConfig({
-  	incrementalCache: kvIncrementalCache,
+   incrementalCache: kvIncrementalCache,
   });
   ```
 
