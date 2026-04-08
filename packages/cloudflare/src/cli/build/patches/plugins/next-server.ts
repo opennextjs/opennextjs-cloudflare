@@ -17,37 +17,37 @@ import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import { normalizePath } from "../../../utils/normalize-path.js";
 
 export function patchNextServer(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
-  return updater.updateContent("next-server", [
-    {
-      filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/next-server\.js$`, {
-        escape: false,
-      }),
-      contentFilter: /getBuildId\(/,
-      callback: async ({ contents }) => {
-        const { outputDir } = buildOpts;
+	return updater.updateContent("next-server", [
+		{
+			filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/next-server\.js$`, {
+				escape: false,
+			}),
+			contentFilter: /getBuildId\(/,
+			callback: async ({ contents }) => {
+				const { outputDir } = buildOpts;
 
-        contents = patchCode(contents, buildIdRule);
+				contents = patchCode(contents, buildIdRule);
 
-        const outputPath = path.join(outputDir, "server-functions/default");
-        const cacheHandler = path.join(outputPath, getPackagePath(buildOpts), "cache.cjs");
-        contents = patchCode(contents, createCacheHandlerRule(cacheHandler));
+				const outputPath = path.join(outputDir, "server-functions/default");
+				const cacheHandler = path.join(outputPath, getPackagePath(buildOpts), "cache.cjs");
+				contents = patchCode(contents, createCacheHandlerRule(cacheHandler));
 
-        const composableCacheHandler = path.join(
-          outputPath,
-          getPackagePath(buildOpts),
-          "composable-cache.cjs"
-        );
-        contents = patchCode(contents, createComposableCacheHandlersRule(composableCacheHandler));
+				const composableCacheHandler = path.join(
+					outputPath,
+					getPackagePath(buildOpts),
+					"composable-cache.cjs"
+				);
+				contents = patchCode(contents, createComposableCacheHandlersRule(composableCacheHandler));
 
-        // Node middleware are not supported on Cloudflare yet
-        contents = patchCode(contents, disableNodeMiddlewareRule);
+				// Node middleware are not supported on Cloudflare yet
+				contents = patchCode(contents, disableNodeMiddlewareRule);
 
-        contents = patchCode(contents, attachRequestMetaRule);
+				contents = patchCode(contents, attachRequestMetaRule);
 
-        return contents;
-      },
-    },
-  ]);
+				return contents;
+			},
+		},
+	]);
 }
 
 // Do not try to load Node middlewares
@@ -83,7 +83,7 @@ fix: |-
  * instantiated with a dynamic require that uses a string literal for the path.
  */
 export function createCacheHandlerRule(handlerPath: string) {
-  return `
+	return `
 rule:
   pattern: "const { cacheHandler } = this.nextConfig;"
   inside:
@@ -100,7 +100,7 @@ fix: |-
 }
 
 export function createComposableCacheHandlersRule(handlerPath: string) {
-  return `
+	return `
 rule:
   # matches
   # - const { cacheHandlers } = this.nextConfig.experimental; pre Next 16
