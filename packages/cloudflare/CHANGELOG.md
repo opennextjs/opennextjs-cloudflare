@@ -537,12 +537,12 @@
   import { withRegionalCache } from "@opennextjs/cloudflare/overrides/incremental-cache/regional-cache";
 
   export default defineCloudflareConfig({
-   incrementalCache: withRegionalCache(r2IncrementalCache, {
-    mode: "long-lived",
-    bypassTagCacheOnCacheHit: true,
-   }),
-   tagCache: d1NextTagCache,
-   queue: memoryQueue,
+  	incrementalCache: withRegionalCache(r2IncrementalCache, {
+  		mode: "long-lived",
+  		bypassTagCacheOnCacheHit: true,
+  	}),
+  	tagCache: d1NextTagCache,
+  	queue: memoryQueue,
   });
   ```
 
@@ -780,17 +780,17 @@
   export type CacheEntryType = "cache" | "fetch" | "composable";
 
   export type IncrementalCache = {
-   get<CacheType extends CacheEntryType = "cache">(
-    key: string,
-    cacheType?: CacheType
-   ): Promise<WithLastModified<CacheValue<CacheType>> | null>;
-   set<CacheType extends CacheEntryType = "cache">(
-    key: string,
-    value: CacheValue<CacheType>,
-    isFetch?: CacheType
-   ): Promise<void>;
-   delete(key: string): Promise<void>;
-   name: string;
+  	get<CacheType extends CacheEntryType = "cache">(
+  		key: string,
+  		cacheType?: CacheType
+  	): Promise<WithLastModified<CacheValue<CacheType>> | null>;
+  	set<CacheType extends CacheEntryType = "cache">(
+  		key: string,
+  		value: CacheValue<CacheType>,
+  		isFetch?: CacheType
+  	): Promise<void>;
+  	delete(key: string): Promise<void>;
+  	name: string;
   };
   ```
 
@@ -910,9 +910,9 @@
 
   ```ts
   initOpenNextCloudflareForDev({
-   persist: {
-    path: "../../.wrangler/state/v3/custom-dir",
-   },
+  	persist: {
+  		path: "../../.wrangler/state/v3/custom-dir",
+  	},
   });
   ```
 
@@ -1049,12 +1049,12 @@
 
   ```json
   {
-   "services": [
-    {
-     "binding": "NEXT_CACHE_REVALIDATION_WORKER",
-     "service": "<WORKER_NAME>"
-    }
-   ]
+  	"services": [
+  		{
+  			"binding": "NEXT_CACHE_REVALIDATION_WORKER",
+  			"service": "<WORKER_NAME>"
+  		}
+  	]
   }
   ```
 
@@ -1095,7 +1095,7 @@
   import kvIncrementalCache from "@opennextjs/cloudflare/kv-cache";
 
   export default defineCloudflareConfig({
-   incrementalCache: kvIncrementalCache,
+  	incrementalCache: kvIncrementalCache,
   });
   ```
 
