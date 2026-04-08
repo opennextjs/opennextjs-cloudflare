@@ -2,15 +2,15 @@ import { describe, expect, test } from "vitest";
 
 import { computePatchDiff } from "../../utils/test-patch.js";
 import {
-    attachRequestMetaRule,
-    buildIdRule,
-    createCacheHandlerRule,
-    createComposableCacheHandlersRule,
-    disableNodeMiddlewareRule,
+	attachRequestMetaRule,
+	buildIdRule,
+	createCacheHandlerRule,
+	createComposableCacheHandlersRule,
+	disableNodeMiddlewareRule,
 } from "./next-server.js";
 
 describe("Next Server", () => {
-    const next15ServerCode = `
+	const next15ServerCode = `
 class NextNodeServer extends _baseserver.default {
     constructor(options){
         // Initialize super class
@@ -168,7 +168,7 @@ class NextNodeServer extends _baseserver.default {
     // ...
 }`;
 
-    const next16ServerCode = `
+	const next16ServerCode = `
 class NextNodeServer extends _baseserver.default {
     // ...
 
@@ -187,8 +187,8 @@ class NextNodeServer extends _baseserver.default {
 }
 `;
 
-    test("build ID", () => {
-        expect(computePatchDiff("next-server.js", next15ServerCode, buildIdRule)).toMatchInlineSnapshot(`
+	test("build ID", () => {
+		expect(computePatchDiff("next-server.js", next15ServerCode, buildIdRule)).toMatchInlineSnapshot(`
       "Index: next-server.js
       ===================================================================
       --- next-server.js
@@ -222,11 +222,11 @@ class NextNodeServer extends _baseserver.default {
                return manifest;
       "
     `);
-    });
+	});
 
-    test("cache handler", () => {
-        expect(computePatchDiff("next-server.js", next15ServerCode, createCacheHandlerRule("manifest")))
-            .toMatchInlineSnapshot(`
+	test("cache handler", () => {
+		expect(computePatchDiff("next-server.js", next15ServerCode, createCacheHandlerRule("manifest")))
+			.toMatchInlineSnapshot(`
       "Index: next-server.js
       ===================================================================
       --- next-server.js
@@ -251,12 +251,12 @@ class NextNodeServer extends _baseserver.default {
                await this.loadCustomCacheHandlers();
       "
     `);
-    });
+	});
 
-    test("composable cache handler (Next 15)", () => {
-        expect(
-            computePatchDiff("next-server.js", next15ServerCode, createComposableCacheHandlersRule("manifest"))
-        ).toMatchInlineSnapshot(`
+	test("composable cache handler (Next 15)", () => {
+		expect(
+			computePatchDiff("next-server.js", next15ServerCode, createComposableCacheHandlersRule("manifest"))
+		).toMatchInlineSnapshot(`
       "Index: next-server.js
       ===================================================================
       --- next-server.js
@@ -287,12 +287,12 @@ class NextNodeServer extends _baseserver.default {
                if (!(0, _handlers.initializeCacheHandlers)()) return;
       "
     `);
-    });
+	});
 
-    test("composable cache handler (Next 16)", () => {
-        expect(
-            computePatchDiff("next-server.js", next16ServerCode, createComposableCacheHandlersRule("manifest"))
-        ).toMatchInlineSnapshot(`
+	test("composable cache handler (Next 16)", () => {
+		expect(
+			computePatchDiff("next-server.js", next16ServerCode, createComposableCacheHandlersRule("manifest"))
+		).toMatchInlineSnapshot(`
 			"Index: next-server.js
 			===================================================================
 			--- next-server.js
@@ -318,11 +318,11 @@ class NextNodeServer extends _baseserver.default {
 			         if (!(0, _handlers.initializeCacheHandlers)(cacheMaxMemorySize)) return;
 			"
 		`);
-    });
+	});
 
-    test("disable node middleware", () => {
-        expect(computePatchDiff("next-server.js", next15ServerCode, disableNodeMiddlewareRule))
-            .toMatchInlineSnapshot(`
+	test("disable node middleware", () => {
+		expect(computePatchDiff("next-server.js", next15ServerCode, disableNodeMiddlewareRule))
+			.toMatchInlineSnapshot(`
 				"Index: next-server.js
 				===================================================================
 				--- next-server.js
@@ -361,11 +361,11 @@ class NextNodeServer extends _baseserver.default {
 				             return this._cachedPreviewManifest;
 				"
 			`);
-    });
+	});
 
-    test("attachRequestMeta", () => {
-        expect(computePatchDiff("next-server.js", next15ServerCode, attachRequestMetaRule))
-            .toMatchInlineSnapshot(`
+	test("attachRequestMeta", () => {
+		expect(computePatchDiff("next-server.js", next15ServerCode, attachRequestMetaRule))
+			.toMatchInlineSnapshot(`
 			"Index: next-server.js
 			===================================================================
 			--- next-server.js
@@ -389,5 +389,5 @@ class NextNodeServer extends _baseserver.default {
 			         (0, _requestmeta.addRequestMeta)(req, 'initProtocol', protocol);
 			"
 		`);
-    });
+	});
 });
