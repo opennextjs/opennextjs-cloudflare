@@ -54,11 +54,11 @@
 	"dependencies": {
 		"@ast-grep/napi": "^0.40.5",
 		"@dotenvx/dotenvx": "catalog:",
-		"@opennextjs/aws": "3.9.16",
+		"@opennextjs/aws": "3.10.1",
 		"cloudflare": "^4.4.1",
+		"comment-json": "^4.5.1",
 		"enquirer": "^2.4.1",
 		"glob": "catalog:",
-		"comment-json": "^4.5.1",
 		"ts-tqdm": "^0.8.6",
 		"yargs": "catalog:"
 	},
@@ -86,7 +86,7 @@
 		"vitest": "catalog:"
 	},
 	"peerDependencies": {
-		"wrangler": "catalog:",
-		"next": ">=15.5.15 || >=16.2.3"
+		"next": ">=15.5.15 || >=16.2.3",
+		"wrangler": "catalog:"
 	}
 }

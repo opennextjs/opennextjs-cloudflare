@@ -566,7 +566,12 @@ function populateD1TagCache(
 		[
 			"d1 execute",
 			D1_TAG_BINDING_NAME,
-			`--command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, UNIQUE(tag) ON CONFLICT REPLACE);"`,
+			// Columns:
+			//   tag           - The cache tag.
+			//   revalidatedAt - Timestamp (ms) when the tag was last revalidated.
+			//   stale         - Timestamp (ms) when the cached entry becomes stale. Added in v1.19.
+			//   expire        - Timestamp (ms) when the cached entry expires. NULL means no expire. Added in v1.19.
+			`--command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, stale INTEGER, expire INTEGER default NULL, UNIQUE(tag) ON CONFLICT REPLACE);"`,
 			`--preview ${populateCacheOptions.shouldUsePreviewId}`,
 		],
 		{
@@ -580,6 +585,25 @@ function populateD1TagCache(
 	if (!result.success) {
 		throw new Error(`Wrangler d1 execute command failed${result.stderr ? `:\n${result.stderr}` : ""}`);
 	}
+
+	// Schema migration: add `stale` and `expire` columns (idempotent, safe for existing deployments).
+	// The columns were added in v1.19 to support SWR.
+	// These commands are intentionally non-throwing — they fail harmlessly if the columns already exist.
+	runWrangler(
+		buildOpts,
+		[
+			"d1 execute",
+			D1_TAG_BINDING_NAME,
+			`--command "ALTER TABLE revalidations ADD COLUMN stale INTEGER; ALTER TABLE revalidations ADD COLUMN expire INTEGER default NULL"`,
+			`--preview ${populateCacheOptions.shouldUsePreviewId}`,
+		],
+		{
+			target: populateCacheOptions.target,
+			environment: populateCacheOptions.environment,
+			configPath: populateCacheOptions.wranglerConfigPath,
+			logging: "error",
+		}
+	);
 
 	logger.info("\nSuccessfully created D1 table");
 }
