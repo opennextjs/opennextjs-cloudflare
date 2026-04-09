@@ -261,11 +261,11 @@ describe("KVNextModeTagCache", () => {
 			const currentTime = 1000;
 			vi.spyOn(Date, "now").mockReturnValue(currentTime);
 
-			await tagCache.writeTags([{ tag: "tag1", stale: 500, expiry: 9999 }]);
+			await tagCache.writeTags([{ tag: "tag1", stale: 500, expire: 9999 }]);
 
 			expect(mockPut).toHaveBeenCalledWith(
 				"fallback-build-id/tag1",
-				JSON.stringify({ revalidatedAt: 500, stale: 500, expiry: 9999 })
+				JSON.stringify({ revalidatedAt: 500, stale: 500, expire: 9999 })
 			);
 			expect(purgeCacheByTags).toHaveBeenCalledWith(["tag1"]);
 		});
@@ -278,19 +278,19 @@ describe("KVNextModeTagCache", () => {
 
 			expect(mockPut).toHaveBeenCalledWith(
 				"fallback-build-id/tag1",
-				JSON.stringify({ revalidatedAt: 1000, stale: 1000, expiry: null })
+				JSON.stringify({ revalidatedAt: 1000, stale: 1000, expire: null })
 			);
 			expect(purgeCacheByTags).toHaveBeenCalledWith(["tag1"]);
 		});
 	});
 
-	describe("hasBeenStale", () => {
+	describe("isStale", () => {
 		it("should return false when cache is disabled", async () => {
 			(
 				globalThis as { openNextConfig?: { dangerous?: { disableTagCache?: boolean } } }
 			).openNextConfig!.dangerous!.disableTagCache = true;
 
-			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+			const result = await tagCache.isStale(["tag1"], 1000);
 
 			expect(result).toBe(false);
 			expect(mockGet).not.toHaveBeenCalled();
@@ -301,59 +301,59 @@ describe("KVNextModeTagCache", () => {
 				env: {},
 			} as ReturnType<typeof getCloudflareContext>);
 
-			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+			const result = await tagCache.isStale(["tag1"], 1000);
 
 			expect(result).toBe(false);
 		});
 
 		it("should return false when tags array is empty", async () => {
-			const result = await tagCache.hasBeenStale([], 1000);
+			const result = await tagCache.isStale([], 1000);
 			expect(result).toBe(false);
 			expect(mockGet).not.toHaveBeenCalled();
 		});
 
-		it("should return true when stale > lastModified and expiry is null", async () => {
+		it("should return true when stale > lastModified and expire is null", async () => {
 			const now = 2000;
 			vi.spyOn(Date, "now").mockReturnValue(now);
 			mockGet.mockResolvedValue(
-				new Map([[`${FALLBACK_BUILD_ID}/tag1`, { revalidatedAt: 1500, stale: 1500, expiry: null }]])
+				new Map([[`${FALLBACK_BUILD_ID}/tag1`, { revalidatedAt: 1500, stale: 1500, expire: null }]])
 			);
 
-			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+			const result = await tagCache.isStale(["tag1"], 1000);
 
 			expect(result).toBe(true);
 		});
 
-		it("should return true when stale > lastModified and expiry > now", async () => {
+		it("should return true when stale > lastModified and expire > now", async () => {
 			const now = 2000;
 			vi.spyOn(Date, "now").mockReturnValue(now);
 			mockGet.mockResolvedValue(
-				new Map([[`${FALLBACK_BUILD_ID}/tag1`, { revalidatedAt: 1500, stale: 1500, expiry: 3000 }]])
+				new Map([[`${FALLBACK_BUILD_ID}/tag1`, { revalidatedAt: 1500, stale: 1500, expire: 3000 }]])
 			);
 
-			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+			const result = await tagCache.isStale(["tag1"], 1000);
 
 			expect(result).toBe(true);
 		});
 
 		it("should return false when stale <= lastModified", async () => {
 			mockGet.mockResolvedValue(
-				new Map([[`${FALLBACK_BUILD_ID}/tag1`, { revalidatedAt: 500, stale: 500, expiry: null }]])
+				new Map([[`${FALLBACK_BUILD_ID}/tag1`, { revalidatedAt: 500, stale: 500, expire: null }]])
 			);
 
-			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+			const result = await tagCache.isStale(["tag1"], 1000);
 
 			expect(result).toBe(false);
 		});
 
-		it("should return false when expiry <= now (tag expired)", async () => {
+		it("should return false when expire <= now (tag expired)", async () => {
 			const now = 2000;
 			vi.spyOn(Date, "now").mockReturnValue(now);
 			mockGet.mockResolvedValue(
-				new Map([[`${FALLBACK_BUILD_ID}/tag1`, { revalidatedAt: 1500, stale: 1500, expiry: 1999 }]])
+				new Map([[`${FALLBACK_BUILD_ID}/tag1`, { revalidatedAt: 1500, stale: 1500, expire: 1999 }]])
 			);
 
-			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+			const result = await tagCache.isStale(["tag1"], 1000);
 
 			expect(result).toBe(false);
 		});
@@ -361,7 +361,7 @@ describe("KVNextModeTagCache", () => {
 		it("should return false when KV value is null", async () => {
 			mockGet.mockResolvedValue(new Map([[`${FALLBACK_BUILD_ID}/tag1`, null]]));
 
-			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+			const result = await tagCache.isStale(["tag1"], 1000);
 
 			expect(result).toBe(false);
 		});
@@ -372,7 +372,7 @@ describe("KVNextModeTagCache", () => {
 			// Old format: plain number — treated as stale = revalidatedAt
 			mockGet.mockResolvedValue(new Map([[`${FALLBACK_BUILD_ID}/tag1`, 1500]]));
 
-			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+			const result = await tagCache.isStale(["tag1"], 1000);
 
 			expect(result).toBe(true);
 		});
@@ -380,7 +380,7 @@ describe("KVNextModeTagCache", () => {
 		it("should return false when KV get throws an error", async () => {
 			mockGet.mockRejectedValue(new Error("kv error"));
 
-			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+			const result = await tagCache.isStale(["tag1"], 1000);
 
 			expect(result).toBe(false);
 			expect(error).toHaveBeenCalled();

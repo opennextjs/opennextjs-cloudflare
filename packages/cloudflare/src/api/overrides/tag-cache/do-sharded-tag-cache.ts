@@ -9,7 +9,7 @@ import type { TagData } from "../../durable-objects/sharded-tag-cache.js";
 import { DOShardedTagCache } from "../../durable-objects/sharded-tag-cache.js";
 import { debugCache, isPurgeCacheEnabled, purgeCacheByTags } from "../internal.js";
 
-type NormalizedTagInput = { tag: string; stale?: number; expiry?: number | null };
+type NormalizedTagInput = { tag: string; stale?: number; expire?: number | null };
 type CachedTagValue = { tag: string } & TagData;
 
 export const DEFAULT_WRITE_RETRIES = 3;
@@ -169,8 +169,8 @@ class ShardedDOTagCache implements NextModeTagCache {
 			const tagData = await this.#resolveTagData(tags);
 			const result = [...tagData.values()].some((data) => {
 				if (data == null) return false;
-				const { revalidatedAt, expiry } = data;
-				if (expiry != null) return expiry <= now && expiry > (lastModified ?? 0);
+				const { revalidatedAt, expire } = data;
+				if (expire != null) return expire <= now && expire > (lastModified ?? 0);
 				return revalidatedAt > (lastModified ?? now);
 			});
 			debugCache("ShardedDOTagCache", `hasBeenRevalidated tags=${tags} at=${lastModified} -> ${result}`);
@@ -181,7 +181,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 		}
 	}
 
-	public async hasBeenStale(tags: string[], lastModified?: number): Promise<boolean> {
+	public async isStale(tags: string[], lastModified?: number): Promise<boolean> {
 		const { isDisabled } = this.getConfig();
 		if (isDisabled || tags.length === 0) {
 			return false;
@@ -191,11 +191,11 @@ class ShardedDOTagCache implements NextModeTagCache {
 			const tagData = await this.#resolveTagData(tags);
 			const result = [...tagData.values()].some((data) => {
 				if (data == null) return false;
-				const { stale, expiry } = data;
+				const { stale, expire } = data;
 				if (stale == null || stale <= (lastModified ?? now)) return false;
-				return expiry == null || expiry > now;
+				return expire == null || expire > now;
 			});
-			debugCache("ShardedDOTagCache", `hasBeenStale tags=${tags} at=${lastModified} -> ${result}`);
+			debugCache("ShardedDOTagCache", `isStale tags=${tags} at=${lastModified} -> ${result}`);
 			return result;
 		} catch (e) {
 			error("Error while checking stale", e);
@@ -217,8 +217,8 @@ class ShardedDOTagCache implements NextModeTagCache {
 
 		const normalized: NormalizedTagInput[] = tags.map((tag) =>
 			typeof tag === "string"
-				? { tag, stale: nowMs, expiry: undefined }
-				: { tag: tag.tag, stale: tag.stale ?? nowMs, expiry: tag.expiry }
+				? { tag, stale: nowMs, expire: undefined }
+				: { tag: tag.tag, stale: tag.stale ?? nowMs, expire: tag.expire }
 		);
 
 		const tagStrings = normalized.map((t) => t.tag);
@@ -299,7 +299,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 								tag,
 								revalidatedAt: parsed,
 								stale: parsed as number | null,
-								expiry: null as number | null,
+								expire: null as number | null,
 							};
 						}
 						const data = parsed as TagData;
@@ -307,7 +307,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 							tag,
 							revalidatedAt: data.revalidatedAt ?? 0,
 							stale: data.stale ?? null,
-							expiry: data.expiry ?? null,
+							expire: data.expire ?? null,
 						};
 					} catch (e) {
 						debugCache("Error while parsing cached value", e);
@@ -334,7 +334,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 				if (data === undefined) {
 					if (this.opts.regionalCacheDangerouslyPersistMissingTags) {
 						// Tag not found: store a sentinel (never revalidated)
-						data = { revalidatedAt: 0, stale: null, expiry: null };
+						data = { revalidatedAt: 0, stale: null, expire: null };
 					} else {
 						debugCache("Tag not found in tag data", { tag, optsKey });
 						return;
@@ -350,8 +350,8 @@ class ShardedDOTagCache implements NextModeTagCache {
 							"cache-control": `max-age=${this.opts.regionalCacheTtlSec ?? 5}`,
 							...(tags.length > 0
 								? {
-									"cache-tag": tags.join(","),
-								}
+										"cache-tag": tags.join(","),
+									}
 								: {}),
 						},
 					})
@@ -437,8 +437,8 @@ class ShardedDOTagCache implements NextModeTagCache {
 		await Promise.all(
 			shardedTagGroups.map(async ({ doId, tags: shardTags }) => {
 				const cachedValues = await this.getFromRegionalCache({ doId, tags: shardTags });
-				for (const { tag, revalidatedAt, stale, expiry } of cachedValues) {
-					result.set(tag, { revalidatedAt, stale, expiry });
+				for (const { tag, revalidatedAt, stale, expire } of cachedValues) {
+					result.set(tag, { revalidatedAt, stale, expire });
 				}
 
 				const cachedTagNames = new Set(cachedValues.map(({ tag }) => tag));
@@ -547,23 +547,23 @@ class ShardedDOTagCache implements NextModeTagCache {
 		// If we have regional replication enabled, we need to further duplicate the shards in all the regions
 		const regionalReplicasInAllRegions = generateAllReplicas
 			? regionalReplicas.flatMap(({ doId, tag }) => {
-				return AVAILABLE_REGIONS.map((region) => {
-					return {
-						doId: new DOId({
-							baseShardId: doId.options.baseShardId,
-							numberOfReplicas: numReplicas,
-							shardType,
-							replicaId: doId.replicaId,
-							region,
-						}),
-						tag,
-					};
-				});
-			})
+					return AVAILABLE_REGIONS.map((region) => {
+						return {
+							doId: new DOId({
+								baseShardId: doId.options.baseShardId,
+								numberOfReplicas: numReplicas,
+								shardType,
+								replicaId: doId.replicaId,
+								region,
+							}),
+							tag,
+						};
+					});
+				})
 			: regionalReplicas.map(({ doId, tag }) => {
-				doId.region = this.getClosestRegion();
-				return { doId, tag };
-			});
+					doId.region = this.getClosestRegion();
+					return { doId, tag };
+				});
 		return regionalReplicasInAllRegions;
 	}
 
@@ -600,9 +600,9 @@ class ShardedDOTagCache implements NextModeTagCache {
 		return !db || isDisabled
 			? { isDisabled: true as const }
 			: {
-				isDisabled: false as const,
-				db,
-			};
+					isDisabled: false as const,
+					db,
+				};
 	}
 }
 

@@ -37,10 +37,11 @@ describe("DOShardedTagCache class", () => {
 		// @ts-expect-error - testing private method
 		expect(cache.ctx.blockConcurrencyWhile).toHaveBeenCalled();
 		expect(cache.sql.exec).toHaveBeenCalledWith(
-			`CREATE TABLE IF NOT EXISTS revalidations (tag TEXT PRIMARY KEY, revalidatedAt INTEGER)`
+			`CREATE TABLE IF NOT EXISTS revalidations (tag TEXT PRIMARY KEY, revalidatedAt INTEGER, stale INTEGER, expire INTEGER DEFAULT NULL)`
 		);
-		expect(cache.sql.exec).toHaveBeenCalledWith(`ALTER TABLE revalidations ADD COLUMN stale INTEGER`);
-		expect(cache.sql.exec).toHaveBeenCalledWith(`ALTER TABLE revalidations ADD COLUMN expiry INTEGER`);
+		expect(cache.sql.exec).toHaveBeenCalledWith(
+			`ALTER TABLE revalidations ADD COLUMN stale INTEGER; ALTER TABLE revalidations ADD COLUMN expire INTEGER DEFAULT NULL`
+		);
 	});
 
 	describe("getTagData", () => {
@@ -55,14 +56,14 @@ describe("DOShardedTagCache class", () => {
 			const cache = createDOShardedTagCache();
 			vi.mocked(cache.sql.exec).mockReturnValueOnce({
 				toArray: () => [
-					{ tag: "tag1", revalidatedAt: 1000, stale: 1000, expiry: null },
-					{ tag: "tag2", revalidatedAt: 2000, stale: 1500, expiry: 9999 },
+					{ tag: "tag1", revalidatedAt: 1000, stale: 1000, expire: null },
+					{ tag: "tag2", revalidatedAt: 2000, stale: 1500, expire: 9999 },
 				],
 			} as ReturnType<SqlStorage["exec"]>);
 			const result = await cache.getTagData(["tag1", "tag2"]);
 			expect(result).toEqual({
-				tag1: { revalidatedAt: 1000, stale: 1000, expiry: null },
-				tag2: { revalidatedAt: 2000, stale: 1500, expiry: 9999 },
+				tag1: { revalidatedAt: 1000, stale: 1000, expire: null },
+				tag2: { revalidatedAt: 2000, stale: 1500, expire: 9999 },
 			});
 		});
 
@@ -81,26 +82,24 @@ describe("DOShardedTagCache class", () => {
 			const cache = createDOShardedTagCache();
 			await cache.writeTags(["tag1", "tag2"], 1000);
 			expect(cache.sql.exec).toHaveBeenCalledWith(
-				`INSERT OR REPLACE INTO revalidations (tag, revalidatedAt, stale, expiry) VALUES (?, ?, ?, ?)`,
+				`INSERT OR REPLACE INTO revalidations (tag, revalidatedAt, stale) VALUES (?, ?, ?)`,
 				"tag1",
 				1000,
-				1000,
-				null
+				1000
 			);
 			expect(cache.sql.exec).toHaveBeenCalledWith(
-				`INSERT OR REPLACE INTO revalidations (tag, revalidatedAt, stale, expiry) VALUES (?, ?, ?, ?)`,
+				`INSERT OR REPLACE INTO revalidations (tag, revalidatedAt, stale) VALUES (?, ?, ?)`,
 				"tag2",
 				1000,
-				1000,
-				null
+				1000
 			);
 		});
 
-		it("should write object tags using stale and expiry", async () => {
+		it("should write object tags using stale and expire", async () => {
 			const cache = createDOShardedTagCache();
-			await cache.writeTags([{ tag: "tag1", stale: 5000, expiry: 9999 }]);
+			await cache.writeTags([{ tag: "tag1", stale: 5000, expire: 9999 }]);
 			expect(cache.sql.exec).toHaveBeenCalledWith(
-				`INSERT OR REPLACE INTO revalidations (tag, revalidatedAt, stale, expiry) VALUES (?, ?, ?, ?)`,
+				`INSERT OR REPLACE INTO revalidations (tag, revalidatedAt, stale, expire) VALUES (?, ?, ?, ?)`,
 				"tag1",
 				5000,
 				5000,

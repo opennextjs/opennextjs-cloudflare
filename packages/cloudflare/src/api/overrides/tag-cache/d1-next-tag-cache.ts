@@ -45,7 +45,7 @@ export class D1NextModeTagCache implements NextModeTagCache {
 			const now = Date.now();
 			const result = await db
 				.prepare(
-					`SELECT 1 FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")}) AND ((expiry IS NOT NULL AND expiry <= ? AND expiry > ?) OR (expiry IS NULL AND revalidatedAt > ?)) LIMIT 1`
+					`SELECT 1 FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")}) AND ((expire IS NOT NULL AND expire <= ? AND expire > ?) OR (expire IS NULL AND revalidatedAt > ?)) LIMIT 1`
 				)
 				.bind(...tags.map((tag) => this.getCacheKey(tag)), now, lastModified ?? 0, lastModified ?? now)
 				.raw();
@@ -74,10 +74,10 @@ export class D1NextModeTagCache implements NextModeTagCache {
 			tags.map((tag) => {
 				const tagStr = typeof tag === "string" ? tag : tag.tag;
 				const stale = typeof tag === "string" ? nowMs : (tag.stale ?? nowMs);
-				const expiry = typeof tag === "string" ? null : (tag.expiry ?? null);
+				const expire = typeof tag === "string" ? null : (tag.expire ?? null);
 				return db
-					.prepare(`INSERT INTO revalidations (tag, revalidatedAt, stale, expiry) VALUES (?, ?, ?, ?)`)
-					.bind(this.getCacheKey(tagStr), stale, stale, expiry);
+					.prepare(`INSERT INTO revalidations (tag, revalidatedAt, stale, expire) VALUES (?, ?, ?, ?)`)
+					.bind(this.getCacheKey(tagStr), stale, stale, expire);
 			})
 		);
 
@@ -90,7 +90,7 @@ export class D1NextModeTagCache implements NextModeTagCache {
 		}
 	}
 
-	async hasBeenStale(tags: string[], lastModified?: number): Promise<boolean> {
+	async isStale(tags: string[], lastModified?: number): Promise<boolean> {
 		const { isDisabled, db } = this.getConfig();
 		if (isDisabled || tags.length === 0) {
 			return false;
@@ -99,13 +99,13 @@ export class D1NextModeTagCache implements NextModeTagCache {
 			const now = Date.now();
 			const result = await db
 				.prepare(
-					`SELECT 1 FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")}) AND stale > ? AND (expiry IS NULL OR expiry > ?) LIMIT 1`
+					`SELECT 1 FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")}) AND stale > ? AND (expire IS NULL OR expire > ?) LIMIT 1`
 				)
 				.bind(...tags.map((tag) => this.getCacheKey(tag)), lastModified ?? now, now)
 				.raw();
 
 			const hasStale = result.length > 0;
-			debugCache("D1NextModeTagCache", `hasBeenStale tags=${tags} at=${lastModified} -> ${hasStale}`);
+			debugCache("D1NextModeTagCache", `isStale tags=${tags} at=${lastModified} -> ${hasStale}`);
 			return hasStale;
 		} catch (e) {
 			error(e);

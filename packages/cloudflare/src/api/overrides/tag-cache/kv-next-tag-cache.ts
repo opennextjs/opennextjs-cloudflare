@@ -10,10 +10,17 @@ export const BINDING_NAME = "NEXT_TAG_CACHE_KV";
 
 /**
  * Stored value shape for KV entries.
- * - Old format: a plain number (the revalidatedAt timestamp) — stored as `String(nowMs)`, reads back as a number via `type:"json"`.
- * - New format: a JSON object with full tag data.
  */
-type KVTagValue = number | { revalidatedAt: number; stale?: number | null; expiry?: number | null };
+type KVTagValue =
+	// Old format (<v1.19)
+	// A plain number (the revalidatedAt timestamp in ms) — stored as `String(nowMs)`, reads back as a number via `type:"json"`.
+	| number
+	// TODO(vicb): check
+	// New format (>=v1.19): a JSON object with full tag data.
+	// - revalidatedAt: timestamp in ms of the last revalidation
+	// - stale: timestamp in ms when the tag becomes stale
+	// - expire: timestamp in ms when the tag expires
+	| { revalidatedAt: number; stale?: number | null; expire?: number | null };
 
 function getRevalidatedAt(value: KVTagValue): number {
 	return typeof value === "number" ? value : (value.revalidatedAt ?? 0);
@@ -24,8 +31,8 @@ function getStale(value: KVTagValue): number | null {
 	return typeof value === "number" ? value : (value.stale ?? null);
 }
 
-function getExpiry(value: KVTagValue): number | null {
-	return typeof value === "number" ? null : (value.expiry ?? null);
+function getExpire(value: KVTagValue): number | null {
+	return typeof value === "number" ? null : (value.expire ?? null);
 }
 
 /**
@@ -124,8 +131,8 @@ export class KVNextModeTagCache implements NextModeTagCache {
 			const result = await this.#resolveTagValues(tags, itemsCache, kv);
 			const revalidated = [...result.values()].some((v) => {
 				if (v == null) return false;
-				const expiry = getExpiry(v);
-				if (expiry != null) return expiry <= now && expiry > (lastModified ?? 0);
+				const expire = getExpire(v);
+				if (expire != null) return expire <= now && expire > (lastModified ?? 0);
 				return getRevalidatedAt(v) > (lastModified ?? now);
 			});
 			debugCache(
@@ -154,7 +161,7 @@ export class KVNextModeTagCache implements NextModeTagCache {
 					await kv.put(this.getCacheKey(tag), String(nowMs));
 				} else {
 					const stale = tag.stale ?? nowMs;
-					const value: KVTagValue = { revalidatedAt: stale, stale, expiry: tag.expiry ?? null };
+					const value: KVTagValue = { revalidatedAt: stale, stale, expire: tag.expire ?? null };
 					await kv.put(this.getCacheKey(tag.tag), JSON.stringify(value));
 				}
 			})
@@ -169,7 +176,7 @@ export class KVNextModeTagCache implements NextModeTagCache {
 		}
 	}
 
-	async hasBeenStale(tags: string[], lastModified?: number): Promise<boolean> {
+	async isStale(tags: string[], lastModified?: number): Promise<boolean> {
 		const kv = this.getKv();
 		if (!kv || tags.length === 0) return false;
 
@@ -183,14 +190,11 @@ export class KVNextModeTagCache implements NextModeTagCache {
 				if (v == null) return false;
 				const stale = getStale(v);
 				if (stale == null || stale <= (lastModified ?? now)) return false;
-				const expiry = getExpiry(v);
-				return expiry == null || expiry > now;
+				const expire = getExpire(v);
+				return expire == null || expire > now;
 			});
 
-			debugCache(
-				"KVNextModeTagCache",
-				`hasBeenStale tags=${tags} lastModified=${lastModified} -> ${hasStale}`
-			);
+			debugCache("KVNextModeTagCache", `isStale tags=${tags} lastModified=${lastModified} -> ${hasStale}`);
 			return hasStale;
 		} catch (e) {
 			error(e);

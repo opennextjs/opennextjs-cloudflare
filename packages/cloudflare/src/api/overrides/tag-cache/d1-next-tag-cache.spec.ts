@@ -186,7 +186,7 @@ describe("D1NextModeTagCache", () => {
 
 			expect(result).toBe(true);
 			expect(mockPrepare).toHaveBeenCalledWith(
-				"SELECT 1 FROM revalidations WHERE tag IN (?, ?) AND ((expiry IS NOT NULL AND expiry <= ? AND expiry > ?) OR (expiry IS NULL AND revalidatedAt > ?)) LIMIT 1"
+				"SELECT 1 FROM revalidations WHERE tag IN (?, ?) AND ((expire IS NOT NULL AND expire <= ? AND expire > ?) OR (expire IS NULL AND revalidatedAt > ?)) LIMIT 1"
 			);
 			expect(mockBind).toHaveBeenCalledWith(
 				`${FALLBACK_BUILD_ID}/tag1`,
@@ -275,20 +275,20 @@ describe("D1NextModeTagCache", () => {
 			// Verify the prepared statements were created correctly
 			expect(mockPrepare).toHaveBeenCalledTimes(2);
 			expect(mockPrepare).toHaveBeenCalledWith(
-				"INSERT INTO revalidations (tag, revalidatedAt, stale, expiry) VALUES (?, ?, ?, ?)"
+				"INSERT INTO revalidations (tag, revalidatedAt, stale, expire) VALUES (?, ?, ?, ?)"
 			);
 
 			expect(purgeCacheByTags).toHaveBeenCalledWith(tags);
 		});
 
-		it("should write object tags with explicit stale and expiry", async () => {
+		it("should write object tags with explicit stale and expire", async () => {
 			const currentTime = 1000;
 			vi.spyOn(Date, "now").mockReturnValue(currentTime);
 
-			await tagCache.writeTags([{ tag: "tag1", stale: 500, expiry: 9999 }]);
+			await tagCache.writeTags([{ tag: "tag1", stale: 500, expire: 9999 }]);
 
 			expect(mockPrepare).toHaveBeenCalledWith(
-				"INSERT INTO revalidations (tag, revalidatedAt, stale, expiry) VALUES (?, ?, ?, ?)"
+				"INSERT INTO revalidations (tag, revalidatedAt, stale, expire) VALUES (?, ?, ?, ?)"
 			);
 			expect(mockBind).toHaveBeenCalledWith(`${FALLBACK_BUILD_ID}/tag1`, 500, 500, 9999);
 			expect(purgeCacheByTags).toHaveBeenCalledWith(["tag1"]);
@@ -310,13 +310,13 @@ describe("D1NextModeTagCache", () => {
 		});
 	});
 
-	describe("hasBeenStale", () => {
+	describe("isStale", () => {
 		it("should return false when cache is disabled", async () => {
 			(
 				globalThis as { openNextConfig?: { dangerous?: { disableTagCache?: boolean } } }
 			).openNextConfig!.dangerous!.disableTagCache = true;
 
-			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+			const result = await tagCache.isStale(["tag1"], 1000);
 
 			expect(result).toBe(false);
 			expect(mockPrepare).not.toHaveBeenCalled();
@@ -327,13 +327,13 @@ describe("D1NextModeTagCache", () => {
 				env: {},
 			} as ReturnType<typeof getCloudflareContext>);
 
-			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+			const result = await tagCache.isStale(["tag1"], 1000);
 
 			expect(result).toBe(false);
 		});
 
 		it("should return false when tags array is empty", async () => {
-			const result = await tagCache.hasBeenStale([], 1000);
+			const result = await tagCache.isStale([], 1000);
 			expect(result).toBe(false);
 			expect(mockPrepare).not.toHaveBeenCalled();
 		});
@@ -343,11 +343,11 @@ describe("D1NextModeTagCache", () => {
 			vi.spyOn(Date, "now").mockReturnValue(now);
 			mockRaw.mockResolvedValue([[1]]);
 
-			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+			const result = await tagCache.isStale(["tag1"], 1000);
 
 			expect(result).toBe(true);
 			expect(mockPrepare).toHaveBeenCalledWith(
-				"SELECT 1 FROM revalidations WHERE tag IN (?) AND stale > ? AND (expiry IS NULL OR expiry > ?) LIMIT 1"
+				"SELECT 1 FROM revalidations WHERE tag IN (?) AND stale > ? AND (expire IS NULL OR expire > ?) LIMIT 1"
 			);
 			expect(mockBind).toHaveBeenCalledWith(`${FALLBACK_BUILD_ID}/tag1`, 1000, now);
 		});
@@ -355,7 +355,7 @@ describe("D1NextModeTagCache", () => {
 		it("should return false when no tags have a stale value newer than lastModified", async () => {
 			mockRaw.mockResolvedValue([]);
 
-			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+			const result = await tagCache.isStale(["tag1"], 1000);
 
 			expect(result).toBe(false);
 		});
@@ -363,7 +363,7 @@ describe("D1NextModeTagCache", () => {
 		it("should return false when database query throws an error", async () => {
 			mockRaw.mockRejectedValue(new Error("db error"));
 
-			const result = await tagCache.hasBeenStale(["tag1"], 1000);
+			const result = await tagCache.isStale(["tag1"], 1000);
 
 			expect(result).toBe(false);
 			expect(error).toHaveBeenCalled();
