@@ -1,5 +1,17 @@
 # @opennextjs/cloudflare
 
+## 1.18.1
+
+### Patch Changes
+
+- [#1176](https://github.com/opennextjs/opennextjs-cloudflare/pull/1176) [`2232651`](https://github.com/opennextjs/opennextjs-cloudflare/commit/22326513042bd0a075661c5f3c175de77b084f2c) Thanks [@conico974](https://github.com/conico974)! - fix for OG with Next 16.2.2
+
+- [#1166](https://github.com/opennextjs/opennextjs-cloudflare/pull/1166) [`f89fba1`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f89fba1bb2867c9b6aecc810a3b94f17e6f04e51) Thanks [@ash1day](https://github.com/ash1day)! - fix: sort `.endsWith()` checks by path length descending to prevent suffix collisions in dynamic requires
+
+  Routes whose paths are suffixes of other routes (e.g. `/test/app` vs `/`) were resolved incorrectly because the shorter path matched first in the generated `.endsWith()` chain. Sorting by path length descending ensures more specific (longer) paths are always checked first.
+
+  Fixes #1156.
+
 ## 1.18.0
 
 ### Minor Changes

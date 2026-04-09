@@ -100,7 +100,10 @@ async function getEvalManifestRule(buildOpts: BuildOptions) {
 		windowsPathsNoEscape: true,
 	});
 
-	const returnManifests = manifests
+	// Sort by path length descending so longer (more specific) paths match first,
+	// preventing suffix collisions in the `.endsWith()` chain (see #1156).
+	const sortedManifests = [...manifests].sort((a, b) => b.length - a.length);
+	const returnManifests = sortedManifests
 		.map((manifest) => {
 			const endsWith = normalizePath(relative(baseDir, manifest));
 			const key = normalizePath("/" + relative(appDir, manifest)).replace(
