@@ -1,5 +1,23 @@
 # @opennextjs/cloudflare
 
+## 1.19.0
+
+### Minor Changes
+
+- [#1168](https://github.com/opennextjs/opennextjs-cloudflare/pull/1168) [`9a26846`](https://github.com/opennextjs/opennextjs-cloudflare/commit/9a268469be3759277d2cc5b412dbc16aff8fe551) Thanks [@conico974](https://github.com/conico974)! - Add support for SWR (stale-while-revalidate) in `revalidateTag`
+
+  See the [AWS implementation](https://github.com/opennextjs/opennextjs-aws/pull/1122) for more details.
+
+### Patch Changes
+
+- [#1184](https://github.com/opennextjs/opennextjs-cloudflare/pull/1184) [`c7d6425`](https://github.com/opennextjs/opennextjs-cloudflare/commit/c7d64251c2789390d35197c31f06f9e28947f44d) Thanks [@vicb](https://github.com/vicb)! - fix for Next.js CVE-2026-23869
+
+  See the [CVE-2026-23869 summary](https://vercel.com/changelog/summary-of-cve-2026-23869) for details.
+
+  This CVE is fixed by bumping the minium Next.js release version to 15.5.15/16.2.3
+
+- [#1177](https://github.com/opennextjs/opennextjs-cloudflare/pull/1177) [`e814a63`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e814a6314bb29b8f0130a68e3f0a8271b66a33ed) Thanks [@conico974](https://github.com/conico974)! - Fix `use cache` not working as expected in Next 16+
+
 ## 1.18.1
 
 ### Patch Changes
