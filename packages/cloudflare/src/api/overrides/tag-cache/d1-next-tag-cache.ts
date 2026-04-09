@@ -8,6 +8,15 @@ export const NAME = "d1-next-mode-tag-cache";
 
 export const BINDING_NAME = "NEXT_TAG_CACHE_D1";
 
+/**
+ * Stored value shape for D1 tag entries.
+ *
+ * - revalidatedAt: timestamp in ms of the last revalidation
+ * - stale: timestamp in ms when the tag becomes stale
+ * - expire: timestamp in ms when the tag expires (null means no expiry)
+ */
+type D1TagValue = { revalidatedAt: number; stale: number | null; expire: number | null };
+
 export class D1NextModeTagCache implements NextModeTagCache {
 	readonly mode = "nextMode" as const;
 	readonly name = NAME;
@@ -18,19 +27,15 @@ export class D1NextModeTagCache implements NextModeTagCache {
 			return 0;
 		}
 		try {
-			const result = await db
-				.prepare(
-					`SELECT MAX(revalidatedAt) AS time FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")})`
-				)
-				.bind(...tags.map((tag) => this.getCacheKey(tag)))
-				.run();
+			const result = await this.#resolveTagValues(tags, db);
 
-			const timeMs = (result.results[0]?.time ?? 0) as number;
+			const revalidations = [...result.values()]
+				.filter((v): v is D1TagValue => v != null)
+				.map((v) => v.revalidatedAt);
+			const timeMs = revalidations.length === 0 ? 0 : Math.max(...revalidations);
 			debugCache("D1NextModeTagCache", `getLastRevalidated tags=${tags} -> ${timeMs}`);
 			return timeMs;
 		} catch (e) {
-			// By default we don't want to crash here, so we return false
-			// We still log the error though so we can debug it
 			error(e);
 			return 0;
 		}
@@ -43,14 +48,15 @@ export class D1NextModeTagCache implements NextModeTagCache {
 		}
 		try {
 			const now = Date.now();
-			const result = await db
-				.prepare(
-					`SELECT 1 FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")}) AND ((expire IS NOT NULL AND expire <= ? AND expire > ?) OR (expire IS NULL AND revalidatedAt > ?)) LIMIT 1`
-				)
-				.bind(...tags.map((tag) => this.getCacheKey(tag)), now, lastModified ?? 0, lastModified ?? now)
-				.raw();
+			const result = await this.#resolveTagValues(tags, db);
 
-			const revalidated = result.length > 0;
+			const revalidated = [...result.values()].some((v) => {
+				if (v == null) return false;
+				const { revalidatedAt, expire } = v;
+				if (expire != null) return expire <= now && expire > (lastModified ?? 0);
+				return revalidatedAt > (lastModified ?? now);
+			});
+
 			debugCache(
 				"D1NextModeTagCache",
 				`hasBeenRevalidated tags=${tags} at=${lastModified} -> ${revalidated}`
@@ -58,8 +64,6 @@ export class D1NextModeTagCache implements NextModeTagCache {
 			return revalidated;
 		} catch (e) {
 			error(e);
-			// By default we don't want to crash here, so we return false
-			// We still log the error though so we can debug it
 			return false;
 		}
 	}
@@ -97,20 +101,73 @@ export class D1NextModeTagCache implements NextModeTagCache {
 		}
 		try {
 			const now = Date.now();
-			const result = await db
-				.prepare(
-					`SELECT 1 FROM revalidations WHERE tag IN (${tags.map(() => "?").join(", ")}) AND stale > ? AND (expire IS NULL OR expire > ?) LIMIT 1`
-				)
-				.bind(...tags.map((tag) => this.getCacheKey(tag)), lastModified ?? now, now)
-				.raw();
+			const result = await this.#resolveTagValues(tags, db);
 
-			const hasStale = result.length > 0;
-			debugCache("D1NextModeTagCache", `isStale tags=${tags} at=${lastModified} -> ${hasStale}`);
-			return hasStale;
+			const isStale = [...result.values()].some((v) => {
+				if (v == null) return false;
+				const { stale, expire } = v;
+				if (stale == null || stale <= (lastModified ?? now)) return false;
+				return expire == null || expire > now;
+			});
+
+			debugCache("D1NextModeTagCache", `isStale tags=${tags} at=${lastModified} -> ${isStale}`);
+			return isStale;
 		} catch (e) {
 			error(e);
 			return false;
 		}
+	}
+
+	/**
+	 * Resolves tag values from the per-request in-memory cache, falling back to D1 for any misses.
+	 *
+	 * Results are stored back into the request cache so repeated calls within the same request
+	 * avoid duplicate D1 queries.
+	 *
+	 * @param tags - The tag names to resolve.
+	 * @param db - The D1 database binding.
+	 * @returns A map of tag name to its D1TagValue (or null if the tag was not found).
+	 */
+	async #resolveTagValues(tags: string[], db: D1Database): Promise<Map<string, D1TagValue | null>> {
+		const result = new Map<string, D1TagValue | null>();
+		const uncachedTags: string[] = [];
+
+		const itemsCache = this.getItemsCache();
+
+		for (const tag of tags) {
+			if (itemsCache?.has(tag)) {
+				result.set(tag, itemsCache.get(tag) ?? null);
+			} else {
+				uncachedTags.push(tag);
+			}
+		}
+
+		if (uncachedTags.length > 0) {
+			const rows = await db
+				.prepare(
+					`SELECT tag, revalidatedAt, stale, expire FROM revalidations WHERE tag IN (${uncachedTags.map(() => "?").join(", ")})`
+				)
+				.bind(...uncachedTags.map((tag) => this.getCacheKey(tag)))
+				.raw();
+
+			// Index rows by cache key for lookup.
+			const rowsByKey = new Map(rows.map((row) => [row[0] as string, row]));
+
+			for (const tag of uncachedTags) {
+				const row = rowsByKey.get(this.getCacheKey(tag));
+				const value: D1TagValue | null = row
+					? {
+							revalidatedAt: (row[1] as number) ?? 0,
+							stale: (row[2] as number) ?? null,
+							expire: (row[3] as number) ?? null,
+						}
+					: null;
+				itemsCache?.set(tag, value);
+				result.set(tag, value);
+			}
+		}
+
+		return result;
 	}
 
 	private getConfig() {
@@ -134,6 +191,14 @@ export class D1NextModeTagCache implements NextModeTagCache {
 
 	protected getBuildId() {
 		return process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
+	}
+
+	/**
+	 * @returns request scoped in-memory cache for tag values, or undefined if ALS is not available.
+	 */
+	protected getItemsCache() {
+		const store = globalThis.__openNextAls?.getStore();
+		return store?.requestCache.getOrCreate<string, D1TagValue | null>("d1-nextMode:tagItems");
 	}
 }
 

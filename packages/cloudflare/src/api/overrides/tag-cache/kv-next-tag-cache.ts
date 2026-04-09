@@ -15,7 +15,6 @@ type KVTagValue =
 	// Old format (<v1.19)
 	// A plain number (the revalidatedAt timestamp in ms) — stored as `String(nowMs)`, reads back as a number via `type:"json"`.
 	| number
-	// TODO(vicb): check
 	// New format (>=v1.19): a JSON object with full tag data.
 	// - revalidatedAt: timestamp in ms of the last revalidation
 	// - stale: timestamp in ms when the tag becomes stale
@@ -69,9 +68,7 @@ export class KVNextModeTagCache implements NextModeTagCache {
 		}
 
 		try {
-			const store = globalThis.__openNextAls?.getStore();
-			const itemsCache = store?.requestCache.getOrCreate<string, KVTagValue | null>("kv-nextMode:tagItems");
-			const result = await this.#resolveTagValues(tags, itemsCache, kv);
+			const result = await this.#resolveTagValues(tags, kv);
 
 			const revalidations = [...result.values()]
 				.filter((v): v is KVTagValue => v != null)
@@ -90,13 +87,11 @@ export class KVNextModeTagCache implements NextModeTagCache {
 	 * Results are stored back into the request cache so repeated calls within the same request
 	 * avoid duplicate KV fetches.
 	 */
-	async #resolveTagValues(
-		tags: string[],
-		itemsCache: Map<string, KVTagValue | null> | undefined,
-		kv: KVNamespace
-	): Promise<Map<string, KVTagValue | null>> {
+	async #resolveTagValues(tags: string[], kv: KVNamespace): Promise<Map<string, KVTagValue | null>> {
 		const result = new Map<string, KVTagValue | null>();
 		const uncachedTags: string[] = [];
+
+		const itemsCache = this.getItemsCache();
 
 		for (const tag of tags) {
 			if (itemsCache?.has(tag)) {
@@ -125,10 +120,8 @@ export class KVNextModeTagCache implements NextModeTagCache {
 			return false;
 		}
 		try {
-			const store = globalThis.__openNextAls?.getStore();
-			const itemsCache = store?.requestCache.getOrCreate<string, KVTagValue | null>("kv-nextMode:tagItems");
 			const now = Date.now();
-			const result = await this.#resolveTagValues(tags, itemsCache, kv);
+			const result = await this.#resolveTagValues(tags, kv);
 			const revalidated = [...result.values()].some((v) => {
 				if (v == null) return false;
 				const expire = getExpire(v);
@@ -181,12 +174,10 @@ export class KVNextModeTagCache implements NextModeTagCache {
 		if (!kv || tags.length === 0) return false;
 
 		try {
-			const store = globalThis.__openNextAls?.getStore();
-			const itemsCache = store?.requestCache.getOrCreate<string, KVTagValue | null>("kv-nextMode:tagItems");
 			const now = Date.now();
-			const result = await this.#resolveTagValues(tags, itemsCache, kv);
+			const result = await this.#resolveTagValues(tags, kv);
 
-			const hasStale = [...result.values()].some((v) => {
+			const isStale = [...result.values()].some((v) => {
 				if (v == null) return false;
 				const stale = getStale(v);
 				if (stale == null || stale <= (lastModified ?? now)) return false;
@@ -194,8 +185,8 @@ export class KVNextModeTagCache implements NextModeTagCache {
 				return expire == null || expire > now;
 			});
 
-			debugCache("KVNextModeTagCache", `isStale tags=${tags} lastModified=${lastModified} -> ${hasStale}`);
-			return hasStale;
+			debugCache("KVNextModeTagCache", `isStale tags=${tags} lastModified=${lastModified} -> ${isStale}`);
+			return isStale;
 		} catch (e) {
 			error(e);
 			return false;
@@ -226,6 +217,14 @@ export class KVNextModeTagCache implements NextModeTagCache {
 
 	protected getBuildId() {
 		return process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
+	}
+
+	/**
+	 * @returns request scoped in-memory cache for tag values, or undefined if ALS is not available.
+	 */
+	protected getItemsCache() {
+		const store = globalThis.__openNextAls?.getStore();
+		return store?.requestCache.getOrCreate<string, KVTagValue | null>("kv-nextMode:tagItems");
 	}
 }
 
