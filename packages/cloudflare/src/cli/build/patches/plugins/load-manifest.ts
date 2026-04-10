@@ -4,11 +4,13 @@
  * They rely on `readFileSync` that is not supported by workerd.
  */
 
+import crypto from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join, posix, relative, sep } from "node:path";
 
+import { Lang, parse } from "@ast-grep/napi";
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
-import { patchCode, type RuleConfig } from "@opennextjs/aws/build/patch/astCodePatcher.js";
+import { applyRule, patchCode, type RuleConfig } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import { glob } from "glob";
@@ -96,23 +98,49 @@ async function getEvalManifestRule(buildOpts: BuildOptions) {
 
 	const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts), ".next");
 	const appDir = join(baseDir, "server/app");
-	const manifests = await glob(join(baseDir, "**/*_client-reference-manifest.js"), {
+	const manifestPaths = await glob(join(baseDir, "**/*_client-reference-manifest.js"), {
 		windowsPathsNoEscape: true,
 	});
 
-	// Sort by path length descending so longer (more specific) paths match first,
-	// preventing suffix collisions in the `.endsWith()` chain (see #1156).
-	const sortedManifests = [...manifests].sort((a, b) => b.length - a.length);
-	const returnManifests = sortedManifests
-		.map((manifest) => {
-			const endsWith = normalizePath(relative(baseDir, manifest));
-			const key = normalizePath("/" + relative(appDir, manifest)).replace(
-				"_client-reference-manifest.js",
-				""
-			);
+	// Map of factored large values (variable name -> value)
+	const factoredValues = new Map<string, string>();
+	// Map of manifest path -> factored manifest content
+	const factoredManifest = new Map<string, string>();
+	for (const path of manifestPaths) {
+		if (path.endsWith("page_client-reference-manifest.js")) {
+			// `page_client-reference-manifest.js` files could contain large repeated values.
+			// Factor out large values into separate variables to reduce the overall size of the generated code.
+			let manifest = await readFile(path, "utf-8");
+			manifest = factorManifestValue(manifest, "clientModules", factoredValues);
+			manifest = factorManifestValue(manifest, "ssrModuleMapping", factoredValues);
+			manifest = factorManifestValue(manifest, "edgeSSRModuleMapping", factoredValues);
+			manifest = factorManifestValue(manifest, "rscModuleMapping", factoredValues);
+			factoredManifest.set(path, manifest);
+		}
+	}
+
+	const factoredValuesCode = [...factoredValues.entries()]
+		.map(([varName, value]) => `const ${varName} = ${value};`)
+		.join("\n");
+
+	const returnManifests = manifestPaths
+		// Sort by path length descending so longer (more specific) paths match first,
+		// preventing suffix collisions in the `.endsWith()` chain (see #1156).
+		.toSorted((a, b) => b.length - a.length)
+		.map((path) => {
+			let manifest: string;
+
+			if (factoredManifest.has(path)) {
+				manifest = factoredManifest.get(path)!;
+			} else {
+				manifest = `require(${JSON.stringify(path)});`;
+			}
+
+			const endsWith = normalizePath(relative(baseDir, path));
+			const key = normalizePath("/" + relative(appDir, path)).replace("_client-reference-manifest.js", "");
 			return `
 if ($PATH.endsWith("${endsWith}")) {
-  require(${JSON.stringify(manifest)});
+  ${manifest}
   return {
     __RSC_MANIFEST: {
     "${key}": globalThis.__RSC_MANIFEST["${key}"],
@@ -130,6 +158,8 @@ function evalManifest($PATH, $$$ARGS) {
 }`,
 		},
 		fix: `
+${factoredValuesCode}
+
 function evalManifest($PATH, $$$ARGS) {
   $PATH = $PATH.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
   ${returnManifests}
@@ -141,4 +171,56 @@ function evalManifest($PATH, $$$ARGS) {
   throw new Error(\`Unexpected evalManifest(\${$PATH}) call!\`);
 }`,
 	} satisfies RuleConfig;
+}
+
+/**
+ * Factor out large manifest values into separate variables.
+ *
+ * @param manifest The manifest code
+ * @param key The key to factor out
+ * @param values A map to store the factored values (indexed by variable name)
+ * @returns The manifest code with large values factored out
+ */
+function factorManifestValue(manifest: string, key: string, values: Map<string, string>): string {
+	const valueName = "VALUE";
+	// ASTGrep rule to extract the value of a specific key from the manifest object in the evalManifest function.
+	//
+	// globalThis.__RSC_MANIFEST["/path/to/page"] = {
+	//  // ...
+	//  key: $VALUE
+	//  // ...
+	// }
+	const extractValueRule = `
+rule:
+  kind: pair
+  all:
+    - has:
+        field: key
+        pattern: '"${key}"'
+    - has:
+        field: value
+        pattern: $${valueName}
+inside:
+  pattern: globalThis.__RSC_MANIFEST[$$$_] = { $$$ };
+  stopBy: end
+fix: '"${key}": $${valueName}'
+`;
+
+	const rootNode = parse(Lang.JavaScript, manifest).root();
+	const { matches } = applyRule(extractValueRule, rootNode, { once: true });
+	if (matches.length === 1 && matches[0]?.getMatch(valueName)) {
+		const match = matches[0];
+		const value = match.getMatch(valueName)!.text();
+		if (value.length > 30) {
+			// Factor out large values into separate variables.
+			// The value is factored out in a variable name `v_${hash}`.
+			const valueVarName = `v_${crypto.createHash("sha1").update(value).digest("hex")}`;
+			values.set(valueVarName, value);
+			// Replace the value in the manifest with the variable reference.
+			return rootNode.commitEdits([match.replace(`"${key}": ${valueVarName}`)]);
+		}
+	}
+
+	// return the original manifest if the value is not found or is small enough to not warrant factoring out.
+	return manifest;
 }
