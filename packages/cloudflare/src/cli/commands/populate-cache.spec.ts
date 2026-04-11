@@ -188,7 +188,7 @@ describe("populateCache", () => {
 					expect(ensureR2Bucket).not.toHaveBeenCalled();
 				}
 
-				expect(fetchMock).toBeCalled();
+				expect(fetchMock).toHaveBeenCalled();
 
 				for (const [input, init] of fetchMock.mock.calls) {
 					expect(input).toBe("http://localhost:12345/populate");

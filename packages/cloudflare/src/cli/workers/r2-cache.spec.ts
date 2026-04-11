@@ -99,7 +99,7 @@ describe("r2-cache worker", () => {
 
 			const body = await response.json();
 			expect(body).toEqual({ success: true });
-			expect(mockPut).toBeCalledTimes(1);
+			expect(mockPut).toHaveBeenCalledTimes(1);
 
 			for (const [key, value] of mockPut.mock.calls) {
 				expect(key).toBe("cache/key1");
