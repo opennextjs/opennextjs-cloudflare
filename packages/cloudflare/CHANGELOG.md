@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.19.1
+
+### Patch Changes
+
+- [#1189](https://github.com/opennextjs/opennextjs-cloudflare/pull/1189) [`236ce14`](https://github.com/opennextjs/opennextjs-cloudflare/commit/236ce14ec9717fa25e64d197081232a2456ebf00) Thanks [@fatihy101](https://github.com/fatihy101)! - fix(tag-cache): forward `isStale()` in `withFilter`
+
 ## 1.19.0
 
 ### Minor Changes
