@@ -30,8 +30,6 @@ vi.mock("../../cloudflare-context", () => ({
 }));
 
 describe("DOShardedTagCache", () => {
-	afterEach(() => vi.clearAllMocks());
-
 	describe("generateShardId", () => {
 		it("should generate a shardId", () => {
 			const cache = shardedDOTagCache();

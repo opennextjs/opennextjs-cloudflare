@@ -16,5 +16,7 @@ export default defineConfig({
 		 * See: https://vitest.dev/config/
 		 */
 		root: ".",
+		clearMocks: true,
+		restoreMocks: true,
 	},
 });

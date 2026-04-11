@@ -1,5 +1,5 @@
 import logger from "@opennextjs/aws/logger.js";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { askConfirmation } from "../utils/ask-confirmation.js";
 import { createWranglerConfigFile } from "../utils/create-wrangler-config.js";
@@ -55,11 +55,6 @@ const defaultArgs = {
 };
 
 describe("buildCommand", () => {
-	afterEach(() => {
-		vi.restoreAllMocks();
-		vi.clearAllMocks();
-	});
-
 	it("should create wrangler config when user confirms", async () => {
 		vi.mocked(askConfirmation).mockResolvedValue(true);
 

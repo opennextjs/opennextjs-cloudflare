@@ -66,10 +66,8 @@ describe("createWranglerConfigFile", () => {
 
 	afterEach(() => {
 		rmSync(tmpDir, { recursive: true, force: true });
-		vi.restoreAllMocks();
 		vi.unstubAllEnvs();
 		vi.unstubAllGlobals();
-		vi.clearAllMocks();
 	});
 
 	it("should create config with caching enabled", async () => {

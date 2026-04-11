@@ -8,7 +8,6 @@ const mockR2Bucket = { put: mockPut } as unknown as R2Bucket;
 
 describe("r2-cache worker", () => {
 	beforeEach(() => {
-		vi.clearAllMocks();
 		vi.useFakeTimers();
 	});
 
