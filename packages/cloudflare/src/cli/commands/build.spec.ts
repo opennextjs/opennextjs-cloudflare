@@ -57,6 +57,7 @@ const defaultArgs = {
 describe("buildCommand", () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it("should create wrangler config when user confirms", async () => {

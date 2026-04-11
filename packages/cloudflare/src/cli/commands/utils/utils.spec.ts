@@ -68,6 +68,7 @@ vi.mock("@opennextjs/aws/build/helper.js", () => ({
 describe("compileConfig", () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it("should compile config when configPath is provided and file exists", async () => {
