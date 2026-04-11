@@ -44,6 +44,10 @@ type Options = {
 	 *
 	 * Note: When this is enabled, make sure that the cache gets purged
 	 *       either by enabling the auto cache purging feature or manually.
+	 * 
+	 * This is currently not compatible with swr types of revalidateTag (i.e. on Next 16+, anything different than `revalidateTag("tag", { expire: 0 })`),
+	 * unless you also enable the `shouldLazilyUpdateOnCacheHit` option to make sure the cache gets updated in the background after a hit,
+	 * and ONLY use it for pages, not data cache entries.
 	 *
 	 * @default `true` if the auto cache purging is enabled, `false` otherwise.
 	 */
@@ -213,8 +217,8 @@ class RegionalCache implements IncrementalCache {
 					"cache-control": `max-age=${age}`,
 					...(tags.length > 0
 						? {
-								"cache-tag": tags.join(","),
-							}
+							"cache-tag": tags.join(","),
+						}
 						: {}),
 				}),
 			})
