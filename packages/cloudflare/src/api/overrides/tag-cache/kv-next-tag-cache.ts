@@ -180,8 +180,15 @@ export class KVNextModeTagCache implements NextModeTagCache {
 			const isStale = [...result.values()].some((v) => {
 				if (v == null) return false;
 				const stale = getStale(v);
-				if (stale == null || stale <= (lastModified ?? now)) return false;
 				const expire = getExpire(v);
+				// A tag is stale when both its stale timestamp and its revalidatedAt are newer than the page.
+				// revalidatedAt > lastModified ensures the revalidation that set this stale window happened
+				// after the page was generated, preventing a stale signal from a previous ISR cycle.
+				const isInStaleWindow =
+					stale != null &&
+					getRevalidatedAt(v) > (lastModified ?? now) &&
+					(lastModified ?? now) <= stale;
+				if (!isInStaleWindow) return false;
 				return expire == null || expire > now;
 			});
 

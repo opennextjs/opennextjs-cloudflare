@@ -105,8 +105,15 @@ export class D1NextModeTagCache implements NextModeTagCache {
 
 			const isStale = [...result.values()].some((v) => {
 				if (v == null) return false;
-				const { stale, expire } = v;
-				if (stale == null || stale <= (lastModified ?? now)) return false;
+				const { revalidatedAt, stale, expire } = v;
+				// A tag is stale when both its stale timestamp and its revalidatedAt are newer than the page.
+				// revalidatedAt > lastModified ensures the revalidation that set this stale window happened
+				// after the page was generated, preventing a stale signal from a previous ISR cycle.
+				const isInStaleWindow =
+					stale != null &&
+					revalidatedAt > (lastModified ?? now) &&
+					(lastModified ?? now) <= stale;
+				if (!isInStaleWindow) return false;
 				return expire == null || expire > now;
 			});
 
@@ -157,10 +164,10 @@ export class D1NextModeTagCache implements NextModeTagCache {
 				const row = rowsByKey.get(this.getCacheKey(tag));
 				const value: D1TagValue | null = row
 					? {
-							revalidatedAt: (row[1] as number) ?? 0,
-							stale: (row[2] as number) ?? null,
-							expire: (row[3] as number) ?? null,
-						}
+						revalidatedAt: (row[1] as number) ?? 0,
+						stale: (row[2] as number) ?? null,
+						expire: (row[3] as number) ?? null,
+					}
 					: null;
 				itemsCache?.set(tag, value);
 				result.set(tag, value);
@@ -180,9 +187,9 @@ export class D1NextModeTagCache implements NextModeTagCache {
 		return !db || isDisabled
 			? { isDisabled: true as const }
 			: {
-					isDisabled: false as const,
-					db,
-				};
+				isDisabled: false as const,
+				db,
+			};
 	}
 
 	protected getCacheKey(key: string) {

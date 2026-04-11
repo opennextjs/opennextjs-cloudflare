@@ -322,6 +322,14 @@ describe("DOShardedTagCache", () => {
 			expect(await cache.isStale(["tag1"], 200)).toBe(false);
 		});
 
+		it("should return false when revalidatedAt <= lastModified even if stale > lastModified", async () => {
+			const cache = shardedDOTagCache();
+			cache.getFromRegionalCache = vi.fn().mockResolvedValueOnce([]);
+			// revalidatedAt=100 <= lastModified=200, so the stale window is from a previous ISR cycle
+			getTagDataMock.mockResolvedValueOnce({ tag1: { revalidatedAt: 100, stale: 300, expire: null } });
+			expect(await cache.isStale(["tag1"], 200)).toBe(false);
+		});
+
 		it("should return from regional cache if available", async () => {
 			vi.useFakeTimers();
 			vi.setSystemTime(500);
