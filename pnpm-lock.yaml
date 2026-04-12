@@ -55,8 +55,8 @@ catalogs:
       specifier: ^13.0.6
       version: 13.0.6
     globals:
-      specifier: ^15.9.0
-      version: 15.9.0
+      specifier: ^17.5.0
+      version: 17.5.0
     mock-fs:
       specifier: ^5.5.0
       version: 5.5.0
@@ -1153,7 +1153,7 @@ importers:
         version: 64.0.0(eslint@9.39.4(jiti@2.6.1))
       globals:
         specifier: 'catalog:'
-        version: 15.9.0
+        version: 17.5.0
       mock-fs:
         specifier: 'catalog:'
         version: 5.5.0
@@ -6143,10 +6143,6 @@ packages:
 
   globals@14.0.0:
     resolution: {integrity: sha512-oahGvuMGQlPw/ivIYBjVSrWAfWLBeku5tpPE2fOPLi+WHffIWbuh2tCjhyQhTBPMf5E9jDEH4FOmTYgYwbKwtQ==}
-    engines: {node: '>=18'}
-
-  globals@15.9.0:
-    resolution: {integrity: sha512-SmSKyLLKFbSr6rptvP8izbyxJL4ILwqO9Jg23UA0sDlGlu58V59D1//I3vlc0KJphVdUR7vMjHIplYnzBxorQA==}
     engines: {node: '>=18'}
 
   globals@17.5.0:
@@ -14949,8 +14945,6 @@ snapshots:
       path-scurry: 1.11.1
 
   globals@14.0.0: {}
-
-  globals@15.9.0: {}
 
   globals@17.5.0: {}
 
