@@ -19,8 +19,8 @@ catalogs:
       specifier: ^1.59.1
       version: 1.59.1
     '@tsconfig/strictest':
-      specifier: ^2.0.5
-      version: 2.0.5
+      specifier: ^2.0.8
+      version: 2.0.8
     '@types/mock-fs':
       specifier: ^4.13.4
       version: 4.13.4
@@ -143,7 +143,7 @@ importers:
     devDependencies:
       '@tsconfig/strictest':
         specifier: 'catalog:'
-        version: 2.0.5
+        version: 2.0.8
       '@types/node':
         specifier: 'catalog:'
         version: 22.12.0
@@ -1120,7 +1120,7 @@ importers:
         version: 9.39.4
       '@tsconfig/strictest':
         specifier: 'catalog:'
-        version: 2.0.5
+        version: 2.0.8
       '@types/mock-fs':
         specifier: 'catalog:'
         version: 4.13.4
@@ -4336,8 +4336,8 @@ packages:
   '@tsconfig/node18@1.0.3':
     resolution: {integrity: sha512-RbwvSJQsuN9TB04AQbGULYfOGE/RnSFk/FLQ5b0NmDf5Kx2q/lABZbHQPKCO1vZ6Fiwkplu+yb9pGdLy1iGseQ==}
 
-  '@tsconfig/strictest@2.0.5':
-    resolution: {integrity: sha512-ec4tjL2Rr0pkZ5hww65c+EEPYwxOi4Ryv+0MtjeaSQRJyq322Q27eOQiFbuNgw2hpL4hB1/W/HBGk3VKS43osg==}
+  '@tsconfig/strictest@2.0.8':
+    resolution: {integrity: sha512-XnQ7vNz5HRN0r88GYf1J9JJjqtZPiHt2woGJOo2dYqyHGGcd6OLGqSlBB6p1j9mpzja6Oe5BoPqWmeDx6X9rLw==}
 
   '@tybys/wasm-util@0.10.1':
     resolution: {integrity: sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg==}
@@ -12748,7 +12748,7 @@ snapshots:
 
   '@tsconfig/node18@1.0.3': {}
 
-  '@tsconfig/strictest@2.0.5': {}
+  '@tsconfig/strictest@2.0.8': {}
 
   '@tybys/wasm-util@0.10.1':
     dependencies:
