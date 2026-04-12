@@ -18,7 +18,7 @@ catalog:
   "@types/react": ^18
   "@types/react-dom": ^18
   "@types/yargs": ^17.0.33
-  esbuild: ^0.27.0
+  esbuild: ^0.28.0
   eslint: ^9.39.4
   eslint-plugin-import: ^2.32.0
   eslint-plugin-simple-import-sort: ^13.0.0
