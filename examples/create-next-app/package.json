@@ -6,7 +6,7 @@
 		"dev": "next dev",
 		"build": "next build",
 		"start": "next start",
-		"lint": "next lint",
+		"lint": "eslint",
 		"build:worker": "pnpm opennextjs-cloudflare build",
 		"preview:worker": "pnpm opennextjs-cloudflare preview",
 		"preview": "pnpm build:worker && pnpm preview:worker",
@@ -23,8 +23,8 @@
 		"@types/node": "catalog:",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
-		"postcss": "^8",
-		"tailwindcss": "^3.4.1",
+		"postcss": "^8.5.9",
+		"tailwindcss": "^4.2.2",
 		"typescript": "catalog:",
 		"wrangler": "catalog:"
 	}

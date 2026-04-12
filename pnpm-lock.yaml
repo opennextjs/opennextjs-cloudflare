@@ -389,11 +389,11 @@ importers:
         specifier: 'catalog:'
         version: 18.3.0
       postcss:
-        specifier: ^8
-        version: 8.4.31
+        specifier: ^8.5.9
+        version: 8.5.9
       tailwindcss:
-        specifier: ^3.4.1
-        version: 3.4.11(ts-node@10.9.1(@types/node@22.12.0)(typescript@5.9.3))
+        specifier: ^4.2.2
+        version: 4.2.2
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -7867,10 +7867,6 @@ packages:
     resolution: {integrity: sha512-6oz2beyjc5VMn/KV1pPw8fliQkhBXrVn1Z3TVyqZxU8kZpzEKhBdmCFqI6ZbmGtamQvQGuU1sgPTk8ZrXDD7jQ==}
     engines: {node: ^10 || ^12 || >=14}
 
-  postcss@8.5.3:
-    resolution: {integrity: sha512-dle9A3yYxlBSrt8Fu+IpjGT8SY8hN0mlaA6GY8t0P5PjIOZemULz/E2Bnm/2dcUOena75OTNkHI76uZBNUUq3A==}
-    engines: {node: ^10 || ^12 || >=14}
-
   postcss@8.5.9:
     resolution: {integrity: sha512-7a70Nsot+EMX9fFU3064K/kdHWZqGVY+BADLyXc8Dfv+mTLLVl6JzJpPaCZ2kQL9gIJvKXSLMHhqdRRjwQeFtw==}
     engines: {node: ^10 || ^12 || >=14}
@@ -8353,10 +8349,6 @@ packages:
       react: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
       react-dom: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
 
-  source-map-js@1.2.0:
-    resolution: {integrity: sha512-itJW8lvSA0TXEphiRoawsCksnlf8SyvmFzIhltqAHluXd88pkCd+cXJVHTDwdCr0IzwptSm035IHQktUu1QUMg==}
-    engines: {node: '>=0.10.0'}
-
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
     engines: {node: '>=0.10.0'}
@@ -8590,6 +8582,9 @@ packages:
 
   tailwindcss@4.1.17:
     resolution: {integrity: sha512-j9Ee2YjuQqYT9bbRTfTZht9W/ytp5H+jJpZKiYdP/bpnXARAuELt9ofP0lPnmHjbga7SNQIxdTAXCmtKVYjN+Q==}
+
+  tailwindcss@4.2.2:
+    resolution: {integrity: sha512-KWBIxs1Xb6NoLdMVqhbhgwZf2PGBpPEiwOqgI4pFIYbNTfBXiKYyWoTsXgBQ9WFg/OlhnvHaY+AEpW7wSmFo2Q==}
 
   tapable@2.2.1:
     resolution: {integrity: sha512-GNzQvQTOIP6RyTfE2Qxb8ZVlNmw0n88vp1szwWRimP02mnTsx3Wtn5qRdqY9w2XduFNUgvOwhNnQsjwCp+kqaQ==}
@@ -12984,7 +12979,7 @@ snapshots:
       '@alloc/quick-lru': 5.2.0
       '@tailwindcss/node': 4.1.17
       '@tailwindcss/oxide': 4.1.17
-      postcss: 8.5.3
+      postcss: 8.5.9
       tailwindcss: 4.1.17
 
   '@tailwindcss/typography@0.5.13(tailwindcss@3.4.5(ts-node@10.9.1(@types/node@20.14.10)(typescript@5.5.3)))':
@@ -16791,18 +16786,22 @@ snapshots:
       read-cache: 1.0.0
       resolve: 1.22.8
 
+  postcss-import@15.1.0(postcss@8.5.9):
+    dependencies:
+      postcss: 8.5.9
+      postcss-value-parser: 4.2.0
+      read-cache: 1.0.0
+      resolve: 1.22.8
+
   postcss-js@4.0.1(postcss@8.5.1):
     dependencies:
       camelcase-css: 2.0.1
       postcss: 8.5.1
 
-  postcss-load-config@4.0.2(postcss@8.5.1)(ts-node@10.9.1(@types/node@20.14.10)(typescript@5.5.3)):
+  postcss-js@4.0.1(postcss@8.5.9):
     dependencies:
-      lilconfig: 3.1.2
-      yaml: 2.7.1
-    optionalDependencies:
-      postcss: 8.5.1
-      ts-node: 10.9.1(@types/node@20.14.10)(typescript@5.5.3)
+      camelcase-css: 2.0.1
+      postcss: 8.5.9
 
   postcss-load-config@4.0.2(postcss@8.5.1)(ts-node@10.9.1(@types/node@20.17.6)(typescript@5.7.3)):
     dependencies:
@@ -16811,14 +16810,6 @@ snapshots:
     optionalDependencies:
       postcss: 8.5.1
       ts-node: 10.9.1(@types/node@20.17.6)(typescript@5.7.3)
-
-  postcss-load-config@4.0.2(postcss@8.5.1)(ts-node@10.9.1(@types/node@20.17.6)(typescript@5.9.3)):
-    dependencies:
-      lilconfig: 3.1.2
-      yaml: 2.7.1
-    optionalDependencies:
-      postcss: 8.5.1
-      ts-node: 10.9.1(@types/node@20.17.6)(typescript@5.9.3)
 
   postcss-load-config@4.0.2(postcss@8.5.1)(ts-node@10.9.1(@types/node@22.12.0)(typescript@5.7.3)):
     dependencies:
@@ -16836,9 +16827,30 @@ snapshots:
       postcss: 8.5.1
       ts-node: 10.9.1(@types/node@22.12.0)(typescript@5.9.3)
 
+  postcss-load-config@4.0.2(postcss@8.5.9)(ts-node@10.9.1(@types/node@20.14.10)(typescript@5.5.3)):
+    dependencies:
+      lilconfig: 3.1.2
+      yaml: 2.7.1
+    optionalDependencies:
+      postcss: 8.5.9
+      ts-node: 10.9.1(@types/node@20.14.10)(typescript@5.5.3)
+
+  postcss-load-config@4.0.2(postcss@8.5.9)(ts-node@10.9.1(@types/node@20.17.6)(typescript@5.9.3)):
+    dependencies:
+      lilconfig: 3.1.2
+      yaml: 2.7.1
+    optionalDependencies:
+      postcss: 8.5.9
+      ts-node: 10.9.1(@types/node@20.17.6)(typescript@5.9.3)
+
   postcss-nested@6.2.0(postcss@8.5.1):
     dependencies:
       postcss: 8.5.1
+      postcss-selector-parser: 6.1.2
+
+  postcss-nested@6.2.0(postcss@8.5.9):
+    dependencies:
+      postcss: 8.5.9
       postcss-selector-parser: 6.1.2
 
   postcss-selector-parser@6.0.10:
@@ -16861,9 +16873,9 @@ snapshots:
 
   postcss@8.4.31:
     dependencies:
-      nanoid: 3.3.7
-      picocolors: 1.0.1
-      source-map-js: 1.2.0
+      nanoid: 3.3.11
+      picocolors: 1.1.1
+      source-map-js: 1.2.1
 
   postcss@8.4.39:
     dependencies:
@@ -16880,12 +16892,6 @@ snapshots:
   postcss@8.5.1:
     dependencies:
       nanoid: 3.3.8
-      picocolors: 1.1.1
-      source-map-js: 1.2.1
-
-  postcss@8.5.3:
-    dependencies:
-      nanoid: 3.3.11
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
@@ -17550,8 +17556,6 @@ snapshots:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
-  source-map-js@1.2.0: {}
-
   source-map-js@1.2.1: {}
 
   source-map-support@0.5.21:
@@ -17776,11 +17780,11 @@ snapshots:
       normalize-path: 3.0.0
       object-hash: 3.0.0
       picocolors: 1.1.0
-      postcss: 8.5.1
-      postcss-import: 15.1.0(postcss@8.5.1)
-      postcss-js: 4.0.1(postcss@8.5.1)
-      postcss-load-config: 4.0.2(postcss@8.5.1)(ts-node@10.9.1(@types/node@20.17.6)(typescript@5.9.3))
-      postcss-nested: 6.2.0(postcss@8.5.1)
+      postcss: 8.5.9
+      postcss-import: 15.1.0(postcss@8.5.9)
+      postcss-js: 4.0.1(postcss@8.5.9)
+      postcss-load-config: 4.0.2(postcss@8.5.9)(ts-node@10.9.1(@types/node@20.17.6)(typescript@5.9.3))
+      postcss-nested: 6.2.0(postcss@8.5.9)
       postcss-selector-parser: 6.1.2
       resolve: 1.22.8
       sucrase: 3.35.0
@@ -17884,11 +17888,11 @@ snapshots:
       normalize-path: 3.0.0
       object-hash: 3.0.0
       picocolors: 1.1.0
-      postcss: 8.5.1
-      postcss-import: 15.1.0(postcss@8.5.1)
-      postcss-js: 4.0.1(postcss@8.5.1)
-      postcss-load-config: 4.0.2(postcss@8.5.1)(ts-node@10.9.1(@types/node@20.14.10)(typescript@5.5.3))
-      postcss-nested: 6.2.0(postcss@8.5.1)
+      postcss: 8.5.9
+      postcss-import: 15.1.0(postcss@8.5.9)
+      postcss-js: 4.0.1(postcss@8.5.9)
+      postcss-load-config: 4.0.2(postcss@8.5.9)(ts-node@10.9.1(@types/node@20.14.10)(typescript@5.5.3))
+      postcss-nested: 6.2.0(postcss@8.5.9)
       postcss-selector-parser: 6.1.2
       resolve: 1.22.8
       sucrase: 3.35.0
@@ -17896,6 +17900,8 @@ snapshots:
       - ts-node
 
   tailwindcss@4.1.17: {}
+
+  tailwindcss@4.2.2: {}
 
   tapable@2.2.1: {}
 
@@ -18304,7 +18310,7 @@ snapshots:
     dependencies:
       browserslist: 4.24.0
       escalade: 3.2.0
-      picocolors: 1.1.0
+      picocolors: 1.1.1
 
   update-browserslist-db@1.1.3(browserslist@4.24.5):
     dependencies:
