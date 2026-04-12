@@ -28,10 +28,10 @@ catalogs:
       specifier: ^22.12.0
       version: 22.12.0
     '@types/react':
-      specifier: ^18
+      specifier: ^18.3
       version: 18.3.3
     '@types/react-dom':
-      specifier: ^18
+      specifier: ^18.3
       version: 18.3.0
     '@types/yargs':
       specifier: ^17.0.33
@@ -64,10 +64,10 @@ catalogs:
       specifier: ~15.5.15
       version: 15.5.15
     react:
-      specifier: ^18
+      specifier: ^18.3.1
       version: 18.3.1
     react-dom:
-      specifier: ^18
+      specifier: ^18.3.1
       version: 18.3.1
     rimraf:
       specifier: ^6.1.3
