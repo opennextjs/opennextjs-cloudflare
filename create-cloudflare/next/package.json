@@ -19,13 +19,12 @@
 		"react-dom": "19.1.5"
 	},
 	"devDependencies": {
-		"@eslint/eslintrc": "^3",
 		"@tailwindcss/postcss": "^4",
 		"@types/node": "^20",
 		"@types/react": "^19.1.5",
 		"@types/react-dom": "^19.1.5",
-		"eslint": "^9",
-		"eslint-config-next": "15.4.6",
+		"eslint": "^9.39.4",
+		"eslint-config-next": "16.1.5",
 		"tailwindcss": "^4",
 		"typescript": "^5.7.4",
 		"wrangler": "^4.65.0"
