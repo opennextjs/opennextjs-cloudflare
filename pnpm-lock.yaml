@@ -58,8 +58,8 @@ catalogs:
       specifier: ^15.9.0
       version: 15.9.0
     mock-fs:
-      specifier: ^5.4.1
-      version: 5.4.1
+      specifier: ^5.5.0
+      version: 5.5.0
     next:
       specifier: ~15.5.15
       version: 15.5.15
@@ -1156,7 +1156,7 @@ importers:
         version: 15.9.0
       mock-fs:
         specifier: 'catalog:'
-        version: 5.4.1
+        version: 5.5.0
       next:
         specifier: 'catalog:'
         version: 15.5.15(@opentelemetry/api@1.9.0)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -7124,8 +7124,8 @@ packages:
   mnemonist@0.38.3:
     resolution: {integrity: sha512-2K9QYubXx/NAjv4VLq1d1Ly8pWNC5L3BrixtdkyTegXWJIqY+zLNDhhX/A+ZwWt70tB1S8H4BE8FLYEFyNoOBw==}
 
-  mock-fs@5.4.1:
-    resolution: {integrity: sha512-sz/Q8K1gXXXHR+qr0GZg2ysxCRr323kuN10O7CtQjraJsFDJ4SJ+0I5MzALz7aRp9lHk8Cc/YdsT95h9Ka1aFw==}
+  mock-fs@5.5.0:
+    resolution: {integrity: sha512-d/P1M/RacgM3dB0sJ8rjeRNXxtapkPCUnMGmIN0ixJ16F/E4GUZCvWcSGfWGz8eaXYvn1s9baUwNjI4LOPEjiA==}
     engines: {node: '>=12.0.0'}
 
   mri@1.2.0:
@@ -15985,7 +15985,7 @@ snapshots:
     dependencies:
       obliterator: 1.6.1
 
-  mock-fs@5.4.1: {}
+  mock-fs@5.5.0: {}
 
   mri@1.2.0: {}
 
