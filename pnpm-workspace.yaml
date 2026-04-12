@@ -8,7 +8,7 @@ packages:
   - benchmarking
 
 catalog:
-  "@cloudflare/workers-types": ^4.20260114.0
+  "@cloudflare/workers-types": ^4.20260412.1
   "@dotenvx/dotenvx": 1.31.0
   "@eslint/js": ^9.39.4
   "@playwright/test": ^1.59.1
@@ -34,7 +34,7 @@ catalog:
   typescript: ^5.9.3
   typescript-eslint: ^8.58.1
   vitest: ^4.1.4
-  wrangler: ^4.65.0
+  wrangler: ^4.81.1
   yargs: ^18.0.0
 
 catalogs:
