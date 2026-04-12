@@ -412,7 +412,7 @@ async function sendEntryToR2Worker(options: {
 						"x-opennext-cache-key": key,
 						"content-length": fs.statSync(filename).size.toString(),
 					},
-					body: Readable.toWeb(fs.createReadStream(filename)) as ReadableStream,
+					body: Readable.toWeb(fs.createReadStream(filename)) as unknown as ReadableStream,
 					signal: AbortSignal.timeout(60_000),
 					// @ts-expect-error - `duplex` is required for streaming request bodies in Node.js
 					duplex: "half",

@@ -28,7 +28,6 @@ describe("MemoryQueue", () => {
 		return () => {
 			vi.useRealTimers();
 			vi.unstubAllEnvs();
-			vi.clearAllMocks();
 		};
 	});
 
