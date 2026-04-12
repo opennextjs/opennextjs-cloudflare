@@ -92,32 +92,32 @@ catalogs:
       version: 18.0.0
   e2e:
     '@types/node':
-      specifier: 20.17.6
-      version: 20.17.6
+      specifier: ^22
+      version: 22.12.0
     '@types/react':
-      specifier: 19.0.4
-      version: 19.0.4
+      specifier: ^19.2
+      version: 19.2.7
     '@types/react-dom':
-      specifier: 19.0.4
-      version: 19.0.4
+      specifier: ^19.2
+      version: 19.2.3
     autoprefixer:
-      specifier: 10.4.15
-      version: 10.4.15
+      specifier: 10.4.27
+      version: 10.4.27
     next:
       specifier: 16.2.3
       version: 16.2.3
     postcss:
-      specifier: 8.4.27
-      version: 8.4.27
+      specifier: 8.5.9
+      version: 8.5.9
     react:
-      specifier: 19.0.4
-      version: 19.0.4
+      specifier: 19.2.5
+      version: 19.2.5
     react-dom:
-      specifier: 19.0.4
-      version: 19.0.4
+      specifier: 19.2.5
+      version: 19.2.5
     tailwindcss:
-      specifier: 3.3.3
-      version: 3.3.3
+      specifier: 3.4.19
+      version: 3.4.19
 
 importers:
 
@@ -411,35 +411,35 @@ importers:
         version: link:../../../packages/cloudflare
       next:
         specifier: catalog:e2e
-        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)
+        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react:
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.5
       react-dom:
         specifier: catalog:e2e
-        version: 19.0.4(react@19.0.4)
+        version: 19.2.5(react@19.2.5)
     devDependencies:
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.51.1
       '@types/node':
         specifier: catalog:e2e
-        version: 20.17.6
+        version: 22.12.0
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.7
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.4(@types/react@19.0.4)
+        version: 19.2.3(@types/react@19.2.7)
       autoprefixer:
         specifier: catalog:e2e
-        version: 10.4.15(postcss@8.4.27)
+        version: 10.4.27(postcss@8.5.9)
       postcss:
         specifier: catalog:e2e
-        version: 8.4.27
+        version: 8.5.9
       tailwindcss:
         specifier: catalog:e2e
-        version: 3.3.3(ts-node@10.9.1(@types/node@20.17.6)(typescript@5.9.3))
+        version: 3.4.19(ts-node@10.9.1(@types/node@22.12.0)(typescript@5.9.3))
       typescript:
         specifier: catalog:default
         version: 5.9.3
@@ -457,35 +457,35 @@ importers:
         version: link:../../../packages/cloudflare
       next:
         specifier: catalog:e2e
-        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)
+        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react:
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.5
       react-dom:
         specifier: catalog:e2e
-        version: 19.0.4(react@19.0.4)
+        version: 19.2.5(react@19.2.5)
     devDependencies:
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.51.1
       '@types/node':
         specifier: catalog:e2e
-        version: 20.17.6
+        version: 22.12.0
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.7
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.4(@types/react@19.0.4)
+        version: 19.2.3(@types/react@19.2.7)
       autoprefixer:
         specifier: catalog:e2e
-        version: 10.4.15(postcss@8.4.27)
+        version: 10.4.27(postcss@8.5.9)
       postcss:
         specifier: catalog:e2e
-        version: 8.4.27
+        version: 8.5.9
       tailwindcss:
         specifier: catalog:e2e
-        version: 3.3.3(ts-node@10.9.1(@types/node@20.17.6)(typescript@5.9.3))
+        version: 3.4.19(ts-node@10.9.1(@types/node@22.12.0)(typescript@5.9.3))
       typescript:
         specifier: catalog:default
         version: 5.9.3
@@ -500,26 +500,26 @@ importers:
         version: link:../../../packages/cloudflare
       next:
         specifier: catalog:e2e
-        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)
+        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react:
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.5
       react-dom:
         specifier: catalog:e2e
-        version: 19.0.4(react@19.0.4)
+        version: 19.2.5(react@19.2.5)
     devDependencies:
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.51.1
       '@types/node':
         specifier: catalog:e2e
-        version: 20.17.6
+        version: 22.12.0
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.7
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.4(@types/react@19.0.4)
+        version: 19.2.3(@types/react@19.2.7)
       typescript:
         specifier: catalog:default
         version: 5.9.3
@@ -537,35 +537,35 @@ importers:
         version: link:../../../packages/cloudflare
       next:
         specifier: catalog:e2e
-        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)
+        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react:
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.5
       react-dom:
         specifier: catalog:e2e
-        version: 19.0.4(react@19.0.4)
+        version: 19.2.5(react@19.2.5)
     devDependencies:
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.51.1
       '@types/node':
         specifier: catalog:e2e
-        version: 20.17.6
+        version: 22.12.0
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.7
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.4(@types/react@19.0.4)
+        version: 19.2.3(@types/react@19.2.7)
       autoprefixer:
         specifier: catalog:e2e
-        version: 10.4.15(postcss@8.4.27)
+        version: 10.4.27(postcss@8.5.9)
       postcss:
         specifier: catalog:e2e
-        version: 8.4.27
+        version: 8.5.9
       tailwindcss:
         specifier: catalog:e2e
-        version: 3.3.3(ts-node@10.9.1(@types/node@20.17.6)(typescript@5.9.3))
+        version: 3.4.19(ts-node@10.9.1(@types/node@22.12.0)(typescript@5.9.3))
       typescript:
         specifier: catalog:default
         version: 5.9.3
@@ -577,20 +577,20 @@ importers:
     dependencies:
       next:
         specifier: catalog:e2e
-        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)
+        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react:
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.5
       react-dom:
         specifier: catalog:e2e
-        version: 19.0.4(react@19.0.4)
+        version: 19.2.5(react@19.2.5)
     devDependencies:
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.7
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.4(@types/react@19.0.4)
+        version: 19.2.3(@types/react@19.2.7)
 
   examples/middleware:
     dependencies:
@@ -694,13 +694,13 @@ importers:
     dependencies:
       next:
         specifier: catalog:e2e
-        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)
+        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react:
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.5
       react-dom:
         specifier: catalog:e2e
-        version: 19.0.4(react@19.0.4)
+        version: 19.2.5(react@19.2.5)
     devDependencies:
       '@opennextjs/cloudflare':
         specifier: workspace:*
@@ -713,10 +713,10 @@ importers:
         version: 22.12.0
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.7
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.4(@types/react@19.0.4)
+        version: 19.2.3(@types/react@19.2.7)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -728,13 +728,13 @@ importers:
     dependencies:
       next:
         specifier: catalog:e2e
-        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)
+        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react:
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.5
       react-dom:
         specifier: catalog:e2e
-        version: 19.0.4(react@19.0.4)
+        version: 19.2.5(react@19.2.5)
     devDependencies:
       '@opennextjs/cloudflare':
         specifier: workspace:*
@@ -747,10 +747,10 @@ importers:
         version: 22.12.0
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.7
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.4(@types/react@19.0.4)
+        version: 19.2.3(@types/react@19.2.7)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -762,13 +762,13 @@ importers:
     dependencies:
       next:
         specifier: catalog:e2e
-        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)
+        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react:
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.5
       react-dom:
         specifier: catalog:e2e
-        version: 19.0.4(react@19.0.4)
+        version: 19.2.5(react@19.2.5)
     devDependencies:
       '@opennextjs/cloudflare':
         specifier: workspace:*
@@ -781,10 +781,10 @@ importers:
         version: 22.12.0
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.7
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.4(@types/react@19.0.4)
+        version: 19.2.3(@types/react@19.2.7)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -796,13 +796,13 @@ importers:
     dependencies:
       next:
         specifier: catalog:e2e
-        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)
+        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react:
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.5
       react-dom:
         specifier: catalog:e2e
-        version: 19.0.4(react@19.0.4)
+        version: 19.2.5(react@19.2.5)
     devDependencies:
       '@opennextjs/cloudflare':
         specifier: workspace:*
@@ -815,10 +815,10 @@ importers:
         version: 22.12.0
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.7
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.4(@types/react@19.0.4)
+        version: 19.2.3(@types/react@19.2.7)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -830,13 +830,13 @@ importers:
     dependencies:
       next:
         specifier: catalog:e2e
-        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)
+        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react:
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.5
       react-dom:
         specifier: catalog:e2e
-        version: 19.0.4(react@19.0.4)
+        version: 19.2.5(react@19.2.5)
     devDependencies:
       '@opennextjs/cloudflare':
         specifier: workspace:*
@@ -849,10 +849,10 @@ importers:
         version: 22.12.0
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.7
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.4(@types/react@19.0.4)
+        version: 19.2.3(@types/react@19.2.7)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -963,23 +963,23 @@ importers:
         version: 6.7.0(prisma@6.7.0(typescript@5.9.3))(typescript@5.9.3)
       next:
         specifier: catalog:e2e
-        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)
+        version: 16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react:
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.5
       react-dom:
         specifier: catalog:e2e
-        version: 19.0.4(react@19.0.4)
+        version: 19.2.5(react@19.2.5)
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
         version: 22.12.0
       '@types/react':
         specifier: catalog:e2e
-        version: 19.0.4
+        version: 19.2.7
       '@types/react-dom':
         specifier: catalog:e2e
-        version: 19.0.4(@types/react@19.0.4)
+        version: 19.2.3(@types/react@19.2.7)
       prisma:
         specifier: ^6.7.0
         version: 6.7.0(typescript@5.9.3)
@@ -1089,7 +1089,7 @@ importers:
         version: 1.31.0
       '@opennextjs/aws':
         specifier: 3.10.1
-        version: 3.10.1(next@15.5.15(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+        version: 3.10.1(next@15.5.15(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))
       cloudflare:
         specifier: ^4.4.1
         version: 4.4.1
@@ -1159,7 +1159,7 @@ importers:
         version: 5.4.1
       next:
         specifier: 'catalog:'
-        version: 15.5.15(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 15.5.15(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       picomatch:
         specifier: ^4.0.2
         version: 4.0.2
@@ -4600,11 +4600,6 @@ packages:
   '@types/react-dom@19.0.0':
     resolution: {integrity: sha512-1KfiQKsH1o00p9m5ag12axHQSb3FOU9H20UTrujVSkNhuCrRHiQWFqgEnTNK5ZNfnzZv8UWrnXVqCmCF9fgY3w==}
 
-  '@types/react-dom@19.0.4':
-    resolution: {integrity: sha512-4fSQ8vWFkg+TGhePfUzVmat3eC14TXYSsiiDSLI0dVLsrm9gZFABjPy/Qu6TKgl1tq1Bu1yDsuQgY3A3DOjCcg==}
-    peerDependencies:
-      '@types/react': ^19.0.0
-
   '@types/react-dom@19.2.3':
     resolution: {integrity: sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==}
     peerDependencies:
@@ -4615,9 +4610,6 @@ packages:
 
   '@types/react@19.0.0':
     resolution: {integrity: sha512-MY3oPudxvMYyesqs/kW1Bh8y9VqSmf+tzqw3ae8a9DZW68pUe3zAdHeI1jc6iAysuRdACnVknHP8AhwD4/dxtg==}
-
-  '@types/react@19.0.4':
-    resolution: {integrity: sha512-3O4QisJDYr1uTUMZHA2YswiQZRq+Pd8D+GdVFYikTutYsTz+QZgWkAPnP7rx9txoI6EXKcPiluMqWPFV3tT9Wg==}
 
   '@types/react@19.0.8':
     resolution: {integrity: sha512-9P/o1IGdfmQxrujGbIMDyYaaCykhLKc0NGCtYcECNUr9UAaDe4gwvV9bR6tvd5Br1SG0j+PBpbKr2UYY8CwqSw==}
@@ -4953,13 +4945,6 @@ packages:
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
 
-  autoprefixer@10.4.15:
-    resolution: {integrity: sha512-KCuPB8ZCIqFdA4HwKXsvz7j6gvSDNhDP7WnUjBleRkKjPdvCmHFuQ77ocavI8FT6NdvlBnE2UFr2H4Mycn8Vew==}
-    engines: {node: ^10 || ^12 || >=14}
-    hasBin: true
-    peerDependencies:
-      postcss: ^8.1.0
-
   autoprefixer@10.4.19:
     resolution: {integrity: sha512-BaENR2+zBZ8xXhM4pUaKUxlVdxZ0EZhjvbopwnXmxRUfqDmwSpC2lAi/QXvx7NRdPCo1WKEcEF6mV64si1z4Ew==}
     engines: {node: ^10 || ^12 || >=14}
@@ -4969,6 +4954,13 @@ packages:
 
   autoprefixer@10.4.20:
     resolution: {integrity: sha512-XY25y5xSv/wEoqzDyXXME4AFfkZI0P23z6Fs3YgymDnKJkCGOnkL0iTxCa85UTqaSgfcqyf3UA6+c7wUvx/16g==}
+    engines: {node: ^10 || ^12 || >=14}
+    hasBin: true
+    peerDependencies:
+      postcss: ^8.1.0
+
+  autoprefixer@10.4.27:
+    resolution: {integrity: sha512-NP9APE+tO+LuJGn7/9+cohklunJsXWiaWEfV3si4Gi/XHDwVNgkwr1J3RQYFIvPy76GmJ9/bW8vyoU1LcxwKHA==}
     engines: {node: ^10 || ^12 || >=14}
     hasBin: true
     peerDependencies:
@@ -5048,6 +5040,11 @@ packages:
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
 
+  browserslist@4.28.2:
+    resolution: {integrity: sha512-48xSriZYYg+8qXna9kwqjIVzuQxi+KYWp2+5nCYnYKPTr0LvD89Jqk2Or5ogxz0NUMfIjhh2lIUX/LyX9B4oIg==}
+    engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
+    hasBin: true
+
   buffer-crc32@0.2.13:
     resolution: {integrity: sha512-VO9Ht/+p3SN7SKWqcrgEzjGbRSJYTx+Q1pTQC0wrWqHx0vpJraQ6GtHx8tvcg1rlK1byhU5gccxgOgj7B0TDkQ==}
 
@@ -5104,6 +5101,9 @@ packages:
 
   caniuse-lite@1.0.30001717:
     resolution: {integrity: sha512-auPpttCq6BDEG8ZAuHJIplGw6GODhjw+/11e7IjpnYCxZcW/ONgPs0KVBJ0d1bY3e2+7PRe5RCLyP+PfwVgkYw==}
+
+  caniuse-lite@1.0.30001787:
+    resolution: {integrity: sha512-mNcrMN9KeI68u7muanUpEejSLghOKlVhRqS/Za2IeyGllJ9I9otGpR9g3nsw7n4W378TE/LyIteA0+/FOZm4Kg==}
 
   ccount@2.0.1:
     resolution: {integrity: sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==}
@@ -5614,6 +5614,9 @@ packages:
 
   electron-to-chromium@1.5.29:
     resolution: {integrity: sha512-PF8n2AlIhCKXQ+gTpiJi0VhcHDb69kYX4MtCiivctc2QD3XuNZ/XIOlbGzt7WAjjEev0TtaH6Cu3arZExm5DOw==}
+
+  electron-to-chromium@1.5.335:
+    resolution: {integrity: sha512-q9n5T4BR4Xwa2cwbrwcsDJtHD/enpQ5S1xF1IAtdqf5AAgqDFmR/aakqH3ChFdqd/QXJhS3rnnXFtexU7rax6Q==}
 
   emoji-regex@10.4.0:
     resolution: {integrity: sha512-EC+0oUMY1Rqm4O6LLrgjtYDvcVYTy7chDnM4Q7030tP4Kwj3u/pR6gP9ygnp2CJMK5Gq+9Q2oqmrFJAz01DXjw==}
@@ -6143,6 +6146,9 @@ packages:
   fraction.js@4.3.7:
     resolution: {integrity: sha512-ZsDfxO51wGAXREY55a7la9LScWpwv9RxIrYABrlvOFBlH/ShPnrtsXeuUIfXKKOVicNxQ+o8JTbJvjS4M89yew==}
 
+  fraction.js@5.3.4:
+    resolution: {integrity: sha512-1X1NTtiJphryn/uLQz3whtY6jK3fTqoE3ohKs0tT+Ujr1W59oopxmoEh7Lu5p6vBaPbgoM0bzveAW4Qi5RyWDQ==}
+
   fresh@2.0.0:
     resolution: {integrity: sha512-Rx/WycZ60HOaqLKAi6cHRKKI7zxWbJ31MhntmtwMoaTeF7XFH9hhBp8vITaMidfljRQ6eYWCKkaTK+ykVJHP2A==}
     engines: {node: '>= 0.8'}
@@ -6653,6 +6659,10 @@ packages:
 
   jiti@1.21.6:
     resolution: {integrity: sha512-2yTgeWTWzMWkHu6Jp9NKgePDaYHbntiwvYuuJLbbN9vl7DC9DvXKOB2BC3ZZ92D3cvV/aflH0osDfwpHepQ53w==}
+    hasBin: true
+
+  jiti@1.21.7:
+    resolution: {integrity: sha512-/imKNG4EbWNrVjoNC/1H5/9GFy+tqjGBHCaSsN+P2RnPqjsLmv6UD3Ej+Kj8nBWaRAwyk7kK5ZUc+OEatnTR3A==}
     hasBin: true
 
   jiti@2.6.1:
@@ -7478,6 +7488,9 @@ packages:
   node-releases@2.0.19:
     resolution: {integrity: sha512-xxOWJsBKtzAq7DY0J+DTzuz58K8e7sJbdgwkbMWQe8UYB6ekmsQ45q0M/tJDsGaZmbC+l7n57UV8Hl5tHxO9uw==}
 
+  node-releases@2.0.37:
+    resolution: {integrity: sha512-1h5gKZCF+pO/o3Iqt5Jp7wc9rH3eJJ0+nh/CIoiRwjRxde/hAHyLPXYN4V3CqKAbiZPSeJFSWHmJsbkicta0Eg==}
+
   nopt@8.1.0:
     resolution: {integrity: sha512-ieGu42u/Qsa4TFktmaKEwM6MQH0pOWnaB3htzh0JRtx84+Mebc0cbZYN5bC+6WTZ4+77xrL9Pn5m7CV6VIkV7A==}
     engines: {node: ^18.17.0 || >=20.5.0}
@@ -7847,10 +7860,6 @@ packages:
   postcss-value-parser@4.2.0:
     resolution: {integrity: sha512-1NNCs6uurfkVbeXG4S8JFT9t19m45ICnif8zWLd5oPSZ50QnwMfK+H3jv408d4jw/7Bttv5axS5IiHoLaVNHeQ==}
 
-  postcss@8.4.27:
-    resolution: {integrity: sha512-gY/ACJtJPSmUFPDCHtX78+01fHa64FaU4zaaWfuh1MhGJISufJAH4cun6k/8fwsHYeK4UQmENQK+tRLCFJE8JQ==}
-    engines: {node: ^10 || ^12 || >=14}
-
   postcss@8.4.31:
     resolution: {integrity: sha512-PS08Iboia9mts/2ygV3eLpY5ghnUcfLV/EXTOW1E2qYxJKGGBUtNjN76FYHnMs36RmARn41bC0AZmn+rR0OVpQ==}
     engines: {node: ^10 || ^12 || >=14}
@@ -8012,15 +8021,15 @@ packages:
     peerDependencies:
       react: 19.0.0-rc-8b08e99e-20240713
 
-  react-dom@19.0.4:
-    resolution: {integrity: sha512-JiVlwQwuINIQf2+XUjtRFtLxhTE6hcyX7ZyCmY0HM7I/Kgi7qyXThkzwzg6uCfu3rTg9Ofe1x8qWYrfqthIrzg==}
-    peerDependencies:
-      react: ^19.0.4
-
   react-dom@19.2.4:
     resolution: {integrity: sha512-AXJdLo8kgMbimY95O2aKQqsz2iWi9jMgKJhRBAxECE4IFxfcazB2LmzloIoibJI3C12IlY20+KFaLv+71bUJeQ==}
     peerDependencies:
       react: ^19.2.4
+
+  react-dom@19.2.5:
+    resolution: {integrity: sha512-J5bAZz+DXMMwW/wV3xzKke59Af6CHY7G4uYLN1OvBcKEsWOs4pQExj86BBKamxl/Ik5bx9whOrvBlSDfWzgSag==}
+    peerDependencies:
+      react: ^19.2.5
 
   react-hook-form@7.54.2:
     resolution: {integrity: sha512-eHpAUgUjWbZocoQYUHposymRb4ZP6d0uwUnooL2uOybA9/3tPUvoAKqEWK1WaSiTxxOfTpffNZP7QwlnM3/gEg==}
@@ -8041,12 +8050,12 @@ packages:
     resolution: {integrity: sha512-j56t3i/sMNftehdO/cA0kFeKDh9Pi1FxKba6u0sRgzZ73HVWii64oUbFxkUmf6I/C9uCmovY3HnFpT7/0UTIaw==}
     engines: {node: '>=0.10.0'}
 
-  react@19.0.4:
-    resolution: {integrity: sha512-6RpEg9/n0sThnO+2CaMLWuvL1iyctm9/lcSTwvmyCoJYD5eiIrwxevXtrMqrtUr96HCdQB8/Yf+oK1QGy8kXEQ==}
-    engines: {node: '>=0.10.0'}
-
   react@19.2.4:
     resolution: {integrity: sha512-9nfp2hYpCwOjAN+8TZFGhtWEwgvWHXqESH8qT89AT/lWklpLON22Lc8pEtnpsZz7VmawabSU0gCjnj8aC0euHQ==}
+    engines: {node: '>=0.10.0'}
+
+  react@19.2.5:
+    resolution: {integrity: sha512-llUJLzz1zTUBrskt2pwZgLq59AemifIftw4aB7JxOqf1HY2FDaGDxgwpAPVzHU1kdWabH7FauP4i1oEeer2WCA==}
     engines: {node: '>=0.10.0'}
 
   read-cache@1.0.0:
@@ -8206,9 +8215,6 @@ packages:
 
   scheduler@0.23.2:
     resolution: {integrity: sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==}
-
-  scheduler@0.25.0:
-    resolution: {integrity: sha512-xFVuu11jh+xcO7JOAGJNOXld8/TcEHK/4CituBUeUb5hqxJLj9YuemAEuvm9gQ/+pgXYfbQuqAkiYu+u7YEsNA==}
 
   scheduler@0.25.0-rc-8b08e99e-20240713:
     resolution: {integrity: sha512-vPAQ9hTVeh54O7K7nTH5rIr060XI2E5xXSLOeiDpZVjtZW9DhZMjq4L82aI8J5EZPwYlWH69SdKBwFMIleNkUQ==}
@@ -8560,11 +8566,6 @@ packages:
     peerDependencies:
       tailwindcss: '>=3.0.0 || insiders'
 
-  tailwindcss@3.3.3:
-    resolution: {integrity: sha512-A0KgSkef7eE4Mf+nKJ83i75TMyq8HqY3qmFIJSWy8bNt0v1lG7jUcpGpoTFxAwYcWOphcTBLPPJg+bDfhDf52w==}
-    engines: {node: '>=14.0.0'}
-    hasBin: true
-
   tailwindcss@3.4.11:
     resolution: {integrity: sha512-qhEuBcLemjSJk5ajccN9xJFtM/h0AVCPaA6C92jNP+M2J8kX+eMJHI7R2HFKUvvAsMpcfLILMCFYSeDwpMmlUg==}
     engines: {node: '>=14.0.0'}
@@ -8572,6 +8573,11 @@ packages:
 
   tailwindcss@3.4.17:
     resolution: {integrity: sha512-w33E2aCvSDP0tW9RZuNXadXlkHXqFzSkQew/aIa2i/Sj8fThxwovwlXHSPXTbAHwEIhBFXAedUhP2tueAKP8Og==}
+    engines: {node: '>=14.0.0'}
+    hasBin: true
+
+  tailwindcss@3.4.19:
+    resolution: {integrity: sha512-3ofp+LL8E+pK/JuPLPggVAIaEuhvIz4qNcf3nA1Xn2o/7fb7s/TYpHhwGDv1ZU3PkBluUVaF8PyCHcm48cKLWQ==}
     engines: {node: '>=14.0.0'}
     hasBin: true
 
@@ -8880,6 +8886,12 @@ packages:
 
   update-browserslist-db@1.1.3:
     resolution: {integrity: sha512-UxhIZQ+QInVdunkDAaiazvvT/+fXL5Osr0JZlJulepYu6Jd7qJtDZjlur0emRlT71EN3ScPoE7gvsuIKKNavKw==}
+    hasBin: true
+    peerDependencies:
+      browserslist: '>= 4.21.0'
+
+  update-browserslist-db@1.2.3:
+    resolution: {integrity: sha512-Js0m9cx+qOgDxo0eMiFGEueWztz+d4+M3rGlmKPT+T4IS/jP4ylw3Nwpu6cpTTP8R1MAC1kF4VbdLt3ARf209w==}
     hasBin: true
     peerDependencies:
       browserslist: '>= 4.21.0'
@@ -12209,7 +12221,7 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 24.2.0
 
-  '@opennextjs/aws@3.10.1(next@15.5.15(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
+  '@opennextjs/aws@3.10.1(next@15.5.15(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))':
     dependencies:
       '@ast-grep/napi': 0.40.5
       '@aws-sdk/client-cloudfront': 3.984.0
@@ -12225,7 +12237,7 @@ snapshots:
       cookie: 1.0.2
       esbuild: 0.25.4
       express: 5.2.1
-      next: 15.5.15(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      next: 15.5.15(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       path-to-regexp: 6.3.0
       urlpattern-polyfill: 10.1.0
       yaml: 2.8.2
@@ -13140,10 +13152,6 @@ snapshots:
     dependencies:
       '@types/react': 19.0.8
 
-  '@types/react-dom@19.0.4(@types/react@19.0.4)':
-    dependencies:
-      '@types/react': 19.0.4
-
   '@types/react-dom@19.2.3(@types/react@19.2.7)':
     dependencies:
       '@types/react': 19.2.7
@@ -13156,10 +13164,6 @@ snapshots:
   '@types/react@19.0.0':
     dependencies:
       csstype: 3.1.3
-
-  '@types/react@19.0.4':
-    dependencies:
-      csstype: 3.2.3
 
   '@types/react@19.0.8':
     dependencies:
@@ -13651,16 +13655,6 @@ snapshots:
 
   asynckit@0.4.0: {}
 
-  autoprefixer@10.4.15(postcss@8.4.27):
-    dependencies:
-      browserslist: 4.24.0
-      caniuse-lite: 1.0.30001664
-      fraction.js: 4.3.7
-      normalize-range: 0.1.2
-      picocolors: 1.1.0
-      postcss: 8.4.27
-      postcss-value-parser: 4.2.0
-
   autoprefixer@10.4.19(postcss@8.4.39):
     dependencies:
       browserslist: 4.24.0
@@ -13679,6 +13673,15 @@ snapshots:
       normalize-range: 0.1.2
       picocolors: 1.1.0
       postcss: 8.4.47
+      postcss-value-parser: 4.2.0
+
+  autoprefixer@10.4.27(postcss@8.5.9):
+    dependencies:
+      browserslist: 4.28.2
+      caniuse-lite: 1.0.30001787
+      fraction.js: 5.3.4
+      picocolors: 1.1.1
+      postcss: 8.5.9
       postcss-value-parser: 4.2.0
 
   available-typed-arrays@1.0.7:
@@ -13765,6 +13768,14 @@ snapshots:
       node-releases: 2.0.19
       update-browserslist-db: 1.1.3(browserslist@4.24.5)
 
+  browserslist@4.28.2:
+    dependencies:
+      baseline-browser-mapping: 2.10.13
+      caniuse-lite: 1.0.30001787
+      electron-to-chromium: 1.5.335
+      node-releases: 2.0.37
+      update-browserslist-db: 1.2.3(browserslist@4.28.2)
+
   buffer-crc32@0.2.13: {}
 
   buffer-equal-constant-time@1.0.1: {}
@@ -13812,6 +13823,8 @@ snapshots:
   caniuse-lite@1.0.30001664: {}
 
   caniuse-lite@1.0.30001717: {}
+
+  caniuse-lite@1.0.30001787: {}
 
   ccount@2.0.1: {}
 
@@ -14194,6 +14207,8 @@ snapshots:
   electron-to-chromium@1.5.149: {}
 
   electron-to-chromium@1.5.29: {}
+
+  electron-to-chromium@1.5.335: {}
 
   emoji-regex@10.4.0: {}
 
@@ -15006,6 +15021,8 @@ snapshots:
 
   fraction.js@4.3.7: {}
 
+  fraction.js@5.3.4: {}
+
   fresh@2.0.0: {}
 
   fs-constants@1.0.0: {}
@@ -15576,6 +15593,8 @@ snapshots:
       '@isaacs/cliui': 8.0.2
 
   jiti@1.21.6: {}
+
+  jiti@1.21.7: {}
 
   jiti@2.6.1: {}
 
@@ -16376,25 +16395,24 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
-  next@16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.0.4(react@19.0.4))(react@19.0.4):
+  next@15.5.15(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
     dependencies:
-      '@next/env': 16.2.3
+      '@next/env': 15.5.15
       '@swc/helpers': 0.5.15
-      baseline-browser-mapping: 2.10.13
       caniuse-lite: 1.0.30001717
       postcss: 8.4.31
-      react: 19.0.4
-      react-dom: 19.0.4(react@19.0.4)
-      styled-jsx: 5.1.6(react@19.0.4)
+      react: 19.2.5
+      react-dom: 19.2.5(react@19.2.5)
+      styled-jsx: 5.1.6(react@19.2.5)
     optionalDependencies:
-      '@next/swc-darwin-arm64': 16.2.3
-      '@next/swc-darwin-x64': 16.2.3
-      '@next/swc-linux-arm64-gnu': 16.2.3
-      '@next/swc-linux-arm64-musl': 16.2.3
-      '@next/swc-linux-x64-gnu': 16.2.3
-      '@next/swc-linux-x64-musl': 16.2.3
-      '@next/swc-win32-arm64-msvc': 16.2.3
-      '@next/swc-win32-x64-msvc': 16.2.3
+      '@next/swc-darwin-arm64': 15.5.15
+      '@next/swc-darwin-x64': 15.5.15
+      '@next/swc-linux-arm64-gnu': 15.5.15
+      '@next/swc-linux-arm64-musl': 15.5.15
+      '@next/swc-linux-x64-gnu': 15.5.15
+      '@next/swc-linux-x64-musl': 15.5.15
+      '@next/swc-win32-arm64-msvc': 15.5.15
+      '@next/swc-win32-x64-msvc': 15.5.15
       '@opentelemetry/api': 1.9.0
       '@playwright/test': 1.51.1
       sharp: 0.34.5
@@ -16412,6 +16430,32 @@ snapshots:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
       styled-jsx: 5.1.6(react@19.2.4)
+    optionalDependencies:
+      '@next/swc-darwin-arm64': 16.2.3
+      '@next/swc-darwin-x64': 16.2.3
+      '@next/swc-linux-arm64-gnu': 16.2.3
+      '@next/swc-linux-arm64-musl': 16.2.3
+      '@next/swc-linux-x64-gnu': 16.2.3
+      '@next/swc-linux-x64-musl': 16.2.3
+      '@next/swc-win32-arm64-msvc': 16.2.3
+      '@next/swc-win32-x64-msvc': 16.2.3
+      '@opentelemetry/api': 1.9.0
+      '@playwright/test': 1.51.1
+      sharp: 0.34.5
+    transitivePeerDependencies:
+      - '@babel/core'
+      - babel-plugin-macros
+
+  next@16.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.51.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
+    dependencies:
+      '@next/env': 16.2.3
+      '@swc/helpers': 0.5.15
+      baseline-browser-mapping: 2.10.13
+      caniuse-lite: 1.0.30001717
+      postcss: 8.4.31
+      react: 19.2.5
+      react-dom: 19.2.5(react@19.2.5)
+      styled-jsx: 5.1.6(react@19.2.5)
     optionalDependencies:
       '@next/swc-darwin-arm64': 16.2.3
       '@next/swc-darwin-x64': 16.2.3
@@ -16465,6 +16509,8 @@ snapshots:
 
   node-releases@2.0.19: {}
 
+  node-releases@2.0.37: {}
+
   nopt@8.1.0:
     dependencies:
       abbrev: 3.0.0
@@ -16472,7 +16518,7 @@ snapshots:
   normalize-package-data@2.5.0:
     dependencies:
       hosted-git-info: 2.8.9
-      resolve: 1.22.10
+      resolve: 1.22.11
       semver: 5.7.2
       validate-npm-package-license: 3.0.4
 
@@ -16835,13 +16881,13 @@ snapshots:
       postcss: 8.5.9
       ts-node: 10.9.1(@types/node@20.14.10)(typescript@5.5.3)
 
-  postcss-load-config@4.0.2(postcss@8.5.9)(ts-node@10.9.1(@types/node@20.17.6)(typescript@5.9.3)):
+  postcss-load-config@4.0.2(postcss@8.5.9)(ts-node@10.9.1(@types/node@22.12.0)(typescript@5.9.3)):
     dependencies:
       lilconfig: 3.1.2
       yaml: 2.7.1
     optionalDependencies:
       postcss: 8.5.9
-      ts-node: 10.9.1(@types/node@20.17.6)(typescript@5.9.3)
+      ts-node: 10.9.1(@types/node@22.12.0)(typescript@5.9.3)
 
   postcss-nested@6.2.0(postcss@8.5.1):
     dependencies:
@@ -16864,12 +16910,6 @@ snapshots:
       util-deprecate: 1.0.2
 
   postcss-value-parser@4.2.0: {}
-
-  postcss@8.4.27:
-    dependencies:
-      nanoid: 3.3.7
-      picocolors: 1.1.0
-      source-map-js: 1.2.1
 
   postcss@8.4.31:
     dependencies:
@@ -17071,14 +17111,14 @@ snapshots:
       react: 19.0.0-rc-8b08e99e-20240713
       scheduler: 0.25.0-rc-8b08e99e-20240713
 
-  react-dom@19.0.4(react@19.0.4):
-    dependencies:
-      react: 19.0.4
-      scheduler: 0.25.0
-
   react-dom@19.2.4(react@19.2.4):
     dependencies:
       react: 19.2.4
+      scheduler: 0.27.0
+
+  react-dom@19.2.5(react@19.2.5):
+    dependencies:
+      react: 19.2.5
       scheduler: 0.27.0
 
   react-hook-form@7.54.2(react@19.2.4):
@@ -17095,9 +17135,9 @@ snapshots:
 
   react@19.0.0-rc-8b08e99e-20240713: {}
 
-  react@19.0.4: {}
-
   react@19.2.4: {}
+
+  react@19.2.5: {}
 
   read-cache@1.0.0:
     dependencies:
@@ -17221,7 +17261,6 @@ snapshots:
       is-core-module: 2.16.1
       path-parse: 1.0.7
       supports-preserve-symlinks-flag: 1.0.0
-    optional: true
 
   resolve@1.22.8:
     dependencies:
@@ -17346,8 +17385,6 @@ snapshots:
   scheduler@0.23.2:
     dependencies:
       loose-envify: 1.4.0
-
-  scheduler@0.25.0: {}
 
   scheduler@0.25.0-rc-8b08e99e-20240713: {}
 
@@ -17724,15 +17761,15 @@ snapshots:
       client-only: 0.0.1
       react: 19.0.0-rc-8b08e99e-20240713
 
-  styled-jsx@5.1.6(react@19.0.4):
-    dependencies:
-      client-only: 0.0.1
-      react: 19.0.4
-
   styled-jsx@5.1.6(react@19.2.4):
     dependencies:
       client-only: 0.0.1
       react: 19.2.4
+
+  styled-jsx@5.1.6(react@19.2.5):
+    dependencies:
+      client-only: 0.0.1
+      react: 19.2.5
 
   sucrase@3.35.0:
     dependencies:
@@ -17763,33 +17800,6 @@ snapshots:
   tailwindcss-animate@1.0.7(tailwindcss@3.4.11(ts-node@10.9.1(@types/node@20.17.6)(typescript@5.7.3))):
     dependencies:
       tailwindcss: 3.4.11(ts-node@10.9.1(@types/node@20.17.6)(typescript@5.7.3))
-
-  tailwindcss@3.3.3(ts-node@10.9.1(@types/node@20.17.6)(typescript@5.9.3)):
-    dependencies:
-      '@alloc/quick-lru': 5.2.0
-      arg: 5.0.2
-      chokidar: 3.6.0
-      didyoumean: 1.2.2
-      dlv: 1.1.3
-      fast-glob: 3.3.2
-      glob-parent: 6.0.2
-      is-glob: 4.0.3
-      jiti: 1.21.6
-      lilconfig: 2.1.0
-      micromatch: 4.0.7
-      normalize-path: 3.0.0
-      object-hash: 3.0.0
-      picocolors: 1.1.0
-      postcss: 8.5.9
-      postcss-import: 15.1.0(postcss@8.5.9)
-      postcss-js: 4.0.1(postcss@8.5.9)
-      postcss-load-config: 4.0.2(postcss@8.5.9)(ts-node@10.9.1(@types/node@20.17.6)(typescript@5.9.3))
-      postcss-nested: 6.2.0(postcss@8.5.9)
-      postcss-selector-parser: 6.1.2
-      resolve: 1.22.8
-      sucrase: 3.35.0
-    transitivePeerDependencies:
-      - ts-node
 
   tailwindcss@3.4.11(ts-node@10.9.1(@types/node@20.17.6)(typescript@5.7.3)):
     dependencies:
@@ -17868,6 +17878,33 @@ snapshots:
       postcss-nested: 6.2.0(postcss@8.5.1)
       postcss-selector-parser: 6.1.2
       resolve: 1.22.8
+      sucrase: 3.35.0
+    transitivePeerDependencies:
+      - ts-node
+
+  tailwindcss@3.4.19(ts-node@10.9.1(@types/node@22.12.0)(typescript@5.9.3)):
+    dependencies:
+      '@alloc/quick-lru': 5.2.0
+      arg: 5.0.2
+      chokidar: 3.6.0
+      didyoumean: 1.2.2
+      dlv: 1.1.3
+      fast-glob: 3.3.3
+      glob-parent: 6.0.2
+      is-glob: 4.0.3
+      jiti: 1.21.7
+      lilconfig: 3.1.3
+      micromatch: 4.0.8
+      normalize-path: 3.0.0
+      object-hash: 3.0.0
+      picocolors: 1.1.1
+      postcss: 8.5.9
+      postcss-import: 15.1.0(postcss@8.5.9)
+      postcss-js: 4.0.1(postcss@8.5.9)
+      postcss-load-config: 4.0.2(postcss@8.5.9)(ts-node@10.9.1(@types/node@22.12.0)(typescript@5.9.3))
+      postcss-nested: 6.2.0(postcss@8.5.9)
+      postcss-selector-parser: 6.1.2
+      resolve: 1.22.11
       sucrase: 3.35.0
     transitivePeerDependencies:
       - ts-node
@@ -18077,25 +18114,6 @@ snapshots:
       diff: 4.0.2
       make-error: 1.3.6
       typescript: 5.7.3
-      v8-compile-cache-lib: 3.0.1
-      yn: 3.1.1
-    optional: true
-
-  ts-node@10.9.1(@types/node@20.17.6)(typescript@5.9.3):
-    dependencies:
-      '@cspotcode/source-map-support': 0.8.1
-      '@tsconfig/node10': 1.0.11
-      '@tsconfig/node12': 1.0.11
-      '@tsconfig/node14': 1.0.3
-      '@tsconfig/node16': 1.0.4
-      '@types/node': 20.17.6
-      acorn: 8.14.1
-      acorn-walk: 8.3.3
-      arg: 4.1.3
-      create-require: 1.1.1
-      diff: 4.0.2
-      make-error: 1.3.6
-      typescript: 5.9.3
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
     optional: true
@@ -18315,6 +18333,12 @@ snapshots:
   update-browserslist-db@1.1.3(browserslist@4.24.5):
     dependencies:
       browserslist: 4.24.5
+      escalade: 3.2.0
+      picocolors: 1.1.1
+
+  update-browserslist-db@1.2.3(browserslist@4.28.2):
+    dependencies:
+      browserslist: 4.28.2
       escalade: 3.2.0
       picocolors: 1.1.1
 
