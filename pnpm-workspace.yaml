@@ -27,7 +27,6 @@ catalog:
   globals: ^15.9.0
   mock-fs: ^5.4.1
   next: ~15.5.15
-  package-manager-detector: ^0.2.0
   react: ^18
   react-dom: ^18
   rimraf: ^6.0.1
