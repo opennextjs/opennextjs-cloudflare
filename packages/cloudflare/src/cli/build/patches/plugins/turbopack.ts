@@ -64,12 +64,19 @@ ${chunks
 `;
 }
 
-// Turbopack imports `og` via `externalImport`.
+// Turbopack imports modules via `externalImport`.
 // We patch it to:
 // - add the explicit path so that the file is inlined by wrangler
 // - use the edge version of the module instead of the node version.
+// - handle Turbopack's hashed module IDs (e.g. `shiki-43d062b67f27bbdc/core`)
+//   by stripping the content hash and using require() with the real package name.
 //
-// Modules that are not inlined (no added to the switch), would generate an error similar to:
+// Turbopack externalizes packages with hashed IDs of the form `<pkg>-<hex16+>[/subpath]`.
+// These IDs are not valid in workerd (no registered module), but the real package
+// IS available via require() in the bundled node_modules. We detect this pattern
+// at runtime and fall back to require() instead of await import().
+//
+// Modules that are not inlined (not added to the switch), would generate an error similar to:
 // Failed to load external module path/to/module: Error: No such module "path/to/module"
 const inlineExternalImportRule = `
 rule:
@@ -83,7 +90,15 @@ fix: |-
     case "next/dist/compiled/@vercel/og/index.node.js":
       $RAW = await import("next/dist/compiled/@vercel/og/index.edge.js");
       break;
-    default:
-      $RAW = await import($ID);
+    default: {
+      // Turbopack hashes external package IDs: e.g. "shiki-43d062b67f27bbdc/core"
+      // Strip the hash suffix to recover the real package name, then use require().
+      const __dehashedId = $ID.replace(/^((?:@[^/]+\/)?[^/]+?)-[0-9a-f]{16,}(\/[^]*)?$/, "$1$2");
+      if (__dehashedId !== $ID) {
+        $RAW = require(__dehashedId || $ID);
+      } else {
+        $RAW = await import($ID);
+      }
+    }
   }
 `;
