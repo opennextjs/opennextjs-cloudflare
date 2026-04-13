@@ -6,7 +6,7 @@
 		"@changesets/changelog-github": "^0.6.0",
 		"@changesets/cli": "^2.30.0",
 		"@playwright/test": "catalog:",
-		"pkg-pr-new": "^0.0.60",
+		"pkg-pr-new": "^0.0.66",
 		"prettier": "3.3.3"
 	},
 	"scripts": {
