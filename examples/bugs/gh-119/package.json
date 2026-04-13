@@ -6,7 +6,6 @@
 		"dev": "next dev",
 		"build": "next build",
 		"start": "next start",
-		"lint": "next lint",
 		"build:worker": "pnpm opennextjs-cloudflare build",
 		"preview:worker": "pnpm opennextjs-cloudflare preview",
 		"preview": "pnpm build:worker && pnpm preview:worker",
@@ -14,21 +13,17 @@
 		"cf-typegen": "wrangler types --env-interface CloudflareEnv"
 	},
 	"dependencies": {
-		"next": "15.5.15",
-		"react-dom": "^18.3.1",
-		"react": "^18.3.1"
+		"next": "catalog:",
+		"react-dom": "catalog:e2e",
+		"react": "catalog:e2e"
 	},
 	"devDependencies": {
 		"@opennextjs/cloudflare": "workspace:*",
 		"@playwright/test": "catalog:",
-		"@types/node": "^20",
-		"@types/react-dom": "^18",
-		"@types/react": "^18",
-		"eslint-config-next": "15.0.4",
-		"eslint": "^8",
-		"postcss": "^8",
-		"tailwindcss": "^3.4.1",
-		"typescript": "^5",
+		"@types/node": "catalog:e2e",
+		"@types/react-dom": "catalog:e2e",
+		"@types/react": "catalog:e2e",
+		"typescript": "catalog:",
 		"wrangler": "catalog:"
 	}
 }

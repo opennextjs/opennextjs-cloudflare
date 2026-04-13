@@ -1,11 +1,10 @@
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+import type { NextConfig } from "next";
 
-initOpenNextCloudflareForDev();
-
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
 	typescript: { ignoreBuildErrors: true },
-	eslint: { ignoreDuringBuilds: true },
 };
 
 export default nextConfig;
+
+initOpenNextCloudflareForDev();
