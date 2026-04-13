@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { askConfirmation } from "../../utils/ask-confirmation.js";
 import { createOpenNextConfigFile, findOpenNextConfig } from "../../utils/create-open-next-config.js";
+import { isInteractive } from "../../utils/is-interactive.js";
 import { compileConfig } from "./utils.js";
 
 const { mockExistsSync } = vi.hoisted(() => ({
@@ -38,6 +39,12 @@ vi.mock("../../utils/ask-confirmation.js", () => ({
 	askConfirmation: vi.fn(),
 }));
 
+// Mock isInteractive — default to interactive (TTY) so existing tests
+// keep exercising the prompt branch. Non-interactive cases override it.
+vi.mock("../../utils/is-interactive.js", () => ({
+	isInteractive: vi.fn(() => true),
+}));
+
 // Mock create-config-files (unused import in utils.ts but required for module resolution)
 vi.mock("../../utils/create-config-files.js", () => ({
 	createOpenNextConfigIfNotExistent: vi.fn(),
@@ -66,6 +73,10 @@ vi.mock("@opennextjs/aws/build/helper.js", () => ({
 }));
 
 describe("compileConfig", () => {
+	beforeEach(() => {
+		vi.mocked(isInteractive).mockReturnValue(true);
+	});
+
 	it("should compile config when configPath is provided and file exists", async () => {
 		mockExistsSync.mockReturnValue(true);
 
@@ -122,5 +133,28 @@ describe("compileConfig", () => {
 
 		expect(askConfirmation).toHaveBeenCalledOnce();
 		expect(createOpenNextConfigFile).not.toHaveBeenCalled();
+	});
+
+	it("should throw a helpful error (without prompting) when no configPath found in a non-interactive environment", async () => {
+		vi.mocked(findOpenNextConfig).mockReturnValue(undefined);
+		vi.mocked(isInteractive).mockReturnValue(false);
+
+		await expect(compileConfig(undefined)).rejects.toThrowError(
+			/No `open-next\.config\.ts` file was found.*defineCloudflareConfig/s
+		);
+
+		expect(askConfirmation).not.toHaveBeenCalled();
+		expect(createOpenNextConfigFile).not.toHaveBeenCalled();
+	});
+
+	it("should still prompt in interactive environments", async () => {
+		vi.mocked(findOpenNextConfig).mockReturnValue(undefined);
+		vi.mocked(isInteractive).mockReturnValue(true);
+		vi.mocked(askConfirmation).mockResolvedValue(true);
+
+		await compileConfig(undefined);
+
+		expect(askConfirmation).toHaveBeenCalledOnce();
+		expect(createOpenNextConfigFile).toHaveBeenCalledOnce();
 	});
 });

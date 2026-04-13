@@ -14,6 +14,7 @@ import type { OpenNextConfig } from "../../../api/config.js";
 import { ensureCloudflareConfig } from "../../build/utils/ensure-cf-config.js";
 import { askConfirmation } from "../../utils/ask-confirmation.js";
 import { createOpenNextConfigFile, findOpenNextConfig } from "../../utils/create-open-next-config.js";
+import { isInteractive } from "../../utils/is-interactive.js";
 
 export type WithWranglerArgs<T = unknown> = T & {
 	// Array of arguments that can be given to wrangler commands, including the `--config` and `--env` args.
@@ -58,6 +59,21 @@ export async function compileConfig(configPath: string | undefined) {
 	configPath ??= findOpenNextConfig(nextAppDir);
 
 	if (!configPath) {
+		// In non-interactive environments (CI, Cloudflare Workers Builds,
+		// Docker, etc.) there is no TTY to answer a prompt — the build would
+		// hang or crash. Fail fast with an actionable message instead.
+		if (!isInteractive()) {
+			throw new Error(
+				"No `open-next.config.ts` file was found in the project root.\n\n" +
+					"This file is required for OpenNext Cloudflare builds. Create it with:\n\n" +
+					"    import { defineCloudflareConfig } from '@opennextjs/cloudflare';\n" +
+					"\n" +
+					"    export default defineCloudflareConfig({});\n\n" +
+					"Commit it and re-run the build. (To create it interactively, run " +
+					"`opennextjs-cloudflare build` in a terminal with TTY access.)"
+			);
+		}
+
 		const answer = await askConfirmation(
 			"Missing required `open-next.config.ts` file, do you want to create one?"
 		);
