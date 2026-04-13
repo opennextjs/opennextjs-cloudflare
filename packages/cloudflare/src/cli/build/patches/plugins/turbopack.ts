@@ -23,15 +23,11 @@ fix:
  * statically analyze those hashed names. This function discovers the mappings so we can
  * generate explicit switch cases for the bundler.
  *
- * @param filePath Absolute path to the Turbopack runtime file (e.g. `.next/server/chunks/ssr/[turbopack]_runtime.js`),
- *                 used to locate the `.next/node_modules/` directory.
+ * @param appBuildOutputPath Absolute path to the `.next` build output directory.
  * @returns A map from hashed identifiers to real package names (e.g. "shiki-43d062b67f27bbdc" -> "shiki").
  */
-function discoverExternalModuleMappings(filePath: string): Map<string, string> {
-	// filePath is like: .../.next/server/chunks/ssr/[turbopack]_runtime.js
-	// We need: .../.next/node_modules/
-	const dotNextDir = filePath.replace(/\/server\/chunks\/.*$/, "");
-	const nodeModulesDir = path.join(dotNextDir, "node_modules");
+function discoverExternalModuleMappings(appBuildOutputPath: string): Map<string, string> {
+	const nodeModulesDir = path.join(appBuildOutputPath, "node_modules");
 
 	const mappings = new Map<string, string>();
 
@@ -105,7 +101,10 @@ function buildExternalImportRule(
 	}
 
 	// Indent each case line by 4 spaces to align with the switch body in the YAML fix block.
-	const indentedCases = cases.map((c) => c.replace(/^/gm, "    ")).join("\n");
+	const indentedCases = cases
+		.flatMap((c) => c.split("\n"))
+		.map((line) => `    ${line}`)
+		.join("\n");
 
 	return `
 rule:
@@ -141,18 +140,18 @@ function discoverBareExternalImports(tracedFiles: string[], runtimeCode: string)
 	if (!propMatch?.[1]) {
 		return bareImports;
 	}
-	const prop = propMatch[1];
+	const externalImportAlias = propMatch[1];
 
 	// Chunks call externalImport as e.g. `.y("shiki")` — build a regex using the discovered property name.
-	const callPattern = new RegExp(`\\.${prop}\\("([^"]+)"\\)`, "g");
+	const externalImportRegexp = new RegExp(`\\.${externalImportAlias}\\("([^"]+)"\\)`, "g");
 
 	const chunkFiles = tracedFiles.filter((f) => f.includes(".next/server/chunks/"));
 
 	for (const filePath of chunkFiles) {
 		try {
 			const content = fs.readFileSync(filePath, "utf-8");
-			for (const match of content.matchAll(callPattern)) {
-				const moduleName = match[1];
+			for (const externalImportMatch of content.matchAll(externalImportRegexp)) {
+				const moduleName = externalImportMatch[1];
 				if (moduleName) {
 					// Identity mapping — the module name is already the real name
 					bareImports.set(moduleName, moduleName);
@@ -183,6 +182,7 @@ function discoverExternalSubpaths(mappings: Map<string, string>, tracedFiles: st
 		// E.g. for hashedName "shiki-43d062b67f27bbdc", this matches strings like
 		// "shiki-43d062b67f27bbdc/wasm" or "shiki-43d062b67f27bbdc/engine/javascript".
 		// The hashedName is escaped to safely use it as a literal in the regex pattern.
+		// TODO: Replace with `RegExp.escape(...)` after dropping Node.js v22 support
 		const escaped = hashedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 		const pattern = new RegExp(`"(${escaped}/[^"]*)"`, "g");
 
@@ -215,8 +215,8 @@ export const patchTurbopackRuntime: CodePatcher = {
 				escape: false,
 			}),
 			contentFilter: /loadRuntimeChunkPath/,
-			patchCode: async ({ code, tracedFiles, filePath }) => {
-				const mappings = discoverExternalModuleMappings(filePath);
+			patchCode: async ({ code, tracedFiles, buildOptions }) => {
+				const mappings = discoverExternalModuleMappings(buildOptions.appBuildOutputPath);
 				const externalImportRule = buildExternalImportRule(mappings, tracedFiles, code);
 				let patched = patchCode(code, externalImportRule);
 				patched = patchCode(patched, inlineChunksRule);
