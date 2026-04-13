@@ -292,6 +292,9 @@ importers:
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.59.1
+      '@tailwindcss/postcss':
+        specifier: ^4.2.2
+        version: 4.2.2
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.17
