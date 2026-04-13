@@ -7,7 +7,7 @@
 		"@changesets/cli": "^2.30.0",
 		"@playwright/test": "catalog:",
 		"pkg-pr-new": "^0.0.66",
-		"prettier": "3.3.3"
+		"prettier": "3.8.2"
 	},
 	"scripts": {
 		"fix": "pnpm prettier:fix && pnpm lint:fix",

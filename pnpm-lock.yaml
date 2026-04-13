@@ -136,8 +136,8 @@ importers:
         specifier: ^0.0.66
         version: 0.0.66
       prettier:
-        specifier: 3.3.3
-        version: 3.3.3
+        specifier: 3.8.2
+        version: 3.8.2
 
   benchmarking:
     devDependencies:
@@ -7129,8 +7129,8 @@ packages:
     engines: {node: '>=10.13.0'}
     hasBin: true
 
-  prettier@3.3.3:
-    resolution: {integrity: sha512-i2tDNA0O5IrMO757lfrdQZCc2jPNDVntV0m/+4whiDfWaTKfMNgR7Qz0NAeGz/nRqF4m5/6CLzbP4/liHt12Ew==}
+  prettier@3.8.2:
+    resolution: {integrity: sha512-8c3mgTe0ASwWAJK+78dpviD+A8EqhndQPUBpNUIPt6+xWlIigCwfN01lWr9MAede4uqXGTEKeQWTvzb3vjia0Q==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -15021,7 +15021,7 @@ snapshots:
 
   prettier@2.8.8: {}
 
-  prettier@3.3.3: {}
+  prettier@3.8.2: {}
 
   pretty-format@3.8.0: {}
 
