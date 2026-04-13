@@ -6,7 +6,7 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "<WORKER_NAME>",
 	"main": ".open-next/worker.js",
-	"compatibility_date": "2025-12-01",
+	"compatibility_date": "<COMPATIBILITY_DATE>",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"assets": {
 		"binding": "ASSETS",

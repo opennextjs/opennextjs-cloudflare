@@ -26,10 +26,10 @@ import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import type { Plugin } from "esbuild";
 
 import { getOpenNextConfig } from "../../../api/config.js";
+import { normalizePath } from "../../utils/normalize-path.js";
 import { patchResRevalidate } from "../patches/plugins/res-revalidate.js";
 import { patchTurbopackRuntime } from "../patches/plugins/turbopack.js";
 import { patchUseCacheIO } from "../patches/plugins/use-cache.js";
-import { normalizePath } from "../utils/index.js";
 import { copyWorkerdPackages } from "../utils/workerd.js";
 
 interface CodeCustomization {

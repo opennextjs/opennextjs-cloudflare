@@ -1,18 +1,19 @@
+import logger from "@opennextjs/aws/logger.js";
 import type yargs from "yargs";
 
 import { DEPLOYMENT_MAPPING_ENV_NAME } from "../templates/skew-protection.js";
-import { runWrangler } from "../utils/run-wrangler.js";
-import { getEnvFromPlatformProxy, quoteShellMeta } from "./helpers.js";
 import { populateCache, withPopulateCacheOptions } from "./populate-cache.js";
 import { getDeploymentMapping } from "./skew-protection.js";
-import type { WithWranglerArgs } from "./utils.js";
+import { getEnvFromPlatformProxy, quoteShellMeta } from "./utils/helpers.js";
+import { runWrangler } from "./utils/run-wrangler.js";
+import type { WithWranglerArgs } from "./utils/utils.js";
 import {
 	getNormalizedOptions,
 	printHeaders,
 	readWranglerConfig,
 	retrieveCompiledConfig,
 	withWranglerPassthroughArgs,
-} from "./utils.js";
+} from "./utils/utils.js";
 
 /**
  * Implementation of the `opennextjs-cloudflare upload` command.
@@ -51,7 +52,7 @@ export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 		envVars
 	);
 
-	runWrangler(
+	const result = runWrangler(
 		buildOpts,
 		[
 			"versions upload",
@@ -62,6 +63,11 @@ export async function uploadCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 		],
 		{ logging: "all" }
 	);
+
+	if (!result.success) {
+		logger.error(`Wrangler versions upload command failed${result.stderr ? `:\n${result.stderr}` : ""}`);
+		process.exit(1);
+	}
 }
 
 /**

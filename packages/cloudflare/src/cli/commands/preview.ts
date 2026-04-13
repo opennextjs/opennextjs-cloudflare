@@ -1,16 +1,17 @@
+import logger from "@opennextjs/aws/logger.js";
 import type yargs from "yargs";
 
-import { runWrangler } from "../utils/run-wrangler.js";
-import { getEnvFromPlatformProxy } from "./helpers.js";
 import { populateCache, withPopulateCacheOptions } from "./populate-cache.js";
-import type { WithWranglerArgs } from "./utils.js";
+import { getEnvFromPlatformProxy } from "./utils/helpers.js";
+import { runWrangler } from "./utils/run-wrangler.js";
+import type { WithWranglerArgs } from "./utils/utils.js";
 import {
 	getNormalizedOptions,
 	printHeaders,
 	readWranglerConfig,
 	retrieveCompiledConfig,
 	withWranglerPassthroughArgs,
-} from "./utils.js";
+} from "./utils/utils.js";
 
 /**
  * Implementation of the `opennextjs-cloudflare preview` command.
@@ -42,7 +43,12 @@ export async function previewCommand(
 		envVars
 	);
 
-	runWrangler(buildOpts, ["dev", ...args.wranglerArgs], { logging: "all" });
+	const result = runWrangler(buildOpts, ["dev", ...args.wranglerArgs], { logging: "all" });
+
+	if (!result.success) {
+		logger.error(`Wrangler dev command failed${result.stderr ? `:\n${result.stderr}` : ""}`);
+		process.exit(1);
+	}
 }
 
 /**

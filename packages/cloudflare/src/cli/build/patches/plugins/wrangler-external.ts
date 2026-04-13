@@ -18,7 +18,7 @@ import { dirname, resolve } from "node:path";
 
 import type { PluginBuild } from "esbuild";
 
-import { normalizePath } from "../../utils/normalize-path.js";
+import { normalizePath } from "../../../utils/normalize-path.js";
 
 export function setWranglerExternal() {
 	return {

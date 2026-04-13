@@ -13,7 +13,7 @@ import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-upd
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import { glob } from "glob";
 
-import { normalizePath } from "../../utils/normalize-path.js";
+import { normalizePath } from "../../../utils/normalize-path.js";
 
 export function inlineLoadManifest(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
 	return updater.updateContent("inline-load-manifest", [
@@ -37,9 +37,12 @@ async function getLoadManifestRule(buildOpts: BuildOptions) {
 	const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts));
 	const dotNextDir = join(baseDir, ".next");
 
-	const manifests = await glob(join(dotNextDir, "**/{*-manifest,required-server-files}.json"), {
-		windowsPathsNoEscape: true,
-	});
+	const manifests = await glob(
+		join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints}.json"),
+		{
+			windowsPathsNoEscape: true,
+		}
+	);
 
 	const returnManifests = (
 		await Promise.all(
@@ -66,6 +69,23 @@ function loadManifest($PATH, $$$ARGS) {
     return process.env.NEXT_BUILD_ID;
 	}
   ${returnManifests}
+  // Known optional manifests \u2014 Next.js loads these with handleMissing: true
+  // (see vercel/next.js packages/next/src/server/route-modules/route-module.ts).
+  // Return {} to match Next.js behaviour instead of crashing the worker.
+  // Note: Some manifest constants in Next.js omit the .json extension
+  // (e.g. SUBRESOURCE_INTEGRITY_MANIFEST, DYNAMIC_CSS_MANIFEST), so we
+  // strip .json before matching to handle both forms.
+  {
+    const p = $PATH.replace(/\\.json$/, "");
+    if (p.endsWith("react-loadable-manifest") ||
+        p.endsWith("subresource-integrity-manifest") ||
+        p.endsWith("server-reference-manifest") ||
+        p.endsWith("dynamic-css-manifest") ||
+        p.endsWith("fallback-build-manifest") ||
+        p.endsWith("prefetch-hints")) {
+      return {};
+    }
+  }
   throw new Error(\`Unexpected loadManifest(\${$PATH}) call!\`);
 }`,
 	} satisfies RuleConfig;
@@ -80,7 +100,10 @@ async function getEvalManifestRule(buildOpts: BuildOptions) {
 		windowsPathsNoEscape: true,
 	});
 
-	const returnManifests = manifests
+	// Sort by path length descending so longer (more specific) paths match first,
+	// preventing suffix collisions in the `.endsWith()` chain (see #1156).
+	const sortedManifests = [...manifests].sort((a, b) => b.length - a.length);
+	const returnManifests = sortedManifests
 		.map((manifest) => {
 			const endsWith = normalizePath(relative(baseDir, manifest));
 			const key = normalizePath("/" + relative(appDir, manifest)).replace(
@@ -110,6 +133,11 @@ function evalManifest($PATH, $$$ARGS) {
 function evalManifest($PATH, $$$ARGS) {
   $PATH = $PATH.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
   ${returnManifests}
+  // client-reference-manifest is optional for static metadata routes
+  // (see vercel/next.js route-module.ts, loaded with handleMissing: true)
+  if ($PATH.endsWith("_client-reference-manifest.js")) {
+    return { __RSC_MANIFEST: {} };
+  }
   throw new Error(\`Unexpected evalManifest(\${$PATH}) call!\`);
 }`,
 	} satisfies RuleConfig;

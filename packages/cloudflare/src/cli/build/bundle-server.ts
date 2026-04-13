@@ -10,6 +10,7 @@ import { build, type Plugin } from "esbuild";
 
 import { getOpenNextConfig } from "../../api/config.js";
 import type { ProjectOptions } from "../project-options.js";
+import { normalizePath } from "../utils/normalize-path.js";
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
 import { inlineDynamicRequires } from "./patches/plugins/dynamic-requires.js";
@@ -26,7 +27,8 @@ import { shimRequireHook } from "./patches/plugins/require-hook.js";
 import { patchRouteModules } from "./patches/plugins/route-module.js";
 import { shimReact } from "./patches/plugins/shim-react.js";
 import { setWranglerExternal } from "./patches/plugins/wrangler-external.js";
-import { copyPackageCliFiles, needsExperimentalReact, normalizePath } from "./utils/index.js";
+import { copyPackageCliFiles } from "./utils/copy-package-cli-files.js";
+import { needsExperimentalReact } from "./utils/needs-experimental-react.js";
 
 /** The dist directory of the Cloudflare adapter package */
 const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");

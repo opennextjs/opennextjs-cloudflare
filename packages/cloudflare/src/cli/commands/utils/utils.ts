@@ -5,14 +5,15 @@ import url from "node:url";
 
 import { compileOpenNextConfig } from "@opennextjs/aws/build/compileConfig.js";
 import { normalizeOptions } from "@opennextjs/aws/build/helper.js";
-import * as buildHelper from "@opennextjs/aws/build/helper.js";
 import { printHeader, showWarningOnWindows } from "@opennextjs/aws/build/utils.js";
 import logger from "@opennextjs/aws/logger.js";
 import { unstable_readConfig } from "wrangler";
 import type yargs from "yargs";
 
-import type { OpenNextConfig } from "../../api/config.js";
-import { createOpenNextConfigIfNotExistent, ensureCloudflareConfig } from "../build/utils/index.js";
+import type { OpenNextConfig } from "../../../api/config.js";
+import { ensureCloudflareConfig } from "../../build/utils/ensure-cf-config.js";
+import { askConfirmation } from "../../utils/ask-confirmation.js";
+import { createOpenNextConfigFile, findOpenNextConfig } from "../../utils/create-open-next-config.js";
 
 export type WithWranglerArgs<T = unknown> = T & {
 	// Array of arguments that can be given to wrangler commands, including the `--config` and `--env` args.
@@ -35,37 +36,6 @@ export function printHeaders(command: string) {
 }
 
 /**
- * Validates that the Next.js version is supported and checks wrangler compatibility.
- *
- * Note: this function assumes that wrangler is installed.
- *
- * @param options.nextVersion The detected Next.js version string
- * @throws {Error} If the Next.js version is unsupported
- */
-export async function ensureNextjsVersionSupported({
-	nextVersion,
-}: Pick<buildHelper.BuildOptions, "nextVersion">) {
-	if (buildHelper.compareSemver(nextVersion, "<", "14.2.0")) {
-		throw new Error("Next.js version unsupported, please upgrade to version 14.2 or greater.");
-	}
-
-	const {
-		default: { version: wranglerVersion },
-	} = await import("wrangler/package.json", { with: { type: "json" } });
-
-	// We need a version of workerd that has a fix for setImmediate for Next.js 16.1+
-	// See:
-	// - https://github.com/cloudflare/workerd/pull/5869
-	// - https://github.com/opennextjs/opennextjs-cloudflare/issues/1049
-	if (
-		buildHelper.compareSemver(nextVersion, ">=", "16.1.0") &&
-		buildHelper.compareSemver(wranglerVersion, "<", "4.59.2")
-	) {
-		logger.warn(`Next.js 16.1+ requires wrangler 4.59.2 or greater (${wranglerVersion} detected).`);
-	}
-}
-
-/**
  * Compile the OpenNext config.
  *
  * When users do not specify a custom config file (using `--openNextConfigPath`),
@@ -73,16 +43,30 @@ export async function ensureNextjsVersionSupported({
  *
  * When users specify a custom config file but it doesn't exist, we throw an Error.
  *
+ * @throws If a custom config path is provided but the file does not exist.
+ * @throws If no config file is found and the user declines to create one.
+ *
  * @param configPath Optional path to the config file. Absolute or relative to cwd.
- * @returns OpenNext config.
+ * @returns The compiled OpenNext config and the build directory.
+ *
  */
 export async function compileConfig(configPath: string | undefined) {
 	if (configPath && !existsSync(configPath)) {
 		throw new Error(`Custom config file not found at ${configPath}`);
 	}
 
+	configPath ??= findOpenNextConfig(nextAppDir);
+
 	if (!configPath) {
-		configPath = await createOpenNextConfigIfNotExistent(nextAppDir);
+		const answer = await askConfirmation(
+			"Missing required `open-next.config.ts` file, do you want to create one?"
+		);
+
+		if (!answer) {
+			throw new Error("The `open-next.config.ts` file is required, aborting!");
+		}
+
+		configPath = createOpenNextConfigFile(nextAppDir, { cache: false });
 	}
 
 	const { config, buildDir } = await compileOpenNextConfig(configPath, { compileEdge: true });

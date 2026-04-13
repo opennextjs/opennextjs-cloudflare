@@ -14,7 +14,7 @@ import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
-import { normalizePath } from "../../utils/index.js";
+import { normalizePath } from "../../../utils/normalize-path.js";
 
 export function patchNextServer(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
 	return updater.updateContent("next-server", [
@@ -121,6 +121,7 @@ fix: |-
   const handlersSetSymbol = Symbol.for('@next/cache-handlers-set');
   globalThis[handlersMapSymbol] = new Map();
   globalThis[handlersMapSymbol].set("default", require('${normalizePath(handlerPath)}').default);
+  globalThis[handlersMapSymbol].set("remote", require('${normalizePath(handlerPath)}').default);
   globalThis[handlersSetSymbol] = new Set(globalThis[handlersMapSymbol].values());
 `;
 }

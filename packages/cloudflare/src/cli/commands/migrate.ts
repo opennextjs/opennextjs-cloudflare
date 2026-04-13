@@ -12,11 +12,12 @@ import {
 import logger from "@opennextjs/aws/logger.js";
 import type yargs from "yargs";
 
-import { conditionalAppendFileSync } from "../build/utils/files.js";
 import { askConfirmation } from "../utils/ask-confirmation.js";
-import { createOpenNextConfigFile, findOpenNextConfig } from "../utils/open-next-config.js";
-import { createWranglerConfigFile, findWranglerConfig } from "../utils/wrangler-config.js";
-import { ensureNextjsVersionSupported, printHeaders } from "./utils.js";
+import { createOpenNextConfigFile, findOpenNextConfig } from "../utils/create-open-next-config.js";
+import { createWranglerConfigFile, findWranglerConfig } from "../utils/create-wrangler-config.js";
+import { ensureNextjsVersionSupported } from "../utils/nextjs-support.js";
+import { conditionalAppendFileSync } from "./utils/files.js";
+import { printHeaders } from "./utils/utils.js";
 
 /**
  * Implementation of the `opennextjs-cloudflare migrate` command.
@@ -78,10 +79,17 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 	}
 
 	printStepTitle("Creating wrangler.jsonc");
-	await createWranglerConfigFile("./");
+	const { cachingEnabled } = await createWranglerConfigFile("./");
+
+	if (!cachingEnabled) {
+		logger.warn(
+			`Failed to set up cache for your project.\n` +
+				`After the migration completes, please manually setup cache in  wrangler.jsonc and open-next.config.ts files (for more details see: https://opennext.js.org/cloudflare/caching).\n`
+		);
+	}
 
 	printStepTitle("Creating open-next.config.ts");
-	await createOpenNextConfigFile("./");
+	createOpenNextConfigFile("./", { cache: cachingEnabled });
 
 	const devVarsExists = fs.existsSync(".dev.vars");
 	printStepTitle(`${devVarsExists ? "Updating" : "Creating"} .dev.vars file`);
@@ -197,7 +205,10 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 		"🎉 OpenNext Cloudflare adapter complete!\n" +
 			"\nNext steps:\n" +
 			`- Run: "${packageManager.run} preview" to build and preview your Cloudflare application locally\n` +
-			`- Run: "${packageManager.run} deploy" to deploy your application to Cloudflare Workers\n`
+			`- Run: "${packageManager.run} deploy" to deploy your application to Cloudflare Workers\n` +
+			(cachingEnabled
+				? ""
+				: `- ⚠️  Setup cache, see https://opennext.js.org/cloudflare/caching for more details\n`)
 	);
 }
 
@@ -209,7 +220,7 @@ interface PackageManager {
 }
 
 const packageManagers = {
-	pnpm: { name: "pnpm", install: "pnpm add", installDev: "pnpm add -D", run: "pnpm" },
+	pnpm: { name: "pnpm", install: "pnpm add", installDev: "pnpm add -D", run: "pnpm run" },
 	npm: { name: "npm", install: "npm install", installDev: "npm install --save-dev", run: "npm run" },
 	bun: { name: "bun", install: "bun add", installDev: "bun add -D", run: "bun" },
 	yarn: { name: "yarn", install: "yarn add", installDev: "yarn add -D", run: "yarn" },

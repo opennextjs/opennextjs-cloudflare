@@ -1,5 +1,5 @@
 //@ts-expect-error: Will be resolved by wrangler build
-import { handleImageRequest } from "./cloudflare/images.js";
+import { handleCdnCgiImageRequest, handleImageRequest } from "./cloudflare/images.js";
 //@ts-expect-error: Will be resolved by wrangler build
 import { runWithCloudflareRequestContext } from "./cloudflare/init.js";
 //@ts-expect-error: Will be resolved by wrangler build
@@ -27,14 +27,7 @@ export default {
 			// Serve images in development.
 			// Note: "/cdn-cgi/image/..." requests do not reach production workers.
 			if (url.pathname.startsWith("/cdn-cgi/image/")) {
-				const m = url.pathname.match(/\/cdn-cgi\/image\/.+?\/(?<url>.+)$/);
-				if (m === null) {
-					return new Response("Not Found!", { status: 404 });
-				}
-				const imageUrl = m.groups!.url!;
-				return imageUrl.match(/^https?:\/\//)
-					? fetch(imageUrl, { cf: { cacheEverything: true } })
-					: env.ASSETS?.fetch(new URL(`/${imageUrl}`, url));
+				return handleCdnCgiImageRequest(url, env);
 			}
 
 			// Fallback for the Next default image loader.

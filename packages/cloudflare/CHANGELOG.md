@@ -1,5 +1,105 @@
 # @opennextjs/cloudflare
 
+## 1.19.1
+
+### Patch Changes
+
+- [#1189](https://github.com/opennextjs/opennextjs-cloudflare/pull/1189) [`236ce14`](https://github.com/opennextjs/opennextjs-cloudflare/commit/236ce14ec9717fa25e64d197081232a2456ebf00) Thanks [@fatihy101](https://github.com/fatihy101)! - fix(tag-cache): forward `isStale()` in `withFilter`
+
+## 1.19.0
+
+### Minor Changes
+
+- [#1168](https://github.com/opennextjs/opennextjs-cloudflare/pull/1168) [`9a26846`](https://github.com/opennextjs/opennextjs-cloudflare/commit/9a268469be3759277d2cc5b412dbc16aff8fe551) Thanks [@conico974](https://github.com/conico974)! - Add support for SWR (stale-while-revalidate) in `revalidateTag`
+
+  See the [AWS implementation](https://github.com/opennextjs/opennextjs-aws/pull/1122) for more details.
+
+### Patch Changes
+
+- [#1184](https://github.com/opennextjs/opennextjs-cloudflare/pull/1184) [`c7d6425`](https://github.com/opennextjs/opennextjs-cloudflare/commit/c7d64251c2789390d35197c31f06f9e28947f44d) Thanks [@vicb](https://github.com/vicb)! - fix for Next.js CVE-2026-23869
+
+  See the [CVE-2026-23869 summary](https://vercel.com/changelog/summary-of-cve-2026-23869) for details.
+
+  This CVE is fixed by bumping the minium Next.js release version to 15.5.15/16.2.3
+
+- [#1177](https://github.com/opennextjs/opennextjs-cloudflare/pull/1177) [`e814a63`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e814a6314bb29b8f0130a68e3f0a8271b66a33ed) Thanks [@conico974](https://github.com/conico974)! - Fix `use cache` not working as expected in Next 16+
+
+## 1.18.1
+
+### Patch Changes
+
+- [#1176](https://github.com/opennextjs/opennextjs-cloudflare/pull/1176) [`2232651`](https://github.com/opennextjs/opennextjs-cloudflare/commit/22326513042bd0a075661c5f3c175de77b084f2c) Thanks [@conico974](https://github.com/conico974)! - fix for OG with Next 16.2.2
+
+- [#1166](https://github.com/opennextjs/opennextjs-cloudflare/pull/1166) [`f89fba1`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f89fba1bb2867c9b6aecc810a3b94f17e6f04e51) Thanks [@ash1day](https://github.com/ash1day)! - fix: sort `.endsWith()` checks by path length descending to prevent suffix collisions in dynamic requires
+
+  Routes whose paths are suffixes of other routes (e.g. `/test/app` vs `/`) were resolved incorrectly because the shorter path matched first in the generated `.endsWith()` chain. Sorting by path length descending ensures more specific (longer) paths are always checked first.
+
+  Fixes #1156.
+
+## 1.18.0
+
+### Minor Changes
+
+- [#1159](https://github.com/opennextjs/opennextjs-cloudflare/pull/1159) [`75f5f0a`](https://github.com/opennextjs/opennextjs-cloudflare/commit/75f5f0a75a2ff15ccf3c84c6d66ca7675a99dcde) Thanks [@edmundhung](https://github.com/edmundhung)! - Use remote dev for R2 cache population
+
+  Using remote dev is not subject to the Cloudflare API rate limit of 1,200 requests per 5 minutes that caused failures for large applications with thousands of prerendered pages.
+
+## 1.17.3
+
+### Patch Changes
+
+- [#1160](https://github.com/opennextjs/opennextjs-cloudflare/pull/1160) [`161e726`](https://github.com/opennextjs/opennextjs-cloudflare/commit/161e726a02f063e3fa80aeb8fc629dad605a8b7d) Thanks [@matthewvolk](https://github.com/matthewvolk)! - fix(patches): include `prefetch-hints.json` in loadManifest build-time inlining
+
+  Next.js 16.2.0 introduced `prefetch-hints.json` as a new server manifest loaded unconditionally
+  by `NextNodeServer.getPrefetchHints()`. The file exists in the build output but wasn't matched by
+  the glob pattern `*-manifest.json`, causing the patched `loadManifest()` to throw at runtime.
+
+## 1.17.2
+
+### Patch Changes
+
+- [#1151](https://github.com/opennextjs/opennextjs-cloudflare/pull/1151) [`a143282`](https://github.com/opennextjs/opennextjs-cloudflare/commit/a1432820bd8f4f867888758380f5e5cc20fa4be0) Thanks [@nathanschram](https://github.com/nathanschram)! - fix: handle known optional manifests gracefully in loadManifest/evalManifest patches
+
+  Next.js loads certain manifests with `handleMissing: true` (returning `{}` when the file doesn't
+  exist). The adapter's build-time glob scan doesn't find these files when they're conditionally
+  generated, so the patched function threw at runtime, crashing dynamic routes with 500.
+
+  Instead of a blanket catch-all, handle only the specific optional manifests from Next.js
+  `route-module.ts`:
+
+  - `react-loadable-manifest` (Turbopack per-route, not all routes have dynamic imports)
+  - `subresource-integrity-manifest` (only when `experimental.sri` configured)
+  - `server-reference-manifest` (App Router only)
+  - `dynamic-css-manifest` (Pages Router + Webpack only)
+  - `fallback-build-manifest` (only for `/_error` page)
+  - `prefetch-hints` (new in Next.js 16.2)
+  - `_client-reference-manifest.js` (optional for static metadata routes, evalManifest)
+
+  Manifest matching strips `.json` before comparison since some Next.js constants omit
+  the extension (`SUBRESOURCE_INTEGRITY_MANIFEST`, `DYNAMIC_CSS_MANIFEST`, etc.).
+
+  Unknown manifests still throw to surface genuine errors.
+
+  Fixes #1141.
+
+## 1.17.1
+
+### Patch Changes
+
+- [#1147](https://github.com/opennextjs/opennextjs-cloudflare/pull/1147) [`f5bd138`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f5bd138fd3c77e02f2aa4b9c76d55681e59e98b4) Thanks [@vicb](https://github.com/vicb)! - make dev /cdn-cgi/image behaves like prod for consistency
+
+## 1.17.0
+
+### Minor Changes
+
+- [#1133](https://github.com/opennextjs/opennextjs-cloudflare/pull/1133) [`25d5835`](https://github.com/opennextjs/opennextjs-cloudflare/commit/25d5835b1c006d6400141f3a5aa93332b26b04e3) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - Update the `migrate` command to attempt to create an R2 bucket for caching, if that is not possible an application without caching enabled will be generated instead.
+
+## 1.16.6
+
+### Patch Changes
+
+- [#1138](https://github.com/opennextjs/opennextjs-cloudflare/pull/1138) [`4487f1f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/4487f1f64fbf14175a13d6e54928bc1a35d39fdf) Thanks [@james-elicx](https://github.com/james-elicx)! - Fix the CLI potentially setting a future compatibility date in the wrangler config when workerd has published a version matching a future date, by capping to the current date.
+
 ## 1.16.5
 
 ### Patch Changes
@@ -98,8 +198,8 @@
 
 - [#1071](https://github.com/opennextjs/opennextjs-cloudflare/pull/1071) [`886c742`](https://github.com/opennextjs/opennextjs-cloudflare/commit/886c742f8e735843196a4a1c758a9e5b1cb5464e) Thanks [@vicb](https://github.com/vicb)! - fix: patch Next config for missing fields.
 
-  There was a regression in Next 16.1.0 (https://github.com/vercel/next.js/pull/86830) and some fields were missing in the config.
-  The Next team fixed that in 16.1.4 (https://github.com/vercel/next.js/pull/88733).
+  There was a regression in Next 16.1.0 (<https://github.com/vercel/next.js/pull/86830>) and some fields were missing in the config.
+  The Next team fixed that in 16.1.4 (<https://github.com/vercel/next.js/pull/88733>).
 
   This PR introduce a patch for 16.1.0-16.1.3
 
@@ -289,7 +389,7 @@
 
   **Note:**
 
-  You can follow documentation https://developers.cloudflare.com/r2/api/tokens/ for creating API tokens with appropriate permissions for R2 access.
+  You can follow documentation <https://developers.cloudflare.com/r2/api/tokens/> for creating API tokens with appropriate permissions for R2 access.
 
 ### Patch Changes
 
@@ -668,7 +768,7 @@
 
 - [#674](https://github.com/opennextjs/opennextjs-cloudflare/pull/674) [`ec9ea58`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ec9ea58764fa344b6a47df33b4ae05063d9a1c07) Thanks [@conico974](https://github.com/conico974)! - fix blockConcurrencyWhile on DO queue
 
-- [#672](https://github.com/opennextjs/opennextjs-cloudflare/pull/672) [`9188e67`](https://github.com/opennextjs/opennextjs-cloudflare/commit/9188e679cc70d14bc2dedfa2428926b51c1a1ba9) Thanks [@conico974](https://github.com/conico974)! - bump aws to 3.6.2. More details about the fixes can be found here: https://github.com/opennextjs/opennextjs-aws/blob/main/packages/open-next/CHANGELOG.md#362
+- [#672](https://github.com/opennextjs/opennextjs-cloudflare/pull/672) [`9188e67`](https://github.com/opennextjs/opennextjs-cloudflare/commit/9188e679cc70d14bc2dedfa2428926b51c1a1ba9) Thanks [@conico974](https://github.com/conico974)! - bump aws to 3.6.2. More details about the fixes can be found here: <https://github.com/opennextjs/opennextjs-aws/blob/main/packages/open-next/CHANGELOG.md#362>
 
 ## 1.0.3
 

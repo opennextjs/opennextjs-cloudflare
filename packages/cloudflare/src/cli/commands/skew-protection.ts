@@ -32,7 +32,7 @@ import type { VersionGetResponse } from "cloudflare/resources/workers/scripts/ve
 
 import type { OpenNextConfig } from "../../api/index.js";
 import { CURRENT_VERSION_ID, DEPLOYMENT_MAPPING_ENV_NAME } from "../templates/skew-protection.js";
-import type { WorkerEnvVar } from "./helpers.js";
+import type { WorkerEnvVar } from "./utils/helpers.js";
 
 /** Maximum number of versions to list */
 const MAX_NUMBER_OF_VERSIONS = 20;

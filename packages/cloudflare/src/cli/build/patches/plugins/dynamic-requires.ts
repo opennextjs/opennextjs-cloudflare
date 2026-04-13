@@ -6,7 +6,7 @@ import { patchCode, type RuleConfig } from "@opennextjs/aws/build/patch/astCodeP
 import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
-import { normalizePath } from "../../utils/normalize-path.js";
+import { normalizePath } from "../../../utils/normalize-path.js";
 
 async function getPagesManifests(serverDir: string): Promise<string[]> {
 	try {
@@ -30,9 +30,13 @@ function getServerDir(buildOpts: BuildOptions) {
 	return join(buildOpts.outputDir, "server-functions/default", getPackagePath(buildOpts), ".next/server");
 }
 
-function getRequires(idVariable: string, files: string[], serverDir: string) {
+export function getRequires(idVariable: string, files: string[], serverDir: string) {
 	// Inline fs access and dynamic requires that are not supported by workerd.
-	return files
+	// Sort by path length descending so longer (more specific) paths match first.
+	// Without this, `/test/app/page.js` could match the `.endsWith("app/page.js")`
+	// check for `/` before reaching the correct `.endsWith("test/app/page.js")` check.
+	const sorted = [...files].sort((a, b) => b.length - a.length);
+	return sorted
 		.map(
 			(file) => `
     if (${idVariable}.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)}).endsWith(${JSON.stringify(normalizePath(file))})) {
@@ -111,7 +115,9 @@ async function getRequirePageRule(buildOpts: BuildOptions) {
 
 	const manifests = pagesManifests.concat(appPathsManifests);
 
-	const htmlFiles = manifests.filter((file) => file.endsWith(".html"));
+	// Sort html files by path length descending so longer (more specific) paths
+	// match first, preventing suffix collisions in the `.endsWith()` chain (see #1156).
+	const htmlFiles = manifests.filter((file) => file.endsWith(".html")).sort((a, b) => b.length - a.length);
 	const jsFiles = manifests.filter((file) => file.endsWith(".js"));
 
 	return {
