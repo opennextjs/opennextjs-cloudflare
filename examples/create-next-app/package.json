@@ -20,9 +20,10 @@
 	"devDependencies": {
 		"@opennextjs/cloudflare": "workspace:*",
 		"@playwright/test": "catalog:",
+		"@tailwindcss/postcss": "^4.2.2",
 		"@types/node": "catalog:",
-		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
+		"@types/react": "catalog:",
 		"postcss": "catalog:e2e",
 		"tailwindcss": "^4.2.2",
 		"typescript": "catalog:",
