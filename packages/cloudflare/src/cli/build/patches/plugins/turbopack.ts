@@ -23,11 +23,17 @@ fix:
  * statically analyze those hashed names. This function discovers the mappings so we can
  * generate explicit switch cases for the bundler.
  *
- * @param appBuildOutputPath Absolute path to the `.next` build output directory.
+ * @param filePath Absolute path to the Turbopack runtime file being patched
+ *                 (e.g. `/abs/path/to/.open-next/server-functions/default/.../.next/server/chunks/ssr/[turbopack]_runtime.js`).
+ *                 This must be the actual file in `.open-next/` (not `buildOptions.appBuildOutputPath`)
+ *                 because the `.next/node_modules/` symlinks are in the traced copy, not the original.
  * @returns A map from hashed identifiers to real package names (e.g. "shiki-43d062b67f27bbdc" -> "shiki").
  */
-function discoverExternalModuleMappings(appBuildOutputPath: string): Map<string, string> {
-	const nodeModulesDir = path.join(appBuildOutputPath, "node_modules");
+function discoverExternalModuleMappings(filePath: string): Map<string, string> {
+	// filePath is like: .../.next/server/chunks/ssr/[turbopack]_runtime.js
+	// We need: .../.next/node_modules/
+	const dotNextDir = filePath.replace(/\/server\/chunks\/.*$/, "");
+	const nodeModulesDir = path.join(dotNextDir, "node_modules");
 
 	const mappings = new Map<string, string>();
 
@@ -215,8 +221,8 @@ export const patchTurbopackRuntime: CodePatcher = {
 				escape: false,
 			}),
 			contentFilter: /loadRuntimeChunkPath/,
-			patchCode: async ({ code, tracedFiles, buildOptions }) => {
-				const mappings = discoverExternalModuleMappings(buildOptions.appBuildOutputPath);
+			patchCode: async ({ code, tracedFiles, filePath }) => {
+				const mappings = discoverExternalModuleMappings(filePath);
 				const externalImportRule = buildExternalImportRule(mappings, tracedFiles, code);
 				let patched = patchCode(code, externalImportRule);
 				patched = patchCode(patched, inlineChunksRule);
