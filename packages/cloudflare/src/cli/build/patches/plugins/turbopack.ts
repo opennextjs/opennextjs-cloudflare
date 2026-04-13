@@ -26,8 +26,57 @@ export const patchTurbopackRuntime: CodePatcher = {
 				return `${patched}\n${inlineChunksFn(tracedFiles)}`;
 			},
 		},
+		// Turbopack externalizes some packages with content-hashed module IDs,
+		// e.g. `shiki-43d062b67f27bbdc/core`. These appear as `a.y("shiki-<hash>/core")`
+		// calls in Turbopack chunk files. In workerd, `await import(hashedId)` fails
+		// because no module is registered under the hashed name.
+		//
+		// The actual package IS bundled in node_modules. We patch the chunk files
+		// before wrangler bundles them, replacing the hashed `a.y(...)` calls with static
+		// `require("real-pkg/sub")` calls that wrangler can resolve at bundle time.
+		{
+			versions: ">=15.0.0",
+			pathFilter: getCrossPlatformPathRegex(String.raw`.next[/\\]server[/\\]chunks[/\\].+\.js$`, {
+				escape: false,
+			}),
+			contentFilter: /a\.y\("/,
+			patchCode: async ({ code }) => {
+				return patchHashedExternalImports(code);
+			},
+		},
 	],
 };
+
+/**
+ * Regex matching Turbopack's hashed external module IDs.
+ *
+ * Turbopack appends a 16+ hex-char content hash to the package name:
+ *   `shiki-43d062b67f27bbdc`        → `shiki`
+ *   `shiki-43d062b67f27bbdc/core`   → `shiki/core`
+ *   `@shikijs/core-43d062b67f27bbdc/dist/index.js` → `@shikijs/core/dist/index.js`
+ */
+const HASHED_ID_RE = /^((?:@[^/]+\/)?[^/]+?)-[0-9a-f]{16,}(\/[^]*)?$/;
+
+function dehashedModuleId(id: string): string | null {
+	const match = HASHED_ID_RE.exec(id);
+	if (!match) return null;
+	return (match[1] + (match[2] ?? "")) || id;
+}
+
+/**
+ * Replace `a.y("pkg-<hash>/sub")` calls with `Promise.resolve().then(() => require("pkg/sub"))`.
+ *
+ * The Promise wrapper preserves the async contract of `a.y` (externalImport).
+ * The static `require("pkg/sub")` is resolved by wrangler at bundle time, so the
+ * actual ESM package is inlined — the same mechanism as other require() calls in chunks.
+ */
+export function patchHashedExternalImports(code: string): string {
+	return code.replace(/a\.y\("([^"]+)"\)/g, (match, id) => {
+		const real = dehashedModuleId(id);
+		if (real === null) return match;
+		return `Promise.resolve().then(() => require("${real}"))`;
+	});
+}
 
 function getInlinableChunks(tracedFiles: string[]): string[] {
 	const chunks = new Set<string>();
@@ -64,19 +113,12 @@ ${chunks
 `;
 }
 
-// Turbopack imports modules via `externalImport`.
+// Turbopack imports `og` via `externalImport`.
 // We patch it to:
 // - add the explicit path so that the file is inlined by wrangler
 // - use the edge version of the module instead of the node version.
-// - handle Turbopack's hashed module IDs (e.g. `shiki-43d062b67f27bbdc/core`)
-//   by stripping the content hash and using require() with the real package name.
 //
-// Turbopack externalizes packages with hashed IDs of the form `<pkg>-<hex16+>[/subpath]`.
-// These IDs are not valid in workerd (no registered module), but the real package
-// IS available via require() in the bundled node_modules. We detect this pattern
-// at runtime and fall back to require() instead of await import().
-//
-// Modules that are not inlined (not added to the switch), would generate an error similar to:
+// Modules that are not inlined (no added to the switch), would generate an error similar to:
 // Failed to load external module path/to/module: Error: No such module "path/to/module"
 const inlineExternalImportRule = `
 rule:
@@ -90,15 +132,7 @@ fix: |-
     case "next/dist/compiled/@vercel/og/index.node.js":
       $RAW = await import("next/dist/compiled/@vercel/og/index.edge.js");
       break;
-    default: {
-      // Turbopack hashes external package IDs: e.g. "shiki-43d062b67f27bbdc/core"
-      // Strip the hash suffix to recover the real package name, then use require().
-      const __dehashedId = $ID.replace(/^((?:@[^/]+\/)?[^/]+?)-[0-9a-f]{16,}(\/[^]*)?$/, "$1$2");
-      if (__dehashedId !== $ID) {
-        $RAW = require(__dehashedId || $ID);
-      } else {
-        $RAW = await import($ID);
-      }
-    }
+    default:
+      $RAW = await import($ID);
   }
 `;
