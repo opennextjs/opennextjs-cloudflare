@@ -3,18 +3,16 @@ description: "Install dependencies, fetching from cache when possible"
 inputs:
   node-version:
     description: the version of Node.js to install
-    default: 22
+    default: "22"
 
 runs:
   using: "composite"
   steps:
     - name: Install pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 9
+      uses: pnpm/action-setup@v5
 
     - name: Install Node.js ${{ inputs.node-version }}
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: ${{ inputs.node-version }}
         cache: "pnpm"
