@@ -24,7 +24,7 @@
 		"react-dom": "catalog:e2e"
 	},
 	"devDependencies": {
-		"@types/node": "catalog:",
+		"@types/node": "catalog:e2e",
 		"@types/react": "catalog:e2e",
 		"@types/react-dom": "catalog:e2e",
 		"prisma": "^6.7.0",

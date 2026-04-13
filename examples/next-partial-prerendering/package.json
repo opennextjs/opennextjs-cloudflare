@@ -16,21 +16,21 @@
 		"date-fns": "3.6.0",
 		"dinero.js": "^2.0.2",
 		"geist": "1.7.0",
-		"next": "15.5.15",
-		"react": "19.2.5",
-		"react-dom": "19.2.5"
+		"next": "catalog:e2e",
+		"react": "catalog:e2e",
+		"react-dom": "catalog:e2e"
 	},
 	"devDependencies": {
 		"@opennextjs/cloudflare": "workspace:*",
 		"@tailwindcss/forms": "^0.5.11",
 		"@tailwindcss/typography": "^0.5.19",
-		"@types/node": "^24",
-		"@types/react": "^19.2",
-		"@types/react-dom": "^19.2",
-		"autoprefixer": "^10.4.27",
-		"postcss": "^8.5.9",
-		"tailwindcss": "^3.4.19",
-		"typescript": "^5.9.3",
+		"@types/node": "catalog:e2e",
+		"@types/react": "catalog:e2e",
+		"@types/react-dom": "catalog:e2e",
+		"autoprefixer": "catalog:e2e",
+		"postcss": "catalog:e2e",
+		"tailwindcss": "catalog:e2e",
+		"typescript": "catalog:",
 		"wrangler": "catalog:"
 	}
 }

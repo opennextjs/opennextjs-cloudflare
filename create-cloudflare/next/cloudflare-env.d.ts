@@ -2809,10 +2809,8 @@ interface MessagePortPostMessageOptions {
 	transfer?: any[];
 }
 type LoopbackForExport<
-	T extends
-		| (new (...args: any[]) => Rpc.EntrypointBranded)
-		| ExportedHandler<any, any, any>
-		| undefined = undefined,
+	T extends (new (...args: any[]) => Rpc.EntrypointBranded) | ExportedHandler<any, any, any> | undefined =
+		undefined,
 > = T extends new (...args: any[]) => Rpc.WorkerEntrypointBranded
 	? LoopbackServiceStub<InstanceType<T>>
 	: T extends new (...args: any[]) => Rpc.DurableObjectBranded
@@ -7133,8 +7131,7 @@ interface IncomingRequestCfPropertiesBotManagement {
 	 */
 	clientTrustScore: number;
 }
-interface IncomingRequestCfPropertiesBotManagementEnterprise
-	extends IncomingRequestCfPropertiesBotManagement {
+interface IncomingRequestCfPropertiesBotManagementEnterprise extends IncomingRequestCfPropertiesBotManagement {
 	/**
 	 * Results of Cloudflare's Bot Management analysis
 	 */

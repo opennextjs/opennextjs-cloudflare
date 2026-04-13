@@ -16,14 +16,14 @@
 		"cf-typegen": "wrangler types --env-interface CloudflareEnv"
 	},
 	"dependencies": {
-		"next": "^14.2.35",
+		"next": "^14",
 		"react": "catalog:",
 		"react-dom": "catalog:"
 	},
 	"devDependencies": {
 		"@opennextjs/cloudflare": "workspace:*",
 		"@playwright/test": "catalog:",
-		"@types/node": "catalog:",
+		"@types/node": "catalog:e2e",
 		"sharp": "^0.34.5",
 		"wrangler": "catalog:"
 	}

@@ -13,7 +13,7 @@
 		"e2e:dev": "playwright test -c e2e/playwright.dev.config.ts"
 	},
 	"dependencies": {
-		"@clerk/nextjs": "6.9.6",
+		"@clerk/nextjs": "^7.0.12",
 		"next": "catalog:",
 		"react": "catalog:",
 		"react-dom": "catalog:"

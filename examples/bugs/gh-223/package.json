@@ -6,7 +6,6 @@
 		"dev": "next dev",
 		"build": "next build",
 		"start": "next start",
-		"lint": "next lint",
 		"build:worker": "pnpm opennextjs-cloudflare build",
 		"preview:worker": "pnpm opennextjs-cloudflare preview",
 		"preview": "pnpm build:worker && pnpm preview:worker",
@@ -14,22 +13,20 @@
 		"deploy:worker": "pnpm run build:worker && pnpm wrangler deploy"
 	},
 	"dependencies": {
-		"@aws-sdk/client-s3": "^3.971.0",
+		"@aws-sdk/client-s3": "^3.1029.0",
 		"@aws-sdk/s3-request-presigner": "^3.971.0",
-		"next": "15.5.15",
-		"react": "^19.0.4",
-		"react-dom": "^19.0.4"
+		"next": "catalog:",
+		"react": "catalog:e2e",
+		"react-dom": "catalog:e2e"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "catalog:",
 		"@opennextjs/cloudflare": "workspace:*",
 		"@playwright/test": "catalog:",
-		"@types/node": "^22.10.2",
-		"@types/react": "^19.0.4",
-		"@types/react-dom": "^19.0.4",
-		"postcss": "^8.4.49",
-		"tailwindcss": "^3.4.17",
-		"typescript": "^5.7.2",
+		"@types/node": "catalog:e2e",
+		"@types/react": "catalog:e2e",
+		"@types/react-dom": "catalog:e2e",
+		"typescript": "catalog:",
 		"wrangler": "catalog:"
 	}
 }

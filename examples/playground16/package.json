@@ -16,18 +16,18 @@
 		"cf-typegen": "wrangler types --env-interface CloudflareEnv"
 	},
 	"dependencies": {
-		"next": "16.2.3",
-		"react-dom": "19.2.4",
-		"react": "19.2.4"
+		"next": "^16",
+		"react-dom": "catalog:e2e",
+		"react": "catalog:e2e"
 	},
 	"devDependencies": {
 		"@opennextjs/cloudflare": "workspace:*",
 		"@playwright/test": "catalog:",
-		"@tailwindcss/postcss": "^4",
-		"@types/node": "catalog:",
-		"@types/react-dom": "^19.2.3",
-		"@types/react": "^19.2.4",
-		"tailwindcss": "^4",
+		"@tailwindcss/postcss": "^4.2.2",
+		"@types/node": "catalog:e2e",
+		"@types/react-dom": "catalog:e2e",
+		"@types/react": "catalog:e2e",
+		"tailwindcss": "^4.2.2",
 		"wrangler": "catalog:"
 	}
 }
