@@ -280,14 +280,20 @@ describe("DOShardedTagCache", () => {
 			};
 			const cache = shardedDOTagCache({ baseShardSize: 4, regionalCache: true });
 			cache.getFromRegionalCache = vi.fn().mockResolvedValueOnce([]);
-			getTagDataMock.mockResolvedValueOnce({});
+			getTagDataMock.mockResolvedValueOnce({
+				tag1: { revalidatedAt: 123455, stale: null, expire: null },
+			});
 
 			const result = await cache.hasBeenRevalidated(["tag1"], 123456);
 
 			expect(result).toBe(false);
 			expect(getTagDataMock).toHaveBeenCalledTimes(1);
 			expect(getTagDataMock).toHaveBeenCalledWith(["tag1"]);
-			expect(putMock).not.toHaveBeenCalled();
+			expect(putMock).toHaveBeenCalledTimes(1);
+			expect(putMock).toHaveBeenCalledWith(
+				"http://local.cache/shard/tag-hard;shard-1?tag=tag1",
+				expect.any(Response)
+			);
 			// @ts-expect-error - Defined on cloudfare context
 			globalThis.caches = undefined;
 		});
