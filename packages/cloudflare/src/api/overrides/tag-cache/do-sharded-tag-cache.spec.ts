@@ -269,6 +269,29 @@ describe("DOShardedTagCache", () => {
 			expect(cache.putToRegionalCache).toHaveBeenCalled();
 		});
 
+		it("should only read tag data once on a regional-cache miss", async () => {
+			const putMock = vi.fn();
+			// @ts-expect-error - Defined on cloudfare context
+			globalThis.caches = {
+				open: vi.fn().mockResolvedValue({
+					match: vi.fn().mockResolvedValue(null),
+					put: putMock,
+				}),
+			};
+			const cache = shardedDOTagCache({ baseShardSize: 4, regionalCache: true });
+			cache.getFromRegionalCache = vi.fn().mockResolvedValueOnce([]);
+			getTagDataMock.mockResolvedValueOnce({});
+
+			const result = await cache.hasBeenRevalidated(["tag1"], 123456);
+
+			expect(result).toBe(false);
+			expect(getTagDataMock).toHaveBeenCalledTimes(1);
+			expect(getTagDataMock).toHaveBeenCalledWith(["tag1"]);
+			expect(putMock).not.toHaveBeenCalled();
+			// @ts-expect-error - Defined on cloudfare context
+			globalThis.caches = undefined;
+		});
+
 		it("should call all the durable object instances", async () => {
 			const cache = shardedDOTagCache();
 			cache.getFromRegionalCache = vi.fn().mockResolvedValue([]);
