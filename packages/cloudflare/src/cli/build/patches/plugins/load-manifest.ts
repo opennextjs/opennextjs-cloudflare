@@ -8,7 +8,7 @@ import crypto from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join, posix, relative, sep } from "node:path";
 
-import { Lang, parse } from "@ast-grep/napi";
+import { Lang, parse, type SgNode } from "@ast-grep/napi";
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { applyRule, patchCode, type RuleConfig } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
@@ -115,13 +115,29 @@ async function getEvalManifestRule(buildOpts: BuildOptions) {
 			manifest = factorManifestValue(manifest, "ssrModuleMapping", factoredValues);
 			manifest = factorManifestValue(manifest, "edgeSSRModuleMapping", factoredValues);
 			manifest = factorManifestValue(manifest, "rscModuleMapping", factoredValues);
+			manifest = replaceEmptyEdgeMappings(manifest);
+			manifest = factorManifestValue(manifest, "entryCSSFiles", factoredValues);
+			manifest = factorManifestValue(manifest, "entryJSFiles", factoredValues);
 			factoredManifest.set(path, manifest);
 		}
 	}
 
-	const factoredValuesCode = [...factoredValues.entries()]
-		.map(([varName, value]) => `const ${varName} = ${value};`)
-		.join("\n");
+	// After factoring values but before generating factoredValuesCode:
+	const chunksVars = new Map<string, string>();
+
+	for (const [varName, value] of factoredValues) {
+		const deduped = deduplicateChunksArrays(value, chunksVars);
+		factoredValues.set(varName, deduped);
+	}
+
+	// Prepend chunks variable declarations before the factored values
+	const chunksVarsCode = [...chunksVars.entries()].map(([name, val]) => `const ${name} = ${val};`).join("\n");
+
+	const factoredValuesCode =
+		chunksVarsCode +
+		"\n" +
+		"const __EMPTY = {};\n" +
+		[...factoredValues.entries()].map(([varName, value]) => `const ${varName} = ${value};`).join("\n");
 
 	const returnManifests = manifestPaths
 		// Sort by path length descending so longer (more specific) paths match first,
@@ -223,4 +239,61 @@ fix: '"${key}": $${valueName}'
 
 	// return the original manifest if the value is not found or is small enough to not warrant factoring out.
 	return manifest;
+}
+
+/**
+ * Replace empty objects with a single shared variable.
+ * @param manifest
+ * @returns
+ */
+function replaceEmptyEdgeMappings(manifest: string): string {
+	for (const key of ["edgeSSRModuleMapping", "edgeRscModuleMapping"]) {
+		manifest = manifest.replace(`"${key}": {}`, `"${key}": __EMPTY`);
+	}
+	return manifest;
+}
+
+/**
+ * Deduplicate repeated 'chunks' arrays within a module mapping value.
+ *
+ * @param valueText The JS source text of the module mapping object
+ * @param sharedVars Map to accumulate shared variable declarations
+ * @returns The rewritten value text with chunks arrays replaced by variable refs
+ */
+function deduplicateChunksArrays(valueText: string, sharedVars: Map<string, string>): string {
+	const rootNode = parse(Lang.JavaScript, valueText).root();
+
+	// Find all "chunks": [...] pairs
+	const chunksRule = `
+rule:
+  kind: pair
+  all:
+    - has:
+        field: key
+        pattern: '"chunks"'
+    - has:
+        field: value
+        kind: array
+        pattern: $CHUNKS
+fix: '"chunks": $CHUNKS'
+`;
+
+	const { matches } = applyRule(chunksRule, rootNode, { once: false });
+
+	const edits: Array<{ match: SgNode; replacement: string }> = [];
+
+	for (const match of matches) {
+		const chunksNode = match.getMatch("CHUNKS");
+		if (!chunksNode) continue;
+		const chunksText = chunksNode.text();
+		if (chunksText.length <= 30) continue; // Skip small arrays
+
+		const hash = crypto.createHash("sha1").update(chunksText).digest("hex");
+		const varName = `c_${hash}`;
+		sharedVars.set(varName, chunksText);
+		edits.push({ match, replacement: `"chunks": ${varName}` });
+	}
+
+	if (edits.length === 0) return valueText;
+	return rootNode.commitEdits(edits.map((e) => e.match.replace(e.replacement)));
 }
