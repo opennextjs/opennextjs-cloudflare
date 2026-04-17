@@ -126,9 +126,10 @@ describe("KVNextModeTagCache", () => {
 			expect(error).toHaveBeenCalledWith(mockError);
 		});
 
-		it("should use custom build ID when NEXT_BUILD_ID is set", async () => {
+		it("should prefer OPEN_NEXT_BUILD_ID when it is set", async () => {
 			const customBuildId = "custom-build-id";
-			vi.stubEnv("NEXT_BUILD_ID", customBuildId);
+			vi.stubEnv("NEXT_BUILD_ID", "legacy-build-id");
+			vi.stubEnv("OPEN_NEXT_BUILD_ID", customBuildId);
 
 			mockGet.mockResolvedValue(new Map([["tag1", null]]));
 
@@ -393,9 +394,9 @@ describe("KVNextModeTagCache", () => {
 			expect(cacheKey).toBe(`${FALLBACK_BUILD_ID}/${key}`);
 		});
 
-		it("should use custom build ID when NEXT_BUILD_ID is set", () => {
+		it("should use custom build ID when OPEN_NEXT_BUILD_ID is set", () => {
 			const customBuildId = "custom-build-id";
-			vi.stubEnv("NEXT_BUILD_ID", customBuildId);
+			vi.stubEnv("OPEN_NEXT_BUILD_ID", customBuildId);
 
 			const key = "test-tag";
 			const cacheKey = (tagCache as unknown as { getCacheKey: (key: string) => string }).getCacheKey(key);
@@ -404,7 +405,7 @@ describe("KVNextModeTagCache", () => {
 		});
 
 		it("should handle double slashes by replacing them with single slash", () => {
-			vi.stubEnv("NEXT_BUILD_ID", "build//id");
+			vi.stubEnv("OPEN_NEXT_BUILD_ID", "build//id");
 
 			const key = "test-tag";
 			const cacheKey = (tagCache as unknown as { getCacheKey: (key: string) => string }).getCacheKey(key);
@@ -414,18 +415,16 @@ describe("KVNextModeTagCache", () => {
 	});
 
 	describe("getBuildId", () => {
-		it("should return NEXT_BUILD_ID when set", () => {
+		it("should return OPEN_NEXT_BUILD_ID when set", () => {
 			const customBuildId = "custom-build-id";
-			vi.stubEnv("NEXT_BUILD_ID", customBuildId);
+			vi.stubEnv("OPEN_NEXT_BUILD_ID", customBuildId);
 
 			const buildId = (tagCache as unknown as { getBuildId: () => string }).getBuildId();
 
 			expect(buildId).toBe(customBuildId);
 		});
 
-		it("should return fallback build ID when NEXT_BUILD_ID is not set", () => {
-			// Environment variables are cleared by vi.unstubAllEnvs() in beforeEach
-
+		it("should return fallback build ID when no build ID env vars are set", () => {
 			const buildId = (tagCache as unknown as { getBuildId: () => string }).getBuildId();
 
 			expect(buildId).toBe(FALLBACK_BUILD_ID);

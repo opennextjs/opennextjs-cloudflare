@@ -145,6 +145,7 @@ function populateProcessEnv(url: URL, env: CloudflareEnv) {
 	if (__DEPLOYMENT_ID__) {
 		process.env.DEPLOYMENT_ID = __DEPLOYMENT_ID__;
 	}
+	process.env.OPEN_NEXT_BUILD_ID = __OPEN_NEXT_BUILD_ID__;
 }
 
 declare global {
@@ -156,6 +157,8 @@ declare global {
 	var __ASSETS_RUN_WORKER_FIRST__: boolean | string[] | undefined;
 	// Deployment ID
 	var __DEPLOYMENT_ID__: string;
+	// Open Next build ID (deploymentId or fallback buildId)
+	var __OPEN_NEXT_BUILD_ID__: string;
 	// Next trailingSlash config
 	var __TRAILING_SLASH__: boolean;
 }

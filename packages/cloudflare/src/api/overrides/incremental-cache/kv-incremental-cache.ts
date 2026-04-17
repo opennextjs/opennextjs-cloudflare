@@ -102,7 +102,7 @@ class KVIncrementalCache implements IncrementalCache {
 	protected getKVKey(key: string, cacheType?: CacheEntryType): string {
 		return computeCacheKey(key, {
 			prefix: getCloudflareContext().env[PREFIX_ENV_NAME],
-			buildId: process.env.NEXT_BUILD_ID,
+			buildId: process.env.OPEN_NEXT_BUILD_ID,
 			cacheType,
 		});
 	}

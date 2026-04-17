@@ -190,7 +190,7 @@ export class D1NextModeTagCache implements NextModeTagCache {
 	}
 
 	protected getBuildId() {
-		return process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
+		return process.env.OPEN_NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
 	}
 
 	/**
