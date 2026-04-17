@@ -54,7 +54,7 @@
 	"dependencies": {
 		"@ast-grep/napi": "^0.40.5",
 		"@dotenvx/dotenvx": "catalog:",
-		"@opennextjs/aws": "https://pkg.pr.new/@opennextjs/aws@39578f1",
+		"@opennextjs/aws": "3.10.2",
 		"cloudflare": "^4.4.1",
 		"comment-json": "^4.5.1",
 		"enquirer": "^2.4.1",
