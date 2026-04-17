@@ -22,14 +22,14 @@ export type WithWranglerArgs<T = unknown> = T & {
 	env: string | undefined;
 };
 
-export const nextAppDir: string = process.cwd();
+export const nextAppDir = process.cwd();
 
 /**
  * Print headers and warnings for the CLI.
  *
  * @param command
  */
-export function printHeaders(command: string): void {
+export function printHeaders(command: string) {
 	printHeader(`Cloudflare ${command}`);
 
 	showWarningOnWindows();
@@ -50,9 +50,7 @@ export function printHeaders(command: string): void {
  * @returns The compiled OpenNext config and the build directory.
  *
  */
-export async function compileConfig(
-	configPath: string | undefined
-): Promise<ReturnType<typeof compileOpenNextConfig>> {
+export async function compileConfig(configPath: string | undefined) {
 	if (configPath && !existsSync(configPath)) {
 		throw new Error(`Custom config file not found at ${configPath}`);
 	}
@@ -82,9 +80,7 @@ export async function compileConfig(
  *
  * @returns OpenNext config.
  */
-export async function retrieveCompiledConfig(): Promise<{
-	config: OpenNextConfig;
-}> {
+export async function retrieveCompiledConfig() {
 	const configPath = path.join(nextAppDir, ".open-next/.build/open-next.config.edge.mjs");
 
 	if (!existsSync(configPath)) {
@@ -105,10 +101,7 @@ export async function retrieveCompiledConfig(): Promise<{
  * @param buildDir Directory to use when building the application
  * @returns Normalized options.
  */
-export function getNormalizedOptions(
-	config: OpenNextConfig,
-	buildDir: string = nextAppDir
-): ReturnType<typeof normalizeOptions> {
+export function getNormalizedOptions(config: OpenNextConfig, buildDir = nextAppDir) {
 	const require = createRequire(import.meta.url);
 	const openNextDistDir = path.dirname(require.resolve("@opennextjs/aws/index.js"));
 
@@ -124,14 +117,11 @@ export function getNormalizedOptions(
  * @param args Wrangler environment and config path.
  * @returns Wrangler config.
  */
-export async function readWranglerConfig(
-	args: WithWranglerArgs
-): Promise<ReturnType<typeof unstable_readConfig>> {
-	const { env, wranglerConfigPath } = args;
+export async function readWranglerConfig(args: WithWranglerArgs) {
 	// Note: `unstable_readConfig` is sync as of wrangler 4.60.0
 	//       But it will eventually become async.
 	//       See https://github.com/cloudflare/workers-sdk/pull/12031
-	return await unstable_readConfig({ env, config: wranglerConfigPath });
+	return await unstable_readConfig({ env: args.env, config: args.wranglerConfigPath });
 }
 
 /**
