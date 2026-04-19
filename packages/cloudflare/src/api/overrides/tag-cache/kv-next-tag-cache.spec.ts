@@ -31,8 +31,6 @@ describe("KVNextModeTagCache", () => {
 	let mockPut: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
-		vi.clearAllMocks();
-
 		// Setup mock database
 		mockGet = vi.fn();
 		mockPut = vi.fn();

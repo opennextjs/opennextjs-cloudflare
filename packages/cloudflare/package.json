@@ -86,7 +86,7 @@
 		"vitest": "catalog:"
 	},
 	"peerDependencies": {
-		"next": ">=15.5.15 || >=16.2.3",
+		"next": ">=15.5.15 <16 || >=16.2.3",
 		"wrangler": "catalog:"
 	}
 }

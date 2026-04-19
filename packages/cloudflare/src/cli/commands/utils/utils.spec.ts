@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { askConfirmation } from "../../utils/ask-confirmation.js";
 import { createOpenNextConfigFile, findOpenNextConfig } from "../../utils/create-open-next-config.js";
@@ -66,10 +66,6 @@ vi.mock("@opennextjs/aws/build/helper.js", () => ({
 }));
 
 describe("compileConfig", () => {
-	afterEach(() => {
-		vi.restoreAllMocks();
-	});
-
 	it("should compile config when configPath is provided and file exists", async () => {
 		mockExistsSync.mockReturnValue(true);
 

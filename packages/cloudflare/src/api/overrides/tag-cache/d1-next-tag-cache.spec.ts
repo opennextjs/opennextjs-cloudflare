@@ -33,8 +33,6 @@ describe("D1NextModeTagCache", () => {
 	let mockBatch: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
-		vi.clearAllMocks();
-
 		// Setup mock database.
 		// All read methods now use .raw() (via #resolveTagValues) to fetch full rows.
 		mockRaw = vi.fn().mockResolvedValue([]);
