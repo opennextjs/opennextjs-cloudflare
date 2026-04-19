@@ -23,11 +23,11 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	// Ongoing revalidations are deduped by the deduplication id
 	// Since this is running in waitUntil, we expect the durable object state to persist this during the duration of the revalidation
 	// TODO: handle incremental cache with only eventual consistency (i.e. KV or R2/D1 with the optional cache layer on top)
-	ongoingRevalidations = new Map<string, Promise<void>>();
+	ongoingRevalidations: Map<string, Promise<void>> = new Map<string, Promise<void>>();
 
 	sql: SqlStorage;
 
-	routeInFailedState = new Map<string, FailedState>();
+	routeInFailedState: Map<string, FailedState> = new Map<string, FailedState>();
 
 	service: NonNullable<CloudflareEnv["WORKER_SELF_REFERENCE"]>;
 
@@ -72,7 +72,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 		debug(`Durable object initialized`);
 	}
 
-	async revalidate(msg: QueueMessage) {
+	async revalidate(msg: QueueMessage): Promise<void> {
 		if (this.ongoingRevalidations.size > 2 * this.maxRevalidations) {
 			warn(
 				`Your durable object has 2 times the maximum number of revalidations (${this.maxRevalidations}) in progress. If this happens often, you should consider increasing the NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION or the number of durable objects with the MAX_REVALIDATE_CONCURRENCY env var.`
@@ -110,7 +110,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 		this.ctx.waitUntil(revalidationPromise);
 	}
 
-	async executeRevalidation(msg: QueueMessage) {
+	async executeRevalidation(msg: QueueMessage): Promise<void> {
 		let response: Response | undefined;
 		try {
 			debug(`Revalidating ${msg.MessageBody.host}${msg.MessageBody.url}`);
@@ -187,7 +187,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 		}
 	}
 
-	override async alarm() {
+	override async alarm(): Promise<void> {
 		const currentDateTime = Date.now();
 		// We fetch the first event that needs to be retried or if the date is expired
 		const nextEventToRetry = Array.from(this.routeInFailedState.values())
@@ -204,7 +204,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 		}
 	}
 
-	async addToFailedState(msg: QueueMessage) {
+	async addToFailedState(msg: QueueMessage): Promise<void> {
 		debug(`Adding ${msg.MessageBody.host}${msg.MessageBody.url} to the failed state`);
 		const existingFailedState = this.routeInFailedState.get(msg.MessageDeduplicationId);
 
@@ -245,7 +245,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 		await this.addAlarm();
 	}
 
-	async addAlarm() {
+	async addAlarm(): Promise<void> {
 		const existingAlarm = await this.ctx.storage.getAlarm({ allowConcurrency: false });
 		if (existingAlarm) return;
 		if (this.routeInFailedState.size === 0) return;
@@ -263,7 +263,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	// This function is used to restore the state of the durable object
 	// We don't restore the ongoing revalidations because we cannot know in which state they are
 	// We only restore the failed state and the alarm
-	async initState() {
+	async initState(): Promise<void> {
 		if (this.disableSQLite) return;
 		// We store the failed state as a blob, we don't want to do anything with it anyway besides restoring
 		this.sql.exec("CREATE TABLE IF NOT EXISTS failed_state (id TEXT PRIMARY KEY, data TEXT, buildId TEXT)");
@@ -290,7 +290,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 * @param msg
 	 * @returns `true` if the route has been revalidated since the lastModified from the message, `false` otherwise
 	 */
-	checkSyncTable(msg: QueueMessage) {
+	checkSyncTable(msg: QueueMessage): boolean {
 		try {
 			if (this.disableSQLite) return false;
 			return (

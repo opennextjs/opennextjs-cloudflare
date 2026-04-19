@@ -17,9 +17,13 @@ export const DEFAULT_REVALIDATION_TIMEOUT_MS = 10_000;
 export class MemoryQueue implements Queue {
 	readonly name = "memory-queue";
 
-	revalidatedPaths = new Set<string>();
+	revalidatedPaths: Set<string> = new Set<string>();
 
-	constructor(private opts = { revalidationTimeoutMs: DEFAULT_REVALIDATION_TIMEOUT_MS }) {}
+	constructor(
+		private opts: {
+			revalidationTimeoutMs: number;
+		} = { revalidationTimeoutMs: DEFAULT_REVALIDATION_TIMEOUT_MS }
+	) {}
 
 	async send({ MessageBody: { host, url }, MessageDeduplicationId }: QueueMessage): Promise<void> {
 		const service = getCloudflareContext().env.WORKER_SELF_REFERENCE;

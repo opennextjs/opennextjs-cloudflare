@@ -245,7 +245,7 @@ async function getCloudflareContextAsync<
  * Note: this function should only be called inside the Next.js config file, and although async it doesn't need to be `await`ed
  * @param options options on how the function should operate and if/where to persist the platform data
  */
-export async function initOpenNextCloudflareForDev(options?: GetPlatformProxyOptions) {
+export async function initOpenNextCloudflareForDev(options?: GetPlatformProxyOptions): Promise<void> {
 	const shouldInitializationRun = shouldContextInitializationRun();
 	if (!shouldInitializationRun) return;
 

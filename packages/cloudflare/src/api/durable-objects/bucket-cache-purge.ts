@@ -26,7 +26,7 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
 		});
 	}
 
-	async purgeCacheByTags(tags: string[]) {
+	async purgeCacheByTags(tags: string[]): Promise<void> {
 		for (const tag of tags) {
 			// Insert the tag into the sql table
 			this.ctx.storage.sql.exec(
@@ -43,7 +43,7 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
 		}
 	}
 
-	override async alarm() {
+	override async alarm(): Promise<void> {
 		let tags = this.ctx.storage.sql
 			.exec<{ tag: string }>(
 				`

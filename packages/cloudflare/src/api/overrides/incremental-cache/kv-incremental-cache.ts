@@ -27,7 +27,7 @@ export const PREFIX_ENV_NAME = "NEXT_INC_CACHE_KV_PREFIX";
  * when the constructor is called.
  */
 class KVIncrementalCache implements IncrementalCache {
-	readonly name = NAME;
+	readonly name: string = NAME;
 
 	async get<CacheType extends CacheEntryType = "cache">(
 		key: string,

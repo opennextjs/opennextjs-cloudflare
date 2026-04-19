@@ -11,7 +11,10 @@
 
 import type { OnResolveResult, PluginBuild } from "esbuild";
 
-export function handleOptionalDependencies(dependencies: string[]) {
+export function handleOptionalDependencies(dependencies: string[]): {
+	name: string;
+	setup: (build: PluginBuild) => Promise<void>;
+} {
 	// Regex matching either a full module ("module") or a prefix ("module/...")
 	const filter = new RegExp(
 		`^(${dependencies.flatMap((name) => [`${name}$`, String.raw`${name}/`]).join("|")})`
@@ -24,7 +27,7 @@ export function handleOptionalDependencies(dependencies: string[]) {
 	return {
 		name,
 
-		setup: async (build: PluginBuild) => {
+		setup: async (build) => {
 			build.onResolve({ filter }, async ({ path, pluginData, ...options }): Promise<OnResolveResult> => {
 				// Use ESBuild to resolve the dependency.
 				// Because the plugin asks ESBuild to resolve the path we just received,

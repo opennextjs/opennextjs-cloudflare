@@ -19,7 +19,7 @@ type D1TagValue = { revalidatedAt: number; stale: number | null; expire: number 
 
 export class D1NextModeTagCache implements NextModeTagCache {
 	readonly mode = "nextMode" as const;
-	readonly name = NAME;
+	readonly name: string = NAME;
 
 	async getLastRevalidated(tags: string[]): Promise<number> {
 		const { isDisabled, db } = this.getConfig();
@@ -185,18 +185,18 @@ export class D1NextModeTagCache implements NextModeTagCache {
 				};
 	}
 
-	protected getCacheKey(key: string) {
+	protected getCacheKey(key: string): string {
 		return `${this.getBuildId()}/${key}`.replaceAll("//", "/");
 	}
 
-	protected getBuildId() {
+	protected getBuildId(): string {
 		return process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
 	}
 
 	/**
 	 * @returns request scoped in-memory cache for tag values, or undefined if ALS is not available.
 	 */
-	protected getItemsCache() {
+	protected getItemsCache(): Map<string, D1TagValue | null> | undefined {
 		const store = globalThis.__openNextAls?.getStore();
 		return store?.requestCache.getOrCreate<string, D1TagValue | null>("d1-nextMode:tagItems");
 	}

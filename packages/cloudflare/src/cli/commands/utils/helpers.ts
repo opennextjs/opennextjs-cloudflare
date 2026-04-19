@@ -34,7 +34,10 @@ export type WorkerEnvVar = Record<keyof CloudflareEnv, string | undefined>;
  * @param buildOpts Open Next build options
  * @returns the env vars
  */
-export async function getEnvFromPlatformProxy(options: GetPlatformProxyOptions, buildOpts: BuildOptions) {
+export async function getEnvFromPlatformProxy(
+	options: GetPlatformProxyOptions,
+	buildOpts: BuildOptions
+): Promise<WorkerEnvVar> {
 	// 1. Start from `process.env`
 	const envVars = process.env;
 
@@ -82,7 +85,7 @@ export async function getEnvFromPlatformProxy(options: GetPlatformProxyOptions, 
  * @param arg
  * @returns escaped arg
  */
-export function quoteShellMeta(arg: string) {
+export function quoteShellMeta(arg: string): string {
 	if (process.platform === "win32") {
 		if (arg.length === 0) {
 			return '""';

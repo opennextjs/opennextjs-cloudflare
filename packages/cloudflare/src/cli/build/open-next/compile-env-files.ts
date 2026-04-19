@@ -8,7 +8,7 @@ import { extractProjectEnvVars } from "../../utils/extract-project-env-vars.js";
 /**
  * Compiles the values extracted from the project's env files to the output directory for use in the worker.
  */
-export function compileEnvFiles(buildOpts: BuildOptions) {
+export function compileEnvFiles(buildOpts: BuildOptions): void {
 	const envDir = path.join(buildOpts.outputDir, "cloudflare");
 	fs.mkdirSync(envDir, { recursive: true });
 	["production", "development", "test"].forEach((mode) =>

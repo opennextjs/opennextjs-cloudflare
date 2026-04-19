@@ -8,7 +8,7 @@ import type { OpenNextConfig } from "../../../api/config.js";
  *
  * @param config OpenNext configuration.
  */
-export function ensureCloudflareConfig(config: OpenNextConfig) {
+export function ensureCloudflareConfig(config: OpenNextConfig): void {
 	const mwIsMiddlewareExternal = config.middleware?.external === true;
 	const mwConfig = mwIsMiddlewareExternal ? (config.middleware as ExternalMiddlewareConfig) : undefined;
 

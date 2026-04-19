@@ -10,7 +10,7 @@ export type IncrementalCacheEntry<CacheType extends CacheEntryType> = {
 	lastModified: number;
 };
 
-export const debugCache = (name: string, ...args: unknown[]) => {
+export const debugCache = (name: string, ...args: unknown[]): void => {
 	if (process.env.NEXT_PRIVATE_DEBUG_CACHE) {
 		console.log(`[${name}] `, ...args);
 	}
@@ -26,7 +26,7 @@ export type KeyOptions = {
 	buildId: string | undefined;
 };
 
-export function computeCacheKey(key: string, options: KeyOptions) {
+export function computeCacheKey(key: string, options: KeyOptions): string {
 	const { cacheType = "cache", prefix = DEFAULT_PREFIX, buildId = FALLBACK_BUILD_ID } = options;
 	const hash = createHash("sha256").update(key).digest("hex");
 	return `${prefix}/${buildId}/${hash}.${cacheType}`.replace(/\/+/g, "/");
@@ -39,7 +39,7 @@ export function isPurgeCacheEnabled(): boolean {
 	return cdnInvalidation !== undefined && cdnInvalidation !== "dummy";
 }
 
-export async function purgeCacheByTags(tags: string[]) {
+export async function purgeCacheByTags(tags: string[]): Promise<void> {
 	const { env } = getCloudflareContext();
 	// We have a durable object for purging cache
 	// We should use it
@@ -55,7 +55,7 @@ export async function purgeCacheByTags(tags: string[]) {
 	}
 }
 
-export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[]) {
+export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[]): Promise<string> {
 	if (!env.CACHE_PURGE_ZONE_ID || !env.CACHE_PURGE_API_TOKEN) {
 		// THIS IS A NO-OP
 		error("No cache zone ID or API token provided. Skipping cache purge.");

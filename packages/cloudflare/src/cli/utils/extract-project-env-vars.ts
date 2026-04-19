@@ -26,7 +26,10 @@ function readEnvFile(filePath: string) {
  * In a monorepo, the env files in an app's directory will take precedence over
  * the env files at the root of the monorepo.
  */
-export function extractProjectEnvVars(mode: string, { monorepoRoot, appPath }: BuildOptions) {
+export function extractProjectEnvVars(
+	mode: string,
+	{ monorepoRoot, appPath }: BuildOptions
+): Record<string, string> {
 	return [".env", `.env.${mode}`, ...(mode !== "test" ? [".env.local"] : []), `.env.${mode}.local`]
 		.flatMap((fileName) => [
 			...(monorepoRoot !== appPath ? [readEnvFile(path.join(monorepoRoot, fileName))] : []),

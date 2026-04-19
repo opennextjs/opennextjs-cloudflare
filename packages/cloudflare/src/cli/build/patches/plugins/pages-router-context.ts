@@ -14,7 +14,7 @@ export function patchPagesRouterContext(buildOpts: BuildOptions) {
 	const basePath = `next/dist/server/${isAfter15 ? "" : "future/"}route-modules/pages/vendored/contexts/`;
 	return {
 		name: "pages-router-context",
-		setup: (build: PluginBuild) => {
+		setup: (build: PluginBuild): void => {
 			// If we are after 15.3, we don't need to patch the context anymore
 			if (isAfter153) {
 				return;

@@ -8,7 +8,7 @@ import { build } from "esbuild";
 /**
  * Compiles the initialization code for the workerd runtime
  */
-export async function compileImages(options: BuildOptions) {
+export async function compileImages(options: BuildOptions): Promise<void> {
 	const currentDir = path.join(path.dirname(fileURLToPath(import.meta.url)));
 	const templatesDir = path.join(currentDir, "../../templates");
 	const imagesPath = path.join(templatesDir, "images.js");

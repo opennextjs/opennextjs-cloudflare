@@ -5,7 +5,7 @@ import { getCloudflareContext } from "../../cloudflare-context.js";
 
 export default {
 	name: "durable-queue",
-	send: async (msg: QueueMessage) => {
+	send: async (msg: QueueMessage): Promise<void> => {
 		const durableObject = getCloudflareContext().env.NEXT_CACHE_DO_QUEUE;
 		if (!durableObject) throw new IgnorableError("No durable object binding for cache revalidation");
 

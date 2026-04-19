@@ -1,1 +1,1 @@
-export function loadEnvConfig() {}
+export function loadEnvConfig(): void {}
