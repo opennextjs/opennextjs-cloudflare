@@ -115,7 +115,6 @@ async function getEvalManifestRule(buildOpts: BuildOptions) {
 			manifest = factorManifestValue(manifest, "ssrModuleMapping", factoredValues);
 			manifest = factorManifestValue(manifest, "edgeSSRModuleMapping", factoredValues);
 			manifest = factorManifestValue(manifest, "rscModuleMapping", factoredValues);
-			manifest = replaceEmptyEdgeMappings(manifest);
 			manifest = factorManifestValue(manifest, "entryCSSFiles", factoredValues);
 			manifest = factorManifestValue(manifest, "entryJSFiles", factoredValues);
 			factoredManifest.set(path, manifest);
@@ -135,8 +134,6 @@ async function getEvalManifestRule(buildOpts: BuildOptions) {
 
 	const factoredValuesCode =
 		chunksVarsCode +
-		"\n" +
-		"const __EMPTY = {};\n" +
 		[...factoredValues.entries()].map(([varName, value]) => `const ${varName} = ${value};`).join("\n");
 
 	const returnManifests = manifestPaths
@@ -219,7 +216,6 @@ rule:
 inside:
   pattern: globalThis.__RSC_MANIFEST[$$$_] = { $$$ };
   stopBy: end
-fix: '"${key}": $${valueName}'
 `;
 
 	const rootNode = parse(Lang.JavaScript, manifest).root();
@@ -238,18 +234,6 @@ fix: '"${key}": $${valueName}'
 	}
 
 	// return the original manifest if the value is not found or is small enough to not warrant factoring out.
-	return manifest;
-}
-
-/**
- * Replace empty objects with a single shared variable.
- * @param manifest
- * @returns
- */
-function replaceEmptyEdgeMappings(manifest: string): string {
-	for (const key of ["edgeSSRModuleMapping", "edgeRscModuleMapping"]) {
-		manifest = manifest.replace(`"${key}": {}`, `"${key}": __EMPTY`);
-	}
 	return manifest;
 }
 
@@ -275,7 +259,6 @@ rule:
         field: value
         kind: array
         pattern: $CHUNKS
-fix: '"chunks": $CHUNKS'
 `;
 
 	const { matches } = applyRule(chunksRule, rootNode, { once: false });
