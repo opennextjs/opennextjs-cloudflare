@@ -27,7 +27,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 
 	sql: SqlStorage;
 
-	routeInFailedState: Map<string, FailedState> = new Map<string, FailedState>();
+	routeInFailedState: Map<string, FailedState> = new Map();
 
 	service: NonNullable<CloudflareEnv["WORKER_SELF_REFERENCE"]>;
 
