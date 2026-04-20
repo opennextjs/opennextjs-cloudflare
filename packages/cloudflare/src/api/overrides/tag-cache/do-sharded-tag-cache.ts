@@ -196,9 +196,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 				// revalidatedAt > lastModified ensures the revalidation that set this stale window happened
 				// after the page was generated, preventing a stale signal from a previous ISR cycle.
 				const isInStaleWindow =
-					stale != null &&
-					revalidatedAt > (lastModified ?? now) &&
-					(lastModified ?? now) <= stale;
+					stale != null && revalidatedAt > (lastModified ?? now) && (lastModified ?? now) <= stale;
 				if (!isInStaleWindow) return false;
 				return expire == null || expire > now;
 			});
@@ -361,8 +359,8 @@ class ShardedDOTagCache implements NextModeTagCache {
 							"cache-control": `max-age=${this.opts.regionalCacheTtlSec ?? 5}`,
 							...(tags.length > 0
 								? {
-									"cache-tag": tags.join(","),
-								}
+										"cache-tag": tags.join(","),
+									}
 								: {}),
 						},
 					})
@@ -560,23 +558,23 @@ class ShardedDOTagCache implements NextModeTagCache {
 		// If we have regional replication enabled, we need to further duplicate the shards in all the regions
 		const regionalReplicasInAllRegions = generateAllReplicas
 			? regionalReplicas.flatMap(({ doId, tag }) => {
-				return AVAILABLE_REGIONS.map((region) => {
-					return {
-						doId: new DOId({
-							baseShardId: doId.options.baseShardId,
-							numberOfReplicas: numReplicas,
-							shardType,
-							replicaId: doId.replicaId,
-							region,
-						}),
-						tag,
-					};
-				});
-			})
+					return AVAILABLE_REGIONS.map((region) => {
+						return {
+							doId: new DOId({
+								baseShardId: doId.options.baseShardId,
+								numberOfReplicas: numReplicas,
+								shardType,
+								replicaId: doId.replicaId,
+								region,
+							}),
+							tag,
+						};
+					});
+				})
 			: regionalReplicas.map(({ doId, tag }) => {
-				doId.region = this.getClosestRegion();
-				return { doId, tag };
-			});
+					doId.region = this.getClosestRegion();
+					return { doId, tag };
+				});
 		return regionalReplicasInAllRegions;
 	}
 
@@ -613,9 +611,9 @@ class ShardedDOTagCache implements NextModeTagCache {
 		return !db || isDisabled
 			? { isDisabled: true as const }
 			: {
-				isDisabled: false as const,
-				db,
-			};
+					isDisabled: false as const,
+					db,
+				};
 	}
 }
 
