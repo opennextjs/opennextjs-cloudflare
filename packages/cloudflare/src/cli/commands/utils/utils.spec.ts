@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { askConfirmation } from "../../utils/ask-confirmation.js";
 import { createOpenNextConfigFile, findOpenNextConfig } from "../../utils/create-open-next-config.js";
-import { isInteractive } from "../../utils/is-interactive.js";
+import { isNonInteractiveOrCI } from "../../utils/is-interactive.js";
 import { compileConfig } from "./utils.js";
 
 const { mockExistsSync } = vi.hoisted(() => ({
@@ -21,12 +21,16 @@ vi.mock("@opennextjs/aws/logger.js", () => ({
 }));
 
 // Mock compileOpenNextConfig
-const mockCompileOpenNextConfig = vi.fn(async () => ({
-	config: { default: {} },
-	buildDir: "/build",
-}));
+const mockCompileOpenNextConfig = vi.fn(async (...args: [unknown, unknown]) => {
+	void args;
+
+	return {
+		config: { default: {} },
+		buildDir: "/build",
+	};
+});
 vi.mock("@opennextjs/aws/build/compileConfig.js", () => ({
-	compileOpenNextConfig: (...args: unknown[]) => mockCompileOpenNextConfig(...args),
+	compileOpenNextConfig: (...args: [unknown, unknown]) => mockCompileOpenNextConfig(...args),
 }));
 
 // Mock ensureCloudflareConfig
@@ -39,10 +43,9 @@ vi.mock("../../utils/ask-confirmation.js", () => ({
 	askConfirmation: vi.fn(),
 }));
 
-// Mock isInteractive — default to interactive (TTY) so existing tests
-// keep exercising the prompt branch. Non-interactive cases override it.
+// Mock CI/non-interactive detector — default to interactive local behavior.
 vi.mock("../../utils/is-interactive.js", () => ({
-	isInteractive: vi.fn(() => true),
+	isNonInteractiveOrCI: vi.fn(() => false),
 }));
 
 // Mock create-config-files (unused import in utils.ts but required for module resolution)
@@ -75,7 +78,7 @@ vi.mock("@opennextjs/aws/build/helper.js", () => ({
 
 describe("compileConfig", () => {
 	beforeEach(() => {
-		vi.mocked(isInteractive).mockReturnValue(true);
+		vi.mocked(isNonInteractiveOrCI).mockReturnValue(false);
 	});
 
 	it("should compile config when configPath is provided and file exists", async () => {
@@ -138,7 +141,7 @@ describe("compileConfig", () => {
 
 	it("should throw a helpful error (without prompting) when no configPath found in a non-interactive environment", async () => {
 		vi.mocked(findOpenNextConfig).mockReturnValue(undefined);
-		vi.mocked(isInteractive).mockReturnValue(false);
+		vi.mocked(isNonInteractiveOrCI).mockReturnValue(true);
 
 		await expect(compileConfig(undefined)).rejects.toThrowError(
 			/No `open-next\.config\.ts` file was found.*opennextjs-cloudflare migrate/s
@@ -150,7 +153,7 @@ describe("compileConfig", () => {
 
 	it("should still prompt in interactive environments", async () => {
 		vi.mocked(findOpenNextConfig).mockReturnValue(undefined);
-		vi.mocked(isInteractive).mockReturnValue(true);
+		vi.mocked(isNonInteractiveOrCI).mockReturnValue(false);
 		vi.mocked(askConfirmation).mockResolvedValue(true);
 
 		await compileConfig(undefined);

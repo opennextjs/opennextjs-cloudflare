@@ -18,7 +18,7 @@ import {
 	findOpenNextConfig,
 	OPEN_NEXT_CONFIG_FILE_NAME,
 } from "../../utils/create-open-next-config.js";
-import { isInteractive } from "../../utils/is-interactive.js";
+import { isNonInteractiveOrCI } from "../../utils/is-interactive.js";
 
 export type WithWranglerArgs<T = unknown> = T & {
 	// Array of arguments that can be given to wrangler commands, including the `--config` and `--env` args.
@@ -66,12 +66,9 @@ export async function compileConfig(configPath: string | undefined) {
 		// In non-interactive environments (CI, Cloudflare Workers Builds,
 		// Docker, etc.) there is no TTY to answer a prompt — the build would
 		// hang or crash. Fail fast with an actionable message instead.
-		if (!isInteractive()) {
+		if (isNonInteractiveOrCI()) {
 			throw new Error(
-				`No \`${OPEN_NEXT_CONFIG_FILE_NAME}\` file was found in the project root.\n\n` +
-					"This file is required for OpenNext Cloudflare builds.\n" +
-					"Run `opennextjs-cloudflare migrate` to create it, or see https://opennext.js.org/cloudflare/get-started for setup guidance.\n" +
-					"Commit it and re-run the build."
+				`No \`${OPEN_NEXT_CONFIG_FILE_NAME}\` file was found in the project root.\n\nThis file is required for OpenNext Cloudflare builds.\nRun \`opennextjs-cloudflare migrate\` to create it, or see https://opennext.js.org/cloudflare/get-started for setup guidance.\nCommit it and re-run the build.`
 			);
 		}
 
