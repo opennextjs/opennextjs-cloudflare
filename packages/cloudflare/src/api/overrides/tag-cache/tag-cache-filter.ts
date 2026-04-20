@@ -52,6 +52,15 @@ export function withFilter({ tagCache, filterFn }: WithFilterOptions): NextModeT
 			}
 			return tagCache.writeTags(filteredTags);
 		},
+		isStale: tagCache.isStale
+			? async (tags, lastModified) => {
+					const filteredTags = tags.filter(filterFn);
+					if (filteredTags.length === 0) {
+						return false;
+					}
+					return tagCache.isStale!(filteredTags, lastModified);
+				}
+			: undefined,
 	};
 }
 

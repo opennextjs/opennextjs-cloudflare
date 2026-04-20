@@ -71,7 +71,13 @@ async function populateCacheCommand(
 	const buildOpts = getNormalizedOptions(config);
 
 	const wranglerConfig = await readWranglerConfig(args);
-	const envVars = await getEnvFromPlatformProxy(config, buildOpts);
+	const envVars = await getEnvFromPlatformProxy(
+		{
+			configPath: args.wranglerConfigPath,
+			environment: args.env,
+		},
+		buildOpts
+	);
 
 	await populateCache(
 		buildOpts,
@@ -412,7 +418,7 @@ async function sendEntryToR2Worker(options: {
 						"x-opennext-cache-key": key,
 						"content-length": fs.statSync(filename).size.toString(),
 					},
-					body: Readable.toWeb(fs.createReadStream(filename)) as ReadableStream,
+					body: Readable.toWeb(fs.createReadStream(filename)) as unknown as ReadableStream,
 					signal: AbortSignal.timeout(60_000),
 					// @ts-expect-error - `duplex` is required for streaming request bodies in Node.js
 					duplex: "half",
