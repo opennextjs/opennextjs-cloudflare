@@ -76,8 +76,6 @@ function createSnapshot() {
         return fn(...args);
     };
 }
-
-//# sourceMappingURL=async-local-storage.js.map
 `;
 
 test("patch the createSnapshot function", () => {

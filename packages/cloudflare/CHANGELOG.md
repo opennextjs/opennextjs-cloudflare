@@ -1,5 +1,41 @@
 # @opennextjs/cloudflare
 
+## 1.19.1
+
+### Patch Changes
+
+- [#1189](https://github.com/opennextjs/opennextjs-cloudflare/pull/1189) [`236ce14`](https://github.com/opennextjs/opennextjs-cloudflare/commit/236ce14ec9717fa25e64d197081232a2456ebf00) Thanks [@fatihy101](https://github.com/fatihy101)! - fix(tag-cache): forward `isStale()` in `withFilter`
+
+## 1.19.0
+
+### Minor Changes
+
+- [#1168](https://github.com/opennextjs/opennextjs-cloudflare/pull/1168) [`9a26846`](https://github.com/opennextjs/opennextjs-cloudflare/commit/9a268469be3759277d2cc5b412dbc16aff8fe551) Thanks [@conico974](https://github.com/conico974)! - Add support for SWR (stale-while-revalidate) in `revalidateTag`
+
+  See the [AWS implementation](https://github.com/opennextjs/opennextjs-aws/pull/1122) for more details.
+
+### Patch Changes
+
+- [#1184](https://github.com/opennextjs/opennextjs-cloudflare/pull/1184) [`c7d6425`](https://github.com/opennextjs/opennextjs-cloudflare/commit/c7d64251c2789390d35197c31f06f9e28947f44d) Thanks [@vicb](https://github.com/vicb)! - fix for Next.js CVE-2026-23869
+
+  See the [CVE-2026-23869 summary](https://vercel.com/changelog/summary-of-cve-2026-23869) for details.
+
+  This CVE is fixed by bumping the minium Next.js release version to 15.5.15/16.2.3
+
+- [#1177](https://github.com/opennextjs/opennextjs-cloudflare/pull/1177) [`e814a63`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e814a6314bb29b8f0130a68e3f0a8271b66a33ed) Thanks [@conico974](https://github.com/conico974)! - Fix `use cache` not working as expected in Next 16+
+
+## 1.18.1
+
+### Patch Changes
+
+- [#1176](https://github.com/opennextjs/opennextjs-cloudflare/pull/1176) [`2232651`](https://github.com/opennextjs/opennextjs-cloudflare/commit/22326513042bd0a075661c5f3c175de77b084f2c) Thanks [@conico974](https://github.com/conico974)! - fix for OG with Next 16.2.2
+
+- [#1166](https://github.com/opennextjs/opennextjs-cloudflare/pull/1166) [`f89fba1`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f89fba1bb2867c9b6aecc810a3b94f17e6f04e51) Thanks [@ash1day](https://github.com/ash1day)! - fix: sort `.endsWith()` checks by path length descending to prevent suffix collisions in dynamic requires
+
+  Routes whose paths are suffixes of other routes (e.g. `/test/app` vs `/`) were resolved incorrectly because the shorter path matched first in the generated `.endsWith()` chain. Sorting by path length descending ensures more specific (longer) paths are always checked first.
+
+  Fixes #1156.
+
 ## 1.18.0
 
 ### Minor Changes

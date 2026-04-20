@@ -27,7 +27,13 @@ export async function previewCommand(
 	const buildOpts = getNormalizedOptions(config);
 
 	const wranglerConfig = await readWranglerConfig(args);
-	const envVars = await getEnvFromPlatformProxy(config, buildOpts);
+	const envVars = await getEnvFromPlatformProxy(
+		{
+			configPath: args.wranglerConfigPath,
+			environment: args.env,
+		},
+		buildOpts
+	);
 
 	await populateCache(
 		buildOpts,

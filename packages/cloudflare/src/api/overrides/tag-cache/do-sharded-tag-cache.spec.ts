@@ -5,11 +5,11 @@ import shardedDOTagCache, { AVAILABLE_REGIONS, DOId } from "./do-sharded-tag-cac
 const hasBeenRevalidatedMock = vi.fn();
 const writeTagsMock = vi.fn();
 const idFromNameMock = vi.fn();
-const getRevalidationTimesMock = vi.fn();
+const getTagDataMock = vi.fn();
 const getMock = vi.fn().mockReturnValue({
 	hasBeenRevalidated: hasBeenRevalidatedMock,
 	writeTags: writeTagsMock,
-	getRevalidationTimes: getRevalidationTimesMock,
+	getTagData: getTagDataMock,
 });
 const waitUntilMock = vi.fn().mockImplementation(async (fn) => fn());
 globalThis.continent = undefined;
@@ -30,8 +30,6 @@ vi.mock("../../cloudflare-context", () => ({
 }));
 
 describe("DOShardedTagCache", () => {
-	afterEach(() => vi.clearAllMocks());
-
 	describe("generateShardId", () => {
 		it("should generate a shardId", () => {
 			const cache = shardedDOTagCache();
@@ -213,55 +211,57 @@ describe("DOShardedTagCache", () => {
 			expect(idFromNameMock).not.toHaveBeenCalled();
 		});
 
-		it("should return false if stub return false", async () => {
+		it("should return false if stub returns no recently revalidated data", async () => {
 			const cache = shardedDOTagCache();
 			cache.getFromRegionalCache = vi.fn().mockResolvedValueOnce([]);
-			hasBeenRevalidatedMock.mockImplementationOnce(() => false);
+			getTagDataMock.mockResolvedValueOnce({});
 			const result = await cache.hasBeenRevalidated(["tag1"], 123456);
 			expect(cache.getFromRegionalCache).toHaveBeenCalled();
 			expect(idFromNameMock).toHaveBeenCalled();
-			expect(hasBeenRevalidatedMock).toHaveBeenCalled();
+			expect(getTagDataMock).toHaveBeenCalled();
 			expect(result).toBe(false);
 		});
 
-		it("should return true if stub return true", async () => {
+		it("should return true if stub returns revalidated data", async () => {
 			const cache = shardedDOTagCache();
 			cache.getFromRegionalCache = vi.fn().mockResolvedValueOnce([]);
-			hasBeenRevalidatedMock.mockImplementationOnce(() => true);
+			getTagDataMock.mockResolvedValueOnce({ tag1: { revalidatedAt: 123457, stale: null, expire: null } });
 			const result = await cache.hasBeenRevalidated(["tag1"], 123456);
 			expect(cache.getFromRegionalCache).toHaveBeenCalled();
 			expect(idFromNameMock).toHaveBeenCalled();
-			expect(hasBeenRevalidatedMock).toHaveBeenCalledWith(["tag1"], 123456);
+			expect(getTagDataMock).toHaveBeenCalledWith(["tag1"]);
 			expect(result).toBe(true);
 		});
 
 		it("should return false if it throws", async () => {
 			const cache = shardedDOTagCache();
 			cache.getFromRegionalCache = vi.fn().mockResolvedValueOnce([]);
-			hasBeenRevalidatedMock.mockImplementationOnce(() => {
+			getTagDataMock.mockImplementationOnce(() => {
 				throw new Error("error");
 			});
 			const result = await cache.hasBeenRevalidated(["tag1"], 123456);
 			expect(cache.getFromRegionalCache).toHaveBeenCalled();
 			expect(idFromNameMock).toHaveBeenCalled();
-			expect(hasBeenRevalidatedMock).toHaveBeenCalled();
+			expect(getTagDataMock).toHaveBeenCalled();
 			expect(result).toBe(false);
 		});
 
 		it("Should return from the cache if it was found there", async () => {
 			const cache = shardedDOTagCache();
-			cache.getFromRegionalCache = vi.fn().mockReturnValueOnce([{ tag: "tag1", time: 1234567 }]);
+			cache.getFromRegionalCache = vi
+				.fn()
+				.mockReturnValueOnce([{ tag: "tag1", revalidatedAt: 1234567, stale: null, expire: null }]);
 			const result = await cache.hasBeenRevalidated(["tag1"], 123456);
 			expect(result).toBe(true);
 			expect(idFromNameMock).not.toHaveBeenCalled();
-			expect(hasBeenRevalidatedMock).not.toHaveBeenCalled();
+			expect(getTagDataMock).not.toHaveBeenCalled();
 		});
 
 		it("should try to put the result in the cache if it was not revalidated", async () => {
 			const cache = shardedDOTagCache();
 			cache.getFromRegionalCache = vi.fn().mockResolvedValueOnce([]);
 			cache.putToRegionalCache = vi.fn();
-			hasBeenRevalidatedMock.mockImplementationOnce(() => false);
+			getTagDataMock.mockResolvedValueOnce({});
 			const result = await cache.hasBeenRevalidated(["tag1"], 123456);
 			expect(result).toBe(false);
 
@@ -269,13 +269,96 @@ describe("DOShardedTagCache", () => {
 			expect(cache.putToRegionalCache).toHaveBeenCalled();
 		});
 
-		it("should call all the durable object instance", async () => {
+		it("should only read tag data once on a regional-cache miss", async () => {
+			const putMock = vi.fn();
+			// @ts-expect-error - Defined on cloudfare context
+			globalThis.caches = {
+				open: vi.fn().mockResolvedValue({
+					match: vi.fn().mockResolvedValue(null),
+					put: putMock,
+				}),
+			};
+			const cache = shardedDOTagCache({ baseShardSize: 4, regionalCache: true });
+			cache.getFromRegionalCache = vi.fn().mockResolvedValueOnce([]);
+			getTagDataMock.mockResolvedValueOnce({
+				tag1: { revalidatedAt: 123455, stale: null, expire: null },
+			});
+
+			const result = await cache.hasBeenRevalidated(["tag1"], 123456);
+
+			expect(result).toBe(false);
+			expect(getTagDataMock).toHaveBeenCalledTimes(1);
+			expect(getTagDataMock).toHaveBeenCalledWith(["tag1"]);
+			expect(putMock).toHaveBeenCalledTimes(1);
+			expect(putMock).toHaveBeenCalledWith(
+				"http://local.cache/shard/tag-hard;shard-1?tag=tag1",
+				expect.any(Response)
+			);
+			// @ts-expect-error - Defined on cloudfare context
+			globalThis.caches = undefined;
+		});
+
+		it("should call all the durable object instances", async () => {
 			const cache = shardedDOTagCache();
 			cache.getFromRegionalCache = vi.fn().mockResolvedValue([]);
+			getTagDataMock.mockResolvedValue({});
 			const result = await cache.hasBeenRevalidated(["tag1", "tag2"], 123456);
 			expect(result).toBe(false);
 			expect(idFromNameMock).toHaveBeenCalledTimes(2);
-			expect(hasBeenRevalidatedMock).toHaveBeenCalledTimes(2);
+			expect(getTagDataMock).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe("isStale", () => {
+		beforeEach(() => {
+			globalThis.openNextConfig = {
+				dangerous: { disableTagCache: false },
+			};
+		});
+
+		it("should return false if the cache is disabled", async () => {
+			globalThis.openNextConfig = { dangerous: { disableTagCache: true } };
+			const cache = shardedDOTagCache();
+			expect(await cache.isStale(["tag1"])).toBe(false);
+			expect(idFromNameMock).not.toHaveBeenCalled();
+		});
+
+		it("should return false when there are no tags", async () => {
+			const cache = shardedDOTagCache();
+			expect(await cache.isStale([])).toBe(false);
+		});
+
+		it("should return false when stub returns no stale data", async () => {
+			const cache = shardedDOTagCache();
+			cache.getFromRegionalCache = vi.fn().mockResolvedValueOnce([]);
+			getTagDataMock.mockResolvedValueOnce({});
+			expect(await cache.isStale(["tag1"], 123456)).toBe(false);
+		});
+
+		it("should return true when stub returns stale data (no expire)", async () => {
+			const cache = shardedDOTagCache();
+			cache.getFromRegionalCache = vi.fn().mockResolvedValueOnce([]);
+			getTagDataMock.mockResolvedValueOnce({ tag1: { revalidatedAt: 200, stale: 200, expire: null } });
+			expect(await cache.isStale(["tag1"], 100)).toBe(true);
+		});
+
+		it("should return false when stale <= lastModified", async () => {
+			const cache = shardedDOTagCache();
+			cache.getFromRegionalCache = vi.fn().mockResolvedValueOnce([]);
+			getTagDataMock.mockResolvedValueOnce({ tag1: { revalidatedAt: 100, stale: 100, expire: null } });
+			expect(await cache.isStale(["tag1"], 200)).toBe(false);
+		});
+
+		it("should return from regional cache if available", async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(500);
+			const cache = shardedDOTagCache();
+			cache.getFromRegionalCache = vi
+				.fn()
+				.mockReturnValueOnce([{ tag: "tag1", revalidatedAt: 200, stale: 200, expire: null }]);
+			expect(await cache.isStale(["tag1"], 100)).toBe(true);
+			expect(idFromNameMock).not.toHaveBeenCalled();
+			vi.useRealTimers();
 		});
 	});
 
@@ -305,7 +388,7 @@ describe("DOShardedTagCache", () => {
 			await cache.writeTags(["tag1"]);
 			expect(idFromNameMock).toHaveBeenCalled();
 			expect(writeTagsMock).toHaveBeenCalled();
-			expect(writeTagsMock).toHaveBeenCalledWith(["tag1"], 1000);
+			expect(writeTagsMock).toHaveBeenCalledWith([{ tag: "tag1", stale: 1000, expire: undefined }]);
 		});
 
 		it("should write the tags to the cache for multiple shards", async () => {
@@ -313,8 +396,14 @@ describe("DOShardedTagCache", () => {
 			await cache.writeTags(["tag1", "tag2"]);
 			expect(idFromNameMock).toHaveBeenCalledTimes(2);
 			expect(writeTagsMock).toHaveBeenCalledTimes(2);
-			expect(writeTagsMock).toHaveBeenCalledWith(["tag1"], 1000);
-			expect(writeTagsMock).toHaveBeenCalledWith(["tag2"], 1000);
+			expect(writeTagsMock).toHaveBeenCalledWith([{ tag: "tag1", stale: 1000, expire: undefined }]);
+			expect(writeTagsMock).toHaveBeenCalledWith([{ tag: "tag2", stale: 1000, expire: undefined }]);
+		});
+
+		it("should write object tags with stale and expire", async () => {
+			const cache = shardedDOTagCache();
+			await cache.writeTags([{ tag: "tag1", stale: 500, expire: 9999 }]);
+			expect(writeTagsMock).toHaveBeenCalledWith([{ tag: "tag1", stale: 500, expire: 9999 }]);
 		});
 
 		it('should write to all the replicated shards if "generateAllReplicas" is true', async () => {
@@ -325,8 +414,8 @@ describe("DOShardedTagCache", () => {
 			await cache.writeTags(["tag1", "_N_T_/tag1"]);
 			expect(idFromNameMock).toHaveBeenCalledTimes(6);
 			expect(writeTagsMock).toHaveBeenCalledTimes(6);
-			expect(writeTagsMock).toHaveBeenCalledWith(["tag1"], 1000);
-			expect(writeTagsMock).toHaveBeenCalledWith(["_N_T_/tag1"], 1000);
+			expect(writeTagsMock).toHaveBeenCalledWith([{ tag: "tag1", stale: 1000, expire: undefined }]);
+			expect(writeTagsMock).toHaveBeenCalledWith([{ tag: "_N_T_/tag1", stale: 1000, expire: undefined }]);
 		});
 
 		it("should call deleteRegionalCache", async () => {
@@ -338,7 +427,6 @@ describe("DOShardedTagCache", () => {
 				doId: expect.objectContaining({ key: "tag-hard;shard-1;replica-1" }),
 				tags: ["tag1"],
 			});
-			// expect(cache.deleteRegionalCache).toHaveBeenCalledWith("tag-hard;shard-1;replica-1", ["tag1"]);
 		});
 	});
 
@@ -388,7 +476,24 @@ describe("DOShardedTagCache", () => {
 			});
 			const cacheResult = await cache.getFromRegionalCache({ doId, tags: ["tag1"] });
 			expect(cacheResult.length).toBe(1);
-			expect(cacheResult[0]).toEqual({ tag: "tag1", time: 1234567 });
+			// "1234567" is a plain number (old format) → backward-compat parse
+			expect(cacheResult[0]).toEqual({ tag: "tag1", revalidatedAt: 1234567, stale: 1234567, expire: null });
+			// @ts-expect-error - Defined on cloudfare context
+			globalThis.caches = undefined;
+		});
+
+		it("should parse new JSON object format from the cache", async () => {
+			const stored = JSON.stringify({ revalidatedAt: 1000, stale: 500, expire: 9999 });
+			// @ts-expect-error - Defined on cloudfare context
+			globalThis.caches = {
+				open: vi.fn().mockResolvedValue({
+					match: vi.fn().mockResolvedValue(new Response(stored)),
+				}),
+			};
+			const cache = shardedDOTagCache({ baseShardSize: 4, regionalCache: true });
+			const doId = new DOId({ baseShardId: "shard-1", numberOfReplicas: 1, shardType: "hard" });
+			const cacheResult = await cache.getFromRegionalCache({ doId, tags: ["tag1"] });
+			expect(cacheResult[0]).toEqual({ tag: "tag1", revalidatedAt: 1000, stale: 500, expire: 9999 });
 			// @ts-expect-error - Defined on cloudfare context
 			globalThis.caches = undefined;
 		});
@@ -403,7 +508,7 @@ describe("DOShardedTagCache", () => {
 				shardType: "hard",
 			});
 			await cache.putToRegionalCache({ doId, tags: ["tag1"] }, getMock());
-			expect(getRevalidationTimesMock).not.toHaveBeenCalled();
+			expect(getTagDataMock).not.toHaveBeenCalled();
 		});
 
 		it("should put the tags in the regional cache if the tags exists in the DO", async () => {
@@ -421,11 +526,11 @@ describe("DOShardedTagCache", () => {
 				shardType: "hard",
 			});
 
-			getRevalidationTimesMock.mockResolvedValueOnce({ tag1: 123456 });
+			getTagDataMock.mockResolvedValueOnce({ tag1: { revalidatedAt: 123456, stale: null, expire: null } });
 
 			await cache.putToRegionalCache({ doId, tags: ["tag1"] }, getMock());
 
-			expect(getRevalidationTimesMock).toHaveBeenCalledWith(["tag1"]);
+			expect(getTagDataMock).toHaveBeenCalledWith(["tag1"]);
 			expect(putMock).toHaveBeenCalledWith(
 				"http://local.cache/shard/tag-hard;shard-1?tag=tag1",
 				expect.any(Response)
@@ -449,11 +554,11 @@ describe("DOShardedTagCache", () => {
 				shardType: "hard",
 			});
 
-			getRevalidationTimesMock.mockResolvedValueOnce({});
+			getTagDataMock.mockResolvedValueOnce({});
 
 			await cache.putToRegionalCache({ doId, tags: ["tag1"] }, getMock());
 
-			expect(getRevalidationTimesMock).toHaveBeenCalledWith(["tag1"]);
+			expect(getTagDataMock).toHaveBeenCalledWith(["tag1"]);
 			expect(putMock).not.toHaveBeenCalled();
 			// @ts-expect-error - Defined on cloudfare context
 			globalThis.caches = undefined;
@@ -474,11 +579,14 @@ describe("DOShardedTagCache", () => {
 				shardType: "hard",
 			});
 
-			getRevalidationTimesMock.mockResolvedValueOnce({ tag1: 123456, tag2: 654321 });
+			getTagDataMock.mockResolvedValueOnce({
+				tag1: { revalidatedAt: 123456, stale: null, expire: null },
+				tag2: { revalidatedAt: 654321, stale: null, expire: null },
+			});
 
 			await cache.putToRegionalCache({ doId, tags: ["tag1", "tag2"] }, getMock());
 
-			expect(getRevalidationTimesMock).toHaveBeenCalledWith(["tag1", "tag2"]);
+			expect(getTagDataMock).toHaveBeenCalledWith(["tag1", "tag2"]);
 			expect(putMock).toHaveBeenCalledWith(
 				"http://local.cache/shard/tag-hard;shard-1?tag=tag1",
 				expect.any(Response)
@@ -510,11 +618,11 @@ describe("DOShardedTagCache", () => {
 				shardType: "hard",
 			});
 
-			getRevalidationTimesMock.mockResolvedValueOnce({});
+			getTagDataMock.mockResolvedValueOnce({});
 
 			await cache.putToRegionalCache({ doId, tags: ["tag1"] }, getMock());
 
-			expect(getRevalidationTimesMock).toHaveBeenCalledWith(["tag1"]);
+			expect(getTagDataMock).toHaveBeenCalledWith(["tag1"]);
 			expect(putMock).toHaveBeenCalledWith(
 				"http://local.cache/shard/tag-hard;shard-1?tag=tag1",
 				expect.any(Response)
@@ -542,11 +650,11 @@ describe("DOShardedTagCache", () => {
 				shardType: "hard",
 			});
 
-			getRevalidationTimesMock.mockResolvedValueOnce({});
+			getTagDataMock.mockResolvedValueOnce({});
 
 			await cache.putToRegionalCache({ doId, tags: ["tag1"] }, getMock());
 
-			expect(getRevalidationTimesMock).toHaveBeenCalledWith(["tag1"]);
+			expect(getTagDataMock).toHaveBeenCalledWith(["tag1"]);
 			expect(putMock).not.toHaveBeenCalled();
 			// @ts-expect-error - Defined on cloudfare context
 			globalThis.caches = undefined;
@@ -584,10 +692,11 @@ describe("DOShardedTagCache", () => {
 				numberOfReplicas: 1,
 				shardType: "hard",
 			});
-			await cache.performWriteTagsWithRetry(doId, ["tag1"], Date.now());
+			const tags = [{ tag: "tag1", stale: 1000 }];
+			await cache.performWriteTagsWithRetry(doId, tags);
 			expect(writeTagsMock).toHaveBeenCalledTimes(2);
 			expect(spiedFn).toHaveBeenCalledTimes(2);
-			expect(spiedFn).toHaveBeenCalledWith(doId, ["tag1"], 1000, 1);
+			expect(spiedFn).toHaveBeenCalledWith(doId, tags, 1);
 			expect(sendDLQMock).not.toHaveBeenCalled();
 
 			vi.useRealTimers();
@@ -600,20 +709,17 @@ describe("DOShardedTagCache", () => {
 			writeTagsMock.mockImplementationOnce(() => {
 				throw new Error("error");
 			});
-			const spiedFn = vi.spyOn(cache, "performWriteTagsWithRetry");
+			const tags = [{ tag: "tag1", stale: 1000 }];
 			await cache.performWriteTagsWithRetry(
 				new DOId({ baseShardId: "shard-1", numberOfReplicas: 1, shardType: "hard" }),
-				["tag1"],
-				Date.now(),
+				tags,
 				3
 			);
 			expect(writeTagsMock).toHaveBeenCalledTimes(1);
-			expect(spiedFn).toHaveBeenCalledTimes(1);
 
 			expect(sendDLQMock).toHaveBeenCalledWith({
 				failingShardId: "tag-hard;shard-1;replica-1",
-				failingTags: ["tag1"],
-				lastModified: 1000,
+				failingTags: tags,
 			});
 
 			vi.useRealTimers();

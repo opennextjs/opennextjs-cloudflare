@@ -1,5 +1,5 @@
 import { NextModeTagCache } from "@opennextjs/aws/types/overrides.js";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { softTagFilter, withFilter } from "./tag-cache-filter.js";
 
@@ -10,15 +10,12 @@ const mockedTagCache = {
 	getPathsByTags: vi.fn(),
 	hasBeenRevalidated: vi.fn(),
 	writeTags: vi.fn(),
+	isStale: vi.fn(),
 } satisfies NextModeTagCache;
 
 const filterFn = (tag: string) => tag.startsWith("valid_");
 
 describe("withFilter", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
 	it("should filter out tags based on writeTags", async () => {
 		const tagCache = withFilter({
 			tagCache: mockedTagCache,
@@ -106,6 +103,42 @@ describe("withFilter", () => {
 		});
 
 		expect(tagCache.getPathsByTags).toBeUndefined();
+	});
+
+	it("should filter out tags based on isStale", async () => {
+		const tagCache = withFilter({
+			tagCache: mockedTagCache,
+			filterFn,
+		});
+
+		const tags = ["valid_tag", "invalid_tag"];
+		const lastModified = Date.now();
+
+		await tagCache.isStale?.(tags, lastModified);
+		expect(mockedTagCache.isStale).toHaveBeenCalledWith(["valid_tag"], lastModified);
+	});
+
+	it("should not call isStale if no tags are valid", async () => {
+		const tagCache = withFilter({
+			tagCache: mockedTagCache,
+			filterFn,
+		});
+		const tags = ["invalid_tag"];
+		const lastModified = Date.now();
+		await tagCache.isStale?.(tags, lastModified);
+		expect(mockedTagCache.isStale).not.toHaveBeenCalled();
+	});
+
+	it("should not create a function if isStale is not defined", async () => {
+		const tagCache = withFilter({
+			tagCache: {
+				...mockedTagCache,
+				isStale: undefined,
+			},
+			filterFn,
+		});
+
+		expect(tagCache.isStale).toBeUndefined();
 	});
 
 	it("should filter soft tags", () => {

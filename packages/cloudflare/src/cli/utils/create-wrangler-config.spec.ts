@@ -28,16 +28,19 @@ vi.mock("../commands/utils/run-wrangler.js", () => ({
 
 // Mock cloudflare SDK
 vi.mock("cloudflare", () => {
-	const MockCloudflare = vi.fn(() => ({
-		accounts: { list: vi.fn(() => []) },
-		r2: {
+	class MockCloudflare {
+		static NotFoundError = MockNotFoundError;
+
+		accounts = { list: vi.fn(() => []) };
+
+		r2 = {
 			buckets: {
 				get: mockR2BucketsGet,
 				create: mockR2BucketsCreate,
 			},
-		},
-	}));
-	MockCloudflare.NotFoundError = MockNotFoundError;
+		};
+	}
+
 	return { default: MockCloudflare };
 });
 
@@ -63,7 +66,6 @@ describe("createWranglerConfigFile", () => {
 
 	afterEach(() => {
 		rmSync(tmpDir, { recursive: true, force: true });
-		vi.restoreAllMocks();
 		vi.unstubAllEnvs();
 		vi.unstubAllGlobals();
 	});

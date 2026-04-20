@@ -188,7 +188,7 @@ describe("populateCache", () => {
 					expect(ensureR2Bucket).not.toHaveBeenCalled();
 				}
 
-				expect(fetchMock).toBeCalled();
+				expect(fetchMock).toHaveBeenCalled();
 
 				for (const [input, init] of fetchMock.mock.calls) {
 					expect(input).toBe("http://localhost:12345/populate");
@@ -285,6 +285,7 @@ describe("populateCache", () => {
 		test("retries 5xx responses from the R2 worker", async () => {
 			setupMockFileSystem();
 			vi.useFakeTimers();
+			vi.spyOn(AbortSignal, "timeout");
 
 			const mockWorkerDispose = vi.fn();
 			// @ts-expect-error - Mock unstable_startWorker to return a mock worker instance
