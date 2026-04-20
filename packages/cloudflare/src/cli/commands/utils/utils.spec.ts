@@ -54,6 +54,7 @@ vi.mock("../../utils/create-config-files.js", () => ({
 vi.mock("../../utils/create-open-next-config.js", () => ({
 	findOpenNextConfig: vi.fn(),
 	createOpenNextConfigFile: vi.fn(() => "/test/open-next.config.ts"),
+	OPEN_NEXT_CONFIG_FILE_NAME: "open-next.config.ts",
 }));
 
 // Mock wrangler
@@ -140,7 +141,7 @@ describe("compileConfig", () => {
 		vi.mocked(isInteractive).mockReturnValue(false);
 
 		await expect(compileConfig(undefined)).rejects.toThrowError(
-			/No `open-next\.config\.ts` file was found.*defineCloudflareConfig/s
+			/No `open-next\.config\.ts` file was found.*opennextjs-cloudflare migrate/s
 		);
 
 		expect(askConfirmation).not.toHaveBeenCalled();
