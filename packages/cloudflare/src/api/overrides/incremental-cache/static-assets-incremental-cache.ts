@@ -21,7 +21,7 @@ export const NAME = "cf-static-assets-incremental-cache";
  * It should only be used for applications that do NOT want revalidation and ONLY want to serve prerendered data.
  */
 class StaticAssetsIncrementalCache implements IncrementalCache {
-	readonly name: string = NAME;
+	readonly name = NAME;
 
 	async get<CacheType extends CacheEntryType = "cache">(
 		key: string,

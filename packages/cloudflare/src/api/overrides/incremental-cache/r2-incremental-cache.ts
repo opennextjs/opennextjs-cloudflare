@@ -24,7 +24,7 @@ export const PREFIX_ENV_NAME = "NEXT_INC_CACHE_R2_PREFIX";
  * environment variable, and defaults to `incremental-cache`.
  */
 class R2IncrementalCache implements IncrementalCache {
-	readonly name: string = NAME;
+	readonly name = NAME;
 
 	async get<CacheType extends CacheEntryType = "cache">(
 		key: string,

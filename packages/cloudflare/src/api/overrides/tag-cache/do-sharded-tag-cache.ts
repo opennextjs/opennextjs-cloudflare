@@ -112,7 +112,7 @@ interface DOIdOptions {
 
 class ShardedDOTagCache implements NextModeTagCache {
 	readonly mode = "nextMode" as const;
-	readonly name: string = NAME;
+	readonly name = NAME;
 	readonly numSoftReplicas: number;
 	readonly numHardReplicas: number;
 	readonly maxWriteRetries: number;

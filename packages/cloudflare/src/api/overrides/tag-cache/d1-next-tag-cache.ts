@@ -19,7 +19,7 @@ type D1TagValue = { revalidatedAt: number; stale: number | null; expire: number 
 
 export class D1NextModeTagCache implements NextModeTagCache {
 	readonly mode = "nextMode" as const;
-	readonly name: string = NAME;
+	readonly name = NAME;
 
 	async getLastRevalidated(tags: string[]): Promise<number> {
 		const { isDisabled, db } = this.getConfig();

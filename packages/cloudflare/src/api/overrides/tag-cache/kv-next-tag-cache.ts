@@ -48,7 +48,7 @@ function getExpire(value: KVTagValue): number | null {
  */
 export class KVNextModeTagCache implements NextModeTagCache {
 	readonly mode = "nextMode" as const;
-	readonly name: string = NAME;
+	readonly name = NAME;
 
 	async getLastRevalidated(tags: string[]): Promise<number> {
 		const timeMs = await this.#getLastRevalidated(tags);
