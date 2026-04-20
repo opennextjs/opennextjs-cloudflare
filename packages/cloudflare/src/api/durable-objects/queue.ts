@@ -23,7 +23,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	// Ongoing revalidations are deduped by the deduplication id
 	// Since this is running in waitUntil, we expect the durable object state to persist this during the duration of the revalidation
 	// TODO: handle incremental cache with only eventual consistency (i.e. KV or R2/D1 with the optional cache layer on top)
-	ongoingRevalidations: Map<string, Promise<void>> = new Map<string, Promise<void>>();
+	ongoingRevalidations: Map<string, Promise<void>> = new Map();
 
 	sql: SqlStorage;
 

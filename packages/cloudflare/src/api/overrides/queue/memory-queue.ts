@@ -17,7 +17,7 @@ export const DEFAULT_REVALIDATION_TIMEOUT_MS = 10_000;
 export class MemoryQueue implements Queue {
 	readonly name = "memory-queue";
 
-	revalidatedPaths: Set<string> = new Set<string>();
+	revalidatedPaths: Set<string> = new Set();
 
 	constructor(
 		private opts: {
