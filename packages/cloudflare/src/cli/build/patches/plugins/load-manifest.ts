@@ -102,39 +102,47 @@ async function getEvalManifestRule(buildOpts: BuildOptions) {
 		windowsPathsNoEscape: true,
 	});
 
-	// Map of factored large values (variable name -> value)
-	const factoredValues = new Map<string, string>();
+	// Map of factored large objects (variable name -> {...})
+	const factoredObjects = new Map<string, string>();
 	// Map of manifest path -> factored manifest content
 	const factoredManifest = new Map<string, string>();
+	// Shared map of short hash prefix -> full SHA1 hash, used for collision resolution.
+	const prefixMap = new Map<string, string>();
+
 	for (const path of manifestPaths) {
 		if (path.endsWith("page_client-reference-manifest.js")) {
 			// `page_client-reference-manifest.js` files could contain large repeated values.
 			// Factor out large values into separate variables to reduce the overall size of the generated code.
 			let manifest = await readFile(path, "utf-8");
-			manifest = factorManifestValue(manifest, "clientModules", factoredValues);
-			manifest = factorManifestValue(manifest, "ssrModuleMapping", factoredValues);
-			manifest = factorManifestValue(manifest, "edgeSSRModuleMapping", factoredValues);
-			manifest = factorManifestValue(manifest, "rscModuleMapping", factoredValues);
-			manifest = factorManifestValue(manifest, "entryCSSFiles", factoredValues);
-			manifest = factorManifestValue(manifest, "entryJSFiles", factoredValues);
+			for (const key of [
+				"clientModules",
+				"ssrModuleMapping",
+				"edgeSSRModuleMapping",
+				"rscModuleMapping",
+				"entryCSSFiles",
+				"entryJSFiles",
+			]) {
+				manifest = factorManifestValue(manifest, key, factoredObjects, prefixMap);
+			}
 			factoredManifest.set(path, manifest);
 		}
 	}
 
-	// After factoring values but before generating factoredValuesCode:
-	const chunksVars = new Map<string, string>();
+	// Map of factored values in an object
+	const factoredValues = new Map<string, string>();
 
-	for (const [varName, value] of factoredValues) {
-		const deduped = deduplicateChunksArrays(value, chunksVars);
-		factoredValues.set(varName, deduped);
+	for (const [varName, value] of factoredObjects) {
+		factoredObjects.set(varName, factorObjectValues(value, factoredValues, prefixMap));
 	}
 
 	// Prepend chunks variable declarations before the factored values
-	const chunksVarsCode = [...chunksVars.entries()].map(([name, val]) => `const ${name} = ${val};`).join("\n");
+	const factoredValueCode = [...factoredValues.entries()]
+		.map(([name, val]) => `const ${name} = ${val};`)
+		.join("\n");
 
-	const factoredValuesCode =
-		chunksVarsCode +
-		[...factoredValues.entries()].map(([varName, value]) => `const ${varName} = ${value};`).join("\n");
+	const factoredObjectCode = [...factoredObjects.entries()]
+		.map(([varName, value]) => `const ${varName} = ${value};`)
+		.join("\n");
 
 	const returnManifests = manifestPaths
 		// Sort by path length descending so longer (more specific) paths match first,
@@ -171,7 +179,8 @@ function evalManifest($PATH, $$$ARGS) {
 }`,
 		},
 		fix: `
-${factoredValuesCode}
+${factoredValueCode}
+${factoredObjectCode}
 
 function evalManifest($PATH, $$$ARGS) {
   $PATH = $PATH.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
@@ -189,12 +198,19 @@ function evalManifest($PATH, $$$ARGS) {
 /**
  * Factor out large manifest values into separate variables.
  *
- * @param manifest The manifest code
- * @param key The key to factor out
- * @param values A map to store the factored values (indexed by variable name)
- * @returns The manifest code with large values factored out
+ * @param manifest The manifest code.
+ * @param key The key to factor out.
+ * @param values A map to store the factored values (indexed by variable name).
+ * @param prefixMap Map of short hash prefix → full hash, updated in place for
+ *   collision resolution across calls.
+ * @returns The manifest code with large values factored out.
  */
-function factorManifestValue(manifest: string, key: string, values: Map<string, string>): string {
+export function factorManifestValue(
+	manifest: string,
+	key: string,
+	values: Map<string, string>,
+	prefixMap: Map<string, string>
+): string {
 	const valueName = "VALUE";
 	// ASTGrep rule to extract the value of a specific key from the manifest object in the evalManifest function.
 	//
@@ -225,26 +241,31 @@ inside:
 		const value = match.getMatch(valueName)!.text();
 		if (value.length > 30) {
 			// Factor out large values into separate variables.
-			// The value is factored out in a variable name `v_${hash}`.
-			const valueVarName = `v_${crypto.createHash("sha1").update(value).digest("hex")}`;
-			values.set(valueVarName, value);
+			const varName = getOrCreateVarName(value, prefixMap);
+			values.set(varName, value);
 			// Replace the value in the manifest with the variable reference.
-			return rootNode.commitEdits([match.replace(`"${key}": ${valueVarName}`)]);
+			return rootNode.commitEdits([match.replace(`"${key}": ${varName}`)]);
 		}
 	}
 
-	// return the original manifest if the value is not found or is small enough to not warrant factoring out.
+	// Return the original manifest if the value is not found or is small enough to not warrant factoring out.
 	return manifest;
 }
 
 /**
- * Deduplicate repeated 'chunks' arrays within a module mapping value.
+ * Factor out large object values into separate variables.
  *
- * @param valueText The JS source text of the module mapping object
- * @param sharedVars Map to accumulate shared variable declarations
- * @returns The rewritten value text with chunks arrays replaced by variable refs
+ * @param valueText The JS source text of the module mapping object.
+ * @param sharedVars Map to accumulate shared variable declarations.
+ * @param prefixMap Map of short hash prefix → full hash, updated in place for
+ *   collision resolution across calls.
+ * @returns The rewritten value text with chunks arrays replaced by variable refs.
  */
-function deduplicateChunksArrays(valueText: string, sharedVars: Map<string, string>): string {
+export function factorObjectValues(
+	valueText: string,
+	sharedVars: Map<string, string>,
+	prefixMap: Map<string, string>
+): string {
 	const rootNode = parse(Lang.JavaScript, valueText).root();
 
 	// Find all "chunks": [...] pairs
@@ -271,12 +292,50 @@ rule:
 		const chunksText = chunksNode.text();
 		if (chunksText.length <= 30) continue; // Skip small arrays
 
-		const hash = crypto.createHash("sha1").update(chunksText).digest("hex");
-		const varName = `c_${hash}`;
+		const varName = getOrCreateVarName(chunksText, prefixMap);
 		sharedVars.set(varName, chunksText);
 		edits.push({ match, replacement: `"chunks": ${varName}` });
 	}
 
-	if (edits.length === 0) return valueText;
-	return rootNode.commitEdits(edits.map((e) => e.match.replace(e.replacement)));
+	return edits.length === 0
+		? valueText
+		: rootNode.commitEdits(edits.map((e) => e.match.replace(e.replacement)));
+}
+
+/** Minimum number of hex characters used for short hash prefixes. */
+const MIN_PREFIX_LENGTH = 3;
+
+/**
+ * Get or create a short variable name for a value, resolving collisions.
+ *
+ * Computes a SHA1 hash of the value, then finds the shortest unique prefix
+ * (minimum {@link MIN_PREFIX_LENGTH} hex chars). When a new hash collides with
+ * an existing prefix, the new entry is given a longer prefix — existing entries
+ * are never renamed.
+ *
+ * @param value The value to hash.
+ * @param prefixMap Map of short prefix → full hash, updated in place.
+ * @returns The variable name (`v<shortPrefix>`).
+ */
+export function getOrCreateVarName(value: string, prefixMap: Map<string, string>): string {
+	const sha1 = crypto.createHash("sha1").update(value).digest("hex");
+
+	// Find the shortest prefix (>= MIN_PREFIX_LENGTH) that doesn't collide
+	// with any existing prefix. Only the new entry is lengthened.
+	for (let len = MIN_PREFIX_LENGTH; len <= sha1.length; len++) {
+		const candidate = sha1.slice(0, len);
+		const existing = prefixMap.get(candidate);
+		if (existing === undefined) {
+			prefixMap.set(candidate, sha1);
+			return `v${candidate}`;
+		}
+		if (existing === sha1) {
+			// Same content seen again — reuse the existing variable.
+			return `v${candidate}`;
+		}
+		// A different hash occupies this exact prefix — lengthen and retry.
+	}
+
+	// Unreachable: two different SHA1 hashes always diverge before 40 chars.
+	throw new Error("Failed to find a unique prefix");
 }
