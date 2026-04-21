@@ -1,4 +1,4 @@
-import { patchCode, type RuleConfig } from "@opennextjs/aws/build/patch/astCodePatcher.js";
+import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import { createPatch } from "diff";
 
 /**
@@ -9,7 +9,7 @@ import { createPatch } from "diff";
  * @param rule ASTgrep rule
  * @returns diff in unified diff format
  */
-export function computePatchDiff(filename: string, src: string, rule: string | RuleConfig): string {
+export function computePatchDiff(filename: string, src: string, rule: string): string {
 	const dst = patchCode(src, rule);
 	return createPatch(filename, src, dst);
 }
