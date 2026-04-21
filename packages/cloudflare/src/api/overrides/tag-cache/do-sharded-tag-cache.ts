@@ -322,12 +322,16 @@ class ShardedDOTagCache implements NextModeTagCache {
 		}
 	}
 
-	public async putToRegionalCache(optsKey: CacheTagKeyOptions, stub: DurableObjectStub<DOShardedTagCache>) {
+	public async putToRegionalCache(
+		optsKey: CacheTagKeyOptions,
+		stub: DurableObjectStub<DOShardedTagCache>,
+		prefetchedTagData?: Record<string, TagData>
+	) {
 		if (!this.opts.regionalCache) return;
 		const cache = await this.getCacheInstance();
 		if (!cache) return;
 		const tags = optsKey.tags;
-		const tagData = await stub.getTagData(tags);
+		const tagData = prefetchedTagData ?? (await stub.getTagData(tags));
 		await Promise.all(
 			tags.map(async (tag) => {
 				let data = tagData[tag];
@@ -451,7 +455,9 @@ class ShardedDOTagCache implements NextModeTagCache {
 					result.set(tag, tagData[tag] ?? null);
 				}
 
-				getCloudflareContext().ctx.waitUntil(this.putToRegionalCache({ doId, tags: remainingTags }, stub));
+				getCloudflareContext().ctx.waitUntil(
+					this.putToRegionalCache({ doId, tags: remainingTags }, stub, tagData)
+				);
 			})
 		);
 
