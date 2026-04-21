@@ -5,7 +5,7 @@ export function configurePlaywright(
 	app: AppName,
 	{
 		// Do we run on CI?
-		isCI = !!process.env.CI,
+		isCI = Boolean(process.env.CI),
 		// Do we run on workers (`wrangler dev`) or on Node (`next dev`)
 		isWorker = true,
 		// Tests with multiple browsers
