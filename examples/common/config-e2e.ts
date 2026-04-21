@@ -1,13 +1,11 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices, type PlaywrightTestConfig } from "@playwright/test";
 import { getAppPort, getInspectorPort, type AppName } from "./apps";
-
-declare const process: typeof nodeProcess;
 
 export function configurePlaywright(
 	app: AppName,
 	{
 		// Do we run on CI?
-		isCI = Boolean(process.env.CI),
+		isCI = !!process.env.CI,
 		// Do we run on workers (`wrangler dev`) or on Node (`next dev`)
 		isWorker = true,
 		// Tests with multiple browsers
@@ -17,7 +15,7 @@ export function configurePlaywright(
 		// Use the turbopack runtime
 		useTurbopack = false,
 	} = {}
-) {
+): PlaywrightTestConfig {
 	const port = getAppPort(app, { isWorker });
 	const inspectorPort = getInspectorPort(app);
 	const baseURL = `http://localhost:${port}`;
