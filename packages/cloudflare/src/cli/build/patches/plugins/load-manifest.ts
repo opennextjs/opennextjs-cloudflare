@@ -313,6 +313,9 @@ const MIN_PREFIX_LENGTH = 3;
  * an existing prefix, the new entry is given a longer prefix — existing entries
  * are never renamed.
  *
+ * This allows saving space in the generated code (A full SHA1 is 40 hex chars) because
+ * identifiers are not minimized by the Open Next build process.
+ *
  * @param value The value to hash.
  * @param prefixMap Map of short prefix → full hash, updated in place.
  * @returns The variable name (`v<shortPrefix>`).
