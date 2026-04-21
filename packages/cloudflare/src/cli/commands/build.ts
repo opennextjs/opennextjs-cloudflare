@@ -4,6 +4,7 @@ import type yargs from "yargs";
 import { build as buildImpl } from "../build/build.js";
 import { askConfirmation } from "../utils/ask-confirmation.js";
 import { createWranglerConfigFile, findWranglerConfig } from "../utils/create-wrangler-config.js";
+import { isNonInteractiveOrCI } from "../utils/is-interactive.js";
 import type { WithWranglerArgs } from "./utils/utils.js";
 import {
 	compileConfig,
@@ -41,6 +42,15 @@ export async function buildCommand(
 	//       nor when `--skipWranglerConfigCheck` is used.
 	if (!projectOpts.wranglerConfigPath && !args.skipWranglerConfigCheck) {
 		if (!findWranglerConfig(projectOpts.sourceDir)) {
+			// In non-interactive environments (CI, Cloudflare Workers Builds,
+			// Docker, etc.) the prompt would hang or crash. Fail fast with a
+			// clear message pointing at the existing escape hatch.
+			if (isNonInteractiveOrCI()) {
+				throw new Error(
+					"No `wrangler.(toml|json|jsonc)` config file found.\n\nCreate one at the project root before running the build, or skip this check with `--skipWranglerConfigCheck` or `SKIP_WRANGLER_CONFIG_CHECK=yes`."
+				);
+			}
+
 			const confirmCreate = "No `wrangler.(toml|json|jsonc)` config file found, do you want to create one?";
 			if (await askConfirmation(confirmCreate)) {
 				await createWranglerConfigFile(projectOpts.sourceDir);

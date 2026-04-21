@@ -5,6 +5,10 @@ import { askConfirmation } from "../utils/ask-confirmation.js";
 import { createWranglerConfigFile } from "../utils/create-wrangler-config.js";
 import { buildCommand } from "./build.js";
 
+vi.mock("../utils/is-interactive.js", () => ({
+	isNonInteractiveOrCI: vi.fn(() => false),
+}));
+
 // Mock logger
 vi.mock("@opennextjs/aws/logger.js", () => ({
 	default: {
