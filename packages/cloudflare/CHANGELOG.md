@@ -1,5 +1,66 @@
 # @opennextjs/cloudflare
 
+## 1.19.3
+
+### Patch Changes
+
+- [#1215](https://github.com/opennextjs/opennextjs-cloudflare/pull/1215) [`608893e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/608893e63e1ee16d07c7ec42da979657cf2a62bd) Thanks [@vicb](https://github.com/vicb)! - Factor large repeated values in manifests
+
+  This reduce the size of the generated code.
+
+- [#1218](https://github.com/opennextjs/opennextjs-cloudflare/pull/1218) [`f0d0226`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f0d022685b24881a142bb01005ff78089be8c8d3) Thanks [@314systems](https://github.com/314systems)! - remove `process.version` override
+
+  Remove process.version / process.versions.node overrides now that [unjs/unenv#493](https://github.com/unjs/unenv/pull/493) is merged and shipped in [unenv@2.0.0-rc.16](https://github.com/unjs/unenv/releases/tag/v2.0.0-rc.16) (project uses 2.0.0-rc.24)
+
+- [#1199](https://github.com/opennextjs/opennextjs-cloudflare/pull/1199) [`32594d6`](https://github.com/opennextjs/opennextjs-cloudflare/commit/32594d6a921c5ebdbe25f38635bb2c9dabdcbff1) Thanks [@SdSadat](https://github.com/SdSadat)! - fix(cli): fail fast in non-TTY environments instead of hanging on config-creation prompts
+
+  When `open-next.config.ts` (or `wrangler.(toml|json|jsonc)`) is missing, the CLI
+  prompts the user to auto-create it. In non-TTY environments (Cloudflare Workers
+  Builds, Docker, CI) the Enquirer prompt can't read stdin, so the build hangs or
+  fails with a truncated prompt and a cryptic exit code — the user sees
+  `? Missing required open-next.config.ts file, do you want to create one? (Y/n)`
+  and then ` ELIFECYCLE  Command failed with exit code 13`, with no hint at what
+  to do next.
+
+  Now, in non-interactive environments, both prompts throw an actionable error
+  with the exact template to paste (for `open-next.config.ts`) or point at the
+  existing `--skipWranglerConfigCheck` / `SKIP_WRANGLER_CONFIG_CHECK` escape
+  hatch (for the wrangler config). Interactive behavior is unchanged.
+
+## 1.19.2
+
+### Patch Changes
+
+- [#1207](https://github.com/opennextjs/opennextjs-cloudflare/pull/1207) [`0958726`](https://github.com/opennextjs/opennextjs-cloudflare/commit/0958726939d59e4a5c5a3062190278ffdfde38f5) Thanks [@edmundhung](https://github.com/edmundhung)! - bump `@opennextjs/aws` to 3.10.2
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v3.10.2>
+
+- [#1139](https://github.com/opennextjs/opennextjs-cloudflare/pull/1139) [`79b01b8`](https://github.com/opennextjs/opennextjs-cloudflare/commit/79b01b84fd92191517b7a11516c04208f9d474a6) Thanks [@james-elicx](https://github.com/james-elicx)! - Fix Turbopack external module resolution by dynamically discovering external imports at build time.
+
+  When packages are listed in `serverExternalPackages`, Turbopack externalizes them via `externalImport()` which uses dynamic `await import(id)`. The bundler (ESBuild) can't statically analyze `import(id)` with a variable, so these modules aren't included in the worker bundle.
+
+  This patch:
+
+  - Discovers hashed Turbopack external module mappings from `.next/node_modules/` symlinks (e.g. `shiki-43d062b67f27bbdc` → `shiki`)
+  - Scans traced chunk files for bare external imports (e.g. `externalImport("shiki")`) and subpath imports (e.g. `shiki/engine/javascript`)
+  - Generates explicit `switch/case` entries so the bundler can statically resolve and include these modules
+
+- [#1203](https://github.com/opennextjs/opennextjs-cloudflare/pull/1203) [`6f02d12`](https://github.com/opennextjs/opennextjs-cloudflare/commit/6f02d12a75a78410711cc0d9db13ab0d41ed903a) Thanks [@314systems](https://github.com/314systems)! - fix: exclude unsupported Next.js 16 releases from peer dependencies.
+
+  The previous range allowed Next.js 16.0.0 through 16.2.2 without a peer dependency warning because `>=16.2.3` was already covered by `>=15.5.15`.
+
+  The range now explicitly supports Next.js 15.5.15 and above in the 15.x line, and Next.js 16.2.3 and above in the 16.x line.
+
+- [#1200](https://github.com/opennextjs/opennextjs-cloudflare/pull/1200) [`7820ad0`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7820ad0a0e5f57aba0580f3cabfdd0caa75cc9bb) Thanks [@NathanDrake2406](https://github.com/NathanDrake2406)! - fix: reuse sharded tag data when filling the regional cache.
+
+  The sharded tag cache miss path already reads tag data from the Durable Object before answering the request. Reuse that fetched data when populating the regional cache so a shard miss does not immediately trigger a second identical Durable Object read.
+
+- [#1206](https://github.com/opennextjs/opennextjs-cloudflare/pull/1206) [`585795d`](https://github.com/opennextjs/opennextjs-cloudflare/commit/585795dbe20fe20d8662addbf9b7be64d82e3184) Thanks [@314systems](https://github.com/314systems)! - fix: regression where getEnvFromPlatformProxy received wrong options type
+
+  This fixes a regression introduced in [32ba91a](https://github.com/opennextjs/opennextjs-cloudflare/commit/32ba91a6d3fa6b9a8b2cd5a8c973c3b3eb1108f0) where `getEnvFromPlatformProxy` call sites passed `OpenNextConfig` even though the function expects Wrangler `GetPlatformProxyOptions`.
+
+  The fix restores the pre-[32ba91a](https://github.com/opennextjs/opennextjs-cloudflare/commit/32ba91a6d3fa6b9a8b2cd5a8c973c3b3eb1108f0) argument shape by passing `{ configPath, environment }` from CLI arguments, so env resolution follows the selected Wrangler config/environment.
+
 ## 1.19.1
 
 ### Patch Changes
