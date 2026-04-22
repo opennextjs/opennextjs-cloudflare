@@ -195,8 +195,9 @@ class ShardedDOTagCache implements NextModeTagCache {
 				// A tag is stale when both its stale timestamp and its revalidatedAt are newer than the page.
 				// revalidatedAt > lastModified ensures the revalidation that set this stale window happened
 				// after the page was generated, preventing a stale signal from a previous ISR cycle.
+				const lastModifiedOrNow = lastModified ?? now;
 				const isInStaleWindow =
-					stale != null && revalidatedAt > (lastModified ?? now) && (lastModified ?? now) <= stale;
+					stale != null && revalidatedAt > lastModifiedOrNow && lastModifiedOrNow <= stale;
 				if (!isInStaleWindow) return false;
 				return expire == null || expire > now;
 			});
