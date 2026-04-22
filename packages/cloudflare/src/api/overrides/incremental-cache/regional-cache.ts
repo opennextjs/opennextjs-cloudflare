@@ -5,6 +5,7 @@ import {
 	IncrementalCache,
 	WithLastModified,
 } from "@opennextjs/aws/types/overrides.js";
+import { compareSemver } from "@opennextjs/aws/utils/semver.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
 import { debugCache, FALLBACK_BUILD_ID, IncrementalCacheEntry, isPurgeCacheEnabled } from "../internal.js";
@@ -31,25 +32,33 @@ type Options = {
 	defaultLongLivedTtlSec?: number;
 
 	/**
-	 * Whether the regional cache entry should be updated in the background or not when it experiences
-	 * a cache hit.
+	 * Whether the regional cache entry should be updated in the background on regional cache hits.
 	 *
-	 * @default `true` in `long-lived` mode when cache purge is not used, `false` otherwise.
+	 * NOTE: Use the default value unless you know what you are doing. It is set to:
+	 * - Next < 16:
+	 *   `true` in `long-lived` mode when cache purge is not used, `false` otherwise.
+	 * - Next >= 16:
+	 *   `!bypassTagCacheOnCacheHit`
 	 */
 	shouldLazilyUpdateOnCacheHit?: boolean;
 
 	/**
-	 * Whether on cache hits the tagCache should be skipped or not. Skipping the tagCache allows requests to be
-	 * handled faster,
+	 * Whether the tagCache should be skipped on regional cache hits.
 	 *
-	 * Note: When this is enabled, make sure that the cache gets purged
-	 *       either by enabling the auto cache purging feature or manually.
+	 * Note:
+	 * - Skipping the tagCache allows requests to be handled faster
+	 * - When `true`, make sure the cache gets purged
+	 *   either by enabling the auto cache purging feature or manually
 	 *
-	 * This is currently not compatible with swr types of revalidateTag (i.e. on Next 16+, anything different than `revalidateTag("tag", { expire: 0 })`),
-	 * unless you also enable the `shouldLazilyUpdateOnCacheHit` option to make sure the cache gets updated in the background after a hit,
-	 * and ONLY use it for pages, not data cache entries.
+	 * `true` is not compatible with SWR types of revalidateTag
+	 * i.e. on Next 16+, anything different than `revalidateTag("tag", { expire: 0 })`.
+	 * That's why the default is `false` for Next 16+ which uses SWR by default.
 	 *
-	 * @default `true` if the auto cache purging is enabled, `false` otherwise.
+	 * NOTE: Use the default value unless you know what you are doing. It is set to:
+	 * - Next <16:
+	 *    `true` if the auto cache purging is enabled, `false` otherwise.
+	 * - Next >= 16:
+	 *   `false`
 	 */
 	bypassTagCacheOnCacheHit?: boolean;
 };
@@ -82,17 +91,30 @@ class RegionalCache implements IncrementalCache {
 		private opts: Options
 	) {
 		this.name = this.store.name;
-		// `shouldLazilyUpdateOnCacheHit` is not needed when cache purge is enabled.
-		this.opts.shouldLazilyUpdateOnCacheHit ??= this.opts.mode === "long-lived" && !isPurgeCacheEnabled();
-	}
 
-	get #bypassTagCacheOnCacheHit(): boolean {
-		if (this.opts.bypassTagCacheOnCacheHit !== undefined) {
-			return this.opts.bypassTagCacheOnCacheHit;
+		const { nextVersion } = globalThis;
+
+		if (compareSemver(nextVersion, "<", "16")) {
+			// Next < 16
+			this.opts.shouldLazilyUpdateOnCacheHit ??= this.opts.mode === "long-lived" && !isPurgeCacheEnabled();
+			this.opts.bypassTagCacheOnCacheHit ??= isPurgeCacheEnabled();
+		} else {
+			// Next >= 16
+			this.opts.bypassTagCacheOnCacheHit ??= false;
+			if (this.opts.bypassTagCacheOnCacheHit) {
+				debugCache(
+					"RegionalCache",
+					`bypassTagCacheOnCacheHit is not recommended for Next 16+ as it is not compatible with SWR tags. Make sure to always use \`revalidateTag\` with \`{ expire: 0 }\` if you want to bypass the tag cache.`
+				);
+			}
+			this.opts.shouldLazilyUpdateOnCacheHit ??= !this.opts.bypassTagCacheOnCacheHit;
+			if (this.opts.shouldLazilyUpdateOnCacheHit !== this.opts.bypassTagCacheOnCacheHit) {
+				debugCache(
+					"RegionalCache",
+					`\`shouldLazilyUpdateOnCacheHit\` and \`bypassTagCacheOnCacheHit\` are mutually exclusive for Next 16+.`
+				);
+			}
 		}
-
-		// When `bypassTagCacheOnCacheHit` is not set, we default to whether the automatic cache purging is enabled or not
-		return isPurgeCacheEnabled();
 	}
 
 	async get<CacheType extends CacheEntryType = "cache">(
@@ -127,7 +149,7 @@ class RegionalCache implements IncrementalCache {
 
 				return {
 					...responseJson,
-					shouldBypassTagCache: this.#bypassTagCacheOnCacheHit,
+					shouldBypassTagCache: this.opts.bypassTagCacheOnCacheHit,
 				};
 			}
 
