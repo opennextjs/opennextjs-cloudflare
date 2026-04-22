@@ -113,12 +113,20 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			// Apply updater updates, must be the last plugin
 			updater.plugin,
 		] as Plugin[],
-		external: [
-			"./middleware/handler.mjs",
-			// Do not bundle og when it is not used
-			...(useOg ? [] : ["next/dist/compiled/@vercel/og/index.edge.js"]),
-		],
+		external: ["./middleware/handler.mjs"],
 		alias: {
+			// When @vercel/og is not used, alias the edge entry to a throwing shim so the
+			// dynamic `import("next/dist/compiled/@vercel/og/index.edge.js")` call site
+			// emitted by Next.js does not drag the library (~800 KiB) and its
+			// `resvg.wasm` (~1.4 MiB) into the Worker bundle.
+			...(useOg
+				? {}
+				: {
+						"next/dist/compiled/@vercel/og/index.edge.js": path.join(
+							buildOpts.outputDir,
+							"cloudflare-templates/shims/throw.js"
+						),
+					}),
 			// Workers have `fetch` so the `node-fetch` polyfill is not needed
 			"next/dist/compiled/node-fetch": path.join(buildOpts.outputDir, "cloudflare-templates/shims/fetch.js"),
 			// Workers have builtin Web Sockets

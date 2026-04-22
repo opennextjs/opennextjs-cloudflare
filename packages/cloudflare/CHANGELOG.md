@@ -1,5 +1,32 @@
 # @opennextjs/cloudflare
 
+## 1.19.3
+
+### Patch Changes
+
+- [#1215](https://github.com/opennextjs/opennextjs-cloudflare/pull/1215) [`608893e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/608893e63e1ee16d07c7ec42da979657cf2a62bd) Thanks [@vicb](https://github.com/vicb)! - Factor large repeated values in manifests
+
+  This reduce the size of the generated code.
+
+- [#1218](https://github.com/opennextjs/opennextjs-cloudflare/pull/1218) [`f0d0226`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f0d022685b24881a142bb01005ff78089be8c8d3) Thanks [@314systems](https://github.com/314systems)! - remove `process.version` override
+
+  Remove process.version / process.versions.node overrides now that [unjs/unenv#493](https://github.com/unjs/unenv/pull/493) is merged and shipped in [unenv@2.0.0-rc.16](https://github.com/unjs/unenv/releases/tag/v2.0.0-rc.16) (project uses 2.0.0-rc.24)
+
+- [#1199](https://github.com/opennextjs/opennextjs-cloudflare/pull/1199) [`32594d6`](https://github.com/opennextjs/opennextjs-cloudflare/commit/32594d6a921c5ebdbe25f38635bb2c9dabdcbff1) Thanks [@SdSadat](https://github.com/SdSadat)! - fix(cli): fail fast in non-TTY environments instead of hanging on config-creation prompts
+
+  When `open-next.config.ts` (or `wrangler.(toml|json|jsonc)`) is missing, the CLI
+  prompts the user to auto-create it. In non-TTY environments (Cloudflare Workers
+  Builds, Docker, CI) the Enquirer prompt can't read stdin, so the build hangs or
+  fails with a truncated prompt and a cryptic exit code — the user sees
+  `? Missing required open-next.config.ts file, do you want to create one? (Y/n)`
+  and then ` ELIFECYCLE  Command failed with exit code 13`, with no hint at what
+  to do next.
+
+  Now, in non-interactive environments, both prompts throw an actionable error
+  with the exact template to paste (for `open-next.config.ts`) or point at the
+  existing `--skipWranglerConfigCheck` / `SKIP_WRANGLER_CONFIG_CHECK` escape
+  hatch (for the wrangler config). Interactive behavior is unchanged.
+
 ## 1.19.2
 
 ### Patch Changes

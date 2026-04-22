@@ -5,6 +5,8 @@ import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 
 import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-dir-path.js";
 
+export const OPEN_NEXT_CONFIG_FILE_NAME = "open-next.config.ts";
+
 /**
  * Finds the path to the OpenNext configuration file if it exists.
  *
@@ -12,7 +14,7 @@ import { getPackageTemplatesDirPath } from "../../utils/get-package-templates-di
  * @returns The full path to open-next.config.ts if it exists, undefined otherwise
  */
 export function findOpenNextConfig(appDir: string): string | undefined {
-	const openNextConfigPath = join(appDir, "open-next.config.ts");
+	const openNextConfigPath = join(appDir, OPEN_NEXT_CONFIG_FILE_NAME);
 
 	if (existsSync(openNextConfigPath)) {
 		return openNextConfigPath;
@@ -29,9 +31,9 @@ export function findOpenNextConfig(appDir: string): string | undefined {
  * @returns The path to the created configuration file
  */
 export function createOpenNextConfigFile(appDir: string, options: { cache: boolean }): string {
-	const openNextConfigPath = join(appDir, "open-next.config.ts");
+	const openNextConfigPath = join(appDir, OPEN_NEXT_CONFIG_FILE_NAME);
 
-	let content = readFileSync(join(getPackageTemplatesDirPath(), "open-next.config.ts"), "utf8");
+	let content = readFileSync(join(getPackageTemplatesDirPath(), OPEN_NEXT_CONFIG_FILE_NAME), "utf8");
 
 	if (!options.cache) {
 		content = patchCode(content, commentOutR2ImportRule);
