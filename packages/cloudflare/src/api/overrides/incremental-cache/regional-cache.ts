@@ -92,27 +92,30 @@ class RegionalCache implements IncrementalCache {
 	) {
 		this.name = this.store.name;
 
+		// `globalThis.nextVersion` is only defined at runtime but not when the Open Next build runs.
+		// The options do no matter at build time so we can skip setting them.
 		const { nextVersion } = globalThis;
-
-		if (compareSemver(nextVersion, "<", "16")) {
-			// Next < 16
-			this.opts.shouldLazilyUpdateOnCacheHit ??= this.opts.mode === "long-lived" && !isPurgeCacheEnabled();
-			this.opts.bypassTagCacheOnCacheHit ??= isPurgeCacheEnabled();
-		} else {
-			// Next >= 16
-			this.opts.bypassTagCacheOnCacheHit ??= false;
-			if (this.opts.bypassTagCacheOnCacheHit) {
-				debugCache(
-					"RegionalCache",
-					`bypassTagCacheOnCacheHit is not recommended for Next 16+ as it is not compatible with SWR tags. Make sure to always use \`revalidateTag\` with \`{ expire: 0 }\` if you want to bypass the tag cache.`
-				);
-			}
-			this.opts.shouldLazilyUpdateOnCacheHit ??= !this.opts.bypassTagCacheOnCacheHit;
-			if (this.opts.shouldLazilyUpdateOnCacheHit !== this.opts.bypassTagCacheOnCacheHit) {
-				debugCache(
-					"RegionalCache",
-					`\`shouldLazilyUpdateOnCacheHit\` and \`bypassTagCacheOnCacheHit\` are mutually exclusive for Next 16+.`
-				);
+		if (nextVersion) {
+			if (compareSemver(nextVersion, "<", "16")) {
+				// Next < 16
+				this.opts.shouldLazilyUpdateOnCacheHit ??= this.opts.mode === "long-lived" && !isPurgeCacheEnabled();
+				this.opts.bypassTagCacheOnCacheHit ??= isPurgeCacheEnabled();
+			} else {
+				// Next >= 16
+				this.opts.bypassTagCacheOnCacheHit ??= false;
+				if (this.opts.bypassTagCacheOnCacheHit) {
+					debugCache(
+						"RegionalCache",
+						`bypassTagCacheOnCacheHit is not recommended for Next 16+ as it is not compatible with SWR tags. Make sure to always use \`revalidateTag\` with \`{ expire: 0 }\` if you want to bypass the tag cache.`
+					);
+				}
+				this.opts.shouldLazilyUpdateOnCacheHit ??= !this.opts.bypassTagCacheOnCacheHit;
+				if (this.opts.shouldLazilyUpdateOnCacheHit !== this.opts.bypassTagCacheOnCacheHit) {
+					debugCache(
+						"RegionalCache",
+						`\`shouldLazilyUpdateOnCacheHit\` and \`bypassTagCacheOnCacheHit\` are mutually exclusive for Next 16+.`
+					);
+				}
 			}
 		}
 	}
