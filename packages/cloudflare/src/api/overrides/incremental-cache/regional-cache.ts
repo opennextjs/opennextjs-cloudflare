@@ -219,7 +219,7 @@ class RegionalCache implements IncrementalCache {
 	}
 
 	protected getCacheUrlKey(key: string, cacheType?: CacheEntryType) {
-		const buildId = process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
+		const buildId = process.env.OPEN_NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
 		return "http://cache.local" + `/${buildId}/${key}`.replace(/\/+/g, "/") + `.${cacheType ?? "cache"}`;
 	}
 
