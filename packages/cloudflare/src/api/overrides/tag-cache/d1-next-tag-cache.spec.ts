@@ -143,9 +143,10 @@ describe("D1NextModeTagCache", () => {
 			expect(error).toHaveBeenCalledWith(mockError);
 		});
 
-		it("should use custom build ID when NEXT_BUILD_ID is set", async () => {
+		it("should prefer OPEN_NEXT_BUILD_ID when it is set", async () => {
 			const customBuildId = "custom-build-id";
-			vi.stubEnv("NEXT_BUILD_ID", customBuildId);
+			vi.stubEnv("NEXT_BUILD_ID", "legacy-build-id");
+			vi.stubEnv("OPEN_NEXT_BUILD_ID", customBuildId);
 
 			mockRaw.mockResolvedValue([[`${customBuildId}/tag1`, 123, 123, null]]);
 
@@ -395,6 +396,17 @@ describe("D1NextModeTagCache", () => {
 			expect(result).toBe(false);
 		});
 
+		it("should return false when revalidatedAt <= lastModified even if stale > lastModified", async () => {
+			const now = 2000;
+			vi.spyOn(Date, "now").mockReturnValue(now);
+			// revalidatedAt=500 <= lastModified=1000, so the stale window is from a previous ISR cycle
+			mockRaw.mockResolvedValue([[`${FALLBACK_BUILD_ID}/tag1`, 500, 1500, null]]);
+
+			const result = await tagCache.isStale(["tag1"], 1000);
+
+			expect(result).toBe(false);
+		});
+
 		it("should return false when expire <= now (tag expired)", async () => {
 			const now = 2000;
 			vi.spyOn(Date, "now").mockReturnValue(now);
@@ -534,9 +546,9 @@ describe("D1NextModeTagCache", () => {
 			expect(cacheKey).toBe(`${FALLBACK_BUILD_ID}/${key}`);
 		});
 
-		it("should use custom build ID when NEXT_BUILD_ID is set", () => {
+		it("should use custom build ID when OPEN_NEXT_BUILD_ID is set", () => {
 			const customBuildId = "custom-build-id";
-			vi.stubEnv("NEXT_BUILD_ID", customBuildId);
+			vi.stubEnv("OPEN_NEXT_BUILD_ID", customBuildId);
 
 			const key = "test-tag";
 			const cacheKey = (tagCache as unknown as { getCacheKey: (key: string) => string }).getCacheKey(key);
@@ -545,7 +557,7 @@ describe("D1NextModeTagCache", () => {
 		});
 
 		it("should handle double slashes by replacing them with single slash", () => {
-			vi.stubEnv("NEXT_BUILD_ID", "build//id");
+			vi.stubEnv("OPEN_NEXT_BUILD_ID", "build//id");
 
 			const key = "test-tag";
 			const cacheKey = (tagCache as unknown as { getCacheKey: (key: string) => string }).getCacheKey(key);
@@ -555,16 +567,16 @@ describe("D1NextModeTagCache", () => {
 	});
 
 	describe("getBuildId", () => {
-		it("should return NEXT_BUILD_ID when set", () => {
+		it("should return OPEN_NEXT_BUILD_ID when set", () => {
 			const customBuildId = "custom-build-id";
-			vi.stubEnv("NEXT_BUILD_ID", customBuildId);
+			vi.stubEnv("OPEN_NEXT_BUILD_ID", customBuildId);
 
 			const buildId = (tagCache as unknown as { getBuildId: () => string }).getBuildId();
 
 			expect(buildId).toBe(customBuildId);
 		});
 
-		it("should return fallback build ID when NEXT_BUILD_ID is not set", () => {
+		it("should return fallback build ID when no build ID env vars are set", () => {
 			const buildId = (tagCache as unknown as { getBuildId: () => string }).getBuildId();
 
 			expect(buildId).toBe(FALLBACK_BUILD_ID);

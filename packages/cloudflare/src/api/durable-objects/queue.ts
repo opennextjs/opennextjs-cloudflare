@@ -165,7 +165,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 					"INSERT OR REPLACE INTO sync (id, lastSuccess, buildId) VALUES (?, unixepoch(), ?)",
 					// We cannot use the deduplication id because it's not unique per route - every time a route is revalidated, the deduplication id is different.
 					`${host}${url}`,
-					process.env.__NEXT_BUILD_ID
+					process.env.__OPEN_NEXT_BUILD_ID
 				);
 			}
 			// If everything went well, we can remove the route from the failed state
@@ -238,7 +238,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 				"INSERT OR REPLACE INTO failed_state (id, data, buildId) VALUES (?, ?, ?)",
 				msg.MessageDeduplicationId,
 				JSON.stringify(updatedFailedState),
-				process.env.__NEXT_BUILD_ID
+				process.env.__OPEN_NEXT_BUILD_ID
 			);
 		}
 		// We probably want to do something if routeInFailedState is becoming too big, at least log it
@@ -273,8 +273,8 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 
 		// Before doing anything else, we clear the DB for any potential old data
 		// TODO: extract this to a function so that it could be called by the user at another time than init
-		this.sql.exec("DELETE FROM failed_state WHERE buildId != ?", process.env.__NEXT_BUILD_ID);
-		this.sql.exec("DELETE FROM sync WHERE buildId != ?", process.env.__NEXT_BUILD_ID);
+		this.sql.exec("DELETE FROM failed_state WHERE buildId != ?", process.env.__OPEN_NEXT_BUILD_ID);
+		this.sql.exec("DELETE FROM sync WHERE buildId != ?", process.env.__OPEN_NEXT_BUILD_ID);
 
 		const failedStateCursor = this.sql.exec<{ id: string; data: string }>("SELECT * FROM failed_state");
 		for (const row of failedStateCursor) {

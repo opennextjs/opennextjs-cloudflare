@@ -191,8 +191,14 @@ class ShardedDOTagCache implements NextModeTagCache {
 			const tagData = await this.#resolveTagData(tags);
 			const result = [...tagData.values()].some((data) => {
 				if (data == null) return false;
-				const { stale, expire } = data;
-				if (stale == null || stale <= (lastModified ?? now)) return false;
+				const { revalidatedAt, stale, expire } = data;
+				// A tag is stale when both its stale timestamp and its revalidatedAt are newer than the page.
+				// revalidatedAt > lastModified ensures the revalidation that set this stale window happened
+				// after the page was generated, preventing a stale signal from a previous ISR cycle.
+				const lastModifiedOrNow = lastModified ?? now;
+				const isInStaleWindow =
+					stale != null && revalidatedAt > lastModifiedOrNow && lastModifiedOrNow <= stale;
+				if (!isInStaleWindow) return false;
 				return expire == null || expire > now;
 			});
 			debugCache("ShardedDOTagCache", `isStale tags=${tags} at=${lastModified} -> ${result}`);
