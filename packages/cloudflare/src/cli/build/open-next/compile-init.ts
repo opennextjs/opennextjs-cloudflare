@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadBuildId, loadConfig } from "@opennextjs/aws/adapters/config/util.js";
+import { loadConfig } from "@opennextjs/aws/adapters/config/util.js";
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { build } from "esbuild";
 import type { Unstable_Config } from "wrangler";
@@ -13,12 +13,10 @@ export async function compileInit(options: BuildOptions, wranglerConfig: Unstabl
 	const currentDir = path.join(path.dirname(fileURLToPath(import.meta.url)));
 	const templatesDir = path.join(currentDir, "../../templates");
 	const initPath = path.join(templatesDir, "init.js");
-	const dotNextDir = path.join(options.appBuildOutputPath, ".next");
 
-	const nextConfig = loadConfig(dotNextDir);
+	const nextConfig = loadConfig(path.join(options.appBuildOutputPath, ".next"));
 	const basePath = nextConfig.basePath ?? "";
 	const deploymentId = nextConfig.deploymentId ?? "";
-	const openNextBuildId = nextConfig.deploymentId ?? loadBuildId(dotNextDir);
 	const trailingSlash = nextConfig.trailingSlash ?? false;
 
 	await build({
@@ -34,7 +32,6 @@ export async function compileInit(options: BuildOptions, wranglerConfig: Unstabl
 			__NEXT_BASE_PATH__: JSON.stringify(basePath),
 			__ASSETS_RUN_WORKER_FIRST__: JSON.stringify(wranglerConfig.assets?.run_worker_first ?? false),
 			__DEPLOYMENT_ID__: JSON.stringify(deploymentId),
-			__OPEN_NEXT_BUILD_ID__: JSON.stringify(openNextBuildId),
 			__TRAILING_SLASH__: JSON.stringify(trailingSlash),
 		},
 	});
