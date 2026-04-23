@@ -1,5 +1,23 @@
 # @opennextjs/cloudflare
 
+## 1.19.4
+
+### Patch Changes
+
+- [#1221](https://github.com/opennextjs/opennextjs-cloudflare/pull/1221) [`a2679bf`](https://github.com/opennextjs/opennextjs-cloudflare/commit/a2679bf9549f620e1ab0e1900dcc7a6b6ac03e0a) Thanks [@mushan0x0](https://github.com/mushan0x0)! - Stop bundling `@vercel/og` (and its ~1.4 MiB `resvg.wasm`) when the app does not use it.
+
+  Next.js's `externalImport` helper keeps a dynamic `import("next/dist/compiled/@vercel/og/index.edge.js")` in the emitted handler even for apps that never use `ImageResponse` / `opengraph-image`. Previously this module was marked as `external` when `useOg` was `false`, which left Wrangler to resolve and bundle it — pulling in ~800 KiB of JS plus `resvg.wasm` and pushing many Workers over the Cloudflare free-tier 3 MiB gzip limit.
+
+  When `useOg` is `false`, the edge entry is now aliased to the existing `throw.js` shim, so the unreachable dynamic import resolves to a tiny module and the real `@vercel/og` library is no longer pulled into the Worker bundle.
+
+- [#1208](https://github.com/opennextjs/opennextjs-cloudflare/pull/1208) [`2c5b472`](https://github.com/opennextjs/opennextjs-cloudflare/commit/2c5b4729b6a48560b550af820c46c2350e149fa6) Thanks [@edmundhung](https://github.com/edmundhung)! - Use `OPEN_NEXT_BUILD_ID` instead of `NEXT_BUILD_ID` in the cache keys.
+
+  As of Next 16.2 `NEXT_BUILD_ID` is a fixed value when deploymentId is set explicitly.
+
+  See <https://github.com/opennextjs/opennextjs-aws/pull/1144>
+
+- [#1193](https://github.com/opennextjs/opennextjs-cloudflare/pull/1193) [`1e8d232`](https://github.com/opennextjs/opennextjs-cloudflare/commit/1e8d232672353920a8e05e468cf3a5890b82b0f6) Thanks [@conico974](https://github.com/conico974)! - Fix tag cache stale logic
+
 ## 1.19.3
 
 ### Patch Changes
