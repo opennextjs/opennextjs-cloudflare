@@ -1,0 +1,172 @@
+name: Bundle sizes
+
+on:
+  pull_request:
+
+concurrency:
+  group: bundle-sizes-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  measure:
+    name: measure (${{ matrix.script }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - script: "build:worker"
+            slug: esbuild
+            label: "`build:worker` (esbuild)"
+          - script: "build:worker-turbopack"
+            slug: turbopack
+            label: "`build:worker-turbopack`"
+    steps:
+      - name: Check out PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Stash PR script (used for both runs to keep parsing consistent)
+        run: cp scripts/bundle-sizes.mjs /tmp/bundle-sizes.mjs
+
+      - name: Install dependencies (PR)
+        uses: ./.github/actions/install-dependencies
+
+      - name: Build + measure (PR)
+        run: node scripts/bundle-sizes.mjs --script "${{ matrix.script }}" --output /tmp/sizes.after.json
+
+      - name: Check out base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          clean: true
+
+      - name: Restore stashed script
+        run: cp /tmp/bundle-sizes.mjs scripts/bundle-sizes.mjs
+
+      - name: Install dependencies (base)
+        uses: ./.github/actions/install-dependencies
+
+      - name: Build + measure (base)
+        run: node scripts/bundle-sizes.mjs --script "${{ matrix.script }}" --output /tmp/sizes.before.json
+
+      - name: Collect JSON for upload
+        run: |
+          mkdir -p out
+          cp /tmp/sizes.before.json out/sizes.before.json
+          cp /tmp/sizes.after.json out/sizes.after.json
+
+      - name: Upload JSON results
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-sizes-${{ matrix.slug }}
+          path: out/
+
+  comment:
+    name: post comment
+    needs: measure
+    if: always() && github.event.pull_request.number != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all results
+        uses: actions/download-artifact@v4
+        with:
+          path: results
+          pattern: bundle-sizes-*
+
+      - name: Build comment body
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const path = require('node:path');
+
+            const MARKER = '<!-- bundle-sizes-comment -->';
+            const variants = [
+              { slug: 'esbuild',   label: '`build:worker` (esbuild)' },
+              { slug: 'turbopack', label: '`build:worker-turbopack`' },
+            ];
+
+            const fmt = (x) => x == null ? '—'
+              : x >= 1024 * 1024 ? (x / 1024 / 1024).toFixed(2) + ' MiB'
+              : (x / 1024).toFixed(2) + ' KiB';
+
+            const delta = (bv, av) => {
+              if (bv == null || av == null) return '—';
+              const d = av - bv;
+              if (d === 0) return '0';
+              const pct = bv === 0 ? 0 : (d / bv) * 100;
+              const sign = d > 0 ? '+' : '-';
+              const label = `${sign}${fmt(Math.abs(d))} (${sign}${Math.abs(pct).toFixed(2)}%)`;
+              if (d > 0 && Math.abs(pct) >= 0.5) return `**${label}**`;
+              if (d < 0 && Math.abs(pct) >= 0.5) return `_${label}_`;
+              return label;
+            };
+
+            const tableFor = (before, after) => {
+              let out = '| App | Upload (before) | Upload (after) | Δ Upload | Gzip (before) | Gzip (after) | Δ Gzip |\n';
+              out +=   '|---|---:|---:|---:|---:|---:|---:|\n';
+              const names = new Set([...Object.keys(before), ...Object.keys(after)]);
+              for (const name of names) {
+                const b = before[name], a = after[name];
+                if (!b || !a || b.error || a.error) {
+                  out += `| ${name} | — | — | _missing_ | — | — | _missing_ |\n`;
+                  continue;
+                }
+                out += `| ${name} | ${fmt(b.uploadBytes)} | ${fmt(a.uploadBytes)} | ${delta(b.uploadBytes, a.uploadBytes)}`
+                     + ` | ${fmt(b.gzipBytes)} | ${fmt(a.gzipBytes)} | ${delta(b.gzipBytes, a.gzipBytes)} |\n`;
+              }
+              return out;
+            };
+
+            const readJson = (p) => {
+              try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; }
+            };
+
+            let body = `${MARKER}\n## Bundle sizes\n\n`;
+            body += `Comparing \`${context.payload.pull_request.base.sha.slice(0,7)}\` → \`${context.payload.pull_request.head.sha.slice(0,7)}\`.\n\n`;
+
+            for (const v of variants) {
+              const dir = path.join('results', `bundle-sizes-${v.slug}`);
+              const before = readJson(path.join(dir, 'sizes.before.json'));
+              const after  = readJson(path.join(dir, 'sizes.after.json'));
+              body += `### ${v.label}\n\n`;
+              if (!before || !after) {
+                body += `_Measurement failed — see the workflow logs._\n\n`;
+                continue;
+              }
+              body += tableFor(before, after) + '\n';
+            }
+
+            fs.writeFileSync('comment.md', body);
+
+      - name: Upsert PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const MARKER = '<!-- bundle-sizes-comment -->';
+            const body = fs.readFileSync('comment.md', 'utf8');
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner, repo, issue_number, per_page: 100,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(MARKER));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: existing.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number, body,
+              });
+            }
