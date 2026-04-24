@@ -1,0 +1,134 @@
+diff --git a/dist/build/copyTracedFiles.js b/dist/build/copyTracedFiles.js
+index 9701b0401e987ee7cd696873af9d15b751580c52..61c62b3b16205b4d043f92e9e3c5bb5f2c2415d1 100644
+--- a/dist/build/copyTracedFiles.js
++++ b/dist/build/copyTracedFiles.js
+@@ -1,3 +1,4 @@
++import { createRequire } from "node:module";
+ import url from "node:url";
+ import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, readlinkSync, statSync, symlinkSync, writeFileSync, } from "node:fs";
+ import path from "node:path";
+@@ -46,6 +47,111 @@ const nonLinuxPlatformRegex = getCrossPlatformPathRegex(`/node_modules/(?:@[^/]+
+ export function isNonLinuxPlatformPackage(srcPath) {
+     return nonLinuxPlatformRegex.test(srcPath);
+ }
++function collectImportTargets(value, out) {
++    if (typeof value === "string") {
++        out.push(value);
++    }
++    else if (Array.isArray(value)) {
++        value.forEach((v) => collectImportTargets(v, out));
++    }
++    else if (value && typeof value === "object") {
++        Object.values(value).forEach((v) => collectImportTargets(v, out));
++    }
++}
++function augmentWithImportsRemaps(filesToCopy, buildOutputPath) {
++    const visitedConsumers = new Set();
++    const projectRequire = createRequire(path.join(buildOutputPath, "package.json"));
++    const pending = [];
++    for (const [src, dst] of filesToCopy) {
++        if (src.endsWith("/package.json"))
++            pending.push([src, dst]);
++    }
++    while (pending.length) {
++        const [pkgSrc, pkgDst] = pending.shift();
++        if (visitedConsumers.has(pkgSrc))
++            continue;
++        visitedConsumers.add(pkgSrc);
++        let pkg;
++        try {
++            pkg = JSON.parse(readFileSync(pkgSrc, "utf-8"));
++        }
++        catch {
++            continue;
++        }
++        if (!pkg.imports || typeof pkg.imports !== "object")
++            continue;
++        const consumerName = typeof pkg.name === "string" ? pkg.name : "";
++        const upLevels = consumerName.startsWith("@") ? 2 : 1;
++        const consumerSrcDir = path.dirname(pkgSrc);
++        const consumerDstDir = path.dirname(pkgDst);
++        const dstNodeModules = path.resolve(consumerDstDir, "../".repeat(upLevels));
++        // Consumer resolves deps via its own source location in the real project.
++        const realConsumerDir = consumerName
++            ? (() => {
++                try {
++                    return path.dirname(projectRequire.resolve(`${consumerName}/package.json`));
++                }
++                catch {
++                    return consumerSrcDir;
++                }
++            })()
++            : consumerSrcDir;
++        const consumerRequire = createRequire(path.join(realConsumerDir, "package.json"));
++        const targets = [];
++        for (const v of Object.values(pkg.imports))
++            collectImportTargets(v, targets);
++        for (const target of targets) {
++            if (!target ||
++                target.startsWith("./") ||
++                target.startsWith("../") ||
++                target.startsWith("/") ||
++                target.startsWith("#"))
++                continue;
++            const parts = target.split("/");
++            const targetPkg = parts[0].startsWith("@")
++                ? `${parts[0]}/${parts[1]}`
++                : parts[0];
++            if (!targetPkg)
++                continue;
++            let targetPkgJson;
++            try {
++                targetPkgJson = consumerRequire.resolve(`${targetPkg}/package.json`);
++            }
++            catch {
++                logger.debug(`imports-remap: could not resolve ${targetPkg} from ${realConsumerDir}`);
++                continue;
++            }
++            const targetSrcDir = path.dirname(targetPkgJson);
++            const targetDstDir = path.join(dstNodeModules, targetPkg);
++            const walk = (src, dst) => {
++                let entries;
++                try {
++                    entries = readdirSync(src, { withFileTypes: true });
++                }
++                catch {
++                    return;
++                }
++                for (const entry of entries) {
++                    const srcEntry = path.join(src, entry.name);
++                    const dstEntry = path.join(dst, entry.name);
++                    if (entry.isDirectory()) {
++                        if (entry.name === "node_modules")
++                            continue;
++                        walk(srcEntry, dstEntry);
++                    }
++                    else if (entry.isFile()) {
++                        if (filesToCopy.has(srcEntry))
++                            continue;
++                        filesToCopy.set(srcEntry, dstEntry);
++                        if (srcEntry.endsWith("/package.json"))
++                            pending.push([srcEntry, dstEntry]);
++                    }
++                }
++            };
++            walk(targetSrcDir, targetDstDir);
++        }
++    }
++}
+ function copyPatchFile(outputDir) {
+     const patchFile = path.join(__dirname, "patch", "patchedAsyncStorage.js");
+     const outputPatchFile = path.join(outputDir, "patchedAsyncStorage.cjs");
+@@ -192,6 +298,12 @@ File ${serverPath} does not exist
+     routes.forEach((route) => {
+         computeCopyFilesForPage(route);
+     });
++    // Augment traced files with targets of `package.json#imports` subpath remaps.
++    // Next's NFT tracer does not follow the `imports` field, so packages that are
++    // only reachable via remaps (e.g. @mathjax/src's "#mhchem/*" → "mhchemparser/esm/*")
++    // are missing from the trace. Scan every traced package.json for an `imports`
++    // field and pull in any bare-specifier remap targets from source.
++    augmentWithImportsRemaps(filesToCopy, buildOutputPath);
+     // Only files that are actually copied
+     const tracedFiles = [];
+     const erroredFiles = [];

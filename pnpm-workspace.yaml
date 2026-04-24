@@ -49,3 +49,5 @@ catalogs:
     react: 19.0.4
     react-dom: 19.0.4
     tailwindcss: 3.3.3
+patchedDependencies:
+  '@opennextjs/aws@3.10.4': patches/@opennextjs__aws@3.10.4.patch
