@@ -1,10 +1,10 @@
 import { copyFileSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { glob } from "node:fs/promises";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { parseFile } from "@opennextjs/aws/build/patch/astCodePatcher.js";
-import { globSync } from "glob";
 
 import { patchVercelOgFallbackFont, patchVercelOgImport } from "./vercel-og.js";
 
@@ -16,7 +16,7 @@ type TraceInfo = { version: number; files: string[] };
  * @param buildOpts Build options.
  * @returns Whether the @vercel/og library is used.
  */
-export function patchVercelOgLibrary(buildOpts: BuildOptions): boolean {
+export async function patchVercelOgLibrary(buildOpts: BuildOptions): Promise<boolean> {
 	const { appBuildOutputPath, outputDir } = buildOpts;
 
 	const functionsPath = path.join(outputDir, "server-functions/default");
@@ -24,11 +24,11 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions): boolean {
 
 	let useOg = false;
 
-	for (const traceInfoPath of globSync(path.join(appBuildOutputPath, ".next/server/**/*.nft.json"), {
-		windowsPathsNoEscape: true,
-	})) {
+	for await (const traceInfoPath of glob(".next/server/**/*.nft.json", { cwd: appBuildOutputPath })) {
+		const fullTraceInfoPath = path.join(appBuildOutputPath, traceInfoPath);
+
 		// Look for the Node version of the traced @vercel/og files
-		const traceInfo: TraceInfo = JSON.parse(readFileSync(traceInfoPath, { encoding: "utf8" }));
+		const traceInfo: TraceInfo = JSON.parse(readFileSync(fullTraceInfoPath, { encoding: "utf8" }));
 		const tracedNodePath = traceInfo.files.find((p) => p.endsWith("@vercel/og/index.node.js"));
 		if (!tracedNodePath) continue;
 
@@ -42,7 +42,7 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions): boolean {
 		// Ensure the edge version is available in the OpenNext node_modules.
 		if (!existsSync(outputEdgePath)) {
 			const tracedEdgePath = path.join(
-				path.dirname(traceInfoPath),
+				path.dirname(fullTraceInfoPath),
 				tracedNodePath.replace("index.node.js", "index.edge.js")
 			);
 
@@ -50,7 +50,7 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions): boolean {
 
 			// On Next 16.2 and above, we also need to copy the yoga.wasm file used by the library.
 			const tracedWasmPath = path.join(
-				path.dirname(traceInfoPath),
+				path.dirname(fullTraceInfoPath),
 				tracedNodePath.replace("index.node.js", "yoga.wasm")
 			);
 			if (existsSync(tracedWasmPath)) {
@@ -73,7 +73,7 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions): boolean {
 		// Change node imports for the library to edge imports.
 		// This is only useful when turbopack is not used to bundle the function.
 		{
-			const routeFilePath = traceInfoPath.replace(appBuildOutputPath, packagePath).replace(".nft.json", "");
+			const routeFilePath = path.join(packagePath, traceInfoPath.replace(".nft.json", ""));
 
 			const ast = parseFile(routeFilePath);
 			const { edits } = patchVercelOgImport(ast);

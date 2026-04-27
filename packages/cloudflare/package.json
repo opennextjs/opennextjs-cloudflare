@@ -59,7 +59,6 @@
 		"cloudflare": "^4.4.1",
 		"comment-json": "^4.5.1",
 		"enquirer": "^2.4.1",
-		"glob": "catalog:",
 		"ts-tqdm": "^0.8.6",
 		"yargs": "catalog:"
 	},
