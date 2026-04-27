@@ -63,7 +63,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 	console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
 
 	await patchWebpackRuntime(buildOpts);
-	const useOg = await patchVercelOgLibrary(buildOpts);
+	const useOg = patchVercelOgLibrary(buildOpts);
 
 	const outputPath = path.join(outputDir, "server-functions", "default");
 	const packagePath = getPackagePath(buildOpts);

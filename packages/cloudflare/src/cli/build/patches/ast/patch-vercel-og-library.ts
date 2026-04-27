@@ -1,5 +1,4 @@
-import { copyFileSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { glob } from "node:fs/promises";
+import { copyFileSync, existsSync, globSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
@@ -16,7 +15,7 @@ type TraceInfo = { version: number; files: string[] };
  * @param buildOpts Build options.
  * @returns Whether the @vercel/og library is used.
  */
-export async function patchVercelOgLibrary(buildOpts: BuildOptions): Promise<boolean> {
+export function patchVercelOgLibrary(buildOpts: BuildOptions): boolean {
 	const { appBuildOutputPath, outputDir } = buildOpts;
 
 	const functionsPath = path.join(outputDir, "server-functions/default");
@@ -24,7 +23,7 @@ export async function patchVercelOgLibrary(buildOpts: BuildOptions): Promise<boo
 
 	let useOg = false;
 
-	for await (const traceInfoPath of glob(".next/server/**/*.nft.json", { cwd: appBuildOutputPath })) {
+	for (const traceInfoPath of globSync(".next/server/**/*.nft.json", { cwd: appBuildOutputPath })) {
 		const fullTraceInfoPath = path.join(appBuildOutputPath, traceInfoPath);
 
 		// Look for the Node version of the traced @vercel/og files

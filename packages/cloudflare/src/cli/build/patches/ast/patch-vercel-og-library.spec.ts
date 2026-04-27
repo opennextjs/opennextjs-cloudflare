@@ -43,8 +43,8 @@ describe("patchVercelOgLibrary", () => {
 
 	afterAll(() => mockFs.restore());
 
-	it("should patch the open-next files correctly", async () => {
-		await patchVercelOgLibrary(buildOpts);
+	it("should patch the open-next files correctly", () => {
+		patchVercelOgLibrary(buildOpts);
 
 		expect(readdirSync(openNextVercelOgDir)).toMatchInlineSnapshot(`
       [
