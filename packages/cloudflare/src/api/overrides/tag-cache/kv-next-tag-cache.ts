@@ -22,7 +22,7 @@ type KVTagValue =
 	| { revalidatedAt: number; stale?: number | null; expire?: number | null };
 
 function getRevalidatedAt(value: KVTagValue): number {
-	return typeof value === "number" ? value : (value.revalidatedAt ?? 0);
+	return typeof value === "number" ? value : value.revalidatedAt;
 }
 
 function getStale(value: KVTagValue): number | null {
