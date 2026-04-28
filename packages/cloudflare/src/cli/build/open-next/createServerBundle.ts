@@ -187,7 +187,7 @@ async function generateBundle(
 		buildOutputPath: appBuildOutputPath,
 		packagePath,
 		outputDir: outputPath,
-		routes: fnOptions.routes ?? ["app/page.tsx"],
+		routes: fnOptions.routes,
 		bundledNextServer: isBundled,
 	});
 
