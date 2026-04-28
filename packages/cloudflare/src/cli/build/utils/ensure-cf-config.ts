@@ -14,19 +14,19 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
 
 	const requirements = {
 		// Check for the default function
-		dftUseCloudflareWrapper: config.default?.override?.wrapper === "cloudflare-node",
-		dftUseEdgeConverter: config.default?.override?.converter === "edge",
-		dftUseFetchProxy: config.default?.override?.proxyExternalRequest === "fetch",
+		dftUseCloudflareWrapper: config.default.override?.wrapper === "cloudflare-node",
+		dftUseEdgeConverter: config.default.override?.converter === "edge",
+		dftUseFetchProxy: config.default.override?.proxyExternalRequest === "fetch",
 		dftMaybeUseCache:
-			config.default?.override?.incrementalCache === "dummy" ||
-			typeof config.default?.override?.incrementalCache === "function",
+			config.default.override?.incrementalCache === "dummy" ||
+			typeof config.default.override?.incrementalCache === "function",
 		dftMaybeUseTagCache:
-			config.default?.override?.tagCache === "dummy" ||
-			typeof config.default?.override?.incrementalCache === "function",
+			config.default.override?.tagCache === "dummy" ||
+			typeof config.default.override?.incrementalCache === "function",
 		dftMaybeUseQueue:
-			config.default?.override?.queue === "dummy" ||
-			config.default?.override?.queue === "direct" ||
-			typeof config.default?.override?.queue === "function",
+			config.default.override?.queue === "dummy" ||
+			config.default.override?.queue === "direct" ||
+			typeof config.default.override?.queue === "function",
 		// Check for the middleware function
 		mwIsMiddlewareExternal,
 		mwUseCloudflareWrapper: mwConfig?.override?.wrapper === "cloudflare-edge",
@@ -35,7 +35,7 @@ export function ensureCloudflareConfig(config: OpenNextConfig) {
 		hasCryptoExternal: config.edgeExternals?.includes("node:crypto"),
 	};
 
-	if (config.default?.override?.queue === "direct") {
+	if (config.default.override?.queue === "direct") {
 		logger.warn("The direct mode queue is not recommended for use in production.");
 	}
 
