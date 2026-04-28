@@ -99,9 +99,9 @@ export async function getDeploymentMapping(
 	const deployedVersions = await listWorkerVersions(scriptName, {
 		client,
 		accountId,
-		maxNumberOfVersions: config.cloudflare?.skewProtection?.maxNumberOfVersions,
-		afterTimeMs: config.cloudflare?.skewProtection?.maxVersionAgeDays
-			? Date.now() - config.cloudflare?.skewProtection?.maxVersionAgeDays * MS_PER_DAY
+		maxNumberOfVersions: config.cloudflare.skewProtection.maxNumberOfVersions,
+		afterTimeMs: config.cloudflare.skewProtection.maxVersionAgeDays
+			? Date.now() - config.cloudflare.skewProtection.maxVersionAgeDays * MS_PER_DAY
 			: undefined,
 	});
 
