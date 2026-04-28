@@ -1,5 +1,4 @@
 import logger from "@opennextjs/aws/logger.js";
-import type { ExternalMiddlewareConfig } from "@opennextjs/aws/types/open-next.js";
 
 import type { OpenNextConfig } from "../../../api/config.js";
 
@@ -9,8 +8,9 @@ import type { OpenNextConfig } from "../../../api/config.js";
  * @param config OpenNext configuration.
  */
 export function ensureCloudflareConfig(config: OpenNextConfig) {
-	const mwIsMiddlewareExternal = config.middleware?.external === true;
-	const mwConfig = mwIsMiddlewareExternal ? (config.middleware as ExternalMiddlewareConfig) : undefined;
+	const { middleware } = config;
+	const mwConfig = middleware?.external === true ? middleware : undefined;
+	const mwIsMiddlewareExternal = mwConfig !== undefined;
 
 	const requirements = {
 		// Check for the default function
