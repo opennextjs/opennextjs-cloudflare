@@ -486,22 +486,21 @@ type ErrorResult = {
 function validateUrlQueryParameter(requestURL: URL): ErrorResult | { url: string; static: boolean } {
 	// There should be a single "url" parameter.
 	const urls = requestURL.searchParams.getAll("url");
-	if (urls.length < 1) {
+	const [url, ...rest] = urls;
+	if (url === undefined) {
 		const result: ErrorResult = {
 			ok: false,
 			message: '"url" parameter is required',
 		};
 		return result;
 	}
-	if (urls.length > 1) {
+	if (rest.length > 0) {
 		const result: ErrorResult = {
 			ok: false,
 			message: '"url" parameter cannot be an array',
 		};
 		return result;
 	}
-
-	const url = urls[0]!;
 
 	if (url.length > 3072) {
 		const result: ErrorResult = {
@@ -574,21 +573,22 @@ function validateUrlQueryParameter(requestURL: URL): ErrorResult | { url: string
  */
 function validateWidthQueryParameter(requestURL: URL): ErrorResult | number {
 	const widthQueryValues = requestURL.searchParams.getAll("w");
-	if (widthQueryValues.length < 1) {
+	const [widthQueryValue, ...rest] = widthQueryValues;
+
+	if (widthQueryValue === undefined) {
 		const result: ErrorResult = {
 			ok: false,
 			message: '"w" parameter (width) is required',
 		};
 		return result;
 	}
-	if (widthQueryValues.length > 1) {
+	if (rest.length > 0) {
 		const result: ErrorResult = {
 			ok: false,
 			message: '"w" parameter (width) cannot be an array',
 		};
 		return result;
 	}
-	const widthQueryValue = widthQueryValues[0]!;
 	if (!/^[0-9]+$/.test(widthQueryValue)) {
 		const result: ErrorResult = {
 			ok: false,
@@ -624,21 +624,21 @@ function validateWidthQueryParameter(requestURL: URL): ErrorResult | number {
  */
 function validateQualityQueryParameter(requestURL: URL): ErrorResult | number {
 	const qualityQueryValues = requestURL.searchParams.getAll("q");
-	if (qualityQueryValues.length < 1) {
+	const [qualityQueryValue, ...rest] = qualityQueryValues;
+	if (qualityQueryValue === undefined) {
 		const result: ErrorResult = {
 			ok: false,
 			message: '"q" parameter (quality) is required',
 		};
 		return result;
 	}
-	if (qualityQueryValues.length > 1) {
+	if (rest.length > 0) {
 		const result: ErrorResult = {
 			ok: false,
 			message: '"q" parameter (quality) cannot be an array',
 		};
 		return result;
 	}
-	const qualityQueryValue = qualityQueryValues[0]!;
 	if (!/^[0-9]+$/.test(qualityQueryValue)) {
 		const result: ErrorResult = {
 			ok: false,
