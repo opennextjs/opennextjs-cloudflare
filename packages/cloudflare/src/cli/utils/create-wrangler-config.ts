@@ -128,14 +128,18 @@ async function getLatestCompatDate(): Promise<string | undefined> {
 		// The format of the workerd version is `major.yyyymmdd.patch`.
 		const match = latestWorkerdVersion.match(/\d+\.(\d{4})(\d{2})(\d{2})\.\d+/);
 
-		if (match) {
-			const [, year, month, day] = match;
-			const compatDate = `${year}-${month}-${day}`;
-
-			const currentDate = new Date().toISOString().slice(0, 10);
-
-			return compatDate < currentDate ? compatDate : currentDate;
+		if (!match) {
+			return undefined;
 		}
+		const [, year, month, day] = match;
+		if (!year || !month || !day) {
+			return undefined;
+		}
+		const compatDate = `${year}-${month}-${day}`;
+
+		const currentDate = new Date().toISOString().slice(0, 10);
+
+		return compatDate < currentDate ? compatDate : currentDate;
 	} catch {
 		/* empty */
 	}
