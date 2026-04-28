@@ -229,7 +229,7 @@ export class KVNextModeTagCache implements NextModeTagCache {
 	 * @returns request scoped in-memory cache for tag values, or undefined if ALS is not available.
 	 */
 	protected getItemsCache() {
-		const store = globalThis.__openNextAls.getStore();
+		const store = globalThis.__openNextAls?.getStore();
 		return store?.requestCache.getOrCreate<string, KVTagValue | null>("kv-nextMode:tagItems");
 	}
 }
