@@ -271,7 +271,7 @@ describe("DOShardedTagCache", () => {
 
 		it("should only read tag data once on a regional-cache miss", async () => {
 			const putMock = vi.fn();
-			// @ts-expect-error - Defined on cloudfare context
+			// @ts-expect-error - Defined on cloudflare context
 			globalThis.caches = {
 				open: vi.fn().mockResolvedValue({
 					match: vi.fn().mockResolvedValue(null),
@@ -294,7 +294,7 @@ describe("DOShardedTagCache", () => {
 				"http://local.cache/shard/tag-hard;shard-1?tag=tag1",
 				expect.any(Response)
 			);
-			// @ts-expect-error - Defined on cloudfare context
+			// @ts-expect-error - Defined on cloudflare context
 			globalThis.caches = undefined;
 		});
 
@@ -346,6 +346,14 @@ describe("DOShardedTagCache", () => {
 			const cache = shardedDOTagCache();
 			cache.getFromRegionalCache = vi.fn().mockResolvedValueOnce([]);
 			getTagDataMock.mockResolvedValueOnce({ tag1: { revalidatedAt: 100, stale: 100, expire: null } });
+			expect(await cache.isStale(["tag1"], 200)).toBe(false);
+		});
+
+		it("should return false when revalidatedAt <= lastModified even if stale > lastModified", async () => {
+			const cache = shardedDOTagCache();
+			cache.getFromRegionalCache = vi.fn().mockResolvedValueOnce([]);
+			// revalidatedAt=100 <= lastModified=200, so the stale window is from a previous ISR cycle
+			getTagDataMock.mockResolvedValueOnce({ tag1: { revalidatedAt: 100, stale: 300, expire: null } });
 			expect(await cache.isStale(["tag1"], 200)).toBe(false);
 		});
 
@@ -437,7 +445,7 @@ describe("DOShardedTagCache", () => {
 		});
 
 		it("should try to return the cache instance if regional cache is enabled", async () => {
-			// @ts-expect-error - Defined on cloudfare context
+			// @ts-expect-error - Defined on cloudflare context
 			globalThis.caches = {
 				open: vi.fn().mockResolvedValue("cache"),
 			};
@@ -445,7 +453,7 @@ describe("DOShardedTagCache", () => {
 			expect(cache.localCache).toBeUndefined();
 			expect(await cache.getCacheInstance()).toBe("cache");
 			expect(cache.localCache).toBe("cache");
-			// @ts-expect-error - Defined on cloudfare context
+			// @ts-expect-error - Defined on cloudflare context
 			globalThis.caches = undefined;
 		});
 	});
@@ -462,7 +470,7 @@ describe("DOShardedTagCache", () => {
 		});
 
 		it("should call .match on the cache", async () => {
-			// @ts-expect-error - Defined on cloudfare context
+			// @ts-expect-error - Defined on cloudflare context
 			globalThis.caches = {
 				open: vi.fn().mockResolvedValue({
 					match: vi.fn().mockResolvedValue(new Response("1234567")),
@@ -478,13 +486,13 @@ describe("DOShardedTagCache", () => {
 			expect(cacheResult.length).toBe(1);
 			// "1234567" is a plain number (old format) → backward-compat parse
 			expect(cacheResult[0]).toEqual({ tag: "tag1", revalidatedAt: 1234567, stale: 1234567, expire: null });
-			// @ts-expect-error - Defined on cloudfare context
+			// @ts-expect-error - Defined on cloudflare context
 			globalThis.caches = undefined;
 		});
 
 		it("should parse new JSON object format from the cache", async () => {
 			const stored = JSON.stringify({ revalidatedAt: 1000, stale: 500, expire: 9999 });
-			// @ts-expect-error - Defined on cloudfare context
+			// @ts-expect-error - Defined on cloudflare context
 			globalThis.caches = {
 				open: vi.fn().mockResolvedValue({
 					match: vi.fn().mockResolvedValue(new Response(stored)),
@@ -494,7 +502,7 @@ describe("DOShardedTagCache", () => {
 			const doId = new DOId({ baseShardId: "shard-1", numberOfReplicas: 1, shardType: "hard" });
 			const cacheResult = await cache.getFromRegionalCache({ doId, tags: ["tag1"] });
 			expect(cacheResult[0]).toEqual({ tag: "tag1", revalidatedAt: 1000, stale: 500, expire: 9999 });
-			// @ts-expect-error - Defined on cloudfare context
+			// @ts-expect-error - Defined on cloudflare context
 			globalThis.caches = undefined;
 		});
 	});
@@ -513,7 +521,7 @@ describe("DOShardedTagCache", () => {
 
 		it("should put the tags in the regional cache if the tags exists in the DO", async () => {
 			const putMock = vi.fn();
-			// @ts-expect-error - Defined on cloudfare context
+			// @ts-expect-error - Defined on cloudflare context
 			globalThis.caches = {
 				open: vi.fn().mockResolvedValue({
 					put: putMock,
@@ -535,13 +543,13 @@ describe("DOShardedTagCache", () => {
 				"http://local.cache/shard/tag-hard;shard-1?tag=tag1",
 				expect.any(Response)
 			);
-			// @ts-expect-error - Defined on cloudfare context
+			// @ts-expect-error - Defined on cloudflare context
 			globalThis.caches = undefined;
 		});
 
 		it("should not put the tags in the regional cache if the tags does not exists in the DO", async () => {
 			const putMock = vi.fn();
-			// @ts-expect-error - Defined on cloudfare context
+			// @ts-expect-error - Defined on cloudflare context
 			globalThis.caches = {
 				open: vi.fn().mockResolvedValue({
 					put: putMock,
@@ -560,13 +568,13 @@ describe("DOShardedTagCache", () => {
 
 			expect(getTagDataMock).toHaveBeenCalledWith(["tag1"]);
 			expect(putMock).not.toHaveBeenCalled();
-			// @ts-expect-error - Defined on cloudfare context
+			// @ts-expect-error - Defined on cloudflare context
 			globalThis.caches = undefined;
 		});
 
 		it("should put multiple tags in the regional cache", async () => {
 			const putMock = vi.fn();
-			// @ts-expect-error - Defined on cloudfare context
+			// @ts-expect-error - Defined on cloudflare context
 			globalThis.caches = {
 				open: vi.fn().mockResolvedValue({
 					put: putMock,
@@ -595,13 +603,13 @@ describe("DOShardedTagCache", () => {
 				"http://local.cache/shard/tag-hard;shard-1?tag=tag2",
 				expect.any(Response)
 			);
-			// @ts-expect-error - Defined on cloudfare context
+			// @ts-expect-error - Defined on cloudflare context
 			globalThis.caches = undefined;
 		});
 
 		it("should put missing tag in the regional cache if `regionalCacheDangerouslyPersistMissingTags` is true", async () => {
 			const putMock = vi.fn();
-			// @ts-expect-error - Defined on cloudfare context
+			// @ts-expect-error - Defined on cloudflare context
 			globalThis.caches = {
 				open: vi.fn().mockResolvedValue({
 					put: putMock,
@@ -627,13 +635,13 @@ describe("DOShardedTagCache", () => {
 				"http://local.cache/shard/tag-hard;shard-1?tag=tag1",
 				expect.any(Response)
 			);
-			// @ts-expect-error - Defined on cloudfare context
+			// @ts-expect-error - Defined on cloudflare context
 			globalThis.caches = undefined;
 		});
 
 		it("should not put missing tag in the regional cache if `regionalCacheDangerouslyPersistMissingTags` is false", async () => {
 			const putMock = vi.fn();
-			// @ts-expect-error - Defined on cloudfare context
+			// @ts-expect-error - Defined on cloudflare context
 			globalThis.caches = {
 				open: vi.fn().mockResolvedValue({
 					put: putMock,
@@ -656,7 +664,7 @@ describe("DOShardedTagCache", () => {
 
 			expect(getTagDataMock).toHaveBeenCalledWith(["tag1"]);
 			expect(putMock).not.toHaveBeenCalled();
-			// @ts-expect-error - Defined on cloudfare context
+			// @ts-expect-error - Defined on cloudflare context
 			globalThis.caches = undefined;
 		});
 	});

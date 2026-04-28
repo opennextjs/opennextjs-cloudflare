@@ -1,5 +1,50 @@
 # @opennextjs/cloudflare
 
+## 1.19.4
+
+### Patch Changes
+
+- [#1221](https://github.com/opennextjs/opennextjs-cloudflare/pull/1221) [`a2679bf`](https://github.com/opennextjs/opennextjs-cloudflare/commit/a2679bf9549f620e1ab0e1900dcc7a6b6ac03e0a) Thanks [@mushan0x0](https://github.com/mushan0x0)! - Stop bundling `@vercel/og` (and its ~1.4 MiB `resvg.wasm`) when the app does not use it.
+
+  Next.js's `externalImport` helper keeps a dynamic `import("next/dist/compiled/@vercel/og/index.edge.js")` in the emitted handler even for apps that never use `ImageResponse` / `opengraph-image`. Previously this module was marked as `external` when `useOg` was `false`, which left Wrangler to resolve and bundle it — pulling in ~800 KiB of JS plus `resvg.wasm` and pushing many Workers over the Cloudflare free-tier 3 MiB gzip limit.
+
+  When `useOg` is `false`, the edge entry is now aliased to the existing `throw.js` shim, so the unreachable dynamic import resolves to a tiny module and the real `@vercel/og` library is no longer pulled into the Worker bundle.
+
+- [#1208](https://github.com/opennextjs/opennextjs-cloudflare/pull/1208) [`2c5b472`](https://github.com/opennextjs/opennextjs-cloudflare/commit/2c5b4729b6a48560b550af820c46c2350e149fa6) Thanks [@edmundhung](https://github.com/edmundhung)! - Use `OPEN_NEXT_BUILD_ID` instead of `NEXT_BUILD_ID` in the cache keys.
+
+  As of Next 16.2 `NEXT_BUILD_ID` is a fixed value when deploymentId is set explicitly.
+
+  See <https://github.com/opennextjs/opennextjs-aws/pull/1144>
+
+- [#1193](https://github.com/opennextjs/opennextjs-cloudflare/pull/1193) [`1e8d232`](https://github.com/opennextjs/opennextjs-cloudflare/commit/1e8d232672353920a8e05e468cf3a5890b82b0f6) Thanks [@conico974](https://github.com/conico974)! - Fix tag cache stale logic
+
+## 1.19.3
+
+### Patch Changes
+
+- [#1215](https://github.com/opennextjs/opennextjs-cloudflare/pull/1215) [`608893e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/608893e63e1ee16d07c7ec42da979657cf2a62bd) Thanks [@vicb](https://github.com/vicb)! - Factor large repeated values in manifests
+
+  This reduce the size of the generated code.
+
+- [#1218](https://github.com/opennextjs/opennextjs-cloudflare/pull/1218) [`f0d0226`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f0d022685b24881a142bb01005ff78089be8c8d3) Thanks [@314systems](https://github.com/314systems)! - remove `process.version` override
+
+  Remove process.version / process.versions.node overrides now that [unjs/unenv#493](https://github.com/unjs/unenv/pull/493) is merged and shipped in [unenv@2.0.0-rc.16](https://github.com/unjs/unenv/releases/tag/v2.0.0-rc.16) (project uses 2.0.0-rc.24)
+
+- [#1199](https://github.com/opennextjs/opennextjs-cloudflare/pull/1199) [`32594d6`](https://github.com/opennextjs/opennextjs-cloudflare/commit/32594d6a921c5ebdbe25f38635bb2c9dabdcbff1) Thanks [@SdSadat](https://github.com/SdSadat)! - fix(cli): fail fast in non-TTY environments instead of hanging on config-creation prompts
+
+  When `open-next.config.ts` (or `wrangler.(toml|json|jsonc)`) is missing, the CLI
+  prompts the user to auto-create it. In non-TTY environments (Cloudflare Workers
+  Builds, Docker, CI) the Enquirer prompt can't read stdin, so the build hangs or
+  fails with a truncated prompt and a cryptic exit code — the user sees
+  `? Missing required open-next.config.ts file, do you want to create one? (Y/n)`
+  and then ` ELIFECYCLE  Command failed with exit code 13`, with no hint at what
+  to do next.
+
+  Now, in non-interactive environments, both prompts throw an actionable error
+  with the exact template to paste (for `open-next.config.ts`) or point at the
+  existing `--skipWranglerConfigCheck` / `SKIP_WRANGLER_CONFIG_CHECK` escape
+  hatch (for the wrangler config). Interactive behavior is unchanged.
+
 ## 1.19.2
 
 ### Patch Changes

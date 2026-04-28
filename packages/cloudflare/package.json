@@ -1,7 +1,7 @@
 {
 	"name": "@opennextjs/cloudflare",
 	"description": "Cloudflare builder for next apps",
-	"version": "1.19.2",
+	"version": "1.19.4",
 	"type": "module",
 	"scripts": {
 		"clean": "rimraf dist",
@@ -54,7 +54,8 @@
 	"dependencies": {
 		"@ast-grep/napi": "^0.40.5",
 		"@dotenvx/dotenvx": "catalog:",
-		"@opennextjs/aws": "3.10.2",
+		"@opennextjs/aws": "3.10.4",
+		"ci-info": "^4.2.0",
 		"cloudflare": "^4.4.1",
 		"comment-json": "^4.5.1",
 		"enquirer": "^2.4.1",

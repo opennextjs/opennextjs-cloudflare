@@ -65,7 +65,7 @@ class StaticAssetsIncrementalCache implements IncrementalCache {
 		if (cacheType === "composable") {
 			throw new Error("Composable cache is not supported in static assets incremental cache");
 		}
-		const buildId = process.env.NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
+		const buildId = process.env.OPEN_NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
 		const name = (
 			cacheType === "fetch"
 				? `${CACHE_DIR}/__fetch/${buildId}/${key}`
