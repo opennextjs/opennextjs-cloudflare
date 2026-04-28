@@ -40,9 +40,11 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 
 	constructor(ctx: DurableObjectState, env: CloudflareEnv) {
 		super(ctx, env);
-		this.service = env.WORKER_SELF_REFERENCE!;
 		// If there is no service binding, we throw an error because we can't revalidate without it
-		if (!this.service) throw new IgnorableError("No service binding for cache revalidation worker");
+		if (!env.WORKER_SELF_REFERENCE) {
+			throw new IgnorableError("No service binding for cache revalidation worker");
+		}
+		this.service = env.WORKER_SELF_REFERENCE;
 		this.sql = ctx.storage.sql;
 
 		this.maxRevalidations = env.NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION
