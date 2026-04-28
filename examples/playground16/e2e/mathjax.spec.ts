@@ -35,9 +35,10 @@ test("mathjax via MDX + rehype-mathjax page (exercises remap through transitive 
 	const response = await page.goto("/mathjax-mdx");
 	expect(response?.status()).toEqual(200);
 
-	// rehype-mathjax replaces `$$ … $$` with an inline SVG at MDX-compile time. Seeing
-	// an `<svg>` in the rendered HTML proves the chain (mdx → rehype-mathjax →
-	// @mathjax/src + @mathjax/mathjax-fira-font) bundled and ran successfully.
-	const container = page.getByTestId("mathjax-mdx");
-	await expect(container.locator("svg")).toBeVisible();
+	// rehype-mathjax replaces `$$ … $$` with inline SVG at MDX-compile time (one
+	// SVG per glyph plus a wrapper). Seeing at least one `<svg>` proves the chain
+	// (mdx → rehype-mathjax → @mathjax/src + @mathjax/mathjax-fira-font) bundled
+	// and ran successfully.
+	const svgs = page.getByTestId("mathjax-mdx").locator("svg");
+	expect(await svgs.count()).toBeGreaterThan(0);
 });
