@@ -131,8 +131,8 @@ export function runWrangler(
 	);
 
 	const success = result.status === 0;
-	const stdout = result.stdout?.toString() ?? "";
-	const stderr = result.stderr?.toString() ?? "";
+	const stdout = result.stdout.toString();
+	const stderr = result.stderr.toString();
 
 	if (!noLogs) {
 		// When not piping logs, stderr is captured but should still be visible to the user
