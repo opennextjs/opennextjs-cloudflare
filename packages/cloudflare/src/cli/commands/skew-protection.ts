@@ -257,7 +257,7 @@ export async function listWorkerVersions(
 			}
 		}
 	} catch (e) {
-		if (e instanceof NotFoundError && e.status === 404) {
+		if (e instanceof NotFoundError) {
 			// The worker has not been deployed before, no previous versions.
 			return [];
 		}
