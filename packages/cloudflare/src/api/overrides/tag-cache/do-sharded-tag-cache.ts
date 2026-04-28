@@ -304,16 +304,16 @@ class ShardedDOTagCache implements NextModeTagCache {
 							return {
 								tag,
 								revalidatedAt: parsed,
-								stale: parsed as number | null,
-								expire: null as number | null,
+								stale: parsed,
+								expire: null,
 							};
 						}
 						const data = parsed as TagData;
 						return {
 							tag,
 							revalidatedAt: data.revalidatedAt,
-							stale: data.stale ?? null,
-							expire: data.expire ?? null,
+							stale: data.stale,
+							expire: data.expire,
 						};
 					} catch (e) {
 						debugCache("Error while parsing cached value", e);
