@@ -15,7 +15,7 @@ jobs:
         script: ["prettier:check", "lint:check", "ts:check", "test"]
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Dependencies
         uses: ./.github/actions/install-dependencies
