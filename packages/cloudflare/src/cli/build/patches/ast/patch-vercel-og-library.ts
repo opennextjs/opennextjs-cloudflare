@@ -65,8 +65,10 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions): boolean {
 			writeFileSync(outputEdgePath, ast.commitEdits(edits));
 
 			if (matches.length > 0) {
-				const fontFileName = matches[0]!.getMatch("PATH")!.text();
-				renameSync(path.join(outputDir, fontFileName), path.join(outputDir, `${fontFileName}.bin`));
+				const fontFileName = matches[0]?.getMatch("PATH")?.text();
+				if (fontFileName) {
+					renameSync(path.join(outputDir, fontFileName), path.join(outputDir, `${fontFileName}.bin`));
+				}
 			}
 		}
 
