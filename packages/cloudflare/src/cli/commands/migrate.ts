@@ -146,10 +146,20 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 
 	const gitIgnoreExists = fs.existsSync(".gitignore");
 	printStepTitle(`${gitIgnoreExists ? "Updating" : "Creating"} .gitignore file`);
-	conditionalAppendFileSync(".gitignore", "# OpenNext\n.open-next\n", {
-		appendIf: (content) => !content.includes(".open-next"),
-		appendPrefix: "\n",
-	});
+	conditionalAppendFileSync(
+		".gitignore",
+		`# OpenNext
+.open-next
+
+# wrangler files
+.wrangler
+.dev.vars*
+`,
+		{
+			appendIf: (content) => !content.includes(".open-next"),
+			appendPrefix: "\n",
+		}
+	);
 
 	const nextConfig = findNextConfig({ appPath: projectDir });
 
