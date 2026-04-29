@@ -136,20 +136,29 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 	} catch (error) {
 		logger.error("Failed to update package.json", (error as Error).message);
 		logger.warn(
-			"\nPlease ensure that your package.json contains the following scripts:\n" +
-				console.log(
-					[...Object.entries(openNextScripts)].map(([key, value]) => ` - ${key}: ${value}`).join("\n")
-				) +
-				"\n"
+			`Please ensure that your package.json contains the following scripts:
+${[...Object.entries(openNextScripts)].map(([k, v]) => ` - ${k}: ${v}`).join("\n")}
+`
 		);
 	}
 
 	const gitIgnoreExists = fs.existsSync(".gitignore");
 	printStepTitle(`${gitIgnoreExists ? "Updating" : "Creating"} .gitignore file`);
-	conditionalAppendFileSync(".gitignore", "# OpenNext\n.open-next\n", {
-		appendIf: (content) => !content.includes(".open-next"),
-		appendPrefix: "\n",
-	});
+	conditionalAppendFileSync(
+		".gitignore",
+		`# OpenNext
+.open-next
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+`,
+		{
+			appendIf: (content) => !content.includes(".open-next"),
+			appendPrefix: "\n",
+		}
+	);
 
 	const nextConfig = findNextConfig({ appPath: projectDir });
 
