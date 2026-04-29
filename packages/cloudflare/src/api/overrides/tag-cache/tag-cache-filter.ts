@@ -11,7 +11,7 @@ interface WithFilterOptions {
 	 * @param tag The tag to filter.
 	 * @returns true if the tag should be forwarded, false otherwise.
 	 */
-	filterFn: (tag: string | NextModeTagCacheWriteInput) => boolean;
+	filterFn: (tag: NextModeTagCacheWriteInput) => boolean;
 }
 
 /**
@@ -69,7 +69,7 @@ export function withFilter({ tagCache, filterFn }: WithFilterOptions): NextModeT
  * This is used to filter out internal soft tags.
  * Can be used if `revalidatePath` is not used.
  */
-export function softTagFilter(tag: string | NextModeTagCacheWriteInput): boolean {
+export function softTagFilter(tag: NextModeTagCacheWriteInput): boolean {
 	if (typeof tag === "string") {
 		return !tag.startsWith("_N_T_");
 	}
