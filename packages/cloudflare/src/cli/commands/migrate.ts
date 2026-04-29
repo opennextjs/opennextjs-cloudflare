@@ -137,7 +137,7 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 		logger.error("Failed to update package.json", (error as Error).message);
 		logger.warn(
 			"\nPlease ensure that your package.json contains the following scripts:\n" +
-				console.log(
+				logger.warn(
 					[...Object.entries(openNextScripts)].map(([key, value]) => ` - ${key}: ${value}`).join("\n")
 				) +
 				"\n"
