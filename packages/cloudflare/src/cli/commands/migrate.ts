@@ -154,6 +154,7 @@ async function migrateCommand(args: { forceInstall: boolean }): Promise<void> {
 # wrangler files
 .wrangler
 .dev.vars*
+!.dev.vars.example
 `,
 		{
 			appendIf: (content) => !content.includes(".open-next"),
