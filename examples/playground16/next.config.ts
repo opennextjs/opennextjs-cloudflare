@@ -5,7 +5,7 @@ initOpenNextCloudflareForDev();
 
 const nextConfig: NextConfig = {
 	typescript: { ignoreBuildErrors: true },
-	serverExternalPackages: ["shiki"],
+	serverExternalPackages: ["shiki", "@mathjax/src"],
 };
 
 export default nextConfig;
