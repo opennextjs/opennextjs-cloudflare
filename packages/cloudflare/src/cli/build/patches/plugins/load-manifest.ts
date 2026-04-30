@@ -5,7 +5,7 @@
  */
 
 import crypto from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { glob, readFile } from "node:fs/promises";
 import { join, posix, relative, sep } from "node:path";
 
 import { Lang, parse, type SgNode } from "@ast-grep/napi";
@@ -13,7 +13,6 @@ import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.
 import { applyRule, patchCode, type RuleConfig } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
-import { glob } from "glob";
 
 import { normalizePath } from "../../../utils/normalize-path.js";
 
@@ -39,21 +38,19 @@ async function getLoadManifestRule(buildOpts: BuildOptions) {
 	const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts));
 	const dotNextDir = join(baseDir, ".next");
 
-	const manifests = await glob(
-		join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints}.json"),
-		{
-			windowsPathsNoEscape: true,
-		}
+	const manifests = await Array.fromAsync(
+		glob("**/{*-manifest,required-server-files,prefetch-hints}.json", { cwd: dotNextDir })
 	);
 
 	const returnManifests = (
 		await Promise.all(
-			manifests.map(
-				async (manifest) => `
-if ($PATH.endsWith("${normalizePath("/" + relative(dotNextDir, manifest))}")) {
-  return ${await readFile(manifest, "utf-8")};
-}`
-			)
+			manifests.map(async (manifestPath) => {
+				const fullManifestPath = join(dotNextDir, manifestPath);
+				return `
+if ($PATH.endsWith("${normalizePath("/" + manifestPath)}")) {
+  return ${await readFile(fullManifestPath, "utf-8")};
+}`;
+			})
 		)
 	).join("\n");
 
@@ -98,9 +95,7 @@ async function getEvalManifestRule(buildOpts: BuildOptions) {
 
 	const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts), ".next");
 	const appDir = join(baseDir, "server/app");
-	const manifestPaths = await glob(join(baseDir, "**/*_client-reference-manifest.js"), {
-		windowsPathsNoEscape: true,
-	});
+	const manifestPaths = await Array.fromAsync(glob("**/*_client-reference-manifest.js", { cwd: baseDir }));
 
 	// Map of factored large objects (variable name -> {...})
 	const factoredObjects = new Map<string, string>();
@@ -109,11 +104,13 @@ async function getEvalManifestRule(buildOpts: BuildOptions) {
 	// Shared map of short hash prefix -> full SHA1 hash, used for collision resolution.
 	const prefixMap = new Map<string, string>();
 
-	for (const path of manifestPaths) {
-		if (path.endsWith("page_client-reference-manifest.js")) {
+	for (const manifestPath of manifestPaths) {
+		const fullManifestPath = join(baseDir, manifestPath);
+
+		if (manifestPath.endsWith("page_client-reference-manifest.js")) {
 			// `page_client-reference-manifest.js` files could contain large repeated values.
 			// Factor out large values into separate variables to reduce the overall size of the generated code.
-			let manifest = await readFile(path, "utf-8");
+			let manifest = await readFile(fullManifestPath, "utf-8");
 			for (const key of [
 				"clientModules",
 				"ssrModuleMapping",
@@ -124,7 +121,7 @@ async function getEvalManifestRule(buildOpts: BuildOptions) {
 			]) {
 				manifest = factorManifestValue(manifest, key, factoredObjects, prefixMap);
 			}
-			factoredManifest.set(path, manifest);
+			factoredManifest.set(manifestPath, manifest);
 		}
 	}
 
@@ -148,17 +145,21 @@ async function getEvalManifestRule(buildOpts: BuildOptions) {
 		// Sort by path length descending so longer (more specific) paths match first,
 		// preventing suffix collisions in the `.endsWith()` chain (see #1156).
 		.toSorted((a, b) => b.length - a.length)
-		.map((path) => {
+		.map((manifestPath) => {
+			const fullManifestPath = join(baseDir, manifestPath);
 			let manifest: string;
 
-			if (factoredManifest.has(path)) {
-				manifest = factoredManifest.get(path)!;
+			if (factoredManifest.has(manifestPath)) {
+				manifest = factoredManifest.get(manifestPath)!;
 			} else {
-				manifest = `require(${JSON.stringify(path)});`;
+				manifest = `require(${JSON.stringify(fullManifestPath)});`;
 			}
 
-			const endsWith = normalizePath(relative(baseDir, path));
-			const key = normalizePath("/" + relative(appDir, path)).replace("_client-reference-manifest.js", "");
+			const endsWith = normalizePath(manifestPath);
+			const key = normalizePath("/" + relative(appDir, fullManifestPath)).replace(
+				"_client-reference-manifest.js",
+				""
+			);
 			return `
 if ($PATH.endsWith("${endsWith}")) {
   ${manifest}

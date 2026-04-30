@@ -15,7 +15,6 @@ import type {
 	OpenNextConfig,
 } from "@opennextjs/aws/types/open-next.js";
 import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides.js";
-import { globSync } from "glob";
 import { tqdm } from "ts-tqdm";
 import type { Unstable_Config as WranglerConfig } from "wrangler";
 import { unstable_startWorker } from "wrangler";
@@ -148,17 +147,16 @@ async function resolveCacheName(
 
 export type CacheAsset = { isFetch: boolean; fullPath: string; key: string; buildId: string };
 
-export function getCacheAssets(opts: BuildOptions): CacheAsset[] {
-	const allFiles = globSync(path.join(opts.outputDir, "cache/**/*"), {
-		withFileTypes: true,
-		windowsPathsNoEscape: true,
-	}).filter((f) => f.isFile());
-
+export async function getCacheAssets(opts: BuildOptions): Promise<CacheAsset[]> {
 	const baseCacheDir = path.join(opts.outputDir, "cache");
 	const assets: CacheAsset[] = [];
 
-	for (const file of allFiles) {
-		const fullPath = file.fullpath();
+	for await (const file of fsp.glob("**/*", { cwd: baseCacheDir, withFileTypes: true })) {
+		if (!file.isFile()) {
+			continue;
+		}
+
+		const fullPath = path.join(file.parentPath, file.name);
 		const relativePath = normalizePath(path.relative(baseCacheDir, fullPath));
 
 		if (relativePath.startsWith("__fetch")) {
@@ -253,7 +251,7 @@ async function populateR2IncrementalCache(
 			? binding.preview_bucket_name
 			: binding.bucket_name;
 	const prefix = envVars[R2_CACHE_PREFIX_ENV_NAME];
-	const assets = getCacheAssets(buildOpts);
+	const assets = await getCacheAssets(buildOpts);
 
 	if (assets.length === 0) {
 		logger.info("No cache assets to populate");
@@ -495,7 +493,7 @@ async function populateKVIncrementalCache(
 	}
 
 	const prefix = envVars[KV_CACHE_PREFIX_ENV_NAME];
-	const assets = getCacheAssets(buildOpts);
+	const assets = await getCacheAssets(buildOpts);
 
 	if (assets.length === 0) {
 		logger.info("No cache assets to populate");
