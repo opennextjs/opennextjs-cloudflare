@@ -73,7 +73,7 @@ fix: |
  * Fixes the webpack-runtime.js and webpack-api-runtime.js files by inlining
  * the webpack dynamic requires.
  */
-export async function patchWebpackRuntime(buildOpts: BuildOptions) {
+export async function patchWebpackRuntime(buildOpts: BuildOptions): Promise<void> {
 	const { outputDir } = buildOpts;
 
 	const dotNextServerDir = join(

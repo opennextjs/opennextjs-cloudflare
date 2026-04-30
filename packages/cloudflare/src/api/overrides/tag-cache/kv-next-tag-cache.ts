@@ -217,18 +217,18 @@ export class KVNextModeTagCache implements NextModeTagCache {
 		return isDisabled ? undefined : kv;
 	}
 
-	protected getCacheKey(key: string) {
+	protected getCacheKey(key: string): string {
 		return `${this.getBuildId()}/${key}`.replaceAll("//", "/");
 	}
 
-	protected getBuildId() {
+	protected getBuildId(): string {
 		return process.env.OPEN_NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
 	}
 
 	/**
 	 * @returns request scoped in-memory cache for tag values, or undefined if ALS is not available.
 	 */
-	protected getItemsCache() {
+	protected getItemsCache(): Map<string, KVTagValue | null> | undefined {
 		const store = globalThis.__openNextAls?.getStore();
 		return store?.requestCache.getOrCreate<string, KVTagValue | null>("kv-nextMode:tagItems");
 	}

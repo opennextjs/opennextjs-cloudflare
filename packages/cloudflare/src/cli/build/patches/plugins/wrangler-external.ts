@@ -24,7 +24,7 @@ export function setWranglerExternal() {
 	return {
 		name: "wrangler-externals",
 
-		setup: async (build: PluginBuild) => {
+		setup: async (build: PluginBuild): Promise<void> => {
 			const namespace = "wrangler-externals-plugin";
 
 			//TODO: Ideally in the future we would like to analyze the files in case they are using wasm in a Node way (i.e. WebAssembly.instantiate)

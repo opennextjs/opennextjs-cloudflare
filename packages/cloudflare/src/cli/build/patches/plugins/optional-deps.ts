@@ -11,7 +11,10 @@
 
 import type { OnResolveResult, PluginBuild } from "esbuild";
 
-export function handleOptionalDependencies(dependencies: string[]) {
+export function handleOptionalDependencies(dependencies: string[]): {
+	name: string;
+	setup: (build: PluginBuild) => Promise<void>;
+} {
 	// Regex matching either a full module ("module") or a prefix ("module/...")
 	const filter = new RegExp(
 		`^(${dependencies.flatMap((name) => [`${name}$`, String.raw`${name}/`]).join("|")})`

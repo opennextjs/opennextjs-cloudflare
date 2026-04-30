@@ -30,7 +30,7 @@ function getServerDir(buildOpts: BuildOptions) {
 	return join(buildOpts.outputDir, "server-functions/default", getPackagePath(buildOpts), ".next/server");
 }
 
-export function getRequires(idVariable: string, files: string[], serverDir: string) {
+export function getRequires(idVariable: string, files: string[], serverDir: string): string {
 	// Inline fs access and dynamic requires that are not supported by workerd.
 	// Sort by path length descending so longer (more specific) paths match first.
 	// Without this, `/test/app/page.js` could match the `.endsWith("app/page.js")`

@@ -35,7 +35,7 @@ const BASE_NEXT_PORT = 3100;
 /**
  * Returns a distinct port for each application so they can run in parallel.
  */
-export function getAppPort(app: AppName, { isWorker = true } = {}) {
+export function getAppPort(app: AppName, { isWorker = true } = {}): number {
 	const index = apps.indexOf(app);
 	if (index === -1) {
 		throw new Error(`Unknown app: ${app}`);
@@ -46,7 +46,7 @@ export function getAppPort(app: AppName, { isWorker = true } = {}) {
 /**
  * Returns a distinct port for each application so they can run in parallel.
  */
-export function getInspectorPort(app: AppName) {
+export function getInspectorPort(app: AppName): number {
 	const index = apps.indexOf(app);
 	if (index === -1) {
 		throw new Error(`Unknown app: ${app}`);

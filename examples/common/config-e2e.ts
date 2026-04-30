@@ -1,7 +1,5 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices, type PlaywrightTestConfig } from "@playwright/test";
 import { getAppPort, getInspectorPort, type AppName } from "./apps";
-
-declare const process: typeof nodeProcess;
 
 export function configurePlaywright(
 	app: AppName,
@@ -17,7 +15,7 @@ export function configurePlaywright(
 		// Use the turbopack runtime
 		useTurbopack = false,
 	} = {}
-) {
+): PlaywrightTestConfig {
 	const port = getAppPort(app, { isWorker });
 	const inspectorPort = getInspectorPort(app);
 	const baseURL = `http://localhost:${port}`;

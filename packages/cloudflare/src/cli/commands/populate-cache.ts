@@ -100,7 +100,7 @@ export async function populateCache(
 	wranglerConfig: WranglerConfig,
 	populateCacheOptions: PopulateCacheOptions,
 	envVars: WorkerEnvVar
-) {
+): Promise<void> {
 	const { incrementalCache, tagCache } = config.default.override ?? {};
 
 	if (!fs.existsSync(buildOpts.outputDir)) {

@@ -4,7 +4,7 @@ import path from "node:path";
 import { loadBuildId, loadConfig, loadPrerenderManifest } from "@opennextjs/aws/adapters/config/util.js";
 import { type BuildOptions, esbuildSync } from "@opennextjs/aws/build/helper.js";
 
-export function compileDurableObjects(buildOpts: BuildOptions) {
+export function compileDurableObjects(buildOpts: BuildOptions): void {
 	const _require = createRequire(import.meta.url);
 	const entryPoints = [
 		_require.resolve("@opennextjs/cloudflare/durable-objects/queue"),
