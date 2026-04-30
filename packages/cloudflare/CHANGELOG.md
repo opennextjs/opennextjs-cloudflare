@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.19.5
+
+### Patch Changes
+
+- [#1240](https://github.com/opennextjs/opennextjs-cloudflare/pull/1240) [`dd7de1d`](https://github.com/opennextjs/opennextjs-cloudflare/commit/dd7de1d4215ebc9943658b88aec858f0e0d314a4) Thanks [@vicb](https://github.com/vicb)! - fix: add missing git ignored files for the migrate command
+
 ## 1.19.4
 
 ### Patch Changes
