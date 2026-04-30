@@ -42,7 +42,7 @@ export function findWranglerConfig(appDir: string): string | undefined {
  */
 export async function createWranglerConfigFile(
 	projectDir: string,
-	defaultCompatDate = "2026-02-01"
+	defaultCompatDate = "2026-04-15"
 ): Promise<{ cachingEnabled: boolean }> {
 	const workerName = getWorkerName(projectDir);
 	const compatibilityDate = (await getLatestCompatDate()) ?? defaultCompatDate;
