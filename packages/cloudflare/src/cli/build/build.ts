@@ -54,6 +54,20 @@ export async function build(
 	const { aws, cloudflare } = getVersion();
 	logger.info(`@opennextjs/cloudflare version: ${cloudflare}`);
 	logger.info(`@opennextjs/aws version: ${aws}`);
+	if (wranglerConfig.compatibility_date) {
+		const sixMonthsAgoMs = Date.now() - 6 * 30 * 24 * 60 * 60 * 1000;
+		const compatDateMs = new Date(wranglerConfig.compatibility_date).getTime();
+		if (!isNaN(compatDateMs)) {
+			const dateMessage = `workerd compatibility_date: ${wranglerConfig.compatibility_date}`;
+			if (compatDateMs < sixMonthsAgoMs) {
+				logger.warn(
+					`${dateMessage}, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.`
+				);
+			} else {
+				logger.info(`${dateMessage}`);
+			}
+		}
+	}
 
 	// Clean the output directory before building the Next app.
 	buildHelper.initOutputDir(options);
