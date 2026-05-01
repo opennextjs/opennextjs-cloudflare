@@ -23,9 +23,7 @@ export function transformBuildCondition(
 	hasBuildCondition: boolean;
 } {
 	const transformed: { [key: string]: unknown } = {};
-	const hasTopLevelBuildCondition = Object.keys(conditionMap).some(
-		(key) => key === condition && typeof conditionMap[key] === "string"
-	);
+	const hasTopLevelBuildCondition = condition in conditionMap && conditionMap[condition] != null;
 	let hasBuildCondition = hasTopLevelBuildCondition;
 	for (const [key, value] of Object.entries(conditionMap)) {
 		if (typeof value === "object" && value != null) {
@@ -33,17 +31,19 @@ export function transformBuildCondition(
 				value as { [key: string]: unknown },
 				condition
 			);
+
+			// If a build condition is present at this level but a sibling
+			// subtree doesn't contain the build condition, we can drop it entirely.
+			if (hasTopLevelBuildCondition && key !== condition && !innerBuildCondition) {
+				continue;
+			}
+
 			transformed[key] = transformedExports;
 			hasBuildCondition ||= innerBuildCondition;
-		} else {
-			// If it doesn't have the build condition, we need to keep everything as is
-			// If it has the build condition, we need to keep only the build condition
-			// and remove everything else
-			if (!hasTopLevelBuildCondition) {
-				transformed[key] = value;
-			} else if (key === condition) {
-				transformed[key] = value;
-			}
+		} else if (!hasTopLevelBuildCondition || key === condition) {
+			// If there is no build condition at this level or this is a non-object build condition,
+			// we need to keep the child condition as is.
+			transformed[key] = value;
 		}
 	}
 	return { transformedExports: transformed, hasBuildCondition };
