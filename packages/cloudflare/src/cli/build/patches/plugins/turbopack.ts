@@ -13,6 +13,32 @@ fix:
   requireChunk(chunkPath)
 `;
 
+export const replaceLoadWebAssemblyModuleRule = `
+rule:
+  kind: function_declaration
+  has:
+    field: name
+    regex: "^loadWebAssemblyModule$"
+fix: |-
+  function loadWebAssemblyModule(chunkPath, _edgeModule) {
+    return loadWasmChunk(chunkPath);
+  }
+`;
+
+export const replaceLoadWebAssemblyRule = `
+rule:
+  kind: function_declaration
+  has:
+    field: name
+    regex: "^loadWebAssembly$"
+fix: |-
+  async function loadWebAssembly(chunkPath, _edgeModule, imports) {
+    const mod = await loadWasmChunk(chunkPath);
+    const { exports } = await WebAssembly.instantiate(mod, imports);
+    return exports;
+  }
+`;
+
 /**
  * Discover Turbopack external module mappings by reading symlinks in .next/node_modules/.
  *
@@ -225,8 +251,10 @@ export const patchTurbopackRuntime: CodePatcher = {
 				const externalImportRule = buildExternalImportRule(mappings, tracedFiles, code);
 				let patched = patchCode(code, externalImportRule);
 				patched = patchCode(patched, inlineChunksRule);
+				patched = patchCode(patched, replaceLoadWebAssemblyModuleRule);
+				patched = patchCode(patched, replaceLoadWebAssemblyRule);
 
-				return `${patched}\n${inlineChunksFn(tracedFiles)}`;
+				return `${patched}\n${inlineChunksFn(tracedFiles)}\n${loadWasmChunkFn(tracedFiles)}`;
 			},
 		},
 	],
@@ -262,6 +290,25 @@ ${chunks
 	.join("\n")}
       default:
         throw new Error(\`Not found \${chunkPath}\`);
+    }
+  }
+`;
+}
+
+export function loadWasmChunkFn(tracedFiles: string[]) {
+	const wasmFiles = tracedFiles.filter((f) => f.endsWith(".wasm"));
+	const cases = wasmFiles
+		.map(
+			(absPath) =>
+				`      case "${absPath.replace(/.*\/\.next\//, "")}": return (await import("${absPath}?module")).default;`
+		)
+		.join("\n");
+	return `
+  async function loadWasmChunk(chunkPath) {
+    switch (chunkPath) {
+${cases}
+      default:
+        throw new Error(\`Unknown wasm chunk: \${chunkPath}\`);
     }
   }
 `;
