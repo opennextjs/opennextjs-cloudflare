@@ -9,6 +9,7 @@ const apps = [
 	"vercel-blog-starter",
 	"ssg-app",
 	"prisma",
+	"prisma-7",
 	"next-partial-prerendering",
 	// e2e
 	"app-pages-router",

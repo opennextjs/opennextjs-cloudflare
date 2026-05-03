@@ -1,0 +1,38 @@
+{
+	"name": "prisma-7-next-app",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "next dev --turbopack",
+		"build": "next build",
+		"start": "next start",
+		"lint": "next lint",
+		"prepare:db": "npx prisma generate && wrangler d1 execute db --file populate.sql",
+		"build:worker": "pnpm prepare:db && pnpm opennextjs-cloudflare build",
+		"build:worker-turbopack": "pnpm prepare:db && pnpm opennextjs-cloudflare build --openNextConfigPath open-next.turbopack.config.ts",
+		"preview:worker": "pnpm opennextjs-cloudflare preview",
+		"preview": "pnpm build:worker && pnpm preview:worker",
+		"e2e": "playwright test -c e2e/playwright.config.ts",
+		"e2e-turbopack": "playwright test -c e2e/playwright.turbopack.config.ts",
+		"e2e:dev": "playwright test -c e2e/playwright.dev.config.ts",
+		"cf-typegen": "wrangler types --env-interface CloudflareEnv"
+	},
+	"dependencies": {
+		"@opennextjs/cloudflare": "workspace:*",
+		"@prisma/adapter-d1": "^7.8.0",
+		"@prisma/client": "^7.8.0",
+		"next": "catalog:e2e",
+		"react": "catalog:e2e",
+		"react-dom": "catalog:e2e"
+	},
+	"devDependencies": {
+		"@playwright/test": "catalog:",
+		"@types/node": "catalog:",
+		"@types/react": "catalog:e2e",
+		"@types/react-dom": "catalog:e2e",
+		"prisma": "^7.8.0",
+		"typescript": "catalog:",
+		"wrangler": "catalog:"
+	}
+}

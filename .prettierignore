@@ -5,3 +5,4 @@ pnpm-lock.yaml
 test-fixtures
 test-snapshots
 playwright-report
+examples/prisma-7/src/generated

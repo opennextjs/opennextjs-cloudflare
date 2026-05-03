@@ -1,0 +1,5 @@
+import { configurePlaywright } from "../../common/config-e2e";
+
+export default configurePlaywright("prisma-7", {
+	isWorker: false,
+});
