@@ -191,6 +191,38 @@ describe("transformPackageJson", () => {
 		expect(hasBuildCondition).toBe(true);
 	});
 
+	// https://github.com/opennextjs/opennextjs-cloudflare/issues/1153
+	// Matches the exports field of pg-cloudflare@1.3.0.
+	test("exports with object-valued workerd condition (pg-cloudflare)", () => {
+		const json = {
+			name: "pg-cloudflare",
+			exports: {
+				".": {
+					workerd: {
+						import: "./esm/index.mjs",
+						require: "./dist/index.js",
+					},
+					default: "./dist/empty.js",
+				},
+				"./package.json": "./package.json",
+			},
+		};
+		const { transformed, hasBuildCondition } = transformPackageJson(json);
+		expect(transformed).toEqual({
+			name: "pg-cloudflare",
+			exports: {
+				".": {
+					workerd: {
+						import: "./esm/index.mjs",
+						require: "./dist/index.js",
+					},
+				},
+				"./package.json": "./package.json",
+			},
+		});
+		expect(hasBuildCondition).toBe(true);
+	});
+
 	test("exports and imports with workerd condition both nested and top level", () => {
 		const json = {
 			name: "test",
