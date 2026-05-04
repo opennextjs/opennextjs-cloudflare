@@ -10,11 +10,9 @@
 		"lint": "next lint",
 		"prepare:db": "npx prisma generate && wrangler d1 execute db --file populate.sql",
 		"build:worker": "pnpm prepare:db && pnpm opennextjs-cloudflare build",
-		"build:worker-turbopack": "pnpm prepare:db && pnpm opennextjs-cloudflare build --openNextConfigPath open-next.turbopack.config.ts",
 		"preview:worker": "pnpm opennextjs-cloudflare preview",
 		"preview": "pnpm build:worker && pnpm preview:worker",
 		"e2e": "playwright test -c e2e/playwright.config.ts",
-		"e2e-turbopack": "playwright test -c e2e/playwright.turbopack.config.ts",
 		"e2e:dev": "playwright test -c e2e/playwright.dev.config.ts",
 		"cf-typegen": "wrangler types --env-interface CloudflareEnv"
 	},
