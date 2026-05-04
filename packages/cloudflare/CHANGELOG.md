@@ -1,5 +1,41 @@
 # @opennextjs/cloudflare
 
+## 1.19.6
+
+### Patch Changes
+
+- [#1246](https://github.com/opennextjs/opennextjs-cloudflare/pull/1246) [`5d2014f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/5d2014f09afa24eed983d2ddcd568ac118a728fd) Thanks [@vicb](https://github.com/vicb)! - fix: do not log expected expected D1 errors
+
+  The `populateCache` command adds columns to the D1 tag cache for SWR support.
+  This is required for older deployments made before those column were added.
+  SQLite errors when the columns exist and we should not log those errors.
+
+- [#1244](https://github.com/opennextjs/opennextjs-cloudflare/pull/1244) [`01babce`](https://github.com/opennextjs/opennextjs-cloudflare/commit/01babce15c28d7a81797d6fbaebe281e930b92f5) Thanks [@tahmid-23](https://github.com/tahmid-23)! - fix: drop streaming wasm calls in Turbopack runtime
+
+  Turbopack replaces wasm imports using `WebAssembly.compileStreaming` and
+  `WebAssembly.instantiateStreaming`. These functions are not available in
+  the workerd runtime.
+
+  We add a helper `loadWasmChunkFn`. This is a generated switch statement
+  that contains an import for each wasm chunk. We use static strings for
+  all imports to ensure that all necessary wasm chunks will be detected
+  and bundled for the final build.
+
+  The Turbopack patcher replaces the invocations in `loadWebAssembly` and
+  `loadWebAssemblyModule`, using the synchronous `WebAssembly.instantiate`
+  and redirecting to `loadWasmChunkFn`.
+
+- [#1243](https://github.com/opennextjs/opennextjs-cloudflare/pull/1243) [`1c815de`](https://github.com/opennextjs/opennextjs-cloudflare/commit/1c815de96abbabbd4e5ff81ab299f2b4f3aa77db) Thanks [@tahmid-23](https://github.com/tahmid-23)! - fix: detect object-valued conditions
+
+  The pre-existing build condition transform logic had subtle errors:
+
+  - failed to recognize object conditions
+    (e.g. "workerd": { "import": ..., "require": ... })
+  - sibling pruning only applied to strings, not objects
+
+  Now, we fully support object conditions. Furthermore, we prune siblings,
+  unless its subtree also contains the build condition.
+
 ## 1.19.5
 
 ### Patch Changes
