@@ -607,7 +607,8 @@ function populateD1TagCache(
 			target: populateCacheOptions.target,
 			environment: populateCacheOptions.environment,
 			configPath: populateCacheOptions.wranglerConfigPath,
-			logging: "error",
+			// Do not log errors since the ALTER TABLE command will fail if the columns already exist.
+			logging: "none",
 		}
 	);
 
