@@ -14,7 +14,7 @@ export function configurePlaywright(
 		multipleBrowsers = false,
 		// Whether to run tests in single file in parallel
 		parallel = true,
-		// Use the turbopack runtime
+		// Use the turbopack runtime (execute the `build:worker-turbopack` script instead of `build:worker`)
 		useTurbopack = false,
 	} = {}
 ) {
