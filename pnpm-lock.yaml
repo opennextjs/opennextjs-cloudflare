@@ -1029,10 +1029,10 @@ importers:
         specifier: workspace:*
         version: link:../../packages/cloudflare
       '@prisma/adapter-d1':
-        specifier: ^7.7.0
+        specifier: ^7.8.0
         version: 7.8.0
       '@prisma/client':
-        specifier: ^7.7.0
+        specifier: ^7.8.0
         version: 7.8.0(prisma@7.8.0(@types/react-dom@19.0.4(@types/react@19.0.4))(@types/react@19.0.4)(better-sqlite3@11.8.1)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)(typescript@5.9.3))(typescript@5.9.3)
       next:
         specifier: catalog:e2e
@@ -1057,7 +1057,7 @@ importers:
         specifier: catalog:e2e
         version: 19.0.4(@types/react@19.0.4)
       prisma:
-        specifier: ^7.7.0
+        specifier: ^7.8.0
         version: 7.8.0(@types/react-dom@19.0.4(@types/react@19.0.4))(@types/react@19.0.4)(better-sqlite3@11.8.1)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)(typescript@5.9.3)
       typescript:
         specifier: 'catalog:'

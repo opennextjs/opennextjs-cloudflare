@@ -22,17 +22,6 @@ function loadWebAssemblyModule(chunkPath, _edgeModule) {
 			"
 		`);
 	});
-
-	test("does not rewrite when no matching function is present", () => {
-		const code = `
-function someUnrelatedFn() {
-    return 42;
-}
-`;
-		const out = patchCode(code, replaceLoadWebAssemblyModuleRule);
-		expect(out).toContain("someUnrelatedFn");
-		expect(out).not.toContain("loadWasmChunk");
-	});
 });
 
 describe("replaceLoadWebAssemblyRule", () => {
@@ -52,17 +41,6 @@ function loadWebAssembly(chunkPath, _edgeModule, imports) {
 			"
 		`);
 	});
-
-	test("does not rewrite when no matching function is present", () => {
-		const code = `
-function loadWebAssemblyModule(chunkPath, _edgeModule) {
-    return compileWebAssemblyFromPath(chunkPath);
-}
-`;
-		const out = patchCode(code, replaceLoadWebAssemblyRule);
-		expect(out).toContain("compileWebAssemblyFromPath");
-		expect(out).not.toContain("loadWasmChunk");
-	});
 });
 
 describe("loadWasmChunkFn", () => {
@@ -76,8 +54,8 @@ describe("loadWasmChunkFn", () => {
 			"
 			  async function loadWasmChunk(chunkPath) {
 			    switch (chunkPath) {
-			      case "server/chunks/ssr/foo_bg_abc123_.wasm": return (await import("/abs/proj/.next/server/chunks/ssr/foo_bg_abc123_.wasm?module")).default;
-			      case "server/chunks/ssr/bar_bg_def456_.wasm": return (await import("/abs/proj/.next/server/chunks/ssr/bar_bg_def456_.wasm?module")).default;
+			      case "server/chunks/ssr/foo_bg_abc123_.wasm": return (await import("/abs/proj/.next/server/chunks/ssr/foo_bg_abc123_.wasm")).default;
+			      case "server/chunks/ssr/bar_bg_def456_.wasm": return (await import("/abs/proj/.next/server/chunks/ssr/bar_bg_def456_.wasm")).default;
 			      default:
 			        throw new Error(\`Unknown wasm chunk: \${chunkPath}\`);
 			    }

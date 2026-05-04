@@ -17,6 +17,10 @@
 /.next/
 /out/
 
+# open-next
+/.open-next/
+/.wrangler/
+
 # production
 /build
 

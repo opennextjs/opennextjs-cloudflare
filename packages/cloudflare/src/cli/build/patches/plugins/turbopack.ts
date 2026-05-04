@@ -13,6 +13,13 @@ fix:
   requireChunk(chunkPath)
 `;
 
+/**
+ * Replace Turbopack's `loadWebAssemblyModule` with a call to our generated `loadWasmChunk`.
+ *
+ * The original implementation uses `WebAssembly.compileStreaming`, which is not available
+ * in workerd. `loadWasmChunk` resolves the chunk via a static `import()` switch so the
+ * bundler can statically discover and bundle each `.wasm` chunk.
+ */
 export const replaceLoadWebAssemblyModuleRule = `
 rule:
   kind: function_declaration
@@ -25,6 +32,13 @@ fix: |-
   }
 `;
 
+/**
+ * Replace Turbopack's `loadWebAssembly` with a synchronous-instantiation variant.
+ *
+ * The original implementation uses `WebAssembly.instantiateStreaming`, which is not
+ * available in workerd. We load the compiled module via `loadWasmChunk` and then call
+ * the synchronous `WebAssembly.instantiate` to produce the instance's exports.
+ */
 export const replaceLoadWebAssemblyRule = `
 rule:
   kind: function_declaration
@@ -254,7 +268,8 @@ export const patchTurbopackRuntime: CodePatcher = {
 				patched = patchCode(patched, replaceLoadWebAssemblyModuleRule);
 				patched = patchCode(patched, replaceLoadWebAssemblyRule);
 
-				return `${patched}\n${inlineChunksFn(tracedFiles)}\n${loadWasmChunkFn(tracedFiles)}`;
+				return `${patched}
+${inlineChunksFn(tracedFiles)}\n${loadWasmChunkFn(tracedFiles)}`;
 			},
 		},
 	],
@@ -295,13 +310,19 @@ ${chunks
 `;
 }
 
+/**
+ * Generate a `loadWasmChunk` function that maps a `.next`-relative chunk path to a
+ * statically-importable `.wasm` module.
+ *
+ * The replacement rules for Turbopack's `loadWebAssembly{,Module}` delegate to this
+ * function. Because the imports are emitted as string literals, the bundler can
+ * statically discover every wasm chunk and include them in the final build.
+ */
 export function loadWasmChunkFn(tracedFiles: string[]) {
 	const wasmFiles = tracedFiles.filter((f) => f.endsWith(".wasm"));
 	const cases = wasmFiles
-		.map(
-			(absPath) =>
-				`      case "${absPath.replace(/.*\/\.next\//, "")}": return (await import("${absPath}?module")).default;`
-		)
+		.map((absPath) => ({ absPath, relPath: absPath.replace(/.*\/\.next\//, "") }))
+		.map(({ absPath, relPath }) => `      case "${relPath}": return (await import("${absPath}")).default;`)
 		.join("\n");
 	return `
   async function loadWasmChunk(chunkPath) {
