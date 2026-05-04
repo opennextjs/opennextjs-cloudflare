@@ -43,7 +43,7 @@ import {
 import { ensureR2Bucket } from "../utils/ensure-r2-bucket.js";
 import { normalizePath } from "../utils/normalize-path.js";
 import type { R2Response } from "../workers/r2-cache-types.js";
-import { getEnvFromPlatformProxy, quoteShellMeta, type WorkerEnvVar } from "./utils/helpers.js";
+import { getEnvFromPlatformProxy, type WorkerEnvVar } from "./utils/helpers.js";
 import type { WranglerTarget } from "./utils/run-wrangler.js";
 import { runWrangler } from "./utils/run-wrangler.js";
 import type { WithWranglerArgs } from "./utils/utils.js";
@@ -530,10 +530,14 @@ async function populateKVIncrementalCache(
 		const result = runWrangler(
 			buildOpts,
 			[
-				"kv bulk put",
-				quoteShellMeta(chunkPath),
-				`--binding ${KV_CACHE_BINDING_NAME}`,
-				`--preview ${populateCacheOptions.shouldUsePreviewId}`,
+				"kv",
+				"bulk",
+				"put",
+				chunkPath,
+				"--binding",
+				KV_CACHE_BINDING_NAME,
+				"--preview",
+				String(populateCacheOptions.shouldUsePreviewId),
 			],
 			{
 				target: populateCacheOptions.target,
@@ -570,15 +574,18 @@ function populateD1TagCache(
 	const result = runWrangler(
 		buildOpts,
 		[
-			"d1 execute",
+			"d1",
+			"execute",
 			D1_TAG_BINDING_NAME,
 			// Columns:
 			//   tag           - The cache tag.
 			//   revalidatedAt - Timestamp (ms) when the tag was last revalidated.
 			//   stale         - Timestamp (ms) when the cached entry becomes stale. Added in v1.19.
 			//   expire        - Timestamp (ms) when the cached entry expires. NULL means no expire. Added in v1.19.
-			`--command "CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, stale INTEGER, expire INTEGER default NULL, UNIQUE(tag) ON CONFLICT REPLACE);"`,
-			`--preview ${populateCacheOptions.shouldUsePreviewId}`,
+			"--command",
+			"CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, stale INTEGER, expire INTEGER default NULL, UNIQUE(tag) ON CONFLICT REPLACE);",
+			"--preview",
+			String(populateCacheOptions.shouldUsePreviewId),
 		],
 		{
 			target: populateCacheOptions.target,
@@ -598,10 +605,13 @@ function populateD1TagCache(
 	runWrangler(
 		buildOpts,
 		[
-			"d1 execute",
+			"d1",
+			"execute",
 			D1_TAG_BINDING_NAME,
-			`--command "ALTER TABLE revalidations ADD COLUMN stale INTEGER; ALTER TABLE revalidations ADD COLUMN expire INTEGER default NULL"`,
-			`--preview ${populateCacheOptions.shouldUsePreviewId}`,
+			"--command",
+			"ALTER TABLE revalidations ADD COLUMN stale INTEGER; ALTER TABLE revalidations ADD COLUMN expire INTEGER default NULL",
+			"--preview",
+			String(populateCacheOptions.shouldUsePreviewId),
 		],
 		{
 			target: populateCacheOptions.target,
