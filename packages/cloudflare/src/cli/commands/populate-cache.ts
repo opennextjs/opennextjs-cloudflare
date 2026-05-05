@@ -536,8 +536,7 @@ async function populateKVIncrementalCache(
 				chunkPath,
 				"--binding",
 				KV_CACHE_BINDING_NAME,
-				"--preview",
-				String(populateCacheOptions.shouldUsePreviewId),
+				populateCacheOptions.shouldUsePreviewId ? "--preview" : "--no-preview",
 			],
 			{
 				target: populateCacheOptions.target,
@@ -584,8 +583,7 @@ function populateD1TagCache(
 			//   expire        - Timestamp (ms) when the cached entry expires. NULL means no expire. Added in v1.19.
 			"--command",
 			"CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, stale INTEGER, expire INTEGER default NULL, UNIQUE(tag) ON CONFLICT REPLACE);",
-			"--preview",
-			String(populateCacheOptions.shouldUsePreviewId),
+			populateCacheOptions.shouldUsePreviewId ? "--preview" : "--no-preview",
 		],
 		{
 			target: populateCacheOptions.target,
@@ -610,8 +608,7 @@ function populateD1TagCache(
 			D1_TAG_BINDING_NAME,
 			"--command",
 			"ALTER TABLE revalidations ADD COLUMN stale INTEGER; ALTER TABLE revalidations ADD COLUMN expire INTEGER default NULL",
-			"--preview",
-			String(populateCacheOptions.shouldUsePreviewId),
+			populateCacheOptions.shouldUsePreviewId ? "--preview" : "--no-preview",
 		],
 		{
 			target: populateCacheOptions.target,
