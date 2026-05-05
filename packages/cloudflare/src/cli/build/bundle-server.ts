@@ -148,11 +148,6 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			"@next/env": path.join(buildOpts.outputDir, "cloudflare-templates/shims/env.js"),
 		},
 		define: {
-			// Define `__name` globally so calls emitted by the wrapped Next runtime
-			// (esbuild's keep-names helper) resolve at runtime in the worker.
-			// Without this, every page logs `ReferenceError: __name is not defined`
-			// from the Next 15 inline hydration script.
-			__name: '((fn, name) => Object.defineProperty(fn, "name", { value: name, configurable: true }))',
 			// config file used by Next.js, see: https://github.com/vercel/next.js/blob/68a7128/packages/next/src/build/utils.ts#L2137-L2139
 			"process.env.__NEXT_PRIVATE_STANDALONE_CONFIG": JSON.stringify(JSON.stringify(nextConfig)),
 			// Next.js tried to access __dirname so we need to define it
@@ -174,7 +169,13 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 		banner: {
 			// We need to import them here, assigning them to `globalThis` does not work because node:timers use `globalThis` and thus create an infinite loop
 			// See https://github.com/cloudflare/workerd/blob/d6a764c/src/node/internal/internal_timers.ts#L56-L70
-			js: `import {setInterval, clearInterval, setTimeout, clearTimeout} from "node:timers"`,
+			//
+			// Define `__name` globally as a no-op-ish polyfill so calls emitted by the
+			// wrapped Next runtime (esbuild's keep-names helper) resolve at runtime in the
+			// worker. Without it, every page logs `ReferenceError: __name is not defined`
+			// from the Next 15 inline hydration script. esbuild's `define` option only
+			// accepts identifiers or literals, so the polyfill goes in the banner.
+			js: `import {setInterval, clearInterval, setTimeout, clearTimeout} from "node:timers";globalThis.__name=globalThis.__name||((f,n)=>Object.defineProperty(f,"name",{value:n,configurable:true}))`,
 		},
 		platform: "node",
 	});
