@@ -75,13 +75,12 @@ export async function getEnvFromPlatformProxy(options: GetPlatformProxyOptions, 
 /**
  * Escape shell metacharacters.
  *
- * Required on Windows where `runWrangler` keeps `shell: true` so that the package manager's
- * `.cmd` shim is resolved via `cmd.exe`. With `shell: true`, Node concatenates argv into a
- * single command string and the shell re-tokenizes it, so any value containing whitespace or
- * shell metacharacters must be quoted at the call site.
+ * Used by `runWrangler` to escape every token before joining them into the command line passed
+ * to `cmd.exe /c` on Windows. Per Node.js docs, `cmd.exe`-based invocation is the recommended
+ * way to spawn `.cmd`/`.bat` shims while keeping `shell: false` (which avoids DEP0190).
  *
- * On POSIX `runWrangler` uses `shell: false`, so wrapping with this function would inject
- * literal characters into the argument value. Apply only when `process.platform === "win32"`.
+ * Not used on POSIX, where `runWrangler` spawns the package manager directly with `shell: false`
+ * and each argv entry is passed verbatim.
  *
  * Based on https://github.com/ljharb/shell-quote/blob/main/quote.js
  *

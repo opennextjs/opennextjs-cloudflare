@@ -4,7 +4,7 @@ import type yargs from "yargs";
 import { DEPLOYMENT_MAPPING_ENV_NAME } from "../templates/skew-protection.js";
 import { populateCache, withPopulateCacheOptions } from "./populate-cache.js";
 import { getDeploymentMapping } from "./skew-protection.js";
-import { getEnvFromPlatformProxy, quoteShellMeta } from "./utils/helpers.js";
+import { getEnvFromPlatformProxy } from "./utils/helpers.js";
 import { runWrangler } from "./utils/run-wrangler.js";
 import type { WithWranglerArgs } from "./utils/utils.js";
 import {
@@ -57,16 +57,8 @@ export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 		[
 			"deploy",
 			...args.wranglerArgs,
-			// The `--var` value is `KEY:JSON` where the JSON object contains `{`, `}`, `"`, etc.
-			// On Windows `runWrangler` keeps `shell: true`, so the value must be quoted to survive
-			// `cmd.exe` tokenization. On POSIX `shell: false` means it is passed verbatim.
 			...(deploymentMapping
-				? [
-						"--var",
-						process.platform === "win32"
-							? quoteShellMeta(`${DEPLOYMENT_MAPPING_ENV_NAME}:${JSON.stringify(deploymentMapping)}`)
-							: `${DEPLOYMENT_MAPPING_ENV_NAME}:${JSON.stringify(deploymentMapping)}`,
-					]
+				? ["--var", `${DEPLOYMENT_MAPPING_ENV_NAME}:${JSON.stringify(deploymentMapping)}`]
 				: []),
 		],
 		{
