@@ -78,6 +78,13 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 		outfile: openNextServerBundle,
 		format: "esm",
 		target: "esnext",
+		// Define `__name` globally so calls emitted by the wrapped Next runtime
+		// (esbuild's keep-names helper) resolve at runtime in the worker.
+		// Without this, every page logs `ReferenceError: __name is not defined`
+		// from the Next 15 inline hydration script.
+		define: {
+			__name: '((fn, name) => Object.defineProperty(fn, "name", { value: name, configurable: true }))',
+		},
 		// Minify code as much as possible but stay safe by not renaming identifiers
 		minifyWhitespace: projectOpts.minify && !debug,
 		minifyIdentifiers: false,
