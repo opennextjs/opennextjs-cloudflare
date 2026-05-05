@@ -81,6 +81,7 @@ vi.mock("./utils/run-wrangler.js", () => ({
 
 vi.mock("./utils/helpers.js", () => ({
 	getEnvFromPlatformProxy: vi.fn(async () => ({})),
+	quoteShellMeta: vi.fn((s) => s),
 }));
 
 vi.mock("../utils/ensure-r2-bucket.js");

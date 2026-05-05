@@ -71,3 +71,41 @@ export async function getEnvFromPlatformProxy(options: GetPlatformProxyOptions, 
 
 	return envVars as unknown as WorkerEnvVar;
 }
+
+/**
+ * Escape shell metacharacters.
+ *
+ * Required on Windows where `runWrangler` keeps `shell: true` so that the package manager's
+ * `.cmd` shim is resolved via `cmd.exe`. With `shell: true`, Node concatenates argv into a
+ * single command string and the shell re-tokenizes it, so any value containing whitespace or
+ * shell metacharacters must be quoted at the call site.
+ *
+ * On POSIX `runWrangler` uses `shell: false`, so wrapping with this function would inject
+ * literal characters into the argument value. Apply only when `process.platform === "win32"`.
+ *
+ * Based on https://github.com/ljharb/shell-quote/blob/main/quote.js
+ *
+ * @param arg
+ * @returns escaped arg
+ */
+export function quoteShellMeta(arg: string) {
+	if (process.platform === "win32") {
+		if (arg.length === 0) {
+			return '""';
+		}
+		const needsEscaping = /[&|<>^()%!"]/;
+		const needsQuotes = /\s/.test(arg) || needsEscaping.test(arg);
+		let escaped = arg.replace(/"/g, '""');
+		if (/[&|<>^()%!]/.test(arg)) {
+			escaped = escaped.replace(/[&|<>^()%!]/g, "^$&");
+		}
+		return needsQuotes ? `"${escaped}"` : escaped;
+	}
+	if (/["\s]/.test(arg) && !/'/.test(arg)) {
+		return `'${arg.replace(/(['\\])/g, "\\$1")}'`;
+	}
+	if (/["'\s]/.test(arg)) {
+		return `"${arg.replace(/(["\\$`!])/g, "\\$1")}"`;
+	}
+	return arg.replace(/([A-Za-z]:)?([#!"$&'()*,:;<=>?@[\\\]^`{|}])/g, "$1\\$2");
+}

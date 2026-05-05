@@ -43,7 +43,7 @@ import {
 import { ensureR2Bucket } from "../utils/ensure-r2-bucket.js";
 import { normalizePath } from "../utils/normalize-path.js";
 import type { R2Response } from "../workers/r2-cache-types.js";
-import { getEnvFromPlatformProxy, type WorkerEnvVar } from "./utils/helpers.js";
+import { getEnvFromPlatformProxy, quoteShellMeta, type WorkerEnvVar } from "./utils/helpers.js";
 import type { WranglerTarget } from "./utils/run-wrangler.js";
 import { runWrangler } from "./utils/run-wrangler.js";
 import type { WithWranglerArgs } from "./utils/utils.js";
@@ -533,7 +533,10 @@ async function populateKVIncrementalCache(
 				"kv",
 				"bulk",
 				"put",
-				chunkPath,
+				// chunkPath may contain spaces on Windows (e.g. `C:\Users\Some User\...`), and
+				// `runWrangler` keeps `shell: true` on Windows for `.cmd` resolution, so quote
+				// metacharacters there. On POSIX `shell: false` means the value is passed verbatim.
+				process.platform === "win32" ? quoteShellMeta(chunkPath) : chunkPath,
 				"--binding",
 				KV_CACHE_BINDING_NAME,
 				populateCacheOptions.shouldUsePreviewId ? "--preview" : "--no-preview",
@@ -570,6 +573,11 @@ function populateD1TagCache(
 		throw new Error(`No D1 binding "${D1_TAG_BINDING_NAME}" found!`);
 	}
 
+	// SQL values contain parens, semicolons, and spaces. On Windows `runWrangler` keeps
+	// `shell: true` so `cmd.exe` would tokenize unquoted SQL as separate args. Quote on
+	// Windows; pass through verbatim on POSIX where `shell: false` is set.
+	const quoteForShell = (sql: string) => (process.platform === "win32" ? quoteShellMeta(sql) : sql);
+
 	const result = runWrangler(
 		buildOpts,
 		[
@@ -582,7 +590,9 @@ function populateD1TagCache(
 			//   stale         - Timestamp (ms) when the cached entry becomes stale. Added in v1.19.
 			//   expire        - Timestamp (ms) when the cached entry expires. NULL means no expire. Added in v1.19.
 			"--command",
-			"CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, stale INTEGER, expire INTEGER default NULL, UNIQUE(tag) ON CONFLICT REPLACE);",
+			quoteForShell(
+				"CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, stale INTEGER, expire INTEGER default NULL, UNIQUE(tag) ON CONFLICT REPLACE);"
+			),
 			populateCacheOptions.shouldUsePreviewId ? "--preview" : "--no-preview",
 		],
 		{
@@ -607,7 +617,9 @@ function populateD1TagCache(
 			"execute",
 			D1_TAG_BINDING_NAME,
 			"--command",
-			"ALTER TABLE revalidations ADD COLUMN stale INTEGER; ALTER TABLE revalidations ADD COLUMN expire INTEGER default NULL",
+			quoteForShell(
+				"ALTER TABLE revalidations ADD COLUMN stale INTEGER; ALTER TABLE revalidations ADD COLUMN expire INTEGER default NULL"
+			),
 			populateCacheOptions.shouldUsePreviewId ? "--preview" : "--no-preview",
 		],
 		{

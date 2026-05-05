@@ -111,12 +111,10 @@ export function runWrangler(
 			]),
 		],
 		{
-			// Each flag value is now a separate array entry, so `shell: true` is no longer
-			// needed for value interpolation and would only re-introduce the injection vector
-			// flagged by Node.js DEP0190 (and the related security advisory). `shell: true` is
-			// still required on Windows so that the package manager's `.cmd` shim is resolved
-			// via cmd.exe; with each arg as a separate entry, Node escapes them correctly even
-			// when the shell is involved.
+			// Setting `shell` to `false` to avoid DEP0190.
+			// See https://nodejs.org/api/deprecations.html#dep0190-passing-args-to-nodechild-process-execfilespawn-with-shell-option
+			//
+			// Note that `shell: true` is required on Windows so that the package manager's `.cmd` shim is resolved.
 			shell: process.platform === "win32",
 			// Always pipe stderr so that we can capture it for inspection.
 			// Keep stdin and stdout as "inherit" when not piping logs to maintain TTY detection
