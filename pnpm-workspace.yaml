@@ -8,15 +8,15 @@ packages:
   - benchmarking
 
 catalog:
-  "@cloudflare/workers-types": ^4.20260423.1
+  "@cloudflare/workers-types": ^4.20260426.1
   "@dotenvx/dotenvx": 1.31.0
   "@eslint/js": ^9.11.1
   "@playwright/test": ^1.51.1
   "@tsconfig/strictest": ^2.0.5
   "@types/mock-fs": ^4.13.4
   "@types/node": ^22.12.0
-  "@types/react": ^18
-  "@types/react-dom": ^18
+  "@types/react": 19.0.6
+  "@types/react-dom": 19.0.6
   "@types/yargs": ^17.0.33
   esbuild: ^0.27.0
   eslint: ^9.31.0
@@ -26,10 +26,10 @@ catalog:
   glob: ^12.0.0
   globals: ^15.9.0
   mock-fs: ^5.4.1
-  next: ~15.5.15
+  next: ^15.5.16
   package-manager-detector: ^0.2.0
-  react: ^18
-  react-dom: ^18
+  react: 19.0.6
+  react-dom: 19.0.6
   rimraf: ^6.0.1
   tsx: ^4.19.2
   typescript: ^5.9.3
@@ -41,11 +41,11 @@ catalog:
 catalogs:
   e2e:
     "@types/node": 20.17.6
-    "@types/react": 19.0.4
-    "@types/react-dom": 19.0.4
+    "@types/react": 19.0.6
+    "@types/react-dom": 19.0.6
     autoprefixer: 10.4.15
-    next: 16.2.3
+    next: 16.2.5
     postcss: 8.4.27
-    react: 19.0.4
-    react-dom: 19.0.4
+    react: 19.0.6
+    react-dom: 19.0.6
     tailwindcss: 3.3.3
