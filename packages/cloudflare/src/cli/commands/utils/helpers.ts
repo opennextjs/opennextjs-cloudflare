@@ -73,32 +73,32 @@ export async function getEnvFromPlatformProxy(options: GetPlatformProxyOptions, 
 }
 
 /**
- * Escape a single argument so it survives the `cmd.exe /d /s /c "<command line>"` invocation
- * used by `runWrangler` on Windows (paired with `windowsVerbatimArguments: true`).
+ * Escape a single argument for shell-style invocation. Cross-platform.
  *
- * The algorithm matches `cross-spawn`'s `escapeArgument`:
+ * On Windows, `runWrangler` invokes `cmd.exe /d /s /c "<command line>"` with
+ * `windowsVerbatimArguments: true`. The algorithm matches `cross-spawn`'s `escapeArgument`:
  *   1. Wrap the value in `"..."`, doubling backslash sequences that precede a quote per the
  *      Windows command-line argument rules.
  *   2. Caret-escape every cmd.exe metacharacter, including the wrapping quotes themselves.
+ * The wrapping carets are needed for the OUTER `cmd /c "..."` parse: cmd.exe consumes them
+ * and the receiving program sees a normally-quoted argument. Crucially, `^` must NOT be
+ * applied inside an un-caret-escaped quoted region, because cmd.exe treats `^` as literal
+ * inside double quotes (this was the bug an earlier shell-quote-style implementation hit).
  *
- * The carets are needed for the OUTER `cmd /c "..."` parse (where the inner quotes would
- * otherwise terminate the command-line string); cmd.exe consumes them and the receiving
- * program sees a normally-quoted argument. Crucially, `^` must NOT be applied inside an
- * un-caret-escaped quoted region: `cmd.exe` treats `^` as literal inside double quotes,
- * which is the bug an earlier shell-quote-style implementation suffered from.
+ * On POSIX, the value is quoted using standard POSIX shell rules (single quotes by default,
+ * double quotes when the value contains a single quote, backslash-escapes for bare values).
+ * `runWrangler` itself does not invoke a shell on POSIX, but this branch is preserved so the
+ * function behaves usefully for any direct caller.
  *
- * Not used on POSIX, where `runWrangler` spawns the package manager directly with
- * `shell: false` and each argv entry is passed verbatim.
- *
- * Reference: https://github.com/moxystudio/node-cross-spawn/blob/master/lib/util/escape.js
- *            https://qntm.org/cmd
+ * References: https://github.com/moxystudio/node-cross-spawn/blob/master/lib/util/escape.js
+ *             https://qntm.org/cmd
  *
  * @param arg
- * @returns escaped arg suitable for embedding in a `cmd /c "..."` command line
+ * @returns escaped arg
  */
 export function quoteShellMeta(arg: string) {
 	if (process.platform !== "win32") {
-		// POSIX fallback (preserved for any external callers): standard shell quoting.
+		// POSIX shell quoting.
 		if (/["\s]/.test(arg) && !/'/.test(arg)) {
 			return `'${arg.replace(/(['\\])/g, "\\$1")}'`;
 		}

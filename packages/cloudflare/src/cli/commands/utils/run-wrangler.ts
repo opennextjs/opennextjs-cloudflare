@@ -112,6 +112,9 @@ export function runWrangler(
 		]),
 	];
 
+	// Always pipe stderr so that we can capture it for inspection.
+	// Keep stdin and stdout as "inherit" when not piping logs to maintain TTY detection
+	// (wrangler checks `process.stdin.isTTY && process.stdout.isTTY` for interactive mode).
 	const stdio: ("inherit" | "ignore" | "pipe")[] =
 		shouldPipeLogs || noLogs ? ["ignore", "pipe", "pipe"] : ["inherit", "inherit", "pipe"];
 
@@ -124,16 +127,18 @@ export function runWrangler(
 		CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: "false",
 	};
 
-	// On Windows the package manager binary is typically a `.cmd` shim. Per Node.js docs
-	// https://nodejs.org/api/child_process.html#spawning-bat-and-cmd-files-on-windows the
-	// recommended way to invoke a `.cmd`/`.bat` is to spawn `cmd.exe` directly with `/c`,
-	// rather than relying on `shell: true` (which emits DEP0190 and would re-tokenize values).
-	// We pre-escape every token with `quoteShellMeta` and pass the joined command line as a
-	// single quoted string with `windowsVerbatimArguments: true` so Node does not re-escape it.
-	// This mirrors how `cross-spawn` handles non-`.exe` commands on Windows.
+	// We use `shell: false` everywhere to avoid DEP0190.
+	// See https://nodejs.org/api/deprecations.html#dep0190-passing-args-to-nodechild-process-execfilespawn-with-shell-option
 	//
-	// On POSIX we spawn the package manager directly with `shell: false`, which avoids DEP0190
-	// and lets each value be passed verbatim as its own argv entry.
+	// On POSIX we can spawn the package manager binary directly: each value is passed verbatim
+	// as its own argv entry.
+	//
+	// On Windows the package manager is typically a `.cmd` shim. Per Node.js docs
+	// (https://nodejs.org/api/child_process.html#spawning-bat-and-cmd-files-on-windows) the
+	// recommended way to invoke a `.cmd`/`.bat` without `shell: true` is to spawn `cmd.exe`
+	// directly with `/c`. We pre-escape every token with `quoteShellMeta` and pass the joined
+	// command line as a single quoted string with `windowsVerbatimArguments: true` so Node
+	// does not re-escape it. This mirrors how `cross-spawn` handles non-`.exe` commands.
 	const result = isWin
 		? spawnSync(
 				"cmd.exe",
@@ -151,8 +156,6 @@ export function runWrangler(
 				}
 			)
 		: spawnSync(options.packager, packagerArgs, {
-				// Setting `shell` to `false` to avoid DEP0190.
-				// See https://nodejs.org/api/deprecations.html#dep0190-passing-args-to-nodechild-process-execfilespawn-with-shell-option
 				shell: false,
 				stdio,
 				env,
