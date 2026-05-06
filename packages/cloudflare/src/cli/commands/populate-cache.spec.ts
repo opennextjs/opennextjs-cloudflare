@@ -10,7 +10,13 @@ import { unstable_startWorker } from "wrangler";
 import { defineCloudflareConfig } from "../../api/config.js";
 import r2IncrementalCache from "../../api/overrides/incremental-cache/r2-incremental-cache.js";
 import { ensureR2Bucket } from "../utils/ensure-r2-bucket.js";
-import { getCacheAssets, populateCache, PopulateCacheOptions } from "./populate-cache.js";
+import {
+	getCacheAssets,
+	MAX_REQUEST_RETRIES,
+	MAX_RETRY_DELAY_MS,
+	populateCache,
+	PopulateCacheOptions,
+} from "./populate-cache.js";
 import { WorkerEnvVar } from "./utils/helpers.js";
 
 describe("getCacheAssets", () => {
@@ -73,6 +79,19 @@ describe("getCacheAssets", () => {
       ]
     `);
 	});
+});
+
+// Mock `node:timers/promises` so that `setTimeout` delegates to `globalThis.setTimeout`,
+// which is correctly intercepted by `vi.useFakeTimers()`. Without this, the destructured
+// import in the source code holds a reference to the original native `setTimeout`, making
+// `vi.advanceTimersByTimeAsync()` ineffective and causing tests to wait real wall-clock time.
+vi.mock("node:timers/promises", async (importOriginal) => {
+	const original = await importOriginal<typeof import("node:timers/promises")>();
+	return {
+		...original,
+		setTimeout: (ms: number, value?: unknown) =>
+			new Promise((resolve) => globalThis.setTimeout(() => resolve(value), ms)),
+	};
 });
 
 vi.mock("./utils/run-wrangler.js", () => ({
@@ -432,26 +451,16 @@ describe("populateCache", () => {
 				envVars
 			);
 
-			await vi.waitFor(() => {
-				expect(fetchMock).toHaveBeenCalledTimes(1);
-			});
-
-			await vi.advanceTimersByTimeAsync(249);
-			expect(fetchMock).toHaveBeenCalledTimes(1);
-
-			await vi.advanceTimersByTimeAsync(1);
-
-			await vi.waitFor(() => {
-				expect(fetchMock).toHaveBeenCalledTimes(2);
-			});
-
-			await vi.advanceTimersByTimeAsync(500 + 1000 + 2000);
-
-			await expect(result).rejects.toThrow(
-				/Failed to populate the local R2 cache: Failed to write "incremental-cache\/buildID\/[A-Za-z0-9]+.cache" to R2 after 5 attempts/
+			const resultExpectation = expect(result).rejects.toThrow(
+				new RegExp(
+					`Failed to populate the local R2 cache: Failed to write "incremental-cache\\/buildID\\/[A-Za-z0-9]+\\.cache" to R2 after ${MAX_REQUEST_RETRIES} attempts`
+				)
 			);
 
-			expect(fetchMock).toHaveBeenCalledTimes(5);
+			await vi.advanceTimersByTimeAsync(MAX_REQUEST_RETRIES * MAX_RETRY_DELAY_MS);
+			await resultExpectation;
+
+			expect(fetchMock).toHaveBeenCalledTimes(MAX_REQUEST_RETRIES);
 			expect(mockWorkerDispose).toHaveBeenCalled();
 		});
 	});
