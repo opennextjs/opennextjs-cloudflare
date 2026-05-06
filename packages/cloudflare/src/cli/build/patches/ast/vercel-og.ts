@@ -24,7 +24,7 @@ fix: |-
  * @param root Root node.
  * @returns Results of applying the rule.
  */
-export function patchVercelOgImport(root: SgNode) {
+export function patchVercelOgImport(root: SgNode): ReturnType<typeof applyRule> {
 	return applyRule(vercelOgImportRule, root);
 }
 
@@ -60,6 +60,6 @@ fix: |-
  * @param root Root node.
  * @returns Results of applying the rule.
  */
-export function patchVercelOgFallbackFont(root: SgNode) {
+export function patchVercelOgFallbackFont(root: SgNode): ReturnType<typeof applyRule> {
 	return applyRule(vercelOgFallbackFontRule, root);
 }

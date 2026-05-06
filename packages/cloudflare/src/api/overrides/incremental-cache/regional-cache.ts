@@ -218,7 +218,7 @@ class RegionalCache implements IncrementalCache {
 		return this.localCache;
 	}
 
-	protected getCacheUrlKey(key: string, cacheType?: CacheEntryType) {
+	protected getCacheUrlKey(key: string, cacheType?: CacheEntryType): string {
 		const buildId = process.env.OPEN_NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
 		return "http://cache.local" + `/${buildId}/${key}`.replace(/\/+/g, "/") + `.${cacheType ?? "cache"}`;
 	}
@@ -264,7 +264,7 @@ class RegionalCache implements IncrementalCache {
  * @param cache Incremental cache instance.
  * @param opts Options for the regional cache.
  */
-export function withRegionalCache(cache: IncrementalCache, opts: Options) {
+export function withRegionalCache(cache: IncrementalCache, opts: Options): RegionalCache {
 	return new RegionalCache(cache, opts);
 }
 

@@ -382,6 +382,15 @@ importers:
         specifier: 'catalog:'
         version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
 
+  examples/common:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.12.0
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
   examples/create-next-app:
     dependencies:
       next:

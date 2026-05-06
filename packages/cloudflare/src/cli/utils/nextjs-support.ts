@@ -11,7 +11,7 @@ import logger from "@opennextjs/aws/logger.js";
  */
 export async function ensureNextjsVersionSupported({
 	nextVersion,
-}: Pick<buildHelper.BuildOptions, "nextVersion">) {
+}: Pick<buildHelper.BuildOptions, "nextVersion">): Promise<void> {
 	if (buildHelper.compareSemver(nextVersion, "<", "14.2.0")) {
 		throw new Error("Next.js version unsupported, please upgrade to version 14.2 or greater.");
 	}

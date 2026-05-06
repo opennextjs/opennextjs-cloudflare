@@ -43,7 +43,7 @@ interface CodeCustomization {
 export async function createServerBundle(
 	options: buildHelper.BuildOptions,
 	codeCustomization?: CodeCustomization
-) {
+): Promise<void> {
 	const { config } = options;
 	const foundRoutes = new Set<string>();
 	// Get all functions to build

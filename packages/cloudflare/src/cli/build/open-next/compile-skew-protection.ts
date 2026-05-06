@@ -6,7 +6,7 @@ import { build } from "esbuild";
 
 import type { OpenNextConfig } from "../../../api/index.js";
 
-export async function compileSkewProtection(options: BuildOptions, config: OpenNextConfig) {
+export async function compileSkewProtection(options: BuildOptions, config: OpenNextConfig): Promise<void> {
 	const currentDir = path.join(path.dirname(fileURLToPath(import.meta.url)));
 	const templatesDir = path.join(currentDir, "../../templates");
 	const initPath = path.join(templatesDir, "skew-protection.js");

@@ -60,7 +60,10 @@ interface PackageJson {
  * @param json The package.json object
  * @returns An object with the transformed package.json and a boolean indicating if the build condition was found
  */
-export function transformPackageJson(json: PackageJson) {
+export function transformPackageJson(json: PackageJson): {
+	transformed: PackageJson;
+	hasBuildCondition: boolean;
+} {
 	const transformed: PackageJson = structuredClone(json);
 	let hasBuildCondition = false;
 	if (json.exports) {
@@ -76,7 +79,10 @@ export function transformPackageJson(json: PackageJson) {
 	return { transformed, hasBuildCondition };
 }
 
-export async function copyWorkerdPackages(options: BuildOptions, nodePackages: Map<string, string>) {
+export async function copyWorkerdPackages(
+	options: BuildOptions,
+	nodePackages: Map<string, string>
+): Promise<void> {
 	const isNodeModuleRegex = getCrossPlatformPathRegex(`.*/node_modules/(?<pkg>.*)`, { escape: false });
 
 	// Copy full external packages when they use "workerd" build condition

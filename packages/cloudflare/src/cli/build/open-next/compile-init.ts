@@ -9,7 +9,7 @@ import type { Unstable_Config } from "wrangler";
 /**
  * Compiles the initialization code for the workerd runtime
  */
-export async function compileInit(options: BuildOptions, wranglerConfig: Unstable_Config) {
+export async function compileInit(options: BuildOptions, wranglerConfig: Unstable_Config): Promise<void> {
 	const currentDir = path.join(path.dirname(fileURLToPath(import.meta.url)));
 	const templatesDir = path.join(currentDir, "../../templates");
 	const initPath = path.join(templatesDir, "init.js");

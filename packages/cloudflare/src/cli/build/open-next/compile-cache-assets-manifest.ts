@@ -7,7 +7,10 @@ import type { TagCacheMetaFile } from "@opennextjs/aws/types/cache.js";
 /**
  * Generates SQL statements that can be used to initialize the cache assets manifest in an SQL data store.
  */
-export function compileCacheAssetsManifestSqlFile(options: BuildOptions, metaFiles: TagCacheMetaFile[]) {
+export function compileCacheAssetsManifestSqlFile(
+	options: BuildOptions,
+	metaFiles: TagCacheMetaFile[]
+): void {
 	const outputPath = path.join(options.outputDir, "cloudflare/cache-assets-manifest.sql");
 
 	mkdirSync(path.dirname(outputPath), { recursive: true });

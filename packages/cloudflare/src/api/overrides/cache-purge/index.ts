@@ -8,7 +8,7 @@ interface PurgeOptions {
 	type: "durableObject" | "direct";
 }
 
-export const purgeCache = ({ type = "direct" }: PurgeOptions) => {
+export const purgeCache = ({ type = "direct" }: PurgeOptions): CDNInvalidationHandler => {
 	return {
 		name: "cloudflare",
 		async invalidatePaths(paths) {
@@ -29,7 +29,7 @@ export const purgeCache = ({ type = "direct" }: PurgeOptions) => {
 			}
 			debugCache("cdnInvalidation", "Invalidated paths:", tags);
 		},
-	} satisfies CDNInvalidationHandler;
+	};
 };
 
 export default purgeCache;

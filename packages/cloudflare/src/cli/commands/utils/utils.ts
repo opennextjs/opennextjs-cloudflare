@@ -4,7 +4,7 @@ import path from "node:path";
 import url from "node:url";
 
 import { compileOpenNextConfig } from "@opennextjs/aws/build/compileConfig.js";
-import { normalizeOptions } from "@opennextjs/aws/build/helper.js";
+import { type BuildOptions, normalizeOptions } from "@opennextjs/aws/build/helper.js";
 import { printHeader, showWarningOnWindows } from "@opennextjs/aws/build/utils.js";
 import logger from "@opennextjs/aws/logger.js";
 import { unstable_readConfig } from "wrangler";
@@ -27,14 +27,14 @@ export type WithWranglerArgs<T = unknown> = T & {
 	env: string | undefined;
 };
 
-export const nextAppDir = process.cwd();
+export const nextAppDir: string = process.cwd();
 
 /**
  * Print headers and warnings for the CLI.
  *
  * @param command
  */
-export function printHeaders(command: string) {
+export function printHeaders(command: string): void {
 	printHeader(`Cloudflare ${command}`);
 
 	showWarningOnWindows();
@@ -55,7 +55,10 @@ export function printHeaders(command: string) {
  * @returns The compiled OpenNext config and the build directory.
  *
  */
-export async function compileConfig(configPath: string | undefined) {
+export async function compileConfig(configPath: string | undefined): Promise<{
+	config: OpenNextConfig;
+	buildDir: string;
+}> {
 	if (configPath && !existsSync(configPath)) {
 		throw new Error(`Custom config file not found at ${configPath}`);
 	}
@@ -94,7 +97,7 @@ export async function compileConfig(configPath: string | undefined) {
  *
  * @returns OpenNext config.
  */
-export async function retrieveCompiledConfig() {
+export async function retrieveCompiledConfig(): Promise<{ config: OpenNextConfig }> {
 	const configPath = path.join(nextAppDir, ".open-next/.build/open-next.config.edge.mjs");
 
 	if (!existsSync(configPath)) {
@@ -115,7 +118,7 @@ export async function retrieveCompiledConfig() {
  * @param buildDir Directory to use when building the application
  * @returns Normalized options.
  */
-export function getNormalizedOptions(config: OpenNextConfig, buildDir = nextAppDir) {
+export function getNormalizedOptions(config: OpenNextConfig, buildDir: string = nextAppDir): BuildOptions {
 	const require = createRequire(import.meta.url);
 	const openNextDistDir = path.dirname(require.resolve("@opennextjs/aws/index.js"));
 
@@ -131,7 +134,9 @@ export function getNormalizedOptions(config: OpenNextConfig, buildDir = nextAppD
  * @param args Wrangler environment and config path.
  * @returns Wrangler config.
  */
-export async function readWranglerConfig(args: WithWranglerArgs) {
+export async function readWranglerConfig(
+	args: WithWranglerArgs
+): Promise<ReturnType<typeof unstable_readConfig>> {
 	// Note: `unstable_readConfig` is sync as of wrangler 4.60.0
 	//       But it will eventually become async.
 	//       See https://github.com/cloudflare/workers-sdk/pull/12031

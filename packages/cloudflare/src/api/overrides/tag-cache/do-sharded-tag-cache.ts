@@ -249,7 +249,11 @@ class ShardedDOTagCache implements NextModeTagCache {
 	 * The following methods are public only because they are accessed from the tests
 	 */
 
-	public async performWriteTagsWithRetry(doId: DOId, tags: NormalizedTagInput[], retryNumber = 0) {
+	public async performWriteTagsWithRetry(
+		doId: DOId,
+		tags: NormalizedTagInput[],
+		retryNumber = 0
+	): Promise<void> {
 		try {
 			const stub = this.getDurableObjectStub(doId);
 			await stub.writeTags(tags);
@@ -275,7 +279,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 		return `http://local.cache/shard/${doId.shardId}?tag=${encodeURIComponent(tag)}`;
 	}
 
-	public async getCacheInstance() {
+	public async getCacheInstance(): Promise<Cache | undefined> {
 		if (!this.localCache && this.opts.regionalCache) {
 			this.localCache = await caches.open("sharded-do-tag-cache");
 		}
@@ -332,7 +336,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 		optsKey: CacheTagKeyOptions,
 		stub: DurableObjectStub<DOShardedTagCache>,
 		prefetchedTagData?: Record<string, TagData>
-	) {
+	): Promise<void> {
 		if (!this.opts.regionalCache) return;
 		const cache = await this.getCacheInstance();
 		if (!cache) return;
@@ -374,7 +378,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 	 * Deletes the regional cache for the given tags
 	 * This is used to ensure that the cache is cleared when the tags are revalidated
 	 */
-	public async deleteRegionalCache(optsKey: CacheTagKeyOptions) {
+	public async deleteRegionalCache(optsKey: CacheTagKeyOptions): Promise<void> {
 		// We never want to crash because of the cache
 		try {
 			if (!this.opts.regionalCache) return;
@@ -403,7 +407,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 	}: {
 		tags: string[];
 		generateAllReplicas?: boolean;
-	}) {
+	}): CacheTagKeyOptions[] {
 		// Here we'll start by splitting soft tags from hard tags
 		// This will greatly increase the cache hit rate for the soft tag (which are the most likely to cause issue because of load)
 		const softTags = this.generateDOIdArray({ tags, shardType: "soft", generateAllReplicas });
@@ -643,4 +647,4 @@ interface CacheTagKeyOptions {
 	tags: string[];
 }
 
-export default (opts?: ShardedDOTagCacheOptions) => new ShardedDOTagCache(opts);
+export default (opts?: ShardedDOTagCacheOptions): ShardedDOTagCache => new ShardedDOTagCache(opts);

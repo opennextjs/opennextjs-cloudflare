@@ -10,7 +10,7 @@ import { getOutputWorkerPath } from "../bundle-server.js";
  * - the template files present in the cloudflare adapter package to `.open-next/cloudflare-templates`
  * - `worker.js` to `.open-next/`
  */
-export function copyPackageCliFiles(packageDistDir: string, buildOpts: BuildOptions) {
+export function copyPackageCliFiles(packageDistDir: string, buildOpts: BuildOptions): void {
 	console.log("# copyPackageTemplateFiles");
 	const sourceDir = path.join(packageDistDir, "cli/templates");
 

@@ -20,7 +20,7 @@ interface QueueCachingOptions {
 const DEFAULT_QUEUE_CACHE_TTL_SEC = 5;
 
 class QueueCache implements Queue {
-	readonly name;
+	readonly name: string;
 	readonly regionalCacheTtlSec: number;
 	readonly waitForQueueAck: boolean;
 	cache: Cache | undefined;
@@ -36,7 +36,7 @@ class QueueCache implements Queue {
 		this.waitForQueueAck = options.waitForQueueAck ?? false;
 	}
 
-	async send(msg: QueueMessage) {
+	async send(msg: QueueMessage): Promise<void> {
 		try {
 			const isCached = await this.isInCache(msg);
 			if (isCached) {
@@ -119,4 +119,5 @@ class QueueCache implements Queue {
 	}
 }
 
-export default (originalQueue: Queue, opts: QueueCachingOptions = {}) => new QueueCache(originalQueue, opts);
+export default (originalQueue: Queue, opts: QueueCachingOptions = {}): QueueCache =>
+	new QueueCache(originalQueue, opts);
