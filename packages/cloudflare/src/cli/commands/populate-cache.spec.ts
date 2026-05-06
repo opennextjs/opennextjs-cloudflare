@@ -37,14 +37,14 @@ describe("getCacheAssets", () => {
 
 	afterAll(() => mockFs.restore());
 
-	test("list cache assets", () => {
-		expect(getCacheAssets({ outputDir: "/base/path" } as BuildOptions)).toMatchInlineSnapshot(`
+	test("list cache assets", async () => {
+		await expect(getCacheAssets({ outputDir: "/base/path" } as BuildOptions)).resolves.toMatchInlineSnapshot(`
       [
         {
           "buildId": "buildID",
-          "fullPath": "/base/path/cache/buildID/path/to/2.cache",
+          "fullPath": "/base/path/cache/buildID/path/to/0.cache",
           "isFetch": false,
-          "key": "/path/to/2",
+          "key": "/path/to/0",
         },
         {
           "buildId": "buildID",
@@ -54,15 +54,15 @@ describe("getCacheAssets", () => {
         },
         {
           "buildId": "buildID",
-          "fullPath": "/base/path/cache/buildID/path/to/0.cache",
+          "fullPath": "/base/path/cache/buildID/path/to/2.cache",
           "isFetch": false,
-          "key": "/path/to/0",
+          "key": "/path/to/2",
         },
         {
           "buildId": "buildID",
-          "fullPath": "/base/path/cache/__fetch/buildID/2",
+          "fullPath": "/base/path/cache/__fetch/buildID/0",
           "isFetch": true,
-          "key": "/2",
+          "key": "/0",
         },
         {
           "buildId": "buildID",
@@ -72,9 +72,9 @@ describe("getCacheAssets", () => {
         },
         {
           "buildId": "buildID",
-          "fullPath": "/base/path/cache/__fetch/buildID/0",
+          "fullPath": "/base/path/cache/__fetch/buildID/2",
           "isFetch": true,
-          "key": "/0",
+          "key": "/2",
         },
       ]
     `);
@@ -163,7 +163,6 @@ describe("populateCache", () => {
 				const mockWorkerDispose = vi.fn();
 
 				setupMockFileSystem();
-				vi.useFakeTimers();
 				// @ts-expect-error - Mock unstable_startWorker to return a mock worker instance
 				vi.mocked(unstable_startWorker).mockResolvedValueOnce({
 					ready: Promise.resolve(),
