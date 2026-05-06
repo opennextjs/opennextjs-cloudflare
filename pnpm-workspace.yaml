@@ -8,15 +8,15 @@ packages:
   - benchmarking
 
 catalog:
-  "@cloudflare/workers-types": ^4.20260423.1
+  "@cloudflare/workers-types": ^4.20260426.1
   "@dotenvx/dotenvx": 1.31.0
   "@eslint/js": ^9.11.1
   "@playwright/test": ^1.51.1
   "@tsconfig/strictest": ^2.0.5
   "@types/mock-fs": ^4.13.4
   "@types/node": ^22.12.0
-  "@types/react": ^18
-  "@types/react-dom": ^18
+  "@types/react": 19.0.6
+  "@types/react-dom": 19.0.6
   "@types/yargs": ^17.0.33
   esbuild: ^0.27.0
   eslint: ^9.31.0

@@ -7,8 +7,8 @@ settings:
 catalogs:
   default:
     '@cloudflare/workers-types':
-      specifier: ^4.20260423.1
-      version: 4.20260423.1
+      specifier: ^4.20260426.1
+      version: 4.20260506.1
     '@dotenvx/dotenvx':
       specifier: 1.31.0
       version: 1.31.0
@@ -28,11 +28,11 @@ catalogs:
       specifier: ^22.12.0
       version: 22.12.0
     '@types/react':
-      specifier: ^18
-      version: 18.3.3
+      specifier: 19.0.6
+      version: 19.0.6
     '@types/react-dom':
-      specifier: ^18
-      version: 18.3.0
+      specifier: 19.0.6
+      version: 19.0.6
     '@types/yargs':
       specifier: ^17.0.33
       version: 17.0.33
@@ -198,7 +198,7 @@ importers:
         version: 5.7.3
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/bugs/gh-219:
     dependencies:
@@ -225,7 +225,7 @@ importers:
         version: 2.1.1
       drizzle-orm:
         specifier: ^0.38.3
-        version: 0.38.4(@cloudflare/workers-types@4.20260423.1)(@electric-sql/pglite@0.4.1)(@libsql/client@0.14.0)(@opentelemetry/api@1.9.0)(@prisma/client@7.8.0(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(better-sqlite3@11.8.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.7.3))(typescript@5.7.3))(@types/better-sqlite3@7.6.12)(@types/react@19.2.7)(better-sqlite3@11.8.1)(knex@3.1.0(better-sqlite3@11.8.1)(mysql2@3.15.3)(pg@8.16.0))(mysql2@3.15.3)(pg@8.16.0)(postgres@3.4.7)(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(better-sqlite3@11.8.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.7.3))(react@19.2.6)
+        version: 0.38.4(@cloudflare/workers-types@4.20260506.1)(@electric-sql/pglite@0.4.1)(@libsql/client@0.14.0)(@opentelemetry/api@1.9.0)(@prisma/client@7.8.0(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(better-sqlite3@11.8.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.7.3))(typescript@5.7.3))(@types/better-sqlite3@7.6.12)(@types/react@19.2.7)(better-sqlite3@11.8.1)(knex@3.1.0(better-sqlite3@11.8.1)(mysql2@3.15.3)(pg@8.16.0))(mysql2@3.15.3)(pg@8.16.0)(postgres@3.4.7)(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(better-sqlite3@11.8.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.7.3))(react@19.2.6)
       firebase:
         specifier: ^11.1.0
         version: 11.2.0
@@ -277,7 +277,7 @@ importers:
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
-        version: 4.20260423.1
+        version: 4.20260506.1
       '@eslint/eslintrc':
         specifier: ^3
         version: 3.1.0
@@ -325,7 +325,7 @@ importers:
         version: 39.4.2(rollup@4.40.1)
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/bugs/gh-223:
     dependencies:
@@ -347,7 +347,7 @@ importers:
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
-        version: 4.20260423.1
+        version: 4.20260506.1
       '@opennextjs/cloudflare':
         specifier: workspace:*
         version: link:../../../packages/cloudflare
@@ -380,7 +380,7 @@ importers:
         version: 5.7.3
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/create-next-app:
     dependencies:
@@ -405,10 +405,10 @@ importers:
         version: 22.12.0
       '@types/react':
         specifier: 'catalog:'
-        version: 18.3.3
+        version: 19.0.6
       '@types/react-dom':
         specifier: 'catalog:'
-        version: 18.3.0
+        version: 19.0.6(@types/react@19.0.6)
       eslint:
         specifier: ^8
         version: 8.57.1
@@ -426,7 +426,7 @@ importers:
         version: 5.9.3
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/e2e/app-pages-router:
     dependencies:
@@ -472,7 +472,7 @@ importers:
         version: 5.9.3
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/e2e/app-router:
     dependencies:
@@ -518,7 +518,7 @@ importers:
         version: 5.9.3
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/e2e/experimental:
     dependencies:
@@ -552,7 +552,7 @@ importers:
         version: 5.9.3
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/e2e/pages-router:
     dependencies:
@@ -598,7 +598,7 @@ importers:
         version: 5.9.3
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/e2e/shared:
     dependencies:
@@ -645,10 +645,10 @@ importers:
         version: 22.12.0
       '@types/react':
         specifier: 'catalog:'
-        version: 18.3.3
+        version: 19.0.6
       '@types/react-dom':
         specifier: 'catalog:'
-        version: 18.3.0
+        version: 19.0.6(@types/react@19.0.6)
       eslint:
         specifier: 'catalog:'
         version: 9.31.0(jiti@2.6.1)
@@ -657,7 +657,7 @@ importers:
         version: 5.9.3
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/next-partial-prerendering:
     dependencies:
@@ -718,7 +718,7 @@ importers:
         version: 5.5.3
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/overrides/d1-tag-next:
     dependencies:
@@ -752,7 +752,7 @@ importers:
         version: 5.9.3
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/overrides/kv-tag-next:
     dependencies:
@@ -786,7 +786,7 @@ importers:
         version: 5.9.3
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/overrides/memory-queue:
     dependencies:
@@ -820,7 +820,7 @@ importers:
         version: 5.9.3
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/overrides/r2-incremental-cache:
     dependencies:
@@ -854,7 +854,7 @@ importers:
         version: 5.9.3
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/overrides/static-assets-incremental-cache:
     dependencies:
@@ -888,7 +888,7 @@ importers:
         version: 5.9.3
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/playground14:
     dependencies:
@@ -916,7 +916,7 @@ importers:
         version: 0.34.5
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/playground15:
     dependencies:
@@ -947,7 +947,7 @@ importers:
         version: 19.2.3(@types/react@19.2.7)
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/playground16:
     dependencies:
@@ -987,7 +987,7 @@ importers:
         version: 4.1.17
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/prisma:
     dependencies:
@@ -1027,7 +1027,7 @@ importers:
         version: 5.9.3
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/prisma-7:
     dependencies:
@@ -1070,7 +1070,7 @@ importers:
         version: 5.9.3
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/ssg-app:
     dependencies:
@@ -1104,7 +1104,7 @@ importers:
         version: 5.9.3
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   examples/vercel-blog-starter:
     dependencies:
@@ -1141,10 +1141,10 @@ importers:
         version: 22.12.0
       '@types/react':
         specifier: 'catalog:'
-        version: 18.3.3
+        version: 19.0.6
       '@types/react-dom':
         specifier: 'catalog:'
-        version: 18.3.0
+        version: 19.0.6(@types/react@19.0.6)
       autoprefixer:
         specifier: ^10.4.19
         version: 10.4.20(postcss@8.4.47)
@@ -1159,7 +1159,7 @@ importers:
         version: 5.9.3
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
 
   packages/cloudflare:
     dependencies:
@@ -1192,14 +1192,14 @@ importers:
         version: 0.8.6
       wrangler:
         specifier: 'catalog:'
-        version: 4.86.0(@cloudflare/workers-types@4.20260423.1)
+        version: 4.86.0(@cloudflare/workers-types@4.20260506.1)
       yargs:
         specifier: 'catalog:'
         version: 18.0.0
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
-        version: 4.20260423.1
+        version: 4.20260506.1
       '@eslint/js':
         specifier: 'catalog:'
         version: 9.31.0
@@ -1840,6 +1840,9 @@ packages:
 
   '@cloudflare/workers-types@4.20260423.1':
     resolution: {integrity: sha512-SHIc0NeJMtn0sW043eWtMxYFbJ9VPSLkcx+FEqCk0uZLD3HrWT+5xWhm6EYiOYDg0vnrlXNHcu2ly/01zDh3bw==}
+
+  '@cloudflare/workers-types@4.20260506.1':
+    resolution: {integrity: sha512-IKv/C08utEbAqEu2zr0/3CMf1MbYrl7x0Z1UsrnMs4xxfIN81vtGTRduCZb7xJQpaICQPe0Sa6fhHlZmUXrMjw==}
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -11589,6 +11592,8 @@ snapshots:
 
   '@cloudflare/workers-types@4.20260423.1': {}
 
+  '@cloudflare/workers-types@4.20260506.1': {}
+
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.9
@@ -15964,9 +15969,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.38.4(@cloudflare/workers-types@4.20260423.1)(@electric-sql/pglite@0.4.1)(@libsql/client@0.14.0)(@opentelemetry/api@1.9.0)(@prisma/client@7.8.0(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(better-sqlite3@11.8.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.7.3))(typescript@5.7.3))(@types/better-sqlite3@7.6.12)(@types/react@19.2.7)(better-sqlite3@11.8.1)(knex@3.1.0(better-sqlite3@11.8.1)(mysql2@3.15.3)(pg@8.16.0))(mysql2@3.15.3)(pg@8.16.0)(postgres@3.4.7)(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(better-sqlite3@11.8.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.7.3))(react@19.2.6):
+  drizzle-orm@0.38.4(@cloudflare/workers-types@4.20260506.1)(@electric-sql/pglite@0.4.1)(@libsql/client@0.14.0)(@opentelemetry/api@1.9.0)(@prisma/client@7.8.0(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(better-sqlite3@11.8.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.7.3))(typescript@5.7.3))(@types/better-sqlite3@7.6.12)(@types/react@19.2.7)(better-sqlite3@11.8.1)(knex@3.1.0(better-sqlite3@11.8.1)(mysql2@3.15.3)(pg@8.16.0))(mysql2@3.15.3)(pg@8.16.0)(postgres@3.4.7)(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(better-sqlite3@11.8.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.7.3))(react@19.2.6):
     optionalDependencies:
-      '@cloudflare/workers-types': 4.20260423.1
+      '@cloudflare/workers-types': 4.20260506.1
       '@electric-sql/pglite': 0.4.1
       '@libsql/client': 0.14.0
       '@opentelemetry/api': 1.9.0
@@ -16460,7 +16465,7 @@ snapshots:
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.6.3(@typescript-eslint/parser@8.7.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.31.0)(eslint@8.57.1)
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@8.7.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.6.3)(eslint@8.57.1)
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@8.7.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1)
       eslint-plugin-jsx-a11y: 6.10.0(eslint@8.57.1)
       eslint-plugin-react: 7.36.1(eslint@8.57.1)
       eslint-plugin-react-hooks: 4.6.2(eslint@8.57.1)
@@ -16480,7 +16485,7 @@ snapshots:
       eslint: 9.11.1(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.6.3(@typescript-eslint/parser@8.7.0(eslint@9.11.1(jiti@2.6.1))(typescript@5.7.3))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.31.0)(eslint@9.11.1(jiti@2.6.1))
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@8.7.0(eslint@9.11.1(jiti@2.6.1))(typescript@5.7.3))(eslint-import-resolver-typescript@3.6.3)(eslint@9.11.1(jiti@2.6.1))
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@8.7.0(eslint@9.11.1(jiti@2.6.1))(typescript@5.7.3))(eslint@9.11.1(jiti@2.6.1))
       eslint-plugin-jsx-a11y: 6.10.0(eslint@9.11.1(jiti@2.6.1))
       eslint-plugin-react: 7.37.4(eslint@9.11.1(jiti@2.6.1))
       eslint-plugin-react-hooks: 5.1.0(eslint@9.11.1(jiti@2.6.1))
@@ -16500,7 +16505,7 @@ snapshots:
       eslint: 9.19.0(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.6.3(@typescript-eslint/parser@8.7.0(eslint@9.19.0(jiti@2.6.1))(typescript@5.7.3))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.31.0)(eslint@9.19.0(jiti@2.6.1))
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@8.7.0(eslint@9.19.0(jiti@2.6.1))(typescript@5.7.3))(eslint-import-resolver-typescript@3.6.3)(eslint@9.19.0(jiti@2.6.1))
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@8.7.0(eslint@9.19.0(jiti@2.6.1))(typescript@5.7.3))(eslint@9.19.0(jiti@2.6.1))
       eslint-plugin-jsx-a11y: 6.10.0(eslint@9.19.0(jiti@2.6.1))
       eslint-plugin-react: 7.37.4(eslint@9.19.0(jiti@2.6.1))
       eslint-plugin-react-hooks: 5.1.0(eslint@9.19.0(jiti@2.6.1))
@@ -16520,7 +16525,7 @@ snapshots:
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.6.3(@typescript-eslint/parser@8.48.0(eslint@8.57.1)(typescript@5.7.3))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.31.0)(eslint@8.57.1)
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@8.48.0(eslint@8.57.1)(typescript@5.7.3))(eslint-import-resolver-typescript@3.6.3)(eslint@8.57.1)
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@8.48.0(eslint@8.57.1)(typescript@5.7.3))(eslint@8.57.1)
       eslint-plugin-jsx-a11y: 6.10.0(eslint@8.57.1)
       eslint-plugin-react: 7.37.4(eslint@8.57.1)
       eslint-plugin-react-hooks: 5.1.0(eslint@8.57.1)
@@ -16551,7 +16556,7 @@ snapshots:
       is-bun-module: 1.2.1
       is-glob: 4.0.3
     optionalDependencies:
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@8.48.0(eslint@8.57.1)(typescript@5.7.3))(eslint-import-resolver-typescript@3.6.3)(eslint@8.57.1)
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@8.48.0(eslint@8.57.1)(typescript@5.7.3))(eslint@8.57.1)
     transitivePeerDependencies:
       - '@typescript-eslint/parser'
       - eslint-import-resolver-node
@@ -16570,7 +16575,7 @@ snapshots:
       is-bun-module: 1.2.1
       is-glob: 4.0.3
     optionalDependencies:
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@8.7.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.6.3)(eslint@8.57.1)
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@8.7.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1)
     transitivePeerDependencies:
       - '@typescript-eslint/parser'
       - eslint-import-resolver-node
@@ -16589,7 +16594,7 @@ snapshots:
       is-bun-module: 1.2.1
       is-glob: 4.0.3
     optionalDependencies:
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@8.7.0(eslint@9.11.1(jiti@2.6.1))(typescript@5.7.3))(eslint-import-resolver-typescript@3.6.3)(eslint@9.11.1(jiti@2.6.1))
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@8.7.0(eslint@9.11.1(jiti@2.6.1))(typescript@5.7.3))(eslint@9.11.1(jiti@2.6.1))
     transitivePeerDependencies:
       - '@typescript-eslint/parser'
       - eslint-import-resolver-node
@@ -16608,7 +16613,7 @@ snapshots:
       is-bun-module: 1.2.1
       is-glob: 4.0.3
     optionalDependencies:
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@8.7.0(eslint@9.19.0(jiti@2.6.1))(typescript@5.7.3))(eslint-import-resolver-typescript@3.6.3)(eslint@9.19.0(jiti@2.6.1))
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@8.7.0(eslint@9.19.0(jiti@2.6.1))(typescript@5.7.3))(eslint@9.19.0(jiti@2.6.1))
     transitivePeerDependencies:
       - '@typescript-eslint/parser'
       - eslint-import-resolver-node
@@ -16713,7 +16718,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.31.0(@typescript-eslint/parser@8.48.0(eslint@8.57.1)(typescript@5.7.3))(eslint-import-resolver-typescript@3.6.3)(eslint@8.57.1):
+  eslint-plugin-import@2.31.0(@typescript-eslint/parser@8.48.0(eslint@8.57.1)(typescript@5.7.3))(eslint@8.57.1):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.8
@@ -16771,7 +16776,7 @@ snapshots:
       - eslint-import-resolver-webpack
       - supports-color
 
-  eslint-plugin-import@2.31.0(@typescript-eslint/parser@8.7.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.6.3)(eslint@8.57.1):
+  eslint-plugin-import@2.31.0(@typescript-eslint/parser@8.7.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.8
@@ -16800,7 +16805,7 @@ snapshots:
       - eslint-import-resolver-webpack
       - supports-color
 
-  eslint-plugin-import@2.31.0(@typescript-eslint/parser@8.7.0(eslint@9.11.1(jiti@2.6.1))(typescript@5.7.3))(eslint-import-resolver-typescript@3.6.3)(eslint@9.11.1(jiti@2.6.1)):
+  eslint-plugin-import@2.31.0(@typescript-eslint/parser@8.7.0(eslint@9.11.1(jiti@2.6.1))(typescript@5.7.3))(eslint@9.11.1(jiti@2.6.1)):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.8
@@ -16829,7 +16834,7 @@ snapshots:
       - eslint-import-resolver-webpack
       - supports-color
 
-  eslint-plugin-import@2.31.0(@typescript-eslint/parser@8.7.0(eslint@9.19.0(jiti@2.6.1))(typescript@5.7.3))(eslint-import-resolver-typescript@3.6.3)(eslint@9.19.0(jiti@2.6.1)):
+  eslint-plugin-import@2.31.0(@typescript-eslint/parser@8.7.0(eslint@9.19.0(jiti@2.6.1))(typescript@5.7.3))(eslint@9.19.0(jiti@2.6.1)):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.8
@@ -21447,7 +21452,7 @@ snapshots:
       '@cloudflare/workerd-linux-arm64': 1.20260426.1
       '@cloudflare/workerd-windows-64': 1.20260426.1
 
-  wrangler@4.86.0(@cloudflare/workers-types@4.20260423.1):
+  wrangler@4.86.0(@cloudflare/workers-types@4.20260506.1):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.4.2
       '@cloudflare/unenv-preset': 2.16.1(unenv@2.0.0-rc.24)(workerd@1.20260426.1)
@@ -21458,7 +21463,7 @@ snapshots:
       unenv: 2.0.0-rc.24
       workerd: 1.20260426.1
     optionalDependencies:
-      '@cloudflare/workers-types': 4.20260423.1
+      '@cloudflare/workers-types': 4.20260506.1
       fsevents: 2.3.3
     transitivePeerDependencies:
       - bufferutil
