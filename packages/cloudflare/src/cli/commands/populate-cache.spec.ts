@@ -81,6 +81,19 @@ describe("getCacheAssets", () => {
 	});
 });
 
+// Mock `node:timers/promises` so that `setTimeout` delegates to `globalThis.setTimeout`,
+// which is correctly intercepted by `vi.useFakeTimers()`. Without this, the destructured
+// import in the source code holds a reference to the original native `setTimeout`, making
+// `vi.advanceTimersByTimeAsync()` ineffective and causing tests to wait real wall-clock time.
+vi.mock("node:timers/promises", async (importOriginal) => {
+	const original = await importOriginal<typeof import("node:timers/promises")>();
+	return {
+		...original,
+		setTimeout: (ms: number, value?: unknown) =>
+			new Promise((resolve) => globalThis.setTimeout(() => resolve(value), ms)),
+	};
+});
+
 vi.mock("./utils/run-wrangler.js", () => ({
 	runWrangler: vi.fn(() => ({ success: true, stdout: "", stderr: "" })),
 }));
@@ -404,54 +417,51 @@ describe("populateCache", () => {
 			expect(mockWorkerDispose).toHaveBeenCalled();
 		});
 
-		test(
-			"exhausts all retries with exponential backoff for 5xx responses",
-			async () => {
-				setupMockFileSystem();
-				vi.useFakeTimers();
+		test("exhausts all retries with exponential backoff for 5xx responses", async () => {
+			setupMockFileSystem();
+			vi.useFakeTimers();
 
-				const mockWorkerDispose = vi.fn();
-				// @ts-expect-error - Mock unstable_startWorker to return a mock worker instance
-				vi.mocked(unstable_startWorker).mockResolvedValueOnce({
-					ready: Promise.resolve(),
-					url: Promise.resolve(new URL("http://localhost:12345")),
-					dispose: mockWorkerDispose,
-				});
+			const mockWorkerDispose = vi.fn();
+			// @ts-expect-error - Mock unstable_startWorker to return a mock worker instance
+			vi.mocked(unstable_startWorker).mockResolvedValueOnce({
+				ready: Promise.resolve(),
+				url: Promise.resolve(new URL("http://localhost:12345")),
+				dispose: mockWorkerDispose,
+			});
 
-				const fetchMock = vi.spyOn(global, "fetch").mockImplementation(async (_input, init) => {
-					if (init?.body instanceof ReadableStream) {
-						await init.body.cancel();
+			const fetchMock = vi.spyOn(global, "fetch").mockImplementation(async (_input, init) => {
+				if (init?.body instanceof ReadableStream) {
+					await init.body.cancel();
+				}
+
+				return new Response(
+					JSON.stringify({ success: false, error: "R2 storage error", code: "ERR_WRITE_FAILED" }),
+					{
+						status: 500,
+						headers: { "Content-Type": "application/json" },
 					}
-
-					return new Response(
-						JSON.stringify({ success: false, error: "R2 storage error", code: "ERR_WRITE_FAILED" }),
-						{
-							status: 500,
-							headers: { "Content-Type": "application/json" },
-						}
-					);
-				});
-
-				const result = populateCache(
-					buildOptions,
-					config,
-					wranglerConfig,
-					{ target: "local", shouldUsePreviewId: false },
-					envVars
 				);
+			});
 
-				await vi.advanceTimersByTimeAsync(MAX_REQUEST_RETRIES * MAX_RETRY_DELAY_MS);
+			const result = populateCache(
+				buildOptions,
+				config,
+				wranglerConfig,
+				{ target: "local", shouldUsePreviewId: false },
+				envVars
+			);
 
-				await expect(result).rejects.toThrow(
-					new RegExp(
-						`Failed to populate the local R2 cache: Failed to write "incremental-cache\\/buildID\\/[A-Za-z0-9]+\\.cache" to R2 after ${MAX_REQUEST_RETRIES} attempts`
-					)
-				);
+			const resultExpectation = expect(result).rejects.toThrow(
+				new RegExp(
+					`Failed to populate the local R2 cache: Failed to write "incremental-cache\\/buildID\\/[A-Za-z0-9]+\\.cache" to R2 after ${MAX_REQUEST_RETRIES} attempts`
+				)
+			);
 
-				expect(fetchMock).toHaveBeenCalledTimes(MAX_REQUEST_RETRIES);
-				expect(mockWorkerDispose).toHaveBeenCalled();
-			},
-			/* timeout ms */ MAX_REQUEST_RETRIES * MAX_RETRY_DELAY_MS + 1_000
-		);
+			await vi.advanceTimersByTimeAsync(MAX_REQUEST_RETRIES * MAX_RETRY_DELAY_MS);
+			await resultExpectation;
+
+			expect(fetchMock).toHaveBeenCalledTimes(MAX_REQUEST_RETRIES);
+			expect(mockWorkerDispose).toHaveBeenCalled();
+		});
 	});
 });
