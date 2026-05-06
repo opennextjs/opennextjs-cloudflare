@@ -3,14 +3,12 @@ const apps = [
 	// examples
 	"create-next-app",
 	"middleware",
-	"playground14",
 	"playground15",
 	"playground16",
 	"vercel-blog-starter",
 	"ssg-app",
 	"prisma",
 	"prisma-7",
-	"next-partial-prerendering",
 	// e2e
 	"app-pages-router",
 	"app-router",
