@@ -1,5 +1,15 @@
 # @opennextjs/cloudflare
 
+## 1.19.7
+
+### Patch Changes
+
+- [#1252](https://github.com/opennextjs/opennextjs-cloudflare/pull/1252) [`29fe15d`](https://github.com/opennextjs/opennextjs-cloudflare/commit/29fe15df5b441e6a95e23de16dd0eca1fa680eae) Thanks [@vicb](https://github.com/vicb)! - bump the number of retries for r2 cache uploads
+
+  Increase the retry count from 5 to 15 with a capped exponential backoff to improve resilience against transient R2 write failures during cache population.
+
+- [#1255](https://github.com/opennextjs/opennextjs-cloudflare/pull/1255) [`364b7d9`](https://github.com/opennextjs/opennextjs-cloudflare/commit/364b7d91b221cddf0139f6875319de605a8fde77) Thanks [@vicb](https://github.com/vicb)! - Bump react and next
+
 ## 1.19.6
 
 ### Patch Changes
