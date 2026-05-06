@@ -56,6 +56,15 @@ import {
 	withWranglerPassthroughArgs,
 } from "./utils/utils.js";
 
+// Maximum number of attempts to send the request
+export const MAX_REQUEST_RETRIES = 15;
+// Base delay for retries
+export const BASE_RETRY_DELAY_MS = 250;
+// Maximum delay for retries, used to calculate the backoff factor
+export const MAX_RETRY_DELAY_MS = 10_000;
+// Backoff factor for retries, calculated to ensure that the delay grows exponentially up to the maximum delay
+export const BACKOFF_FACTOR = (MAX_RETRY_DELAY_MS / BASE_RETRY_DELAY_MS) ** (1 / (MAX_REQUEST_RETRIES - 1));
+
 /**
  * Implementation of the `opennextjs-cloudflare populateCache` command.
  *
@@ -324,14 +333,11 @@ async function populateR2IncrementalCache(
 /**
  * Sends cache entries to the R2 worker, one entry per request.
  *
- * Up to `concurrency` requests are in-flight at any given time.
- * Retry logic for transient R2 write failures is handled by the worker.
- *
  * @param options
  * @param options.workerUrl - The URL of the local R2 worker's `/populate` endpoint.
  * @param options.assets - The cache assets to write, as collected by {@link getCacheAssets}.
  * @param options.prefix - Optional prefix prepended to each R2 key.
- * @param options.concurrency - Maximum number of concurrent in-flight requests.
+ * @param options.maxConcurrency - Maximum number of concurrent in-flight requests.
  * @returns Resolves when all entries have been written successfully.
  * @throws {Error} If any entry fails after all retries or encounters a non-retryable error.
  */
@@ -343,41 +349,26 @@ async function sendEntriesToR2Worker(options: {
 }): Promise<void> {
 	const { workerUrl, assets, prefix, maxConcurrency } = options;
 
-	// Build the list of entries to send (key + filename).
-	// File contents are read lazily in sendEntryToR2Worker to avoid
-	// loading all cache values into memory at once.
-	const entries = assets.map(({ fullPath, key, buildId, isFetch }) => ({
-		key: computeCacheKey(key, {
-			prefix,
-			buildId,
-			cacheType: isFetch ? "fetch" : "cache",
-		}),
-		filename: fullPath,
-	}));
-
-	// Use a concurrency-limited loop with a progress bar.
-	// `pending` tracks in-flight promises so we can cap concurrency.
 	const pending = new Set<Promise<void>>();
 
-	let concurrency = 1;
+	for (const asset of tqdm(assets)) {
+		const { fullPath, key, buildId, isFetch } = asset;
 
-	for (const entry of tqdm(entries)) {
 		const task = sendEntryToR2Worker({
 			workerUrl,
-			key: entry.key,
-			filename: entry.filename,
+			key: computeCacheKey(key, {
+				prefix,
+				buildId,
+				cacheType: isFetch ? "fetch" : "cache",
+			}),
+			filename: fullPath,
 		}).finally(() => pending.delete(task));
 
 		pending.add(task);
 
 		// If we've reached the concurrency limit, wait for one to finish.
-		if (pending.size >= concurrency) {
+		if (pending.size >= maxConcurrency) {
 			await Promise.race(pending);
-			// Increase concurrency gradually to avoid overwhelming the worker
-			// with too many requests at once.
-			if (concurrency < maxConcurrency) {
-				concurrency++;
-			}
 		}
 	}
 
@@ -404,10 +395,7 @@ async function sendEntryToR2Worker(options: {
 }): Promise<void> {
 	const { workerUrl, key, filename } = options;
 
-	const CLIENT_RETRY_ATTEMPTS = 5;
-	const CLIENT_RETRY_BASE_DELAY_MS = 250;
-
-	for (let attempt = 0; attempt < CLIENT_RETRY_ATTEMPTS; attempt++) {
+	for (let attempt = 0; attempt < MAX_REQUEST_RETRIES; attempt++) {
 		try {
 			let response: Response;
 
@@ -426,9 +414,7 @@ async function sendEntryToR2Worker(options: {
 			} catch (e) {
 				throw new RetryableWorkerError(
 					`Failed to send request to R2 worker: ${e instanceof Error ? e.message : String(e)}`,
-					{
-						cause: e,
-					}
+					{ cause: e }
 				);
 			}
 
@@ -438,6 +424,7 @@ async function sendEntryToR2Worker(options: {
 			try {
 				result = JSON.parse(body) as R2Response;
 			} catch (e) {
+				// https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1102
 				if (body.includes("Worker exceeded resource limits")) {
 					throw new RetryableWorkerError("Worker exceeded resource limits", { cause: e });
 				}
@@ -454,25 +441,23 @@ async function sendEntryToR2Worker(options: {
 				});
 			}
 
-			if (!result.success && response.status >= 500) {
-				throw new RetryableWorkerError(result.error);
-			}
-
 			if (!result.success) {
-				throw new Error(`Failed to write "${key}" to R2: ${result.error}`);
+				throw response.status >= 500
+					? new RetryableWorkerError(result.error)
+					: new Error(`Failed to write "${key}" to R2: ${result.error}`);
 			}
 
 			return;
 		} catch (e) {
-			if (e instanceof RetryableWorkerError && attempt < CLIENT_RETRY_ATTEMPTS - 1) {
+			if (e instanceof RetryableWorkerError && attempt < MAX_REQUEST_RETRIES - 1) {
 				logger.error(
 					`Attempt ${attempt + 1} to write "${key}" failed with a retryable error: ${e.message}. Retrying...`
 				);
-				await setTimeout(CLIENT_RETRY_BASE_DELAY_MS * Math.pow(2, attempt));
+				await setTimeout(BASE_RETRY_DELAY_MS * Math.pow(BACKOFF_FACTOR, attempt));
 				continue;
 			}
 
-			throw new Error(`Failed to write "${key}" to R2 after ${CLIENT_RETRY_ATTEMPTS} attempts`, {
+			throw new Error(`Failed to write "${key}" to R2 after ${MAX_REQUEST_RETRIES} attempts`, {
 				cause: e,
 			});
 		}

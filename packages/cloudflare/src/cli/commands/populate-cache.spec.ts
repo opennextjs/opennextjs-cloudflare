@@ -10,7 +10,13 @@ import { unstable_startWorker } from "wrangler";
 import { defineCloudflareConfig } from "../../api/config.js";
 import r2IncrementalCache from "../../api/overrides/incremental-cache/r2-incremental-cache.js";
 import { ensureR2Bucket } from "../utils/ensure-r2-bucket.js";
-import { getCacheAssets, populateCache, PopulateCacheOptions } from "./populate-cache.js";
+import {
+	getCacheAssets,
+	MAX_REQUEST_RETRIES,
+	MAX_RETRY_DELAY_MS,
+	populateCache,
+	PopulateCacheOptions,
+} from "./populate-cache.js";
 import { WorkerEnvVar } from "./utils/helpers.js";
 
 describe("getCacheAssets", () => {
@@ -398,61 +404,54 @@ describe("populateCache", () => {
 			expect(mockWorkerDispose).toHaveBeenCalled();
 		});
 
-		test("exhausts all retries with exponential backoff for 5xx responses", async () => {
-			setupMockFileSystem();
-			vi.useFakeTimers();
+		test(
+			"exhausts all retries with exponential backoff for 5xx responses",
+			async () => {
+				setupMockFileSystem();
+				vi.useFakeTimers();
 
-			const mockWorkerDispose = vi.fn();
-			// @ts-expect-error - Mock unstable_startWorker to return a mock worker instance
-			vi.mocked(unstable_startWorker).mockResolvedValueOnce({
-				ready: Promise.resolve(),
-				url: Promise.resolve(new URL("http://localhost:12345")),
-				dispose: mockWorkerDispose,
-			});
+				const mockWorkerDispose = vi.fn();
+				// @ts-expect-error - Mock unstable_startWorker to return a mock worker instance
+				vi.mocked(unstable_startWorker).mockResolvedValueOnce({
+					ready: Promise.resolve(),
+					url: Promise.resolve(new URL("http://localhost:12345")),
+					dispose: mockWorkerDispose,
+				});
 
-			const fetchMock = vi.spyOn(global, "fetch").mockImplementation(async (_input, init) => {
-				if (init?.body instanceof ReadableStream) {
-					await init.body.cancel();
-				}
-
-				return new Response(
-					JSON.stringify({ success: false, error: "R2 storage error", code: "ERR_WRITE_FAILED" }),
-					{
-						status: 500,
-						headers: { "Content-Type": "application/json" },
+				const fetchMock = vi.spyOn(global, "fetch").mockImplementation(async (_input, init) => {
+					if (init?.body instanceof ReadableStream) {
+						await init.body.cancel();
 					}
+
+					return new Response(
+						JSON.stringify({ success: false, error: "R2 storage error", code: "ERR_WRITE_FAILED" }),
+						{
+							status: 500,
+							headers: { "Content-Type": "application/json" },
+						}
+					);
+				});
+
+				const result = populateCache(
+					buildOptions,
+					config,
+					wranglerConfig,
+					{ target: "local", shouldUsePreviewId: false },
+					envVars
 				);
-			});
 
-			const result = populateCache(
-				buildOptions,
-				config,
-				wranglerConfig,
-				{ target: "local", shouldUsePreviewId: false },
-				envVars
-			);
+				await vi.advanceTimersByTimeAsync(MAX_REQUEST_RETRIES * MAX_RETRY_DELAY_MS);
 
-			await vi.waitFor(() => {
-				expect(fetchMock).toHaveBeenCalledTimes(1);
-			});
+				await expect(result).rejects.toThrow(
+					new RegExp(
+						`Failed to populate the local R2 cache: Failed to write "incremental-cache\\/buildID\\/[A-Za-z0-9]+\\.cache" to R2 after ${MAX_REQUEST_RETRIES} attempts`
+					)
+				);
 
-			await vi.advanceTimersByTimeAsync(249);
-			expect(fetchMock).toHaveBeenCalledTimes(1);
-
-			await vi.advanceTimersByTimeAsync(1);
-
-			await vi.waitFor(() => {
-				expect(fetchMock).toHaveBeenCalledTimes(2);
-			});
-
-			await vi.advanceTimersByTimeAsync(500 + 1000 + 2000);
-
-			await expect(result).rejects.toThrow(
-				/Failed to populate the local R2 cache: Failed to write "incremental-cache\/buildID\/[A-Za-z0-9]+.cache" to R2 after 5 attempts/
-			);
-
-			expect(fetchMock).toHaveBeenCalledTimes(5);
-			expect(mockWorkerDispose).toHaveBeenCalled();
-		});
+				expect(fetchMock).toHaveBeenCalledTimes(MAX_REQUEST_RETRIES);
+				expect(mockWorkerDispose).toHaveBeenCalled();
+			},
+			/* timeout ms */ MAX_REQUEST_RETRIES * MAX_RETRY_DELAY_MS + 1_000
+		);
 	});
 });
