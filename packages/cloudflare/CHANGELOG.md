@@ -1,5 +1,11 @@
 # @opennextjs/cloudflare
 
+## 1.19.9
+
+### Patch Changes
+
+- [#1259](https://github.com/opennextjs/opennextjs-cloudflare/pull/1259) [`3b35c6e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/3b35c6ebfb28a3201ec8d7e99381c14f223d3ff4) Thanks [@vicb](https://github.com/vicb)! - chore: bump Next.js to 15.5.18 / 16.2.6 and @opennextjs/aws to 4.0.2
+
 ## 1.19.8
 
 ### Patch Changes
