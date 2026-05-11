@@ -103,7 +103,10 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			fixRequire(updater),
 			// Must run before handleOptionalDependencies so node:perf_hooks is redirected
 			// to the shim before esbuild's platform:"node" logic marks it as external.
-			shimNodeModules(path.join(buildOpts.outputDir, "cloudflare-templates/shims/perf-hooks.js")),
+			shimNodeModules(
+				path.join(buildOpts.outputDir, "cloudflare-templates/shims/perf-hooks.js"),
+				path.join(buildOpts.outputDir, "cloudflare-templates/shims/fast-set-immediate.js")
+			),
 			handleOptionalDependencies(optionalDependencies),
 			patchInstrumentation(updater, buildOpts),
 			patchPagesRouterContext(buildOpts),
@@ -173,7 +176,15 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 		banner: {
 			// We need to import them here, assigning them to `globalThis` does not work because node:timers use `globalThis` and thus create an infinite loop
 			// See https://github.com/cloudflare/workerd/blob/d6a764c/src/node/internal/internal_timers.ts#L56-L70
-			js: `import {setInterval, clearInterval, setTimeout, clearTimeout} from "node:timers"`,
+			// AsyncLocalStorage is exposed on globalThis so that Next.js's async-local-storage.js check
+			// `globalThis.AsyncLocalStorage` succeeds in Workers. Without this, createAsyncLocalStorage()
+			// returns a FakeAsyncLocalStorage that throws on .run()/.exit(), which cascades into a
+			// "Cannot read properties of undefined (reading 'require')" crash when loading
+			// app-page-turbo.runtime.prod.js as a Turbopack external in Next.js 16.2.x.
+			js: [
+				`import {setInterval, clearInterval, setTimeout, clearTimeout} from "node:timers";`,
+				`import {AsyncLocalStorage} from "node:async_hooks"; globalThis.AsyncLocalStorage = AsyncLocalStorage;`,
+			].join(""),
 		},
 		platform: "node",
 	});
