@@ -414,7 +414,7 @@ async function sendEntryToR2Worker(options: {
 						...(process.env.CLOUDFLARE_ACCESS_CLIENT_ID && process.env.CLOUDFLARE_ACCESS_CLIENT_SECRET
 							? {
 									"CF-Access-Client-Id": process.env.CLOUDFLARE_ACCESS_CLIENT_ID,
-									"CF-Access-Client-Secret": process.env.v,
+									"CF-Access-Client-Secret": process.env.CLOUDFLARE_ACCESS_CLIENT_SECRET,
 								}
 							: {}),
 					},
