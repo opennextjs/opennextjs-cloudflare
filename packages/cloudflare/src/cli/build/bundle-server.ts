@@ -22,6 +22,7 @@ import { patchResolveCache, patchSetWorkingDirectory } from "./patches/plugins/o
 import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
 import { patchPagesRouterContext } from "./patches/plugins/pages-router-context.js";
 import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations.js";
+import { patchPageExports } from "./patches/plugins/patch-page-exports.js";
 import { fixRequire } from "./patches/plugins/require.js";
 import { shimRequireHook } from "./patches/plugins/require-hook.js";
 import { patchRouteModules } from "./patches/plugins/route-module.js";
@@ -113,6 +114,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			inlineFindDir(updater, buildOpts),
 			inlineLoadManifest(updater, buildOpts),
 			patchNextServer(updater, buildOpts),
+			patchPageExports(updater, buildOpts),
 			patchRouteModules(updater, buildOpts),
 			patchDepdDeprecations(updater),
 			patchResolveCache(updater, buildOpts),
