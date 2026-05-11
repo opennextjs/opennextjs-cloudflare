@@ -25,6 +25,7 @@ import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations
 import { fixRequire } from "./patches/plugins/require.js";
 import { shimRequireHook } from "./patches/plugins/require-hook.js";
 import { patchRouteModules } from "./patches/plugins/route-module.js";
+import { shimNodeModules } from "./patches/plugins/shim-node-modules.js";
 import { shimReact } from "./patches/plugins/shim-react.js";
 import { setWranglerExternal } from "./patches/plugins/wrangler-external.js";
 import { copyPackageCliFiles } from "./utils/copy-package-cli-files.js";
@@ -100,6 +101,9 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			inlineDynamicRequires(updater, buildOpts),
 			setWranglerExternal(),
 			fixRequire(updater),
+			// Must run before handleOptionalDependencies so node:perf_hooks is redirected
+			// to the shim before esbuild's platform:"node" logic marks it as external.
+			shimNodeModules(path.join(buildOpts.outputDir, "cloudflare-templates/shims/perf-hooks.js")),
 			handleOptionalDependencies(optionalDependencies),
 			patchInstrumentation(updater, buildOpts),
 			patchPagesRouterContext(buildOpts),
