@@ -1,5 +1,17 @@
 # @opennextjs/cloudflare
 
+## 1.19.10
+
+### Patch Changes
+
+- [#1261](https://github.com/opennextjs/opennextjs-cloudflare/pull/1261) [`780dd4f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/780dd4f09c2090f1d955c90b6ddd1d6b25920850) Thanks [@vicb](https://github.com/vicb)! - Allow populating R2 when the domain is protected by Cloudflare Access
+
+  You need to:
+
+  - create a "Service Auth" policy for "open-next-cache-populate.<account>.workers.dev"
+  - add an "Include" rule for "Any Access Service Token" or for a given service token ("Service Token")
+  - populate the env variables CLOUDFLARE_ACCESS_CLIENT_ID and CLOUDFLARE_ACCESS_CLIENT_SECRET
+
 ## 1.19.9
 
 ### Patch Changes
