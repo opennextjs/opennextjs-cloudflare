@@ -405,6 +405,18 @@ async function sendEntryToR2Worker(options: {
 					headers: {
 						"x-opennext-cache-key": key,
 						"content-length": fs.statSync(filename).size.toString(),
+						// Include Access Client ID and Secret if they are set in the environment,
+						// to allow the worker to authenticate with the Cloudflare API when writing to R2.
+						//
+						// The Application at "open-next-cache-populate.<account>.workers.dev" should have a policy with:
+						// - "Action" set to "Service Auth"
+						// - "Any Access Service Token" or "Service Token" + a specific service token
+						...(process.env.CLOUDFLARE_ACCESS_CLIENT_ID && process.env.CLOUDFLARE_ACCESS_CLIENT_SECRET
+							? {
+									"CF-Access-Client-Id": process.env.CLOUDFLARE_ACCESS_CLIENT_ID,
+									"CF-Access-Client-Secret": process.env.CLOUDFLARE_ACCESS_CLIENT_SECRET,
+								}
+							: {}),
 					},
 					body: Readable.toWeb(fs.createReadStream(filename)) as unknown as ReadableStream,
 					signal: AbortSignal.timeout(60_000),
