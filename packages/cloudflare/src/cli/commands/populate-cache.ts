@@ -406,11 +406,17 @@ async function sendEntryToR2Worker(options: {
 						"x-opennext-cache-key": key,
 						"content-length": fs.statSync(filename).size.toString(),
 						// Include Access Client ID and Secret if they are set in the environment,
-						// to allow the worker to authenticate with the Cloudflare API when writing to R2.
+						// so the helper worker can be reached through Cloudflare Access.
 						//
-						// The Application at "open-next-cache-populate.<account>.workers.dev" should have a policy with:
-						// - "Action" set to "Service Auth"
-						// - "Any Access Service Token" or "Service Token" + a specific service token
+						// If the workers.dev subdomain (or a parent route) is behind Cloudflare Access,
+						// attach a "Service Auth" policy to the *existing* Access application that already
+						// covers "open-next-cache-populate.<account>.workers.dev" — typically the
+						// "*.<account>.workers.dev" wildcard application. Creating a separate application
+						// scoped to this hostname has been observed to block the upload, even alongside
+						// the wildcard app. The policy should have:
+						//   - Action set to "Service Auth"
+						//   - An Include rule for "Any Access Service Token" or a specific Service Token
+						// See: https://opennext.js.org/cloudflare/cli#populating-remote-bindings-when-workers-are-protected-by-cloudflare-access
 						...(process.env.CLOUDFLARE_ACCESS_CLIENT_ID && process.env.CLOUDFLARE_ACCESS_CLIENT_SECRET
 							? {
 									"CF-Access-Client-Id": process.env.CLOUDFLARE_ACCESS_CLIENT_ID,
