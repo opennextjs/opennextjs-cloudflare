@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { transformBuildCondition, transformPackageJson } from "./workerd.js";
+import { extractExternalPackageName, transformBuildCondition, transformPackageJson } from "./workerd.js";
 
 describe("transformBuildCondition", () => {
 	test("top level", () => {
@@ -252,5 +252,43 @@ describe("transformPackageJson", () => {
 			},
 		});
 		expect(hasBuildCondition).toBe(true);
+	});
+});
+
+describe("extractExternalPackageName", () => {
+	test("scoped package on posix", () => {
+		expect(extractExternalPackageName("/app/node_modules/@libsql/isomorphic-ws")).toBe(
+			"@libsql/isomorphic-ws"
+		);
+	});
+
+	test("unscoped package on posix", () => {
+		expect(extractExternalPackageName("/app/node_modules/ws")).toBe("ws");
+	});
+
+	test("scoped package on windows", () => {
+		expect(extractExternalPackageName("F:\\app\\node_modules\\@libsql\\isomorphic-ws")).toBe(
+			"@libsql/isomorphic-ws"
+		);
+	});
+
+	test("unscoped package on windows", () => {
+		expect(extractExternalPackageName("F:\\app\\node_modules\\ws")).toBe("ws");
+	});
+
+	test("trims nested subpath to the package name (posix)", () => {
+		expect(extractExternalPackageName("/app/node_modules/@libsql/hrana-client/lib-cjs")).toBe(
+			"@libsql/hrana-client"
+		);
+	});
+
+	test("trims nested subpath to the package name (windows)", () => {
+		expect(extractExternalPackageName("F:\\app\\node_modules\\@libsql\\hrana-client\\lib-cjs")).toBe(
+			"@libsql/hrana-client"
+		);
+	});
+
+	test("returns undefined when the path is not under node_modules", () => {
+		expect(extractExternalPackageName("/app/src/lib/foo.ts")).toBeUndefined();
 	});
 });
