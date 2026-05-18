@@ -49,6 +49,89 @@ describe("skew protection", () => {
 				},
 			]);
 		});
+
+		test("listWorkerVersions filters out non-upload-triggered versions", async () => {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const client: any = {
+				workers: {
+					scripts: {
+						versions: {
+							list: () => [],
+						},
+					},
+				},
+			};
+
+			const now = Date.now();
+
+			client.workers.scripts.versions.list = vi.fn().mockReturnValue([
+				{
+					id: "secret-version",
+					metadata: {
+						created_on: new Date(now),
+						annotations: { "workers/triggered_by": "secret" },
+					},
+				},
+				{
+					id: "upload-version",
+					metadata: {
+						created_on: new Date(now - 1000),
+						annotations: { "workers/triggered_by": "upload" },
+					},
+				},
+				{
+					id: "version-upload",
+					metadata: {
+						created_on: new Date(now - 2000),
+						annotations: { "workers/triggered_by": "version_upload" },
+					},
+				},
+				{
+					id: "legacy-no-annotation",
+					metadata: { created_on: new Date(now - 3000) },
+				},
+			]);
+
+			expect(await listWorkerVersions("scriptName", { client, accountId: "accountId" })).toMatchObject([
+				{ id: "upload-version", createdOnMs: now - 1000 },
+				{ id: "version-upload", createdOnMs: now - 2000 },
+				{ id: "legacy-no-annotation", createdOnMs: now - 3000 },
+			]);
+		});
+
+		test("listWorkerVersions returns [] when the newest versions are all secret-triggered", async () => {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const client: any = {
+				workers: {
+					scripts: {
+						versions: {
+							list: () => [],
+						},
+					},
+				},
+			};
+
+			const now = Date.now();
+
+			client.workers.scripts.versions.list = vi.fn().mockReturnValue([
+				{
+					id: "secret-A",
+					metadata: {
+						created_on: new Date(now),
+						annotations: { "workers/triggered_by": "secret" },
+					},
+				},
+				{
+					id: "secret-B",
+					metadata: {
+						created_on: new Date(now - 1000),
+						annotations: { "workers/triggered_by": "secret" },
+					},
+				},
+			]);
+
+			expect(await listWorkerVersions("scriptName", { client, accountId: "accountId" })).toEqual([]);
+		});
 	});
 });
 

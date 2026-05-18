@@ -40,6 +40,9 @@ const MAX_NUMBER_OF_VERSIONS = 20;
 const MAX_VERSION_AGE_DAYS = 7;
 const MS_PER_DAY = 24 * 3600 * 1000;
 
+/** Worker-version trigger types that produce a full upload (assets + code). */
+const UPLOAD_TRIGGER_TYPES = new Set(["upload", "version_upload"]);
+
 /**
  * Compute the deployment mapping for a deployment.
  *
@@ -244,11 +247,18 @@ export async function listWorkerVersions(
 		})) {
 			const id = version.id;
 			const createdOn = version.metadata?.created_on;
+			const triggeredBy = (version.metadata as any)?.annotations?.["workers/triggered_by"];
 
 			if (id && createdOn) {
 				const createdOnMs = new Date(createdOn).getTime();
 				if (createdOnMs < afterTimeMs) {
 					break;
+				}
+				// Skip metadata-only versions (e.g. secret/service_token triggers)
+				// that lack the static assets bundle. Versions with no annotation
+				// are kept for backward compatibility.
+				if (triggeredBy !== undefined && !UPLOAD_TRIGGER_TYPES.has(triggeredBy)) {
+					continue;
 				}
 				versions.push({ id, createdOnMs });
 				if (versions.length >= maxNumberOfVersions) {
