@@ -1,5 +1,15 @@
 # @opennextjs/cloudflare
 
+## 1.19.11
+
+### Patch Changes
+
+- [#1270](https://github.com/opennextjs/opennextjs-cloudflare/pull/1270) [`802047e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/802047e7fd30c5533d5b4f754f281bc7a3fd4720) Thanks [@alex-all3dp](https://github.com/alex-all3dp)! - fix: skip non-upload-triggered worker versions when building skew-protection deployment mapping
+
+  Worker versions created by metadata-only operations (e.g. Cloudflare API secret updates) do not include the static assets bundle. Previously, such versions could become the "latest" target in the skew-protection mapping, causing `/_next/static/*` requests to return 404 on past deployments. Versions are now filtered to those with `workers/triggered_by` in `{upload, version_upload}`.
+
+  Closes #1230
+
 ## 1.19.10
 
 ### Patch Changes
