@@ -239,6 +239,14 @@ async function getCloudflareContextAsync<
 }
 
 /**
+ * Tracks whether {@link initOpenNextCloudflareForDev} has already been called in the current Node.js
+ * process. Calling it more than once spawns competing workerd instances and surfaces as an obscure
+ * `SQLITE_BUSY` failure (see https://github.com/opennextjs/opennextjs-cloudflare/issues/1251), so we
+ * surface a user-actionable error before any setup runs.
+ */
+let initOpenNextCloudflareForDevHasBeenCalled = false;
+
+/**
  * Performs some initial setup to integrate as best as possible the local Next.js dev server (run via `next dev`)
  * with the open-next Cloudflare adapter
  *
@@ -246,6 +254,15 @@ async function getCloudflareContextAsync<
  * @param options options on how the function should operate and if/where to persist the platform data
  */
 export async function initOpenNextCloudflareForDev(options?: GetPlatformProxyOptions) {
+	if (initOpenNextCloudflareForDevHasBeenCalled) {
+		throw new Error(
+			`\n\nERROR: \`initOpenNextCloudflareForDev\` was called more than once in the same process.\n` +
+				`It should be called exactly once, at the top of your Next.js config file.\n` +
+				`Multiple calls start competing Workers runtimes, which fail with an obscure workerd \`SQLITE_BUSY\` error.\n`
+		);
+	}
+	initOpenNextCloudflareForDevHasBeenCalled = true;
+
 	const shouldInitializationRun = shouldContextInitializationRun();
 	if (!shouldInitializationRun) return;
 
