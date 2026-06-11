@@ -15,7 +15,7 @@ import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-upd
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
 import { normalizePath } from "../../../utils/normalize-path.js";
-import { useNodeMiddleware } from "../../utils/middleware.js";
+import { getBundledMiddlewarePath, useNodeMiddleware } from "../../utils/middleware.js";
 
 export function patchNextServer(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
 	return updater.updateContent("next-server", [
@@ -42,13 +42,7 @@ export function patchNextServer(updater: ContentUpdater, buildOpts: BuildOptions
 
 				if (useNodeMiddleware(buildOpts)) {
 					// proxy.ts: patch loadNodeMiddleware() to require the bundled file directly
-					const middlewarePath = path.join(
-						buildOpts.outputDir,
-						"server-functions/default",
-						getPackagePath(buildOpts),
-						".next/server/middleware.js"
-					);
-					contents = patchCode(contents, createNodeMiddlewareRule(middlewarePath));
+					contents = patchCode(contents, createNodeMiddlewareRule(getBundledMiddlewarePath(buildOpts)));
 				} else {
 					// No Node middleware — stub out loadNodeMiddleware so it is a no-op
 					contents = patchCode(contents, disableNodeMiddlewareRule);

@@ -30,7 +30,11 @@ import { normalizePath } from "../../utils/normalize-path.js";
 import { patchResRevalidate } from "../patches/plugins/res-revalidate.js";
 import { patchTurbopackRuntime } from "../patches/plugins/turbopack.js";
 import { patchUseCacheIO } from "../patches/plugins/use-cache.js";
-import { getStandaloneMiddlewarePath, useNodeMiddleware } from "../utils/middleware.js";
+import {
+	getBundledMiddlewarePath,
+	getStandaloneMiddlewarePath,
+	useNodeMiddleware,
+} from "../utils/middleware.js";
 import { copyWorkerdPackages } from "../utils/workerd.js";
 
 interface CodeCustomization {
@@ -202,7 +206,7 @@ async function generateBundle(
 	// static require injected by createNodeMiddlewareRule.
 	if (useNodeMiddleware(options)) {
 		const srcMiddleware = getStandaloneMiddlewarePath(options);
-		const destMiddleware = path.join(outPackagePath, ".next", "server", "middleware.js");
+		const destMiddleware = getBundledMiddlewarePath(options);
 		if (fs.existsSync(srcMiddleware)) {
 			fs.mkdirSync(path.dirname(destMiddleware), { recursive: true });
 			fs.copyFileSync(srcMiddleware, destMiddleware);

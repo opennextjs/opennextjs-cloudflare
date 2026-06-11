@@ -4,6 +4,19 @@ import { loadFunctionsConfigManifest, loadMiddlewareManifest } from "@opennextjs
 import * as buildHelper from "@opennextjs/aws/build/helper.js";
 
 /**
+ * Returns the destination path for the bundled Node.js middleware inside the
+ * server-functions output — where esbuild expects to find it after the copy step.
+ */
+export function getBundledMiddlewarePath(options: buildHelper.BuildOptions): string {
+	return path.join(
+		options.outputDir,
+		"server-functions/default",
+		buildHelper.getPackagePath(options),
+		".next/server/middleware.js"
+	);
+}
+
+/**
  * Returns whether the project is using a Node.js middleware (proxy.ts in Next.js 16+).
  *
  * @param options
