@@ -15,6 +15,7 @@ import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-upd
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
 import { normalizePath } from "../../../utils/normalize-path.js";
+import { useNodeMiddleware } from "../../utils/middleware.js";
 
 export function patchNextServer(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
 	return updater.updateContent("next-server", [
@@ -39,8 +40,19 @@ export function patchNextServer(updater: ContentUpdater, buildOpts: BuildOptions
 				);
 				contents = patchCode(contents, createComposableCacheHandlersRule(composableCacheHandler));
 
-				// Node middleware are not supported on Cloudflare yet
-				contents = patchCode(contents, disableNodeMiddlewareRule);
+				if (useNodeMiddleware(buildOpts)) {
+					// proxy.ts: patch loadNodeMiddleware() to require the bundled file directly
+					const middlewarePath = path.join(
+						buildOpts.outputDir,
+						"server-functions/default",
+						getPackagePath(buildOpts),
+						".next/server/middleware.js"
+					);
+					contents = patchCode(contents, createNodeMiddlewareRule(middlewarePath));
+				} else {
+					// No Node middleware — stub out loadNodeMiddleware so it is a no-op
+					contents = patchCode(contents, disableNodeMiddlewareRule);
+				}
 
 				contents = patchCode(contents, attachRequestMetaRule);
 
@@ -61,6 +73,26 @@ fix: |-
     // patched by open next
   }
 `;
+
+/**
+ * Patch `loadNodeMiddleware()` to require the Node.js middleware (proxy.ts output)
+ * from a static path that esbuild can bundle.
+ *
+ * Used when the app has a `proxy.ts` / Node.js middleware instead of edge middleware.
+ */
+export function createNodeMiddlewareRule(middlewarePath: string): string {
+	return `
+rule:
+  pattern:
+    selector: method_definition
+    context: "class { async loadNodeMiddleware($$$PARAMS) { $$$_ } }"
+fix: |-
+  async loadNodeMiddleware($$$PARAMS) {
+    // patched by open next: proxy.ts middleware bundled at build time
+    return require('${normalizePath(middlewarePath)}');
+  }
+`;
+}
 
 export const buildIdRule = `
 rule:

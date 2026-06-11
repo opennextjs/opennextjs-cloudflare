@@ -4,7 +4,7 @@ import { loadFunctionsConfigManifest, loadMiddlewareManifest } from "@opennextjs
 import * as buildHelper from "@opennextjs/aws/build/helper.js";
 
 /**
- * Returns whether the project is using a Node.js middleware.
+ * Returns whether the project is using a Node.js middleware (proxy.ts in Next.js 16+).
  *
  * @param options
  * @returns Whether the project is using a Node.js middleware
@@ -23,4 +23,23 @@ export function useNodeMiddleware(options: buildHelper.BuildOptions): boolean {
 	// Look for the node middleware
 	const functionsConfigManifest = loadFunctionsConfigManifest(buildOutputDotNextDir);
 	return Boolean(functionsConfigManifest?.functions["/_middleware"]);
+}
+
+/**
+ * Returns the path to the compiled Node.js middleware (`middleware.js`) inside
+ * the Next.js standalone output directory.
+ *
+ * Next.js compiles `proxy.ts` (Node.js middleware) to
+ * `.next/server/middleware.js` and copies it into the standalone bundle.
+ */
+export function getStandaloneMiddlewarePath(options: buildHelper.BuildOptions): string {
+	return path.join(
+		options.appBuildOutputPath,
+		".next",
+		"standalone",
+		buildHelper.getPackagePath(options),
+		".next",
+		"server",
+		"middleware.js"
+	);
 }
