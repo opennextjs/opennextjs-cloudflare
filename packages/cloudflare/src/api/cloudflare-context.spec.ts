@@ -35,19 +35,19 @@ describe("initOpenNextCloudflareForDev duplicate-call guard", () => {
 
 	it("throws a user-actionable error on the second call in the same process", async () => {
 		await initOpenNextCloudflareForDev();
-		await expect(initOpenNextCloudflareForDev()).rejects.toThrow(
+		expect(() => initOpenNextCloudflareForDev()).toThrow(
 			/`initOpenNextCloudflareForDev` was called more than once in the same process/
 		);
 	});
 
 	it("mentions the SQLITE_BUSY workerd symptom and points the user at the config file", async () => {
 		await initOpenNextCloudflareForDev();
-		await expect(initOpenNextCloudflareForDev()).rejects.toThrowError(
+		expect(() => initOpenNextCloudflareForDev()).toThrowError(
 			expect.objectContaining({
 				message: expect.stringMatching(/Next\.js config file/),
 			})
 		);
-		await expect(initOpenNextCloudflareForDev()).rejects.toThrowError(
+		expect(() => initOpenNextCloudflareForDev()).toThrowError(
 			expect.objectContaining({
 				message: expect.stringMatching(/SQLITE_BUSY/),
 			})
@@ -56,7 +56,7 @@ describe("initOpenNextCloudflareForDev duplicate-call guard", () => {
 
 	it("treats each fresh module load as its own process for the purpose of the guard", async () => {
 		await initOpenNextCloudflareForDev();
-		await expect(initOpenNextCloudflareForDev()).rejects.toThrow();
+		expect(() => initOpenNextCloudflareForDev()).toThrow();
 
 		// Simulating a new process boundary: re-import the module and call once - it should resolve
 		// because the module-level flag is fresh.
