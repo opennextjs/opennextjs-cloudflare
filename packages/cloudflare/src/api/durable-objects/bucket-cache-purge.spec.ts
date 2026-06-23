@@ -50,12 +50,12 @@ describe("BucketCachePurge", () => {
 			// @ts-expect-error - testing private method
 			expect(cache.ctx.storage.sql.exec).toHaveBeenCalledWith(
 				expect.stringContaining("INSERT OR REPLACE INTO cache_purge"),
-				[tags[0]]
+				tags[0]
 			);
 			// @ts-expect-error - testing private method
 			expect(cache.ctx.storage.sql.exec).toHaveBeenCalledWith(
 				expect.stringContaining("INSERT OR REPLACE INTO cache_purge"),
-				[tags[1]]
+				tags[1]
 			);
 		});
 
@@ -86,8 +86,19 @@ describe("BucketCachePurge", () => {
 				toArray: () => [{ tag: "tag1" }, { tag: "tag2" }],
 			});
 			await cache.alarm();
+			// SqlStorage.exec(query, ...bindings) is variadic: each placeholder needs
+			// its own binding argument. Passing the tags as a single array made the
+			// binding count (1) disagree with the placeholder count (N), so exec threw
+			// "Wrong number of parameter bindings" and the purge never ran (#1288). The
+			// bindings must be spread.
 			// @ts-expect-error - testing private method
 			expect(cache.ctx.storage.sql.exec).toHaveBeenCalledWith(
+				expect.stringContaining("DELETE FROM cache_purge"),
+				"tag1",
+				"tag2"
+			);
+			// @ts-expect-error - testing private method
+			expect(cache.ctx.storage.sql.exec).not.toHaveBeenCalledWith(
 				expect.stringContaining("DELETE FROM cache_purge"),
 				["tag1", "tag2"]
 			);
