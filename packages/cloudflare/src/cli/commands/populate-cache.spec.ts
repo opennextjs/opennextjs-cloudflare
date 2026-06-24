@@ -287,7 +287,7 @@ describe("populateCache", () => {
 			expect(rclone.copy).toHaveBeenCalledWith(
 				expect.any(String),
 				"r2:test-bucket",
-				expect.objectContaining({ transfers: 16, checkers: 8 })
+				expect.objectContaining({ transfers: 25, checkers: 12 })
 			);
 		});
 
