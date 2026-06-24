@@ -88,9 +88,6 @@ declare global {
 		CF_ACCOUNT_ID?: string;
 
 		// R2 S3 API credentials used by `rclone`
-		// NOTES:
-		// - `rclone` may not be supported on all platforms
-		// - `rclone` is not supported in development
 		R2_ACCESS_KEY_ID?: string;
 		R2_SECRET_ACCESS_KEY?: string;
 	}

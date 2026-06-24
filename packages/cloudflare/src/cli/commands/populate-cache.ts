@@ -219,7 +219,7 @@ export type PopulateCacheOptions = {
 	/**
 	 * Number of concurrent requests when populating the cache.
 	 * For KV this is the chunk size passed to `wrangler kv bulk put`.
-	 * For R2 this is the number of concurrent requests to the local worker.
+	 * For R2 this is the number of concurrent requests to the local worker or rclone transfers.
 	 *
 	 * @default 25
 	 */
@@ -279,7 +279,13 @@ async function populateR2IncrementalCache(
 			throw new Error("The `--rclone` option can only be used when populating a remote R2 cache.");
 		}
 
-		await populateR2IncrementalCacheWithRclone(bucketName, prefix, assets, envVars);
+		await populateR2IncrementalCacheWithRclone(
+			bucketName,
+			prefix,
+			assets,
+			envVars,
+			populateCacheOptions.cacheChunkSize
+		);
 		return;
 	}
 
@@ -348,7 +354,8 @@ async function populateR2IncrementalCacheWithRclone(
 	bucketName: string,
 	prefix: string | undefined,
 	assets: CacheAsset[],
-	envVars: WorkerEnvVar
+	envVars: WorkerEnvVar,
+	cacheChunkSize?: number
 ) {
 	const accessKey = envVars.R2_ACCESS_KEY_ID;
 	const secretKey = envVars.R2_SECRET_ACCESS_KEY;
@@ -356,7 +363,7 @@ async function populateR2IncrementalCacheWithRclone(
 
 	if (!accessKey || !secretKey || !accountId) {
 		throw new Error(
-			"All of R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and CF_ACCOUNT_ID must be provided to use `rclone`."
+			"R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and CF_ACCOUNT_ID must be provided to use `rclone`"
 		);
 	}
 
@@ -367,6 +374,8 @@ async function populateR2IncrementalCacheWithRclone(
 	const configDir = await fsp.mkdtemp(path.join(os.tmpdir(), "rclone-config-"));
 	const configPath = path.join(configDir, "rclone.conf");
 	const stagingDir = await fsp.mkdtemp(path.join(os.tmpdir(), "r2-staging-"));
+	const transfers = Math.max(1, cacheChunkSize ?? 16);
+	const checkers = Math.max(1, Math.floor(transfers / 2));
 
 	try {
 		await fsp.writeFile(
@@ -375,21 +384,34 @@ async function populateR2IncrementalCacheWithRclone(
 			{ mode: 0o600 }
 		);
 
-		for (const { fullPath, key, buildId, isFetch } of assets) {
-			const cacheKey = computeCacheKey(key, {
-				prefix,
-				buildId,
-				cacheType: isFetch ? "fetch" : "cache",
-			});
-			const destination = path.join(stagingDir, cacheKey);
-			await fsp.mkdir(path.dirname(destination), { recursive: true });
-			await fsp.copyFile(fullPath, destination);
+		for (let index = 0; index < assets.length; index += transfers) {
+			await Promise.all(
+				assets.slice(index, index + transfers).map(async ({ fullPath, key, buildId, isFetch }) => {
+					const cacheKey = computeCacheKey(key, {
+						prefix,
+						buildId,
+						cacheType: isFetch ? "fetch" : "cache",
+					});
+					const destination = path.join(stagingDir, cacheKey);
+					await fsp.mkdir(path.dirname(destination), { recursive: true });
+
+					try {
+						await fsp.link(fullPath, destination);
+					} catch (error) {
+						if (!(error instanceof Error) || !("code" in error) || error.code !== "EXDEV") {
+							throw error;
+						}
+
+						await fsp.copyFile(fullPath, destination);
+					}
+				})
+			);
 		}
 
 		await rclone.promises.copy(stagingDir, `r2:${bucketName}`, {
 			progress: true,
-			transfers: 16,
-			checkers: 8,
+			transfers,
+			checkers,
 			env: {
 				...process.env,
 				RCLONE_CONFIG: configPath,
@@ -751,7 +773,7 @@ export function withPopulateCacheOptions<T extends yargs.Argv>(args: T) {
 	return withWranglerOptions(args)
 		.options("cacheChunkSize", {
 			type: "number",
-			desc: "Number of entries per chunk when populating the cache",
+			desc: "Number of concurrent cache entries to process",
 		})
 		.options("rclone", {
 			type: "boolean",

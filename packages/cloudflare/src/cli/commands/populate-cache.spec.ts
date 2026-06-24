@@ -240,7 +240,7 @@ describe("populateCache", () => {
 				buildOptions,
 				config,
 				wranglerConfig,
-				{ target: "remote", shouldUsePreviewId: false, useRclone: true },
+				{ target: "remote", shouldUsePreviewId: false, useRclone: true, cacheChunkSize: 20 },
 				{
 					R2_ACCESS_KEY_ID: "access-key",
 					R2_SECRET_ACCESS_KEY: "secret-key",
@@ -253,13 +253,35 @@ describe("populateCache", () => {
 				"r2:test-bucket",
 				expect.objectContaining({
 					progress: true,
-					transfers: 16,
-					checkers: 8,
+					transfers: 20,
+					checkers: 10,
 					env: expect.objectContaining({ RCLONE_CONFIG: expect.any(String) }),
 				})
 			);
 			expect(unstable_startWorker).not.toHaveBeenCalled();
 			expect(ensureR2Bucket).not.toHaveBeenCalled();
+		});
+
+		test("remote with rclone - uses the default transfer concurrency", async () => {
+			setupMockFileSystem();
+
+			await populateCache(
+				buildOptions,
+				config,
+				wranglerConfig,
+				{ target: "remote", shouldUsePreviewId: false, useRclone: true },
+				{
+					R2_ACCESS_KEY_ID: "access-key",
+					R2_SECRET_ACCESS_KEY: "secret-key",
+					CF_ACCOUNT_ID: "account-id",
+				} as WorkerEnvVar
+			);
+
+			expect(rclone.promises.copy).toHaveBeenCalledWith(
+				expect.any(String),
+				"r2:test-bucket",
+				expect.objectContaining({ transfers: 16, checkers: 8 })
+			);
 		});
 
 		test("local with rclone - rejects the unsupported option", async () => {
@@ -288,7 +310,7 @@ describe("populateCache", () => {
 					envVars
 				)
 			).rejects.toThrow(
-				"All of R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and CF_ACCOUNT_ID must be provided to use `rclone`."
+				"R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and CF_ACCOUNT_ID must be provided to use `rclone`"
 			);
 		});
 

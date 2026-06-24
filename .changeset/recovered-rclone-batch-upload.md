@@ -16,16 +16,12 @@ feature: add opt-in batch upload via `rclone` for fast R2 cache population.
 
 3. **Clear Errors**: The CLI reports missing credentials or a missing `rclone.js` installation when the option is used.
 
-**Benefits (when batch upload is enabled):**
-
-`rclone` uses the S3 API which is not subject to the REST API limits
-
 **Usage:**
 
 Install `rclone.js`, then add the secrets in a `.env`/`.dev.vars` file in your project root:
 
 ```bash
-npm install rclone.js
+pnpm install rclone.js
 R2_ACCESS_KEY_ID=your_key
 R2_SECRET_ACCESS_KEY=your_secret
 CF_ACCOUNT_ID=your_account
