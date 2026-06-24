@@ -60,7 +60,6 @@
 		"comment-json": "^4.5.1",
 		"enquirer": "^2.4.1",
 		"glob": "catalog:",
-		"rclone.js": "^0.6.6",
 		"ts-tqdm": "^0.8.6",
 		"yargs": "catalog:"
 	},
@@ -83,6 +82,7 @@
 		"mock-fs": "catalog:",
 		"next": "catalog:",
 		"picomatch": "^4.0.2",
+		"rclone.js": "^0.6.6",
 		"rimraf": "catalog:",
 		"typescript": "catalog:",
 		"typescript-eslint": "catalog:",
@@ -90,6 +90,12 @@
 	},
 	"peerDependencies": {
 		"next": ">=15.5.18 <16 || >=16.2.6",
+		"rclone.js": "^0.6.6",
 		"wrangler": "catalog:"
+	},
+	"peerDependenciesMeta": {
+		"rclone.js": {
+			"optional": true
+		}
 	}
 }

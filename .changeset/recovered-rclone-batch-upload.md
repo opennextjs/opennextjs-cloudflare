@@ -1,20 +1,20 @@
 ---
-"@opennextjs/cloudflare": minor
+"@opennextjs/cloudflare": patch
 ---
 
-feature: optional batch upload via `rclone` for fast R2 cache population.
+feature: add opt-in batch upload via `rclone` for fast R2 cache population.
 
 **Key Changes:**
 
-1. **Optional `rclone` Upload**: Configure R2 credentials to opt in to `rclone` based batch uploads:
+1. **Optional `rclone` Upload**: Install the optional `rclone.js` peer dependency and pass `--rclone` to opt in to `rclone` based batch uploads.
 
    - `R2_ACCESS_KEY_ID`
    - `R2_SECRET_ACCESS_KEY`
    - `CF_ACCOUNT_ID`
 
-2. **Automatic Detection**: When credentials are detected and the target is `remote`, `rclone` batch upload is automatically used. Local targets always use `wrangler r2 bulk put` directly.
+2. **Explicit Opt-in**: The existing worker-based population path remains the default. `rclone` is only loaded when `--rclone` is used for a remote cache.
 
-3. **Smart Fallback**: If credentials are not configured or if `rclone` fails, the CLI falls back to `wrangler r2 bulk put`.
+3. **Clear Errors**: The CLI reports missing credentials or a missing `rclone.js` installation when the option is used.
 
 **Benefits (when batch upload is enabled):**
 
@@ -22,12 +22,15 @@ feature: optional batch upload via `rclone` for fast R2 cache population.
 
 **Usage:**
 
-Add the secrets in a `.env`/`.dev.vars` file in your project root,
+Install `rclone.js`, then add the secrets in a `.env`/`.dev.vars` file in your project root:
 
 ```bash
+npm install rclone.js
 R2_ACCESS_KEY_ID=your_key
 R2_SECRET_ACCESS_KEY=your_secret
 CF_ACCOUNT_ID=your_account
+
+opennextjs-cloudflare deploy --rclone
 ```
 
 You can also set the environment variables for CI builds.
