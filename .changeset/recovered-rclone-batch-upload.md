@@ -1,5 +1,5 @@
 ---
-"@opennextjs/cloudflare": patch
+"@opennextjs/cloudflare": minor
 ---
 
 feature: add opt-in batch upload via `rclone` for fast R2 cache population.
