@@ -374,7 +374,7 @@ async function populateR2IncrementalCacheWithRclone(
 	const configDir = await fsp.mkdtemp(path.join(os.tmpdir(), "rclone-config-"));
 	const configPath = path.join(configDir, "rclone.conf");
 	const stagingDir = await fsp.mkdtemp(path.join(os.tmpdir(), "r2-staging-"));
-	const transfers = Math.max(1, cacheChunkSize ?? 16);
+	const transfers = Math.max(1, cacheChunkSize ?? 25);
 	const checkers = Math.max(1, Math.floor(transfers / 2));
 
 	try {
