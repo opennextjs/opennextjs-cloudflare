@@ -383,6 +383,11 @@ async function populateR2IncrementalCacheWithRclone(
 			`[r2]\ntype = s3\nprovider = Cloudflare\naccess_key_id = ${accessKey}\nsecret_access_key = ${secretKey}\nendpoint = https://${accountId}.r2.cloudflarestorage.com\nacl = private\n`,
 			{ mode: 0o600 }
 		);
+		const rcloneEnv = {
+			...process.env,
+			RCLONE_CONFIG: configPath,
+		};
+		await ensureRcloneExecutable(rclone, rcloneEnv);
 
 		await stageCacheAssets(assets, stagingDir, prefix, transfers);
 
@@ -390,10 +395,7 @@ async function populateR2IncrementalCacheWithRclone(
 			progress: true,
 			transfers,
 			checkers,
-			env: {
-				...process.env,
-				RCLONE_CONFIG: configPath,
-			},
+			env: rcloneEnv,
 		});
 	} finally {
 		await Promise.allSettled([
@@ -426,14 +428,18 @@ async function stageCacheAssets(
 }
 
 async function stageCacheAsset(asset: CacheAsset, stagingDir: string, prefix: string | undefined) {
-	const destination = path.join(
-		stagingDir,
-		computeCacheKey(asset.key, {
-			prefix,
-			buildId: asset.buildId,
-			cacheType: asset.isFetch ? "fetch" : "cache",
-		})
-	);
+	const cacheKey = computeCacheKey(asset.key, {
+		prefix,
+		buildId: asset.buildId,
+		cacheType: asset.isFetch ? "fetch" : "cache",
+	});
+	const destination = path.resolve(stagingDir, cacheKey);
+	const relativeDestination = path.relative(stagingDir, destination);
+
+	if (relativeDestination.startsWith(`..${path.sep}`) || path.isAbsolute(relativeDestination)) {
+		throw new Error(`Cannot stage R2 cache key outside the temporary directory: ${JSON.stringify(cacheKey)}`);
+	}
+
 	await fsp.mkdir(path.dirname(destination), { recursive: true });
 
 	try {
@@ -444,6 +450,20 @@ async function stageCacheAsset(asset: CacheAsset, stagingDir: string, prefix: st
 		}
 
 		await fsp.copyFile(asset.fullPath, destination);
+	}
+}
+
+async function ensureRcloneExecutable(rclone: typeof import("rclone.js"), env: NodeJS.ProcessEnv) {
+	try {
+		await rclone.promises.version({ env });
+	} catch (error) {
+		if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+			throw new Error(
+				"The `rclone.js` executable is unavailable. pnpm users must allow its install script with `pnpm approve-builds`, select `rclone.js`, then run `pnpm rebuild rclone.js`."
+			);
+		}
+
+		throw error;
 	}
 }
 

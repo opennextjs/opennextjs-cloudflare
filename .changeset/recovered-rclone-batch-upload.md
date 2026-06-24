@@ -22,6 +22,8 @@ Install `rclone.js`, then add the secrets in a `.env`/`.dev.vars` file in your p
 
 ```bash
 pnpm install rclone.js
+pnpm approve-builds # select rclone.js
+pnpm rebuild rclone.js
 R2_ACCESS_KEY_ID=your_key
 R2_SECRET_ACCESS_KEY=your_secret
 CF_ACCOUNT_ID=your_account

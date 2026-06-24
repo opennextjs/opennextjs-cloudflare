@@ -110,6 +110,7 @@ vi.mock("rclone.js", () => ({
 	default: {
 		promises: {
 			copy: vi.fn(async () => ""),
+			version: vi.fn(async () => ""),
 		},
 	},
 }));
@@ -311,6 +312,48 @@ describe("populateCache", () => {
 				)
 			).rejects.toThrow(
 				"R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and CF_ACCOUNT_ID must be provided to use `rclone`"
+			);
+		});
+
+		test("remote with rclone - rejects cache prefixes that escape the staging directory", async () => {
+			setupMockFileSystem();
+
+			await expect(
+				populateCache(
+					buildOptions,
+					config,
+					wranglerConfig,
+					{ target: "remote", shouldUsePreviewId: false, useRclone: true },
+					{
+						R2_ACCESS_KEY_ID: "access-key",
+						R2_SECRET_ACCESS_KEY: "secret-key",
+						CF_ACCOUNT_ID: "account-id",
+						NEXT_INC_CACHE_R2_PREFIX: "../escaped",
+					} as WorkerEnvVar
+				)
+			).rejects.toThrow("Cannot stage R2 cache key outside the temporary directory");
+		});
+
+		test("remote with rclone - explains how to install the rclone executable with pnpm", async () => {
+			setupMockFileSystem();
+			vi.mocked(rclone.promises.version).mockRejectedValueOnce(
+				Object.assign(new Error("spawn rclone ENOENT"), { code: "ENOENT" })
+			);
+
+			await expect(
+				populateCache(
+					buildOptions,
+					config,
+					wranglerConfig,
+					{ target: "remote", shouldUsePreviewId: false, useRclone: true },
+					{
+						R2_ACCESS_KEY_ID: "access-key",
+						R2_SECRET_ACCESS_KEY: "secret-key",
+						CF_ACCOUNT_ID: "account-id",
+					} as WorkerEnvVar
+				)
+			).rejects.toThrow(
+				"pnpm users must allow its install script with `pnpm approve-builds`, select `rclone.js`, then run `pnpm rebuild rclone.js`"
 			);
 		});
 
