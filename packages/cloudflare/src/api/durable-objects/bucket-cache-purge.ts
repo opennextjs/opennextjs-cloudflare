@@ -33,7 +33,7 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
 				`
         INSERT OR REPLACE INTO cache_purge (tag)
         VALUES (?)`,
-				[tag]
+				tag
 			);
 		}
 		const nextAlarm = await this.ctx.storage.getAlarm();
@@ -75,7 +75,7 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
         DELETE FROM cache_purge
         WHERE tag IN (${tags.map(() => "?").join(",")})
       `,
-				tags.map((row) => row.tag)
+				...tags.map((row) => row.tag)
 			);
 			if (tags.length < MAX_NUMBER_OF_TAGS_PER_PURGE) {
 				// If we have less than MAX_NUMBER_OF_TAGS_PER_PURGE tags, we can stop
@@ -90,6 +90,6 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
 					)
 					.toArray();
 			}
-		} while (tags.length >= 0);
+		} while (tags.length > 0);
 	}
 }
