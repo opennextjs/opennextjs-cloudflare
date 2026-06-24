@@ -391,11 +391,12 @@ async function populateR2IncrementalCacheWithRclone(
 
 		await stageCacheAssets(assets, stagingDir, prefix, transfers);
 
-		await rclone.promises.copy(stagingDir, `r2:${bucketName}`, {
+		await runRcloneCopy(rclone, stagingDir, `r2:${bucketName}`, {
 			progress: true,
 			transfers,
 			checkers,
 			env: rcloneEnv,
+			stdio: "inherit",
 		});
 	} finally {
 		await Promise.allSettled([
@@ -405,6 +406,31 @@ async function populateR2IncrementalCacheWithRclone(
 	}
 
 	logger.info(`Successfully populated cache with ${assets.length} entries`);
+}
+
+async function runRcloneCopy(
+	rclone: typeof import("rclone.js"),
+	source: string,
+	destination: string,
+	options: Record<string, unknown>
+) {
+	await new Promise<void>((resolve, reject) => {
+		const child = rclone.copy(source, destination, options);
+
+		child.once("error", reject);
+		child.once("close", (code, signal) => {
+			if (code === 0) {
+				resolve();
+				return;
+			}
+
+			reject(
+				new Error(
+					`rclone exited ${signal ? `after receiving signal ${signal}` : `with code ${code ?? "unknown"}`}`
+				)
+			);
+		});
+	});
 }
 
 async function stageCacheAssets(

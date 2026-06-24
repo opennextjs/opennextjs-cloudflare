@@ -1,3 +1,4 @@
+import { EventEmitter } from "node:events";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -108,8 +109,12 @@ vi.mock("./utils/helpers.js", () => ({
 vi.mock("../utils/ensure-r2-bucket.js");
 vi.mock("rclone.js", () => ({
 	default: {
+		copy: vi.fn(() => {
+			const child = new EventEmitter();
+			queueMicrotask(() => child.emit("close", 0, null));
+			return child;
+		}),
 		promises: {
-			copy: vi.fn(async () => ""),
 			version: vi.fn(async () => ""),
 		},
 	},
@@ -249,7 +254,7 @@ describe("populateCache", () => {
 				} as WorkerEnvVar
 			);
 
-			expect(rclone.promises.copy).toHaveBeenCalledWith(
+			expect(rclone.copy).toHaveBeenCalledWith(
 				expect.any(String),
 				"r2:test-bucket",
 				expect.objectContaining({
@@ -257,6 +262,7 @@ describe("populateCache", () => {
 					transfers: 20,
 					checkers: 10,
 					env: expect.objectContaining({ RCLONE_CONFIG: expect.any(String) }),
+					stdio: "inherit",
 				})
 			);
 			expect(unstable_startWorker).not.toHaveBeenCalled();
@@ -278,11 +284,34 @@ describe("populateCache", () => {
 				} as WorkerEnvVar
 			);
 
-			expect(rclone.promises.copy).toHaveBeenCalledWith(
+			expect(rclone.copy).toHaveBeenCalledWith(
 				expect.any(String),
 				"r2:test-bucket",
 				expect.objectContaining({ transfers: 16, checkers: 8 })
 			);
+		});
+
+		test("remote with rclone - rejects a failed rclone process", async () => {
+			setupMockFileSystem();
+			vi.mocked(rclone.copy).mockImplementationOnce(() => {
+				const child = new EventEmitter();
+				queueMicrotask(() => child.emit("close", 7, null));
+				return child as ReturnType<typeof rclone.copy>;
+			});
+
+			await expect(
+				populateCache(
+					buildOptions,
+					config,
+					wranglerConfig,
+					{ target: "remote", shouldUsePreviewId: false, useRclone: true },
+					{
+						R2_ACCESS_KEY_ID: "access-key",
+						R2_SECRET_ACCESS_KEY: "secret-key",
+						CF_ACCOUNT_ID: "account-id",
+					} as WorkerEnvVar
+				)
+			).rejects.toThrow("rclone exited with code 7");
 		});
 
 		test("local with rclone - rejects the unsupported option", async () => {
