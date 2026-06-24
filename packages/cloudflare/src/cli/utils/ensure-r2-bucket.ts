@@ -141,8 +141,15 @@ export async function ensureR2Bucket(
 
 		const client =
 			authCredentials.type === "api_key"
-				? new Cloudflare({ apiKey: authCredentials.apiKey, apiEmail: authCredentials.apiEmail })
-				: new Cloudflare({ apiToken: authCredentials.token });
+				? new Cloudflare({
+						apiKey: authCredentials.apiKey,
+						apiEmail: authCredentials.apiEmail,
+						defaultHeaders: { "Accept-Encoding": "identity" },
+					})
+				: new Cloudflare({
+						apiToken: authCredentials.token,
+						defaultHeaders: { "Accept-Encoding": "identity" },
+					});
 
 		const accountId = await getAccountId(client);
 		if (!accountId) {
