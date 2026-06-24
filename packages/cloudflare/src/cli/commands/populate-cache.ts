@@ -384,29 +384,7 @@ async function populateR2IncrementalCacheWithRclone(
 			{ mode: 0o600 }
 		);
 
-		for (let index = 0; index < assets.length; index += transfers) {
-			await Promise.all(
-				assets.slice(index, index + transfers).map(async ({ fullPath, key, buildId, isFetch }) => {
-					const cacheKey = computeCacheKey(key, {
-						prefix,
-						buildId,
-						cacheType: isFetch ? "fetch" : "cache",
-					});
-					const destination = path.join(stagingDir, cacheKey);
-					await fsp.mkdir(path.dirname(destination), { recursive: true });
-
-					try {
-						await fsp.link(fullPath, destination);
-					} catch (error) {
-						if (!(error instanceof Error) || !("code" in error) || error.code !== "EXDEV") {
-							throw error;
-						}
-
-						await fsp.copyFile(fullPath, destination);
-					}
-				})
-			);
-		}
+		await stageCacheAssets(assets, stagingDir, prefix, transfers);
 
 		await rclone.promises.copy(stagingDir, `r2:${bucketName}`, {
 			progress: true,
@@ -425,6 +403,48 @@ async function populateR2IncrementalCacheWithRclone(
 	}
 
 	logger.info(`Successfully populated cache with ${assets.length} entries`);
+}
+
+async function stageCacheAssets(
+	assets: CacheAsset[],
+	stagingDir: string,
+	prefix: string | undefined,
+	maxConcurrency: number
+) {
+	const pending = new Set<Promise<void>>();
+
+	for (const asset of assets) {
+		const task = stageCacheAsset(asset, stagingDir, prefix).finally(() => pending.delete(task));
+		pending.add(task);
+
+		if (pending.size >= maxConcurrency) {
+			await Promise.race(pending);
+		}
+	}
+
+	await Promise.all(pending);
+}
+
+async function stageCacheAsset(asset: CacheAsset, stagingDir: string, prefix: string | undefined) {
+	const destination = path.join(
+		stagingDir,
+		computeCacheKey(asset.key, {
+			prefix,
+			buildId: asset.buildId,
+			cacheType: asset.isFetch ? "fetch" : "cache",
+		})
+	);
+	await fsp.mkdir(path.dirname(destination), { recursive: true });
+
+	try {
+		await fsp.link(asset.fullPath, destination);
+	} catch (error) {
+		if (!(error instanceof Error) || !("code" in error) || error.code !== "EXDEV") {
+			throw error;
+		}
+
+		await fsp.copyFile(asset.fullPath, destination);
+	}
 }
 
 export async function loadRclone(
