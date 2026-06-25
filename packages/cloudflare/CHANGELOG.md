@@ -1,5 +1,64 @@
 # @opennextjs/cloudflare
 
+## 1.20.0
+
+### Minor Changes
+
+- [#1290](https://github.com/opennextjs/opennextjs-cloudflare/pull/1290) [`46c50fc`](https://github.com/opennextjs/opennextjs-cloudflare/commit/46c50fc69295bebe1597ae05ca41c6e03bcc01b3) Thanks [@james-elicx](https://github.com/james-elicx)! - feature: add opt-in batch upload via `rclone` for fast R2 cache population.
+
+  **Key Changes:**
+
+  1. **Optional `rclone` Upload**: Install the optional `rclone.js` peer dependency and pass `--rclone` to opt in to `rclone` based batch uploads.
+
+     - `R2_ACCESS_KEY_ID`
+     - `R2_SECRET_ACCESS_KEY`
+     - `CF_ACCOUNT_ID`
+
+  2. **Explicit Opt-in**: The existing worker-based population path remains the default. `rclone` is only loaded when `--rclone` is used for a remote cache.
+  3. **Clear Errors**: The CLI reports missing credentials or a missing `rclone.js` installation when the option is used.
+
+  **Usage:**
+
+  Install `rclone.js`, then add the secrets in a `.env`/`.dev.vars` file in your project root:
+
+  ```bash
+  pnpm add rclone.js
+  pnpm approve-builds # select rclone.js
+  pnpm rebuild rclone.js
+  R2_ACCESS_KEY_ID=your_key
+  R2_SECRET_ACCESS_KEY=your_secret
+  CF_ACCOUNT_ID=your_account
+
+  opennextjs-cloudflare deploy --rclone
+  ```
+
+  You can also set the environment variables for CI builds.
+
+  **Notes:**
+
+  - You can follow documentation <https://developers.cloudflare.com/r2/api/tokens/> for creating API tokens with appropriate permissions for R2 access.
+  - `rclone` may not be supported on all platforms.
+
+### Patch Changes
+
+- [#1289](https://github.com/opennextjs/opennextjs-cloudflare/pull/1289) [`eef243f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/eef243ff04790151fb1a4bc832597e2e44b40e70) Thanks [@thatssoheil](https://github.com/thatssoheil)! - fix: spread SQLite bindings in BucketCachePurge alarm so tag purges run
+
+  `BucketCachePurge.alarm()` passed its tag bindings to `SqlStorage.exec` as a
+  single array. `exec(query, ...bindings)` is variadic over its bindings, so for a
+  multi-tag `DELETE ... WHERE tag IN (?, ?, …)` the binding count (1) disagreed
+  with the placeholder count (N) and `exec` threw "Wrong number of parameter
+  bindings" on every flush. On-demand `revalidateTag` purges therefore never
+  reached the Cloudflare cache, and with `bypassTagCacheOnCacheHit` enabled pages
+  served stale until the ISR TTL expired.
+
+  Spread the bindings, normalise the `INSERT` to the same variadic form, and
+  tighten the drain loop's guard from `while (tags.length >= 0)` (which never
+  exits via the condition) to `while (tags.length > 0)`.
+
+- [#1291](https://github.com/opennextjs/opennextjs-cloudflare/pull/1291) [`51439b1`](https://github.com/opennextjs/opennextjs-cloudflare/commit/51439b12bc68b061d88cb883ee1b97fbc81edfcb) Thanks [@james-elicx](https://github.com/james-elicx)! - fix: disable response compression when provisioning R2 cache buckets
+
+  Avoid truncated compressed Cloudflare API responses causing R2 cache bucket provisioning to fail.
+
 ## 1.19.11
 
 ### Patch Changes
