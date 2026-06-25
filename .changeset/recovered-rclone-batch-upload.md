@@ -21,7 +21,7 @@ feature: add opt-in batch upload via `rclone` for fast R2 cache population.
 Install `rclone.js`, then add the secrets in a `.env`/`.dev.vars` file in your project root:
 
 ```bash
-pnpm install rclone.js
+pnpm add rclone.js
 pnpm approve-builds # select rclone.js
 pnpm rebuild rclone.js
 R2_ACCESS_KEY_ID=your_key
