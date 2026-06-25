@@ -27,6 +27,7 @@ import type { Plugin } from "esbuild";
 
 import { getOpenNextConfig } from "../../../api/config.js";
 import { normalizePath } from "../../utils/normalize-path.js";
+import { patchFlightReadableStreamType } from "../patches/plugins/flight-readable-stream-type.js";
 import { patchResRevalidate } from "../patches/plugins/res-revalidate.js";
 import { patchTurbopackRuntime } from "../patches/plugins/turbopack.js";
 import { patchUseCacheIO } from "../patches/plugins/use-cache.js";
@@ -209,6 +210,7 @@ async function generateBundle(
 		awsPatches.patchBackgroundRevalidation,
 		awsPatches.patchNodeEnvironment,
 		// Cloudflare specific patches
+		patchFlightReadableStreamType,
 		patchResRevalidate,
 		patchUseCacheIO,
 		patchTurbopackRuntime,
