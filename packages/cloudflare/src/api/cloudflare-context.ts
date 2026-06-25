@@ -83,8 +83,13 @@ declare global {
 		CF_PREVIEW_DOMAIN?: string;
 		// Should have the `Workers Scripts:Read` permission
 		CF_WORKERS_SCRIPTS_API_TOKEN?: string;
-		// Cloudflare account id - needed for skew protection
+
+		// Cloudflare account id - needed for skew protection and R2 batch population
 		CF_ACCOUNT_ID?: string;
+
+		// R2 S3 API credentials used by `rclone`
+		R2_ACCESS_KEY_ID?: string;
+		R2_SECRET_ACCESS_KEY?: string;
 	}
 }
 

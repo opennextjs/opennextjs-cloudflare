@@ -20,7 +20,9 @@ import {
  *
  * @param args
  */
-export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize?: number }>): Promise<void> {
+export async function deployCommand(
+	args: WithWranglerArgs<{ cacheChunkSize?: number; rclone: boolean }>
+): Promise<void> {
 	printHeaders("deploy");
 
 	const { config } = await retrieveCompiledConfig();
@@ -45,6 +47,7 @@ export async function deployCommand(args: WithWranglerArgs<{ cacheChunkSize?: nu
 			environment: args.env,
 			wranglerConfigPath: args.wranglerConfigPath,
 			cacheChunkSize: args.cacheChunkSize,
+			useRclone: args.rclone,
 			shouldUsePreviewId: false,
 		},
 		envVars

@@ -72,7 +72,7 @@ export const BACKOFF_FACTOR = (MAX_RETRY_DELAY_MS / BASE_RETRY_DELAY_MS) ** (1 /
  */
 async function populateCacheCommand(
 	target: "local" | "remote",
-	args: WithWranglerArgs<{ cacheChunkSize?: number }>
+	args: WithWranglerArgs<{ cacheChunkSize?: number; rclone: boolean }>
 ) {
 	printHeaders(`populate cache - ${target}`);
 
@@ -97,6 +97,7 @@ async function populateCacheCommand(
 			environment: args.env,
 			wranglerConfigPath: args.wranglerConfigPath,
 			cacheChunkSize: args.cacheChunkSize,
+			useRclone: args.rclone,
 			shouldUsePreviewId: false,
 		},
 		envVars
@@ -218,11 +219,15 @@ export type PopulateCacheOptions = {
 	/**
 	 * Number of concurrent requests when populating the cache.
 	 * For KV this is the chunk size passed to `wrangler kv bulk put`.
-	 * For R2 this is the number of concurrent requests to the local worker.
+	 * For R2 this is the number of concurrent requests to the local worker or rclone transfers.
 	 *
 	 * @default 25
 	 */
 	cacheChunkSize?: number;
+	/**
+	 * Whether to use `rclone` instead of the worker-based R2 cache population path.
+	 */
+	useRclone?: boolean;
 	/**
 	 * Instructs Wrangler to use the preview namespace or ID defined in the Wrangler config for the remote target.
 	 */
@@ -266,6 +271,21 @@ async function populateR2IncrementalCache(
 
 	if (assets.length === 0) {
 		logger.info("No cache assets to populate");
+		return;
+	}
+
+	if (populateCacheOptions.useRclone) {
+		if (populateCacheOptions.target !== "remote") {
+			throw new Error("The `--rclone` option can only be used when populating a remote R2 cache.");
+		}
+
+		await populateR2IncrementalCacheWithRclone(
+			bucketName,
+			prefix,
+			assets,
+			envVars,
+			populateCacheOptions.cacheChunkSize
+		);
 		return;
 	}
 
@@ -328,6 +348,167 @@ async function populateR2IncrementalCache(
 	}
 
 	logger.info(`Successfully populated cache with ${assets.length} entries`);
+}
+
+async function populateR2IncrementalCacheWithRclone(
+	bucketName: string,
+	prefix: string | undefined,
+	assets: CacheAsset[],
+	envVars: WorkerEnvVar,
+	cacheChunkSize?: number
+) {
+	const accessKey = envVars.R2_ACCESS_KEY_ID;
+	const secretKey = envVars.R2_SECRET_ACCESS_KEY;
+	const accountId = envVars.CF_ACCOUNT_ID;
+
+	if (!accessKey || !secretKey || !accountId) {
+		throw new Error(
+			"R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and CF_ACCOUNT_ID must be provided to use `rclone`"
+		);
+	}
+
+	const rclone = await loadRclone();
+
+	logger.info("\nPopulating remote R2 incremental cache using `rclone`...");
+
+	const configDir = await fsp.mkdtemp(path.join(os.tmpdir(), "rclone-config-"));
+	const configPath = path.join(configDir, "rclone.conf");
+	const stagingDir = await fsp.mkdtemp(path.join(os.tmpdir(), "r2-staging-"));
+	const transfers = Math.max(1, cacheChunkSize ?? 25);
+	const checkers = Math.max(1, Math.floor(transfers / 2));
+
+	try {
+		await fsp.writeFile(
+			configPath,
+			`[r2]\ntype = s3\nprovider = Cloudflare\naccess_key_id = ${accessKey}\nsecret_access_key = ${secretKey}\nendpoint = https://${accountId}.r2.cloudflarestorage.com\nacl = private\n`,
+			{ mode: 0o600 }
+		);
+		const rcloneEnv = {
+			...process.env,
+			RCLONE_CONFIG: configPath,
+		};
+		await ensureRcloneExecutable(rclone, rcloneEnv);
+
+		await stageCacheAssets(assets, stagingDir, prefix, transfers);
+
+		await runRcloneCopy(rclone, stagingDir, `r2:${bucketName}`, {
+			progress: true,
+			transfers,
+			checkers,
+			env: rcloneEnv,
+			stdio: "inherit",
+		});
+	} finally {
+		await Promise.allSettled([
+			fsp.rm(stagingDir, { recursive: true, force: true }),
+			fsp.rm(configDir, { recursive: true, force: true }),
+		]);
+	}
+
+	logger.info(`Successfully populated cache with ${assets.length} entries`);
+}
+
+async function runRcloneCopy(
+	rclone: typeof import("rclone.js"),
+	source: string,
+	destination: string,
+	options: Record<string, unknown>
+) {
+	await new Promise<void>((resolve, reject) => {
+		const child = rclone.copy(source, destination, options);
+
+		child.once("error", reject);
+		child.once("close", (code, signal) => {
+			if (code === 0) {
+				resolve();
+				return;
+			}
+
+			reject(
+				new Error(
+					`rclone exited ${signal ? `after receiving signal ${signal}` : `with code ${code ?? "unknown"}`}`
+				)
+			);
+		});
+	});
+}
+
+async function stageCacheAssets(
+	assets: CacheAsset[],
+	stagingDir: string,
+	prefix: string | undefined,
+	maxConcurrency: number
+) {
+	const pending = new Set<Promise<void>>();
+
+	for (const asset of assets) {
+		const task = stageCacheAsset(asset, stagingDir, prefix).finally(() => pending.delete(task));
+		pending.add(task);
+
+		if (pending.size >= maxConcurrency) {
+			await Promise.race(pending);
+		}
+	}
+
+	await Promise.all(pending);
+}
+
+async function stageCacheAsset(asset: CacheAsset, stagingDir: string, prefix: string | undefined) {
+	const cacheKey = computeCacheKey(asset.key, {
+		prefix,
+		buildId: asset.buildId,
+		cacheType: asset.isFetch ? "fetch" : "cache",
+	});
+	const destination = path.resolve(stagingDir, cacheKey);
+	const relativeDestination = path.relative(stagingDir, destination);
+
+	if (relativeDestination.startsWith(`..${path.sep}`) || path.isAbsolute(relativeDestination)) {
+		throw new Error(`Cannot stage R2 cache key outside the temporary directory: ${JSON.stringify(cacheKey)}`);
+	}
+
+	await fsp.mkdir(path.dirname(destination), { recursive: true });
+
+	try {
+		await fsp.link(asset.fullPath, destination);
+	} catch (error) {
+		if (!(error instanceof Error) || !("code" in error) || error.code !== "EXDEV") {
+			throw error;
+		}
+
+		await fsp.copyFile(asset.fullPath, destination);
+	}
+}
+
+async function ensureRcloneExecutable(rclone: typeof import("rclone.js"), env: NodeJS.ProcessEnv) {
+	try {
+		await rclone.promises.version({ env });
+	} catch (error) {
+		if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+			throw new Error(
+				"The `rclone.js` executable is unavailable. pnpm users must allow its install script with `pnpm approve-builds`, select `rclone.js`, then run `pnpm rebuild rclone.js`."
+			);
+		}
+
+		throw error;
+	}
+}
+
+export async function loadRclone(
+	importRclone: () => Promise<{ default: typeof import("rclone.js") }> = () => import("rclone.js")
+) {
+	try {
+		return (await importRclone()).default;
+	} catch (error) {
+		if (
+			error instanceof Error &&
+			("code" in error ? error.code === "ERR_MODULE_NOT_FOUND" : error.message.includes("rclone.js"))
+		) {
+			throw new Error(
+				"The `--rclone` option requires the optional `rclone.js` peer dependency. Install it in your project before using this option."
+			);
+		}
+		throw error;
+	}
 }
 
 /**
@@ -655,8 +836,14 @@ export function addPopulateCacheCommand<T extends yargs.Argv>(y: T) {
 }
 
 export function withPopulateCacheOptions<T extends yargs.Argv>(args: T) {
-	return withWranglerOptions(args).options("cacheChunkSize", {
-		type: "number",
-		desc: "Number of entries per chunk when populating the cache",
-	});
+	return withWranglerOptions(args)
+		.options("cacheChunkSize", {
+			type: "number",
+			desc: "Number of concurrent cache entries to process",
+		})
+		.options("rclone", {
+			type: "boolean",
+			default: false,
+			desc: "Use rclone to populate a remote R2 incremental cache",
+		});
 }

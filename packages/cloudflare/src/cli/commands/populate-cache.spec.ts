@@ -1,8 +1,10 @@
+import { EventEmitter } from "node:events";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import mockFs from "mock-fs";
+import rclone from "rclone.js";
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 import type { Unstable_Config as WranglerConfig } from "wrangler";
 import { unstable_startWorker } from "wrangler";
@@ -12,6 +14,7 @@ import r2IncrementalCache from "../../api/overrides/incremental-cache/r2-increme
 import { ensureR2Bucket } from "../utils/ensure-r2-bucket.js";
 import {
 	getCacheAssets,
+	loadRclone,
 	MAX_REQUEST_RETRIES,
 	MAX_RETRY_DELAY_MS,
 	populateCache,
@@ -104,6 +107,18 @@ vi.mock("./utils/helpers.js", () => ({
 }));
 
 vi.mock("../utils/ensure-r2-bucket.js");
+vi.mock("rclone.js", () => ({
+	default: {
+		copy: vi.fn(() => {
+			const child = new EventEmitter();
+			queueMicrotask(() => child.emit("close", 0, null));
+			return child;
+		}),
+		promises: {
+			version: vi.fn(async () => ""),
+		},
+	},
+}));
 vi.mock("wrangler");
 
 describe("populateCache", () => {
@@ -223,6 +238,153 @@ describe("populateCache", () => {
 				expect(mockWorkerDispose).toHaveBeenCalled();
 			}
 		);
+
+		test("remote with rclone - uploads staged cache entries without starting a worker", async () => {
+			setupMockFileSystem();
+
+			await populateCache(
+				buildOptions,
+				config,
+				wranglerConfig,
+				{ target: "remote", shouldUsePreviewId: false, useRclone: true, cacheChunkSize: 20 },
+				{
+					R2_ACCESS_KEY_ID: "access-key",
+					R2_SECRET_ACCESS_KEY: "secret-key",
+					CF_ACCOUNT_ID: "account-id",
+				} as WorkerEnvVar
+			);
+
+			expect(rclone.copy).toHaveBeenCalledWith(
+				expect.any(String),
+				"r2:test-bucket",
+				expect.objectContaining({
+					progress: true,
+					transfers: 20,
+					checkers: 10,
+					env: expect.objectContaining({ RCLONE_CONFIG: expect.any(String) }),
+					stdio: "inherit",
+				})
+			);
+			expect(unstable_startWorker).not.toHaveBeenCalled();
+			expect(ensureR2Bucket).not.toHaveBeenCalled();
+		});
+
+		test("remote with rclone - uses the default transfer concurrency", async () => {
+			setupMockFileSystem();
+
+			await populateCache(
+				buildOptions,
+				config,
+				wranglerConfig,
+				{ target: "remote", shouldUsePreviewId: false, useRclone: true },
+				{
+					R2_ACCESS_KEY_ID: "access-key",
+					R2_SECRET_ACCESS_KEY: "secret-key",
+					CF_ACCOUNT_ID: "account-id",
+				} as WorkerEnvVar
+			);
+
+			expect(rclone.copy).toHaveBeenCalledWith(
+				expect.any(String),
+				"r2:test-bucket",
+				expect.objectContaining({ transfers: 25, checkers: 12 })
+			);
+		});
+
+		test("remote with rclone - rejects a failed rclone process", async () => {
+			setupMockFileSystem();
+			vi.mocked(rclone.copy).mockImplementationOnce(() => {
+				const child = new EventEmitter();
+				queueMicrotask(() => child.emit("close", 7, null));
+				return child as ReturnType<typeof rclone.copy>;
+			});
+
+			await expect(
+				populateCache(
+					buildOptions,
+					config,
+					wranglerConfig,
+					{ target: "remote", shouldUsePreviewId: false, useRclone: true },
+					{
+						R2_ACCESS_KEY_ID: "access-key",
+						R2_SECRET_ACCESS_KEY: "secret-key",
+						CF_ACCOUNT_ID: "account-id",
+					} as WorkerEnvVar
+				)
+			).rejects.toThrow("rclone exited with code 7");
+		});
+
+		test("local with rclone - rejects the unsupported option", async () => {
+			setupMockFileSystem();
+
+			await expect(
+				populateCache(
+					buildOptions,
+					config,
+					wranglerConfig,
+					{ target: "local", shouldUsePreviewId: false, useRclone: true },
+					envVars
+				)
+			).rejects.toThrow("The `--rclone` option can only be used when populating a remote R2 cache.");
+		});
+
+		test("remote with rclone - rejects missing R2 credentials", async () => {
+			setupMockFileSystem();
+
+			await expect(
+				populateCache(
+					buildOptions,
+					config,
+					wranglerConfig,
+					{ target: "remote", shouldUsePreviewId: false, useRclone: true },
+					envVars
+				)
+			).rejects.toThrow(
+				"R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and CF_ACCOUNT_ID must be provided to use `rclone`"
+			);
+		});
+
+		test("remote with rclone - rejects cache prefixes that escape the staging directory", async () => {
+			setupMockFileSystem();
+
+			await expect(
+				populateCache(
+					buildOptions,
+					config,
+					wranglerConfig,
+					{ target: "remote", shouldUsePreviewId: false, useRclone: true },
+					{
+						R2_ACCESS_KEY_ID: "access-key",
+						R2_SECRET_ACCESS_KEY: "secret-key",
+						CF_ACCOUNT_ID: "account-id",
+						NEXT_INC_CACHE_R2_PREFIX: "../escaped",
+					} as WorkerEnvVar
+				)
+			).rejects.toThrow("Cannot stage R2 cache key outside the temporary directory");
+		});
+
+		test("remote with rclone - explains how to install the rclone executable with pnpm", async () => {
+			setupMockFileSystem();
+			vi.mocked(rclone.promises.version).mockRejectedValueOnce(
+				Object.assign(new Error("spawn rclone ENOENT"), { code: "ENOENT" })
+			);
+
+			await expect(
+				populateCache(
+					buildOptions,
+					config,
+					wranglerConfig,
+					{ target: "remote", shouldUsePreviewId: false, useRclone: true },
+					{
+						R2_ACCESS_KEY_ID: "access-key",
+						R2_SECRET_ACCESS_KEY: "secret-key",
+						CF_ACCOUNT_ID: "account-id",
+					} as WorkerEnvVar
+				)
+			).rejects.toThrow(
+				"pnpm users must allow its install script with `pnpm approve-builds`, select `rclone.js`, then run `pnpm rebuild rclone.js`"
+			);
+		});
 
 		test("remote - exits when bucket provisioning fails", async () => {
 			setupMockFileSystem();
@@ -463,5 +625,21 @@ describe("populateCache", () => {
 			expect(fetchMock).toHaveBeenCalledTimes(MAX_REQUEST_RETRIES);
 			expect(mockWorkerDispose).toHaveBeenCalled();
 		});
+	});
+});
+
+describe("loadRclone", () => {
+	test("reports how to install the optional peer dependency", async () => {
+		const missingModuleError = Object.assign(new Error("Cannot find package 'rclone.js'"), {
+			code: "ERR_MODULE_NOT_FOUND",
+		});
+
+		await expect(
+			loadRclone(async () => {
+				throw missingModuleError;
+			})
+		).rejects.toThrow(
+			"The `--rclone` option requires the optional `rclone.js` peer dependency. Install it in your project before using this option."
+		);
 	});
 });

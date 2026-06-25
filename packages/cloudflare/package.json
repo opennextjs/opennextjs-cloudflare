@@ -70,6 +70,7 @@
 		"@types/mock-fs": "catalog:",
 		"@types/node": "catalog:",
 		"@types/picomatch": "^4.0.0",
+		"@types/rclone.js": "^0.6.1",
 		"@types/yargs": "catalog:",
 		"diff": "^8.0.2",
 		"esbuild": "catalog:",
@@ -81,6 +82,7 @@
 		"mock-fs": "catalog:",
 		"next": "catalog:",
 		"picomatch": "^4.0.2",
+		"rclone.js": "^0.6.6",
 		"rimraf": "catalog:",
 		"typescript": "catalog:",
 		"typescript-eslint": "catalog:",
@@ -88,6 +90,12 @@
 	},
 	"peerDependencies": {
 		"next": ">=15.5.18 <16 || >=16.2.6",
+		"rclone.js": "^0.6.6",
 		"wrangler": "catalog:"
+	},
+	"peerDependenciesMeta": {
+		"rclone.js": {
+			"optional": true
+		}
 	}
 }
