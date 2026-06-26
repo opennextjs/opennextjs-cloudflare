@@ -1,9 +1,60 @@
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { CURRENT_VERSION_ID } from "../templates/skew-protection.js";
-import { listWorkerVersions, updateDeploymentMapping } from "./skew-protection.js";
+import { getDeploymentMapping, listWorkerVersions, updateDeploymentMapping } from "./skew-protection.js";
+
+const { MockCloudflare } = vi.hoisted(() => {
+	class MockCloudflare {
+		workers = {
+			scripts: {
+				versions: {
+					list: vi.fn(() => []),
+				},
+			},
+		};
+	}
+
+	return { MockCloudflare: vi.fn(MockCloudflare) };
+});
+
+vi.mock("@opennextjs/aws/adapters/config/util.js", () => ({
+	loadConfig: vi.fn(() => ({ deploymentId: "deployment-id" })),
+}));
+
+vi.mock("cloudflare", async (importOriginal) => {
+	const original = await importOriginal<typeof import("cloudflare")>();
+	return { ...original, Cloudflare: MockCloudflare };
+});
 
 describe("skew protection", () => {
+	describe("getDeploymentMapping", () => {
+		beforeEach(() => {
+			vi.stubEnv("CF_WORKER_NAME", "worker-name");
+			vi.stubEnv("CF_PREVIEW_DOMAIN", "example.workers.dev");
+			vi.stubEnv("CF_WORKERS_SCRIPTS_API_TOKEN", "test-token");
+			vi.stubEnv("CF_ACCOUNT_ID", "test-account-id");
+		});
+
+		afterEach(() => {
+			vi.unstubAllEnvs();
+		});
+
+		test("disables response compression for worker version requests", async () => {
+			await expect(
+				getDeploymentMapping(
+					{ appBuildOutputPath: "/tmp/app" } as never,
+					{ cloudflare: { skewProtection: { enabled: true } } },
+					{}
+				)
+			).resolves.toEqual({ "deployment-id": CURRENT_VERSION_ID });
+
+			expect(MockCloudflare).toHaveBeenCalledWith({
+				apiToken: "test-token",
+				defaultHeaders: { "Accept-Encoding": "identity" },
+			});
+		});
+	});
+
 	describe("listWorkerVersions", () => {
 		test("listWorkerVersions return versions ordered by time DESC", async () => {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
