@@ -6,6 +6,7 @@ import {
 	buildIdRule,
 	createCacheHandlerRule,
 	createComposableCacheHandlersRule,
+	createNodeMiddlewareRule,
 	disableNodeMiddlewareRule,
 } from "./next-server.js";
 
@@ -316,6 +317,55 @@ class NextNodeServer extends _baseserver.default {
 			         // If we've already initialized the cache handlers interface, don't do it
 			         // again.
 			         if (!(0, _handlers.initializeCacheHandlers)(cacheMaxMemorySize)) return;
+			"
+		`);
+	});
+
+	test("node middleware (proxy.ts) — require static path", () => {
+		expect(
+			computePatchDiff(
+				"next-server.js",
+				next15ServerCode,
+				createNodeMiddlewareRule("/abs/.worker-next/server-functions/default/.next/server/middleware.js")
+			)
+		).toMatchInlineSnapshot(`
+			"Index: next-server.js
+			===================================================================
+			--- next-server.js
+			+++ next-server.js
+			@@ -1,5 +1,4 @@
+			-
+			 class NextNodeServer extends _baseserver.default {
+			     constructor(options){
+			         // Initialize super class
+			         super(options);
+			@@ -79,23 +78,11 @@
+			             pages: (0, _findpagesdir.findDir)(dir, "pages") ? true : false
+			         };
+			     }
+			     async loadNodeMiddleware() {
+			-        if (!process.env.NEXT_MINIMAL) {
+			-            try {
+			-                var _functionsConfig_functions;
+			-                const functionsConfig = this.renderOpts.dev ? {} : require((0, _path.join)(this.distDir, 'server', _constants.FUNCTIONS_CONFIG_MANIFEST));
+			-                if (this.renderOpts.dev || (functionsConfig == null ? void 0 : (_functionsConfig_functions = functionsConfig.functions) == null ? void 0 : _functionsConfig_functions['/_middleware'])) {
+			-                    // if used with top level await, this will be a promise
+			-                    return require((0, _path.join)(this.distDir, 'server', 'middleware.js'));
+			-                }
+			-            } catch (err) {
+			-                if ((0, _iserror.default)(err) && err.code !== 'ENOENT' && err.code !== 'MODULE_NOT_FOUND') {
+			-                    throw err;
+			-                }
+			-            }
+			-        }
+			-    }
+			+  // patched by open next: proxy.ts middleware bundled at build time
+			+  return require('/abs/.worker-next/server-functions/default/.next/server/middleware.js');
+			+}
+			     getPrerenderManifest() {
+			         var _this_renderOpts, _this_serverOptions;
+			         if (this._cachedPreviewManifest) {
+			             return this._cachedPreviewManifest;
 			"
 		`);
 	});

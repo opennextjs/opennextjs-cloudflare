@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+
 import { buildNextjsApp, setStandaloneBuildMode } from "@opennextjs/aws/build/buildNextApp.js";
 import { compileCache } from "@opennextjs/aws/build/compileCache.js";
 import { createCacheAssets, createStaticAssets } from "@opennextjs/aws/build/createAssets.js";
@@ -81,10 +84,11 @@ export async function build(
 		buildNextjsApp(options);
 	}
 
-	// Make sure no Node.js middleware is used
-	if (useNodeMiddleware(options)) {
-		logger.error("Node.js middleware is not currently supported. Consider switching to Edge Middleware.");
-		process.exit(1);
+	const hasNodeMiddleware = useNodeMiddleware(options);
+	if (hasNodeMiddleware) {
+		logger.warn(
+			"Node.js middleware (proxy.ts) detected. Support is experimental — make sure nodejs_compat is enabled."
+		);
 	}
 
 	// Generate deployable bundle
@@ -98,8 +102,14 @@ export async function build(
 	await compileImages(options);
 	await compileSkewProtection(options, config);
 
-	// Compile middleware
-	await createMiddleware(options, { forceOnlyBuildOnce: true });
+	if (hasNodeMiddleware) {
+		// Node middleware (proxy.ts) runs inside the Next.js server — write a passthrough handler
+		// so the worker template can still import ./middleware/handler.mjs without crashing.
+		writeNodeMiddlewarePassthrough(options);
+	} else {
+		// Compile edge middleware
+		await createMiddleware(options, { forceOnlyBuildOnce: true });
+	}
 
 	createStaticAssets(options, { useBasePath: true });
 
@@ -118,4 +128,23 @@ export async function build(
 	await bundleServer(options, projectOpts);
 
 	logger.info("OpenNext build complete.");
+}
+
+/**
+ * Writes a passthrough middleware handler so the worker template can import
+ * `./middleware/handler.mjs` even when the app uses Node.js middleware (proxy.ts).
+ *
+ * For proxy.ts, the actual middleware runs inside the Next.js server via
+ * `loadNodeMiddleware()`. The edge middleware slot is a no-op.
+ */
+function writeNodeMiddlewarePassthrough(options: buildHelper.BuildOptions): void {
+	const middlewareDir = path.join(options.outputDir, "middleware");
+	fs.mkdirSync(middlewareDir, { recursive: true });
+	fs.writeFileSync(
+		path.join(middlewareDir, "handler.mjs"),
+		`// Node.js middleware (proxy.ts) runs inside the Next.js server.
+// This passthrough keeps the worker entry-point import happy.
+export const handler = async (request, _env, _ctx) => request;
+`
+	);
 }
