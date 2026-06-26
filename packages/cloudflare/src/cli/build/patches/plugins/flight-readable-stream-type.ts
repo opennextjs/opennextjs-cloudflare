@@ -32,6 +32,7 @@ rule:
       field: constructor
       pattern: ReadableStream
     inside:
+      kind: function_declaration
       stopBy: end
       has:
         regex: "<script>"
