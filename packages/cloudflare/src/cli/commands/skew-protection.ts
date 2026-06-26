@@ -96,7 +96,10 @@ export async function getDeploymentMapping(
 	const apiToken = envVars.CF_WORKERS_SCRIPTS_API_TOKEN!;
 	const accountId = envVars.CF_ACCOUNT_ID!;
 
-	const client = new Cloudflare({ apiToken });
+	const client = new Cloudflare({
+		apiToken,
+		defaultHeaders: { "Accept-Encoding": "identity" },
+	});
 	const scriptName = envVars.CF_WORKER_NAME!;
 
 	const deployedVersions = await listWorkerVersions(scriptName, {
