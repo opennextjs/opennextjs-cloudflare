@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 1.20.1
+
+### Patch Changes
+
+- [#1297](https://github.com/opennextjs/opennextjs-cloudflare/pull/1297) [`780a21c`](https://github.com/opennextjs/opennextjs-cloudflare/commit/780a21c5abe0bbd30e38144a38c3faa555bace2b) Thanks [@james-elicx](https://github.com/james-elicx)! - fix: disable response compression for skew protection API requests
+
+  Avoid truncated compressed Cloudflare API responses causing worker version lookups to fail during deployment.
+
 ## 1.20.0
 
 ### Minor Changes
