@@ -1,6 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
-
 import { buildNextjsApp, setStandaloneBuildMode } from "@opennextjs/aws/build/buildNextApp.js";
 import { compileCache } from "@opennextjs/aws/build/compileCache.js";
 import { createCacheAssets, createStaticAssets } from "@opennextjs/aws/build/createAssets.js";
@@ -102,14 +99,10 @@ export async function build(
 	await compileImages(options);
 	await compileSkewProtection(options, config);
 
-	if (hasNodeMiddleware) {
-		// Node middleware (proxy.ts) runs inside the Next.js server — write a passthrough handler
-		// so the worker template can still import ./middleware/handler.mjs without crashing.
-		writeNodeMiddlewarePassthrough(options);
-	} else {
-		// Compile edge middleware
-		await createMiddleware(options, { forceOnlyBuildOnce: true });
-	}
+	// Compile the middleware. `createMiddleware` handles both edge middleware and
+	// Node.js middleware (`proxy.ts`): for the latter it bundles the compiled
+	// middleware via OpenNext's external node middleware handler.
+	await createMiddleware(options, { forceOnlyBuildOnce: true });
 
 	createStaticAssets(options, { useBasePath: true });
 
@@ -128,23 +121,4 @@ export async function build(
 	await bundleServer(options, projectOpts);
 
 	logger.info("OpenNext build complete.");
-}
-
-/**
- * Writes a passthrough middleware handler so the worker template can import
- * `./middleware/handler.mjs` even when the app uses Node.js middleware (proxy.ts).
- *
- * For proxy.ts, the actual middleware runs inside the Next.js server via
- * `loadNodeMiddleware()`. The edge middleware slot is a no-op.
- */
-function writeNodeMiddlewarePassthrough(options: buildHelper.BuildOptions): void {
-	const middlewareDir = path.join(options.outputDir, "middleware");
-	fs.mkdirSync(middlewareDir, { recursive: true });
-	fs.writeFileSync(
-		path.join(middlewareDir, "handler.mjs"),
-		`// Node.js middleware (proxy.ts) runs inside the Next.js server.
-// This passthrough keeps the worker entry-point import happy.
-export const handler = async (request, _env, _ctx) => request;
-`
-	);
 }

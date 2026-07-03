@@ -30,11 +30,6 @@ import { normalizePath } from "../../utils/normalize-path.js";
 import { patchResRevalidate } from "../patches/plugins/res-revalidate.js";
 import { patchTurbopackRuntime } from "../patches/plugins/turbopack.js";
 import { patchUseCacheIO } from "../patches/plugins/use-cache.js";
-import {
-	getBundledMiddlewarePath,
-	getStandaloneMiddlewarePath,
-	useNodeMiddleware,
-} from "../utils/middleware.js";
 import { copyWorkerdPackages } from "../utils/workerd.js";
 
 interface CodeCustomization {
@@ -200,19 +195,6 @@ async function generateBundle(
 		// Next does not trace the "workerd" build condition
 		// So we need to copy the whole packages using the condition
 		await copyWorkerdPackages(options, nodePackages);
-	}
-
-	// Copy Node.js middleware (proxy.ts output) so esbuild can bundle it via the
-	// static require injected by createNodeMiddlewareRule.
-	if (useNodeMiddleware(options)) {
-		const srcMiddleware = getStandaloneMiddlewarePath(options);
-		const destMiddleware = getBundledMiddlewarePath(options);
-		if (fs.existsSync(srcMiddleware)) {
-			fs.mkdirSync(path.dirname(destMiddleware), { recursive: true });
-			fs.copyFileSync(srcMiddleware, destMiddleware);
-		} else {
-			logger.warn(`proxy.ts middleware not found at ${srcMiddleware} — skipping copy.`);
-		}
 	}
 
 	const additionalCodePatches = codeCustomization?.additionalCodePatches ?? [];
