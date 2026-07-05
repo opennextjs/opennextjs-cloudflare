@@ -69,6 +69,22 @@ interface PutToCacheInput {
 	entry: IncrementalCacheEntry<CacheEntryType>;
 }
 
+type PendingCacheEntry =
+	// Cache miss: the value was fetched from the store and is ready to be stored in the regional cache.
+	| { type: "put"; input: PutToCacheInput }
+	// Cache hit with shouldLazilyUpdateOnCacheHit: needs a fresh fetch from the store before storing.
+	| { type: "lazy-update"; cacheType?: CacheEntryType };
+
+/**
+ * Returns the per-request pending regional cache entries map from the OpenNext ALS store.
+ * Returns `undefined` when the ALS store is not available (e.g. SSG or non-request contexts).
+ */
+function getPendingEntries(): Map<string, PendingCacheEntry> | undefined {
+	return globalThis.__openNextAls
+		?.getStore()
+		?.requestCache.getOrCreate<string, PendingCacheEntry>("regional-cache:pending");
+}
+
 /**
  * Wrapper adding a regional cache on an `IncrementalCache` implementation.
  *
@@ -134,18 +150,11 @@ class RegionalCache implements IncrementalCache {
 			if (cachedResponse) {
 				debugCache("RegionalCache", `get ${key} -> cached response`);
 
-				// Re-fetch from the store and update the regional cache in the background.
-				// Note: this is only useful when the Cache API is not purged automatically.
+				// Defer the lazy update so getTagCacheResult() can decide whether it should happen.
+				// If the entry turns out to be stale or revalidated we must not refresh the regional
+				// cache with outdated data.
 				if (this.opts.shouldLazilyUpdateOnCacheHit) {
-					getCloudflareContext().ctx.waitUntil(
-						this.store.get(key, cacheType).then(async (rawEntry) => {
-							const { value, lastModified } = rawEntry ?? {};
-
-							if (value && typeof lastModified === "number") {
-								await this.putToCache({ key, cacheType, entry: { value, lastModified } });
-							}
-						})
-					);
+					getPendingEntries()?.set(key, { type: "lazy-update", cacheType });
 				}
 
 				const responseJson: Record<string, unknown> = await cachedResponse.json();
@@ -162,10 +171,12 @@ class RegionalCache implements IncrementalCache {
 
 			debugCache("RegionalCache", `get ${key} -> put to cache`);
 
-			// Update the locale cache after retrieving from the store.
-			getCloudflareContext().ctx.waitUntil(
-				this.putToCache({ key, cacheType, entry: { value, lastModified } })
-			);
+			// Defer storing into the regional cache until getTagCacheResult() confirms the entry
+			// is neither stale nor revalidated. Storing immediately could propagate stale data.
+			getPendingEntries()?.set(key, {
+				type: "put",
+				input: { key, cacheType, entry: { value, lastModified } },
+			});
 
 			return { value, lastModified };
 		} catch (e) {
@@ -208,6 +219,54 @@ class RegionalCache implements IncrementalCache {
 			await cache.delete(this.getCacheUrlKey(key));
 		} catch (e) {
 			error("Failed to delete from regional cache", e);
+		}
+	}
+
+	async getTagCacheResult(params: {
+		key: string;
+		hasBeenRevalidated: boolean;
+		isStaleFromTag: boolean;
+		isStaleFromTime?: boolean;
+	}): Promise<void> {
+		const { key, hasBeenRevalidated, isStaleFromTag, isStaleFromTime } = params;
+
+		const pending = getPendingEntries();
+		const entry = pending?.get(key);
+		if (!entry) return;
+
+		// Consume the entry: only one storage decision per get() call.
+		pending!.delete(key);
+
+		if (hasBeenRevalidated) {
+			// The entry was revalidated on-demand; set() will write the fresh content.
+			// Storing the old value would serve stale data until the regional cache expires.
+			return;
+		}
+		if (isStaleFromTag) {
+			// The entry is within an SWR stale window triggered by a tag revalidation.
+			// Storing it would extend the stale window in the regional cache and break SWR semantics.
+			return;
+		}
+		if (isStaleFromTime) {
+			// The entry has exceeded its time-based revalidation interval.
+			// Avoid caching it regionally to prevent serving outdated content longer than intended.
+			return;
+		}
+
+		const { ctx } = getCloudflareContext();
+
+		if (entry.type === "put") {
+			ctx.waitUntil(this.putToCache(entry.input));
+		} else {
+			// lazy-update: re-fetch the entry from the store, then refresh the regional cache.
+			ctx.waitUntil(
+				this.store.get(key, entry.cacheType).then(async (rawEntry) => {
+					const { value, lastModified } = rawEntry ?? {};
+					if (value && typeof lastModified === "number") {
+						await this.putToCache({ key, cacheType: entry.cacheType, entry: { value, lastModified } });
+					}
+				})
+			);
 		}
 	}
 
