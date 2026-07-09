@@ -3,9 +3,35 @@ import { describe, expect, test } from "vitest";
 
 import {
 	loadWasmChunkFn,
+	patchTurbopackRuntime,
 	replaceLoadWebAssemblyModuleRule,
 	replaceLoadWebAssemblyRule,
 } from "./turbopack.js";
+
+describe("patchTurbopackRuntime", () => {
+	test("normalizes Windows paths before generating chunk loaders", async () => {
+		const patch = patchTurbopackRuntime.patches[0];
+		const code = "function loadRuntimeChunkPath() {}";
+
+		const patched = await patch.patchCode({
+			code,
+			filePath: String.raw`C:\project\.open-next\server-functions\default\.next\server\chunks\ssr\[turbopack]_runtime.js`,
+			tracedFiles: [
+				String.raw`C:\project\.open-next\server-functions\default\.next\server\chunks\ssr\route.js`,
+				String.raw`C:\project\.open-next\server-functions\default\.next\server\chunks\ssr\module.wasm`,
+			],
+			manifests: {} as never,
+			buildOptions: {} as never,
+		});
+
+		expect(patched).toContain(
+			'case "server/chunks/ssr/route.js": return require("C:/project/.open-next/server-functions/default/.next/server/chunks/ssr/route.js");'
+		);
+		expect(patched).toContain(
+			'case "server/chunks/ssr/module.wasm": return (await import("C:/project/.open-next/server-functions/default/.next/server/chunks/ssr/module.wasm")).default;'
+		);
+	});
+});
 
 describe("replaceLoadWebAssemblyModuleRule", () => {
 	test("rewrites Turbopack's loadWebAssemblyModule body", () => {

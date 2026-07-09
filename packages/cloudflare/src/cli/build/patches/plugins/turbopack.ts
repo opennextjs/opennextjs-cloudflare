@@ -5,6 +5,8 @@ import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { CodePatcher } from "@opennextjs/aws/build/patch/codePatcher.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
+import { normalizePath } from "../../../utils/normalize-path.js";
+
 const inlineChunksRule = `
 rule:
   kind: call_expression
@@ -261,6 +263,9 @@ export const patchTurbopackRuntime: CodePatcher = {
 			}),
 			contentFilter: /loadRuntimeChunkPath/,
 			patchCode: async ({ code, tracedFiles, filePath }) => {
+				tracedFiles = tracedFiles.map(normalizePath);
+				filePath = normalizePath(filePath);
+
 				const mappings = discoverExternalModuleMappings(filePath);
 				const externalImportRule = buildExternalImportRule(mappings, tracedFiles, code);
 				let patched = patchCode(code, externalImportRule);
