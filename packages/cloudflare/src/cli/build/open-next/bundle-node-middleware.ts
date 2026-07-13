@@ -14,11 +14,11 @@
  *   `@opennextjs/aws` copies to `middleware/<package path>/.next/server/middleware.js`
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { isBuiltin } from "node:module";
 import path from "node:path";
 
-import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
+import { type BuildOptions, getBundlerRuntime, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import logger from "@opennextjs/aws/logger.js";
 import { openNextEdgePlugins } from "@opennextjs/aws/plugins/edge.js";
 import { openNextExternalMiddlewarePlugin } from "@opennextjs/aws/plugins/externalMiddleware.js";
@@ -26,8 +26,47 @@ import { openNextReplacementPlugin } from "@opennextjs/aws/plugins/replacement.j
 import { openNextResolvePlugin } from "@opennextjs/aws/plugins/resolve.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import { build, type Plugin } from "esbuild";
+import { glob } from "glob";
 
+import { normalizePath } from "../../utils/normalize-path.js";
 import { patchWebpackRuntime } from "../patches/ast/webpack-runtime.js";
+import { patchTurbopackRuntimeCode } from "../patches/plugins/turbopack.js";
+import { setWranglerExternal } from "../patches/plugins/wrangler-external.js";
+
+/**
+ * Inlines the chunks of the middleware compiled by Next.js.
+ *
+ * Both the webpack and the Turbopack runtimes resolve the chunks they need at runtime,
+ * which workerd does not support. The same patches as for the server are used to inline them.
+ *
+ * @param options Build options.
+ * @param dotNextServerDir The `.next/server` directory of the middleware output.
+ */
+async function inlineMiddlewareChunks(options: BuildOptions, dotNextServerDir: string): Promise<void> {
+	if (getBundlerRuntime(options) !== "turbopack") {
+		await patchWebpackRuntime(dotNextServerDir);
+		return;
+	}
+
+	const runtimePath = path.join(dotNextServerDir, "chunks/[turbopack]_runtime.js");
+	if (!existsSync(runtimePath)) {
+		throw new Error(`Turbopack runtime not found at ${runtimePath}`);
+	}
+
+	// The Turbopack runtime resolves the chunks relative to the `.next` directory.
+	const tracedFiles = await glob(path.join(dotNextServerDir, "**/*.js"), {
+		windowsPathsNoEscape: true,
+	});
+
+	writeFileSync(
+		runtimePath,
+		patchTurbopackRuntimeCode({
+			code: readFileSync(runtimePath, "utf-8"),
+			filePath: normalizePath(runtimePath),
+			tracedFiles,
+		})
+	);
+}
 
 /**
  * Resolves the middleware compiled by Next.js to the copy created by `copyTracedFiles`.
@@ -86,9 +125,9 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 		throw new Error(`Compiled Node.js middleware not found at ${compiledMiddleware}`);
 	}
 
-	// The middleware uses the same webpack runtime as the server, inline its dynamic requires
-	// so that the chunks are statically bundled.
-	await patchWebpackRuntime(dotNextServerDir);
+	// The bundler runtime resolves the chunks of the middleware at runtime, which workerd does
+	// not support. Inline the chunks so that they are statically bundled.
+	await inlineMiddlewareChunks(options, dotNextServerDir);
 
 	logger.info("Bundling Node.js middleware...");
 
@@ -165,6 +204,8 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 				path.join(options.openNextDistDir, "core", "nodeMiddlewareHandler.js")
 			),
 			setCompiledMiddlewarePlugin(compiledMiddleware),
+			// `.wasm` and `.bin` files are bundled by wrangler, not by this build
+			setWranglerExternal(),
 			// Must be registered before `openNextEdgePlugins` to handle `require("node:*")` calls
 			nodeBuiltinsPlugin(),
 			// Inline the config manifests
