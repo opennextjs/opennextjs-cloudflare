@@ -54,7 +54,8 @@ async function inlineMiddlewareChunks(options: BuildOptions, dotNextServerDir: s
 	}
 
 	// The Turbopack runtime resolves the chunks relative to the `.next` directory.
-	const tracedFiles = await glob(path.join(dotNextServerDir, "**/*.js"), {
+	// `.wasm` chunks are needed too: they are inlined as static imports by `loadWasmChunk`.
+	const tracedFiles = await glob(path.join(dotNextServerDir, "**/*.{js,wasm}"), {
 		windowsPathsNoEscape: true,
 	});
 
@@ -229,7 +230,8 @@ globalThis.AsyncLocalStorage = AsyncLocalStorage;
 const defaultDefineProperty = Object.defineProperty;
 Object.defineProperty = function (o, p, a) {
 	if (p === "__import_unsupported" && Boolean(globalThis.__import_unsupported)) {
-		return;
+		// \`Object.defineProperty\` returns the object it was passed.
+		return o;
 	}
 	return defaultDefineProperty(o, p, a);
 };
