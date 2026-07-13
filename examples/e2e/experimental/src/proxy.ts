@@ -1,10 +1,10 @@
-// Node middleware is not supported yet in cloudflare
+// `proxy.ts` replaces `middleware.ts` in Next.js 16 and always runs on the Node.js runtime.
 // See https://github.com/opennextjs/opennextjs-cloudflare/issues/617
 
-// import crypto from "node:crypto";
+import crypto from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 
-export default function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
 	if (request.nextUrl.pathname === "/api/hello") {
 		return NextResponse.json({
 			name: "World",
@@ -20,11 +20,7 @@ export default function middleware(request: NextRequest) {
 	return NextResponse.next({
 		headers: {
 			"x-middleware-test": "1",
-			// "x-random-node": crypto.randomUUID(),
+			"x-random-node": crypto.randomUUID(),
 		},
 	});
 }
-
-// export const config = {
-//   runtime: "nodejs",
-// };

@@ -23,7 +23,6 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 
 // Inline the code when there are multiple chunks
@@ -73,22 +72,16 @@ fix: |
  * Fixes the webpack-runtime.js and webpack-api-runtime.js files by inlining
  * the webpack dynamic requires.
  */
-export async function patchWebpackRuntime(buildOpts: BuildOptions) {
-	const { outputDir } = buildOpts;
-
-	const dotNextServerDir = join(
-		outputDir,
-		"server-functions/default",
-		getPackagePath(buildOpts),
-		".next/server"
-	);
-
+export async function patchWebpackRuntime(dotNextServerDir: string) {
 	// Look for all the chunks.
-	const chunks = readdirSync(join(dotNextServerDir, "chunks"))
-		.filter((chunk) => /^\d+\.js$/.test(chunk))
-		.map((chunk) => {
-			return Number(chunk.replace(/\.js$/, ""));
-		});
+	const chunksDir = join(dotNextServerDir, "chunks");
+	const chunks = existsSync(chunksDir)
+		? readdirSync(chunksDir)
+				.filter((chunk) => /^\d+\.js$/.test(chunk))
+				.map((chunk) => {
+					return Number(chunk.replace(/\.js$/, ""));
+				})
+		: [];
 
 	patchFile(join(dotNextServerDir, "webpack-runtime.js"), chunks);
 	patchFile(join(dotNextServerDir, "webpack-api-runtime.js"), chunks);

@@ -12,6 +12,7 @@ import { OpenNextConfig } from "../../api/config.js";
 import type { ProjectOptions } from "../project-options.js";
 import { ensureNextjsVersionSupported } from "../utils/nextjs-support.js";
 import { bundleServer } from "./bundle-server.js";
+import { bundleNodeMiddleware } from "./open-next/bundle-node-middleware.js";
 import { compileCacheAssetsManifestSqlFile } from "./open-next/compile-cache-assets-manifest.js";
 import { compileEnvFiles } from "./open-next/compile-env-files.js";
 import { compileImages } from "./open-next/compile-images.js";
@@ -81,10 +82,11 @@ export async function build(
 		buildNextjsApp(options);
 	}
 
-	// Make sure no Node.js middleware is used
-	if (useNodeMiddleware(options)) {
-		logger.error("Node.js middleware is not currently supported. Consider switching to Edge Middleware.");
-		process.exit(1);
+	const hasNodeMiddleware = useNodeMiddleware(options);
+	if (hasNodeMiddleware) {
+		logger.warn(
+			"Node.js middleware support is experimental, make sure that `nodejs_compat` is enabled in your wrangler configuration."
+		);
 	}
 
 	// Generate deployable bundle
@@ -100,6 +102,10 @@ export async function build(
 
 	// Compile middleware
 	await createMiddleware(options, { forceOnlyBuildOnce: true });
+
+	if (hasNodeMiddleware) {
+		await bundleNodeMiddleware(options);
+	}
 
 	createStaticAssets(options, { useBasePath: true });
 
