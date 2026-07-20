@@ -29,6 +29,21 @@ test.describe("middleware", () => {
 		expect(await page.textContent("h1")).toContain("Via middleware");
 	});
 
+	test("malformed paths cannot select protected cached routes", async ({ request }) => {
+		const res = await request.get("/%61dmin/%ZZ");
+
+		expect(res.status()).not.toEqual(200);
+		expect(res.headers()["x-opennext-cache"]).toBeUndefined();
+		expect(await res.text()).not.toContain("Protected content");
+	});
+
+	test("middleware matches encoded paths", async ({ request }) => {
+		const res = await request.get("/encoded-m%69ddleware");
+
+		expect(res.status()).toEqual(200);
+		await expect(res.text()).resolves.toEqual("Middleware matched encoded path");
+	});
+
 	// Test for https://github.com/opennextjs/opennextjs-cloudflare/issues/201
 	test("clerk middleware", async ({ page }) => {
 		const res = await page.request.post("/clerk", { data: "some body" });
