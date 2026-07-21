@@ -253,6 +253,40 @@ function discoverExternalSubpaths(mappings: Map<string, string>, tracedFiles: st
 	return subpaths;
 }
 
+/**
+ * Inline the dynamic chunk requires of the Turbopack runtime.
+ *
+ * The runtime resolves the chunks it needs at runtime, which workerd does not support.
+ * The chunks are inlined so that they are statically bundled.
+ *
+ * @param code The code of the Turbopack runtime.
+ * @param filePath Path to the Turbopack runtime, in the OpenNext output.
+ * @param tracedFiles The files traced by Next.js, copied next to the runtime.
+ * @returns The patched code.
+ */
+export function patchTurbopackRuntimeCode({
+	code,
+	filePath,
+	tracedFiles,
+}: {
+	code: string;
+	filePath: string;
+	tracedFiles: string[];
+}): string {
+	tracedFiles = tracedFiles.map(normalizePath);
+	filePath = normalizePath(filePath);
+
+	const mappings = discoverExternalModuleMappings(filePath);
+	const externalImportRule = buildExternalImportRule(mappings, tracedFiles, code);
+	let patched = patchCode(code, externalImportRule);
+	patched = patchCode(patched, inlineChunksRule);
+	patched = patchCode(patched, replaceLoadWebAssemblyModuleRule);
+	patched = patchCode(patched, replaceLoadWebAssemblyRule);
+
+	return `${patched}
+${inlineChunksFn(tracedFiles)}\n${loadWasmChunkFn(tracedFiles)}`;
+}
+
 export const patchTurbopackRuntime: CodePatcher = {
 	name: "inline-turbopack-chunks",
 	patches: [
@@ -262,20 +296,8 @@ export const patchTurbopackRuntime: CodePatcher = {
 				escape: false,
 			}),
 			contentFilter: /loadRuntimeChunkPath/,
-			patchCode: async ({ code, tracedFiles, filePath }) => {
-				tracedFiles = tracedFiles.map(normalizePath);
-				filePath = normalizePath(filePath);
-
-				const mappings = discoverExternalModuleMappings(filePath);
-				const externalImportRule = buildExternalImportRule(mappings, tracedFiles, code);
-				let patched = patchCode(code, externalImportRule);
-				patched = patchCode(patched, inlineChunksRule);
-				patched = patchCode(patched, replaceLoadWebAssemblyModuleRule);
-				patched = patchCode(patched, replaceLoadWebAssemblyRule);
-
-				return `${patched}
-${inlineChunksFn(tracedFiles)}\n${loadWasmChunkFn(tracedFiles)}`;
-			},
+			patchCode: async ({ code, tracedFiles, filePath }) =>
+				patchTurbopackRuntimeCode({ code, filePath, tracedFiles }),
 		},
 	],
 };
