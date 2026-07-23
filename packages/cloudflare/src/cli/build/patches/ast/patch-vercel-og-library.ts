@@ -32,6 +32,9 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions): boolean {
 		const tracedNodePath = traceInfo.files.find((p) => p.endsWith("@vercel/og/index.node.js"));
 		if (!tracedNodePath) continue;
 
+		const routeFilePath = traceInfoPath.replace(appBuildOutputPath, packagePath).replace(".nft.json", "");
+		if (!existsSync(routeFilePath)) continue;
+
 		// If we are here, it means the application is using the @vercel/og library
 		// and there is an `index.edge.js` colocated file that we need to copy and patch.
 		useOg = true;
@@ -73,8 +76,6 @@ export function patchVercelOgLibrary(buildOpts: BuildOptions): boolean {
 		// Change node imports for the library to edge imports.
 		// This is only useful when turbopack is not used to bundle the function.
 		{
-			const routeFilePath = traceInfoPath.replace(appBuildOutputPath, packagePath).replace(".nft.json", "");
-
 			const ast = parseFile(routeFilePath);
 			const { edits } = patchVercelOgImport(ast);
 			writeFileSync(routeFilePath, ast.commitEdits(edits));

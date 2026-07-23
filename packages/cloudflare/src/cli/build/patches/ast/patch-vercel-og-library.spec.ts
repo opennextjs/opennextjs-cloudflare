@@ -1,14 +1,15 @@
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import mockFs from "mock-fs";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { patchVercelOgLibrary } from "./patch-vercel-og-library.js";
 
 const nodeModulesVercelOgDir = "node_modules/.pnpm/next@14.2.11/node_modules/next/dist/compiled/@vercel/og";
 const nextServerOgNftPath = "examples/api/.next/server/app/og/route.js.nft.json";
+const splitFunctionOgNftPath = "examples/api/.next/server/app/split/page.js.nft.json";
 const openNextFunctionDir = "examples/api/.open-next/server-functions/default/examples/api";
 const openNextOgRoutePath = path.join(openNextFunctionDir, ".next/server/app/og/route.js");
 const openNextVercelOgDir = path.join(openNextFunctionDir, "node_modules/next/dist/compiled/@vercel/og");
@@ -20,16 +21,21 @@ const buildOpts = {
 } as BuildOptions;
 
 describe("patchVercelOgLibrary", () => {
-	beforeAll(() => {
+	beforeEach(() => {
 		mockFs();
 
 		mkdirSync(nodeModulesVercelOgDir, { recursive: true });
 		mkdirSync(path.dirname(nextServerOgNftPath), { recursive: true });
+		mkdirSync(path.dirname(splitFunctionOgNftPath), { recursive: true });
 		mkdirSync(path.dirname(openNextOgRoutePath), { recursive: true });
 		mkdirSync(openNextVercelOgDir, { recursive: true });
 
 		writeFileSync(
 			nextServerOgNftPath,
+			JSON.stringify({ version: 1, files: [`../../../../../../${nodeModulesVercelOgDir}/index.node.js`] })
+		);
+		writeFileSync(
+			splitFunctionOgNftPath,
 			JSON.stringify({ version: 1, files: [`../../../../../../${nodeModulesVercelOgDir}/index.node.js`] })
 		);
 		writeFileSync(
@@ -41,9 +47,9 @@ describe("patchVercelOgLibrary", () => {
 		writeFileSync(path.join(openNextVercelOgDir, "noto-sans-v27-latin-regular.ttf"), "");
 	});
 
-	afterAll(() => mockFs.restore());
+	afterEach(() => mockFs.restore());
 
-	it("should patch the open-next files correctly", () => {
+	it("patches included routes and ignores routes assigned to another function", () => {
 		patchVercelOgLibrary(buildOpts);
 
 		expect(readdirSync(openNextVercelOgDir)).toMatchInlineSnapshot(`
@@ -67,5 +73,14 @@ describe("patchVercelOgLibrary", () => {
 		expect(readFileSync(openNextOgRoutePath, { encoding: "utf-8" })).toMatchInlineSnapshot(
 			`"e.exports=import("next/dist/compiled/@vercel/og/index.edge.js")"`
 		);
+	});
+
+	it("does not report OG usage for routes assigned to another function", () => {
+		unlinkSync(nextServerOgNftPath);
+
+		expect(existsSync(nextServerOgNftPath)).toBe(false);
+		expect(existsSync(path.join(openNextFunctionDir, ".next/server/app/split/page.js"))).toBe(false);
+		expect(patchVercelOgLibrary(buildOpts)).toBe(false);
+		expect(readdirSync(openNextVercelOgDir)).toEqual(["index.node.js", "noto-sans-v27-latin-regular.ttf"]);
 	});
 });
