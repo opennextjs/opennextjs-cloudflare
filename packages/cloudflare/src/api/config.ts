@@ -44,7 +44,7 @@ export type CloudflareOverrides = {
 
 	/**
 	 * Enable cache interception
-	 * Should be `false` when PPR is used
+	 * Partially prerendered routes bypass interception so Next.js can resume their postponed work.
 	 * @default false
 	 */
 	enableCacheInterception?: boolean;

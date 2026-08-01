@@ -13,6 +13,7 @@ import type { ProjectOptions } from "../project-options.js";
 import { normalizePath } from "../utils/normalize-path.js";
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
+import { patchCacheComponents } from "./patches/plugins/cache-components.js";
 import { inlineDynamicRequires } from "./patches/plugins/dynamic-requires.js";
 import { inlineFindDir } from "./patches/plugins/find-dir.js";
 import { patchInstrumentation } from "./patches/plugins/instrumentation.js";
@@ -102,6 +103,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			fixRequire(updater),
 			handleOptionalDependencies(optionalDependencies),
 			patchInstrumentation(updater, buildOpts),
+			patchCacheComponents(updater),
 			patchPagesRouterContext(buildOpts),
 			inlineFindDir(updater, buildOpts),
 			inlineLoadManifest(updater, buildOpts),
