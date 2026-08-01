@@ -1,8 +1,8 @@
 ---
-"@opennextjs/cloudflare": minor
+"@opennextjs/cloudflare": patch
 ---
 
-feature: support Node.js middleware (`proxy.ts`)
+feature: experimental support for Node.js middleware (`proxy.ts`)
 
 Next.js 16 replaces `middleware.ts` with `proxy.ts` which always runs on the Node.js runtime.
 
