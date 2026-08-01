@@ -120,7 +120,9 @@ s.push(i(()=>{try{(0,oX.expectNoPendingImmediates)(),r(a)}catch(e){n(e)}}))})}`;
 	});
 
 	test("removes the separate atomic timer group emitted by webpack", () => {
-		const code = `function createGroup(){return function schedule(callback){
+		const unrelatedIdleStartCheck = `function inspectTimer(timer){return "_idleStart" in timer?timer._idleStart:null}`;
+		const code = `function createGroup(){let didRun=false;return function schedule(callback){
+		  if(didRun)throw new Error("Cannot schedule more timers into a group that already executed");
   const timer=setTimeout(callback,0);
   if("_idleStart" in timer)timer._idleStart=0;
   return timer;
@@ -129,17 +131,20 @@ function run(first,...rest){return new Promise((resolve)=>{
   const schedule=createAtomicTimerGroup();
   schedule(()=>DANGEROUSLY_runPendingImmediatesAfterCurrentTask());
   schedule(()=>resolve(first()));
-})}`;
+})}
+${unrelatedIdleStartCheck}`;
 
 		const patched = patchCacheComponentsScheduler(code, "webpack-server-chunk.js");
 
-		expect(patched).not.toMatch(incompatibleSchedulerPattern);
+		expect(patched).not.toContain("Cannot schedule more timers into a group that already executed");
+		expect(patched).toContain(unrelatedIdleStartCheck);
 		expect(patched).toContain("OpenNext replaced this incompatible Cache Components timer group");
 		expect(patched).toContain("workerdFastSetImmediate.unpatchedSetImmediate");
 	});
 
 	test("fails when an incompatible scheduler is present but cannot be patched", () => {
 		const code = `function changedScheduler(){
+		if (didRun) throw new Error("Cannot schedule more timers into a group that already executed");
   const timer = setTimeout(() => {}, 0);
   if ("_idleStart" in timer) timer._idleStart = 0;
 }`;

@@ -6,7 +6,7 @@ import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
-const incompatibleSchedulerPattern = /["']_idleStart["']\s*in/;
+const atomicTimerGroupErrorPattern = /Cannot schedule more timers into a group that already executed/;
 
 export const cacheComponentsSchedulerFileFilter = getCrossPlatformPathRegex(
 	String.raw`/(?:next/dist/compiled/next-server/app-page(?:-turbo)?(?:-experimental)?\.runtime\.prod|\.next/server/chunks/.+)\.js$`,
@@ -27,7 +27,7 @@ export function patchCacheComponents(updater: ContentUpdater): Plugin {
 	updater.updateContent("cache-components-scheduler", [
 		{
 			filter: cacheComponentsSchedulerFileFilter,
-			contentFilter: incompatibleSchedulerPattern,
+			contentFilter: atomicTimerGroupErrorPattern,
 			callback: async ({ contents, path: runtimePath }) =>
 				patchCacheComponentsScheduler(contents, runtimePath),
 		},
@@ -46,7 +46,7 @@ export function patchCacheComponentsScheduler(contents: string, runtimePath: str
 	}
 
 	const patchedContents = patchCode(patchedScheduler, disableAtomicTimerGroupRule);
-	if (incompatibleSchedulerPattern.test(patchedContents)) {
+	if (atomicTimerGroupErrorPattern.test(patchedContents)) {
 		throw new Error(`Failed to patch the Cache Components scheduler in ${runtimePath}`);
 	}
 
@@ -156,9 +156,16 @@ rule:
   pattern:
     selector: function_declaration
     context: "function $FUNCTION($$$ARGS) { $$$BODY }"
-  has:
-    regex: '["'']_idleStart["'']\\s*in'
-    stopBy: end
+  all:
+    - has:
+        regex: '["'']_idleStart["'']\\s*in'
+        stopBy: end
+    - has:
+        regex: Cannot schedule more timers into a group that already executed
+        stopBy: end
+    - has:
+        regex: '\\bsetTimeout\\s*\\('
+        stopBy: end
 fix: |-
   function $FUNCTION() {
     throw new Error("OpenNext replaced this incompatible Cache Components timer group");
