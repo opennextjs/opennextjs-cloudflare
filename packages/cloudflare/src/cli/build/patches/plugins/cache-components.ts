@@ -8,8 +8,15 @@ import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
 const atomicTimerGroupErrorPattern = /Cannot schedule more timers into a group that already executed/;
 
+const moduleLoadingSignalPattern = /moduleLoadingSignal/;
+
 export const cacheComponentsSchedulerFileFilter = getCrossPlatformPathRegex(
 	String.raw`/(?:next/dist/compiled/next-server/app-page(?:-turbo)?(?:-experimental)?\.runtime\.prod|\.next/server/chunks/.+)\.js$`,
+	{ escape: false }
+);
+
+export const moduleLoadingSignalFileFilter = getCrossPlatformPathRegex(
+	String.raw`/next/dist/(?:esm/)?server/app-render/module-loading/track-module-loading\.instance\.js$`,
 	{ escape: false }
 );
 
@@ -33,10 +40,27 @@ export function patchCacheComponents(updater: ContentUpdater): Plugin {
 		},
 	]);
 
+	updater.updateContent("cache-components-module-loading-signal", [
+		{
+			filter: moduleLoadingSignalFileFilter,
+			contentFilter: moduleLoadingSignalPattern,
+			callback: async ({ contents, path: modulePath }) => patchModuleLoadingSignal(contents, modulePath),
+		},
+	]);
+
 	return {
 		name: "patch-cache-components",
 		setup() {},
 	};
+}
+
+export function patchModuleLoadingSignal(contents: string, modulePath: string): string {
+	const patchedContents = patchCode(contents, requestScopedModuleLoadingSignalRule);
+	if (patchedContents === contents) {
+		throw new Error(`Failed to scope the module loading signal to a request in ${modulePath}`);
+	}
+
+	return patchedContents;
 }
 
 export function patchCacheComponentsScheduler(contents: string, runtimePath: string): string {
@@ -143,6 +167,36 @@ fix: |-
         }
       });
     });
+  }
+`;
+
+/**
+ * Next.js tracks in-flight dynamic imports and chunk loads on a single module scoped `CacheSignal`.
+ * That signal stores `pendingTimeoutCleanup`, a closure over a `setImmediate` handle belonging to
+ * whichever request scheduled it. A Worker isolate serves many requests against that one instance, so
+ * the next request to import a module runs `beginRead()` and clears a handle owned by another request,
+ * which workerd rejects with "Cannot perform I/O on behalf of a different request". The throw escapes
+ * mid render, so that response never completes and the isolate keeps serving truncated bodies.
+ *
+ * Key the signal on the per-request store that `runWithCloudflareRequestContext` already establishes,
+ * so every handle is created and cleared by its owning request. Module loads outside a request (during
+ * isolate startup) keep using the original module scoped instance.
+ */
+export const requestScopedModuleLoadingSignalRule = `
+rule:
+  pattern:
+    selector: function_declaration
+    context: "function $FUNCTION() { if (!$SIGNAL) { $SIGNAL = new $CTOR(); } return $SIGNAL; }"
+fix: |-
+  function $FUNCTION() {
+    const cloudflareRequestScope = globalThis[Symbol.for("__cloudflare-context__")];
+    if (!cloudflareRequestScope) {
+      if (!$SIGNAL) {
+        $SIGNAL = new $CTOR();
+      }
+      return $SIGNAL;
+    }
+    return (cloudflareRequestScope.__openNextModuleLoadingSignal ??= new $CTOR());
   }
 `;
 

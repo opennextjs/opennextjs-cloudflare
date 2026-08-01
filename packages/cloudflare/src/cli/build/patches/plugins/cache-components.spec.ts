@@ -8,10 +8,26 @@ import { computePatchDiff } from "../../utils/test-patch.js";
 import {
 	bypassPprCacheInterceptionRule,
 	cacheComponentsSchedulerFileFilter,
+	moduleLoadingSignalFileFilter,
 	patchCacheComponentsScheduler,
 	patchMiddlewareCacheComponents,
+	patchModuleLoadingSignal,
 	runInSequentialTasksRule,
 } from "./cache-components.js";
+
+/** Shape emitted by `next/dist/server/app-render/module-loading/track-module-loading.instance.js`. */
+const moduleLoadingSignalSource = `const _cachesignal = require("../cache-signal");
+let _moduleLoadingSignal;
+function getModuleLoadingSignal() {
+    if (!_moduleLoadingSignal) {
+        _moduleLoadingSignal = new _cachesignal.CacheSignal();
+    }
+    return _moduleLoadingSignal;
+}
+function trackPendingChunkLoad(promise) {
+    const moduleLoadingSignal = getModuleLoadingSignal();
+    moduleLoadingSignal.trackRead(promise);
+}`;
 
 const incompatibleSchedulerPattern = /["']_idleStart["']\s*in/;
 
@@ -117,6 +133,46 @@ s.push(i(()=>{try{(0,oX.expectNoPendingImmediates)(),r(a)}catch(e){n(e)}}))})}`;
 		"/app/.next/server/chunks/214.js",
 	])("targets the Cache Components runtime %s", (runtimePath) => {
 		expect(cacheComponentsSchedulerFileFilter.test(runtimePath)).toBe(true);
+	});
+
+	test.each([
+		"/next/dist/server/app-render/module-loading/track-module-loading.instance.js",
+		"/next/dist/esm/server/app-render/module-loading/track-module-loading.instance.js",
+	])("targets the module loading signal in %s", (modulePath) => {
+		expect(moduleLoadingSignalFileFilter.test(modulePath)).toBe(true);
+	});
+
+	test("does not target the re-exporting module loading facade", () => {
+		expect(
+			moduleLoadingSignalFileFilter.test(
+				"/next/dist/server/app-render/module-loading/track-module-loading.external.js"
+			)
+		).toBe(false);
+	});
+
+	test("scopes the module loading signal to the request that owns its timer handles", () => {
+		const patched = patchModuleLoadingSignal(moduleLoadingSignalSource, "track-module-loading.instance.js");
+
+		// Each request gets its own signal, so `beginRead()` never clears another request's handle.
+		expect(patched).toContain('globalThis[Symbol.for("__cloudflare-context__")]');
+		expect(patched).toContain(
+			"cloudflareRequestScope.__openNextModuleLoadingSignal ??= new _cachesignal.CacheSignal()"
+		);
+		// Imports during isolate startup run outside a request and keep the original instance.
+		expect(patched).toContain("_moduleLoadingSignal = new _cachesignal.CacheSignal();");
+		// Only the getter is rewritten.
+		expect(patched).toContain("moduleLoadingSignal.trackRead(promise);");
+	});
+
+	test("fails when the module loading signal getter cannot be patched", () => {
+		const code = `let _moduleLoadingSignal;
+function getModuleLoadingSignal() {
+    return (_moduleLoadingSignal ??= new _cachesignal.CacheSignal());
+}`;
+
+		expect(() => patchModuleLoadingSignal(code, "changed-module-loading.js")).toThrow(
+			"Failed to scope the module loading signal to a request in changed-module-loading.js"
+		);
 	});
 
 	test("removes the separate atomic timer group emitted by webpack", () => {
