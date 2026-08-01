@@ -7,9 +7,17 @@ import { afterEach, describe, expect, test } from "vitest";
 import { computePatchDiff } from "../../utils/test-patch.js";
 import {
 	bypassPprCacheInterceptionRule,
+	cacheComponentsSchedulerFileFilter,
+	patchCacheComponentsScheduler,
 	patchMiddlewareCacheComponents,
 	runInSequentialTasksRule,
 } from "./cache-components.js";
+
+const incompatibleSchedulerPattern = /["']_idleStart["']\s*in/;
+
+function readSchedulerFixture(name: string): string {
+	return readFileSync(new URL(`./fixtures/cache-components/${name}`, import.meta.url), "utf8");
+}
 
 describe("Cache Components", () => {
 	afterEach(() => mockFs.restore());
@@ -17,6 +25,7 @@ describe("Cache Components", () => {
 	test("uses a workerd-compatible sequential task scheduler", () => {
 		const code = `let oX=require("next/dist/server/node-environment-extensions/fast-set-immediate.external.js");
 function oJ(e,...t){return new Promise((r,n)=>{let a,i=createAtomicTimerGroup(),s=[];
+if("_idleStart"in s)s._idleStart=0;
 s.push(i(()=>{try{(0,oX.DANGEROUSLY_runPendingImmediatesAfterCurrentTask)(),a=e()}catch(e){n(e)}}));
 for(let e=0;e<t.length;e++){let r=t[e];s.push(i(()=>r()))}
 s.push(i(()=>{try{(0,oX.expectNoPendingImmediates)(),r(a)}catch(e){n(e)}}))})}`;
@@ -27,9 +36,10 @@ s.push(i(()=>{try{(0,oX.expectNoPendingImmediates)(),r(a)}catch(e){n(e)}}))})}`;
 				===================================================================
 				--- app-render-render-utils.js
 				+++ app-render-render-utils.js
-				@@ -1,5 +1,48 @@
+				@@ -1,6 +1,48 @@
 				 let oX=require("next/dist/server/node-environment-extensions/fast-set-immediate.external.js");
 				-function oJ(e,...t){return new Promise((r,n)=>{let a,i=createAtomicTimerGroup(),s=[];
+				-if("_idleStart"in s)s._idleStart=0;
 				-s.push(i(()=>{try{(0,oX.DANGEROUSLY_runPendingImmediatesAfterCurrentTask)(),a=e()}catch(e){n(e)}}));
 				-for(let e=0;e<t.length;e++){let r=t[e];s.push(i(()=>r()))}
 				-s.push(i(()=>{try{(0,oX.expectNoPendingImmediates)(),r(a)}catch(e){n(e)}}))})}
@@ -84,6 +94,59 @@ s.push(i(()=>{try{(0,oX.expectNoPendingImmediates)(),r(a)}catch(e){n(e)}}))})}`;
 				\\ No newline at end of file
 				"
 			`);
+	});
+
+	test.each([
+		"next-16.2.12-app-page-turbo.runtime.prod.txt",
+		"next-16.3.0-canary.105-app-page-turbo-experimental.runtime.prod.txt",
+	])("patches the minified Turbo scheduler from %s", (fixture) => {
+		const code = readSchedulerFixture(fixture);
+		const patched = patchCacheComponentsScheduler(code, fixture);
+
+		expect(patched).not.toBe(code);
+		expect(patched).not.toMatch(incompatibleSchedulerPattern);
+		expect(patched).toContain("workerdFastSetImmediate.unpatchedSetImmediate");
+	});
+
+	test.each([
+		"/next/dist/compiled/next-server/app-page.runtime.prod.js",
+		"/next/dist/compiled/next-server/app-page-experimental.runtime.prod.js",
+		"/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js",
+		"/next/dist/compiled/next-server/app-page-turbo-experimental.runtime.prod.js",
+		"/app/.next/server/chunks/ssr/[root-of-the-server]__abc._.js",
+		"/app/.next/server/chunks/214.js",
+	])("targets the Cache Components runtime %s", (runtimePath) => {
+		expect(cacheComponentsSchedulerFileFilter.test(runtimePath)).toBe(true);
+	});
+
+	test("removes the separate atomic timer group emitted by webpack", () => {
+		const code = `function createGroup(){return function schedule(callback){
+  const timer=setTimeout(callback,0);
+  if("_idleStart" in timer)timer._idleStart=0;
+  return timer;
+}}
+function run(first,...rest){return new Promise((resolve)=>{
+  const schedule=createAtomicTimerGroup();
+  schedule(()=>DANGEROUSLY_runPendingImmediatesAfterCurrentTask());
+  schedule(()=>resolve(first()));
+})}`;
+
+		const patched = patchCacheComponentsScheduler(code, "webpack-server-chunk.js");
+
+		expect(patched).not.toMatch(incompatibleSchedulerPattern);
+		expect(patched).toContain("OpenNext replaced this incompatible Cache Components timer group");
+		expect(patched).toContain("workerdFastSetImmediate.unpatchedSetImmediate");
+	});
+
+	test("fails when an incompatible scheduler is present but cannot be patched", () => {
+		const code = `function changedScheduler(){
+  const timer = setTimeout(() => {}, 0);
+  if ("_idleStart" in timer) timer._idleStart = 0;
+}`;
+
+		expect(() => patchCacheComponentsScheduler(code, "changed-runtime.js")).toThrow(
+			"Failed to patch the Cache Components scheduler in changed-runtime.js"
+		);
 	});
 
 	test("leaves partially prerendered routes for Next.js to resume", () => {

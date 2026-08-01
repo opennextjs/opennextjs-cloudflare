@@ -6,6 +6,13 @@ import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
+const incompatibleSchedulerPattern = /["']_idleStart["']\s*in/;
+
+export const cacheComponentsSchedulerFileFilter = getCrossPlatformPathRegex(
+	String.raw`/(?:next/dist/compiled/next-server/app-page(?:-turbo)?(?:-experimental)?\.runtime\.prod|\.next/server/chunks/.+)\.js$`,
+	{ escape: false }
+);
+
 /**
  * Next.js stages Cache Components renders with timers that it forces into the same Node.js timer
  * phase by mutating their private `_idleStart` field. workerd timer handles do not expose that
@@ -19,12 +26,10 @@ import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 export function patchCacheComponents(updater: ContentUpdater): Plugin {
 	updater.updateContent("cache-components-scheduler", [
 		{
-			filter: getCrossPlatformPathRegex(
-				String.raw`/next/dist/compiled/next-server/app-page(?:-experimental)?\.runtime\.prod\.js$`,
-				{ escape: false }
-			),
-			contentFilter: /current runtime's implementation of [`"]setTimeout\(\)[`"]/,
-			callback: async ({ contents }) => patchCode(contents, runInSequentialTasksRule),
+			filter: cacheComponentsSchedulerFileFilter,
+			contentFilter: incompatibleSchedulerPattern,
+			callback: async ({ contents, path: runtimePath }) =>
+				patchCacheComponentsScheduler(contents, runtimePath),
 		},
 	]);
 
@@ -32,6 +37,20 @@ export function patchCacheComponents(updater: ContentUpdater): Plugin {
 		name: "patch-cache-components",
 		setup() {},
 	};
+}
+
+export function patchCacheComponentsScheduler(contents: string, runtimePath: string): string {
+	const patchedScheduler = patchCode(contents, runInSequentialTasksRule);
+	if (patchedScheduler === contents) {
+		throw new Error(`Failed to patch the Cache Components scheduler in ${runtimePath}`);
+	}
+
+	const patchedContents = patchCode(patchedScheduler, disableAtomicTimerGroupRule);
+	if (incompatibleSchedulerPattern.test(patchedContents)) {
+		throw new Error(`Failed to patch the Cache Components scheduler in ${runtimePath}`);
+	}
+
+	return patchedContents;
 }
 
 /**
@@ -68,11 +87,15 @@ rule:
     context: "function $FUNCTION($$$ARGS) { $$$BODY }"
   all:
     - has:
-        regex: createAtomicTimerGroup
-        stopBy: end
-    - has:
         regex: DANGEROUSLY_runPendingImmediatesAfterCurrentTask
         stopBy: end
+    - any:
+        - has:
+            regex: '["'']_idleStart["'']\\s*in'
+            stopBy: end
+        - has:
+            regex: createAtomicTimerGroup
+            stopBy: end
 fix: |-
   function $FUNCTION(first, ...rest) {
     const workerdFastSetImmediate = require("next/dist/server/node-environment-extensions/fast-set-immediate.external.js");
@@ -120,6 +143,25 @@ fix: |-
         }
       });
     });
+  }
+`;
+
+/**
+ * Webpack emits the atomic timer group and sequential-task runner as separate modules. The runner
+ * is replaced above, so leave a fail-fast guard in the now-unreachable timer-group implementation
+ * instead of shipping workerd-incompatible `_idleStart` mutation code.
+ */
+export const disableAtomicTimerGroupRule = `
+rule:
+  pattern:
+    selector: function_declaration
+    context: "function $FUNCTION($$$ARGS) { $$$BODY }"
+  has:
+    regex: '["'']_idleStart["'']\\s*in'
+    stopBy: end
+fix: |-
+  function $FUNCTION() {
+    throw new Error("OpenNext replaced this incompatible Cache Components timer group");
   }
 `;
 
