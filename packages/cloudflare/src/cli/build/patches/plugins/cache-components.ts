@@ -4,7 +4,28 @@ import path from "node:path";
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
+import type { NextConfig } from "@opennextjs/aws/types/next-types.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
+
+type CacheComponentsNextConfig = NextConfig & {
+	cacheComponents?: boolean;
+	experimental?: {
+		cacheComponents?: boolean;
+		dynamicIO?: boolean;
+	};
+};
+
+/**
+ * The flag moved from `experimental.dynamicIO` to `experimental.cacheComponents` to a top level
+ * option over the Next 15/16 canaries, so accept every spelling.
+ */
+export function usesCacheComponents(nextConfig: CacheComponentsNextConfig): boolean {
+	return Boolean(
+		nextConfig.cacheComponents ??
+			nextConfig.experimental?.cacheComponents ??
+			nextConfig.experimental?.dynamicIO
+	);
+}
 
 const atomicTimerGroupErrorPattern = /Cannot schedule more timers into a group that already executed/;
 
@@ -29,8 +50,19 @@ export const moduleLoadingSignalFileFilter = getCrossPlatformPathRegex(
  * enter it. Next's fast-immediate patch drains next ticks, microtasks, and captured immediates before
  * the reserved stage runs. Reserving it first also prevents immediates scheduled by render code from
  * overtaking the next stage.
+ *
+ * The matched code ships in every Next 16.2+ bundle, so only register the patches (and their
+ * fail-loudly errors) when the app actually enables Cache Components. Apps without the flag never
+ * execute these code paths and must not have their builds fail when Next reshapes the internals.
  */
-export function patchCacheComponents(updater: ContentUpdater): Plugin {
+export function patchCacheComponents(updater: ContentUpdater, nextConfig: NextConfig): Plugin {
+	if (!usesCacheComponents(nextConfig)) {
+		return {
+			name: "patch-cache-components",
+			setup() {},
+		};
+	}
+
 	updater.updateContent("cache-components-scheduler", [
 		{
 			filter: cacheComponentsSchedulerFileFilter,

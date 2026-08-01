@@ -1,18 +1,22 @@
 import { readFileSync } from "node:fs";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
+import type { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
+import type { NextConfig } from "@opennextjs/aws/types/next-types.js";
 import mockFs from "mock-fs";
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { computePatchDiff } from "../../utils/test-patch.js";
 import {
 	bypassPprCacheInterceptionRule,
 	cacheComponentsSchedulerFileFilter,
 	moduleLoadingSignalFileFilter,
+	patchCacheComponents,
 	patchCacheComponentsScheduler,
 	patchMiddlewareCacheComponents,
 	patchModuleLoadingSignal,
 	runInSequentialTasksRule,
+	usesCacheComponents,
 } from "./cache-components.js";
 
 /** Shape emitted by `next/dist/server/app-render/module-loading/track-module-loading.instance.js`. */
@@ -272,5 +276,28 @@ ${unrelatedIdleStartCheck}`;
 		expect(readFileSync("/output/middleware/handler.mjs", "utf8")).toContain(
 			'route.renderingMode === "PARTIALLY_STATIC"'
 		);
+	});
+
+	// The flag moved across Next canaries; missing a spelling would silently skip the patches.
+	test.each([
+		[{ cacheComponents: true }, true],
+		[{ experimental: { cacheComponents: true } }, true],
+		[{ experimental: { dynamicIO: true } }, true],
+		[{ experimental: { ppr: true } }, false],
+		[{}, false],
+	] as const)("detects Cache Components in %j", (nextConfig, expected) => {
+		expect(usesCacheComponents(nextConfig as NextConfig)).toBe(expected);
+	});
+
+	test("registers no patches when the app does not use Cache Components", () => {
+		const updateContent = vi.fn();
+		const updater = { updateContent } as unknown as ContentUpdater;
+
+		patchCacheComponents(updater, {} as NextConfig);
+		expect(updateContent).not.toHaveBeenCalled();
+
+		patchCacheComponents(updater, { cacheComponents: true } as NextConfig);
+		expect(updateContent).toHaveBeenCalledWith("cache-components-scheduler", expect.anything());
+		expect(updateContent).toHaveBeenCalledWith("cache-components-module-loading-signal", expect.anything());
 	});
 });

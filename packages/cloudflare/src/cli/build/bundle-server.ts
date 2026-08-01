@@ -103,7 +103,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			fixRequire(updater),
 			handleOptionalDependencies(optionalDependencies),
 			patchInstrumentation(updater, buildOpts),
-			patchCacheComponents(updater),
+			patchCacheComponents(updater, nextConfig),
 			patchPagesRouterContext(buildOpts),
 			inlineFindDir(updater, buildOpts),
 			inlineLoadManifest(updater, buildOpts),
