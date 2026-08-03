@@ -64,12 +64,18 @@ export function patchCacheComponents(updater: ContentUpdater, nextConfig: NextCo
 		};
 	}
 
+	// `ContentUpdater` skips a callback when the file filter or the content filter stops matching, so a
+	// renamed error message or a moved file would ship an unpatched build with no error at all.
+	const applied = { scheduler: false, "module loading signal": false };
+
 	updater.updateContent("cache-components-scheduler", [
 		{
 			filter: cacheComponentsSchedulerFileFilter,
 			contentFilter: atomicTimerGroupErrorPattern,
-			callback: async ({ contents, path: runtimePath }) =>
-				patchCacheComponentsScheduler(contents, runtimePath),
+			callback: async ({ contents, path: runtimePath }) => {
+				applied.scheduler = true;
+				return patchCacheComponentsScheduler(contents, runtimePath);
+			},
 		},
 	]);
 
@@ -77,20 +83,42 @@ export function patchCacheComponents(updater: ContentUpdater, nextConfig: NextCo
 		{
 			filter: moduleLoadingSignalFileFilter,
 			contentFilter: moduleLoadingSignalPattern,
-			callback: async ({ contents, path: modulePath }) => patchModuleLoadingSignal(contents, modulePath),
+			callback: async ({ contents, path: modulePath }) => {
+				applied["module loading signal"] = true;
+				return patchModuleLoadingSignal(contents, modulePath);
+			},
 		},
 	]);
 
 	return {
 		name: "patch-cache-components",
-		setup() {},
+		setup(build) {
+			build.onEnd((result) => {
+				// Another plugin already failed the build, so do not bury its error under ours.
+				if (result.errors.length > 0) {
+					return;
+				}
+
+				const missing = Object.entries(applied)
+					.filter(([, wasApplied]) => !wasApplied)
+					.map(([name]) => name);
+
+				if (missing.length > 0) {
+					throw new Error(
+						`Cache Components is enabled but the Next.js ${missing.join(" and ")} patch${
+							missing.length > 1 ? "es" : ""
+						} matched nothing. Next.js likely moved or reshaped the code these patches target, and the app would render incorrectly on Workers. Please report this against @opennextjs/cloudflare with your Next.js version.`
+					);
+				}
+			});
+		},
 	};
 }
 
 export function patchModuleLoadingSignal(contents: string, modulePath: string): string {
-	const patchedContents = patchCode(contents, requestScopedModuleLoadingSignalRule);
+	const patchedContents = patchCode(contents, sharedModuleLoadingSignalRule);
 	if (patchedContents === contents) {
-		throw new Error(`Failed to scope the module loading signal to a request in ${modulePath}`);
+		throw new Error(`Failed to patch the module loading signal in ${modulePath}`);
 	}
 
 	return patchedContents;
@@ -218,25 +246,35 @@ fix: |-
  * which workerd rejects with "Cannot perform I/O on behalf of a different request". The throw escapes
  * mid render, so that response never completes and the isolate keeps serving truncated bodies.
  *
- * Key the signal on the per-request store that `runWithCloudflareRequestContext` already establishes,
- * so every handle is created and cleared by its owning request. Module loads outside a request (during
- * isolate startup) keep using the original module scoped instance.
+ * The signal has to stay shared: an `import()` promise is commonly cached in user land, so only the
+ * first render executes the instrumented import and every later render has to learn about that pending
+ * promise from the shared signal (`subscribeToReads` replays in-flight reads to each new subscriber).
+ * Per-request signals would let a second render's `cacheReady()` resolve while a module it depends on
+ * is still loading.
+ *
+ * Only the timer is request bound, so drop it: `trackPendingModules` subscribes render signals instead
+ * of registering listeners, so the shared signal has no listeners to notify and the scheduled callback
+ * only ever walks empty arrays. Keep scheduling when a listener does exist, so a future Next.js that
+ * awaits this signal directly fails loudly instead of silently never resolving.
  */
-export const requestScopedModuleLoadingSignalRule = `
+export const sharedModuleLoadingSignalRule = `
 rule:
   pattern:
     selector: function_declaration
     context: "function $FUNCTION() { if (!$SIGNAL) { $SIGNAL = new $CTOR(); } return $SIGNAL; }"
 fix: |-
   function $FUNCTION() {
-    const cloudflareRequestScope = globalThis[Symbol.for("__cloudflare-context__")];
-    if (!cloudflareRequestScope) {
-      if (!$SIGNAL) {
-        $SIGNAL = new $CTOR();
-      }
-      return $SIGNAL;
+    if (!$SIGNAL) {
+      $SIGNAL = new $CTOR();
+      const sharedSignal = $SIGNAL;
+      const scheduleListenerNotification = sharedSignal.noMorePendingCaches.bind(sharedSignal);
+      sharedSignal.noMorePendingCaches = function () {
+        if (sharedSignal.listeners.length > 0 || sharedSignal.earlyListeners.length > 0) {
+          scheduleListenerNotification();
+        }
+      };
     }
-    return (cloudflareRequestScope.__openNextModuleLoadingSignal ??= new $CTOR());
+    return $SIGNAL;
   }
 `;
 

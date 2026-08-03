@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import type { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
@@ -19,21 +20,76 @@ import {
 	usesCacheComponents,
 } from "./cache-components.js";
 
-/** Shape emitted by `next/dist/server/app-render/module-loading/track-module-loading.instance.js`. */
-const moduleLoadingSignalSource = `const _cachesignal = require("../cache-signal");
-let _moduleLoadingSignal;
-function getModuleLoadingSignal() {
-    if (!_moduleLoadingSignal) {
-        _moduleLoadingSignal = new _cachesignal.CacheSignal();
-    }
-    return _moduleLoadingSignal;
-}
-function trackPendingChunkLoad(promise) {
-    const moduleLoadingSignal = getModuleLoadingSignal();
-    moduleLoadingSignal.trackRead(promise);
-}`;
-
 const incompatibleSchedulerPattern = /["']_idleStart["']\s*in/;
+
+/**
+ * The module loading patch is only meaningful against the real Next.js implementation: what it has to
+ * preserve is how `CacheSignal.subscribeToReads` replays in-flight reads to a late subscriber. Resolve
+ * both from the example app, which pins the Next.js version this adapter is built against.
+ */
+const nextRequire = createRequire(
+	new URL("../../../../../../../examples/e2e/experimental/package.json", import.meta.url)
+);
+const moduleTrackerPath = nextRequire.resolve(
+	"next/dist/server/app-render/module-loading/track-module-loading.instance.js"
+);
+const trackerRequire = createRequire(moduleTrackerPath);
+const { CacheSignal } = trackerRequire("../cache-signal") as {
+	CacheSignal: new () => {
+		hasPendingReads(): boolean;
+		cacheReady(): Promise<void>;
+	};
+};
+
+type ModuleTracker = {
+	trackPendingImport(exportsOrPromise: unknown): void;
+	trackPendingModules(cacheSignal: unknown): void;
+};
+
+/** Runs the patched copy of Next's real module tracker so its behaviour, not its text, is asserted. */
+function loadPatchedModuleTracker(): ModuleTracker {
+	const patched = patchModuleLoadingSignal(readFileSync(moduleTrackerPath, "utf8"), moduleTrackerPath);
+	const module = { exports: {} as ModuleTracker };
+
+	new Function("require", "module", "exports", patched)(trackerRequire, module, module.exports);
+
+	return module.exports;
+}
+
+/** Long enough for the signal's `nextTick` -> `setImmediate` -> `setTimeout` chain to settle. */
+const tick = () => new Promise((resolve) => setTimeout(resolve, 10));
+
+const cloudflareContextSymbol = Symbol.for("__cloudflare-context__");
+
+/**
+ * `runWithCloudflareRequestContext` exposes the current request's store through this symbol, so a
+ * patch that keys anything on it observes a different object per request. Mimic that here to prove the
+ * module tracker does not.
+ */
+function withRequestScopes<T>(run: (enterRequest: (name: string) => void) => T): T {
+	let current: Record<string, unknown> | undefined;
+	const descriptor = Object.getOwnPropertyDescriptor(globalThis, cloudflareContextSymbol);
+	Object.defineProperty(globalThis, cloudflareContextSymbol, {
+		configurable: true,
+		get: () => current,
+	});
+
+	const scopes = new Map<string, Record<string, unknown>>();
+	try {
+		return run((name) => {
+			if (!scopes.has(name)) {
+				scopes.set(name, { env: {}, ctx: {}, cf: {} });
+			}
+			current = scopes.get(name);
+		});
+	} finally {
+		if (descriptor) {
+			Object.defineProperty(globalThis, cloudflareContextSymbol, descriptor);
+		} else {
+			delete (globalThis as Record<symbol, unknown>)[cloudflareContextSymbol];
+		}
+	}
+}
 
 function readSchedulerFixture(name: string): string {
 	return readFileSync(new URL(`./fixtures/cache-components/${name}`, import.meta.url), "utf8");
@@ -154,18 +210,80 @@ s.push(i(()=>{try{(0,oX.expectNoPendingImmediates)(),r(a)}catch(e){n(e)}}))})}`;
 		).toBe(false);
 	});
 
-	test("scopes the module loading signal to the request that owns its timer handles", () => {
-		const patched = patchModuleLoadingSignal(moduleLoadingSignalSource, "track-module-loading.instance.js");
+	test("keeps a userspace cached import visible to a request that never executed it", async () => {
+		const { trackPendingImport, trackPendingModules } = loadPatchedModuleTracker();
 
-		// Each request gets its own signal, so `beginRead()` never clears another request's handle.
-		expect(patched).toContain('globalThis[Symbol.for("__cloudflare-context__")]');
-		expect(patched).toContain(
-			"cloudflareRequestScope.__openNextModuleLoadingSignal ??= new _cachesignal.CacheSignal()"
-		);
-		// Imports during isolate startup run outside a request and keep the original instance.
-		expect(patched).toContain("_moduleLoadingSignal = new _cachesignal.CacheSignal();");
-		// Only the getter is rewritten.
-		expect(patched).toContain("moduleLoadingSignal.trackRead(promise);");
+		const { renderB, settle } = withRequestScopes((enterRequest) => {
+			// The pattern Next.js documents on `trackDynamicImport`: only the first caller runs the
+			// instrumented `import()`, every later caller gets the already created promise back.
+			let cached: Promise<unknown> | undefined;
+			let settle: () => void = () => {};
+			function loadOnce() {
+				if (!cached) {
+					cached = new Promise<void>((resolve) => (settle = resolve));
+					trackPendingImport(cached);
+				}
+				return cached;
+			}
+
+			enterRequest("A");
+			const renderA = new CacheSignal();
+			trackPendingModules(renderA);
+			loadOnce();
+
+			// A second request starts while the import is in flight and reuses the cached promise, so
+			// nothing tracks the import on its behalf — it has to learn about it from the shared signal.
+			enterRequest("B");
+			const renderB = new CacheSignal();
+			trackPendingModules(renderB);
+			loadOnce();
+
+			return { renderB, settle };
+		});
+
+		expect(renderB.hasPendingReads()).toBe(true);
+
+		let ready = false;
+		void renderB.cacheReady().then(() => (ready = true));
+		await tick();
+		expect(ready, "cacheReady must not resolve while the import is pending").toBe(false);
+
+		settle();
+		await tick();
+		expect(ready).toBe(true);
+	});
+
+	test("does not clear a timer handle owned by another request", async () => {
+		const { trackPendingImport } = loadPatchedModuleTracker();
+
+		// workerd rejects clearing a handle created by a different request. The shared signal is the one
+		// object every request touches, so a handle stored on it is the one that gets cleared foreign.
+		const realClearImmediate = globalThis.clearImmediate;
+		const realClearTimeout = globalThis.clearTimeout;
+		let cleanupAttempts = 0;
+		const rejectForeignCleanup = () => {
+			cleanupAttempts++;
+			throw new Error("Cannot perform I/O on behalf of a different request.");
+		};
+
+		try {
+			globalThis.clearImmediate = rejectForeignCleanup as typeof clearImmediate;
+			globalThis.clearTimeout = rejectForeignCleanup as typeof clearTimeout;
+
+			// One request's import settles, which is what schedules the cleanup handle...
+			trackPendingImport(Promise.resolve());
+			await Promise.resolve();
+			await Promise.resolve();
+
+			// ...and the next request's import begins before that handle fires, which is where upstream
+			// clears a handle it may not own.
+			expect(() => trackPendingImport(Promise.resolve())).not.toThrow();
+		} finally {
+			globalThis.clearImmediate = realClearImmediate;
+			globalThis.clearTimeout = realClearTimeout;
+		}
+
+		expect(cleanupAttempts, "the shared signal must not hold request bound timer handles").toBe(0);
 	});
 
 	test("fails when the module loading signal getter cannot be patched", () => {
@@ -175,7 +293,7 @@ function getModuleLoadingSignal() {
 }`;
 
 		expect(() => patchModuleLoadingSignal(code, "changed-module-loading.js")).toThrow(
-			"Failed to scope the module loading signal to a request in changed-module-loading.js"
+			"Failed to patch the module loading signal in changed-module-loading.js"
 		);
 	});
 
@@ -315,5 +433,18 @@ ${unrelatedIdleStartCheck}`;
 		patchCacheComponents(updater, { cacheComponents: true } as NextConfig);
 		expect(updateContent).toHaveBeenCalledWith("cache-components-scheduler", expect.anything());
 		expect(updateContent).toHaveBeenCalledWith("cache-components-module-loading-signal", expect.anything());
+	});
+
+	// A filter that stops matching skips the callback silently, which would ship an unpatched build.
+	test("fails the build when a patch matched nothing", () => {
+		const updater = { updateContent: vi.fn() } as unknown as ContentUpdater;
+		const plugin = patchCacheComponents(updater, { cacheComponents: true } as NextConfig);
+
+		let onEnd: (result: { errors: unknown[] }) => void = () => {};
+		plugin.setup({ onEnd: (callback: typeof onEnd) => (onEnd = callback) } as never);
+
+		expect(() => onEnd({ errors: [] })).toThrow(/scheduler and module loading signal patches/);
+		// A build that already failed keeps its own error.
+		expect(() => onEnd({ errors: [{ text: "something else broke" }] })).not.toThrow();
 	});
 });

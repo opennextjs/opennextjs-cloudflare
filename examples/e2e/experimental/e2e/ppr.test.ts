@@ -49,14 +49,16 @@ test.describe("PPR", () => {
 	});
 
 	test("dynamic PPR supports route and segment prefetch requests", async ({ request }) => {
-		for (const headers of [
+		const variants: Record<string, string>[] = [
 			{ rsc: "1", "next-router-prefetch": "1" },
 			{
 				rsc: "1",
 				"next-router-prefetch": "1",
 				"next-router-segment-prefetch": "/_tree",
 			},
-		]) {
+		];
+
+		for (const headers of variants) {
 			const response = await request.get("/ppr/first", { headers });
 
 			expect(response.status()).toEqual(200);
