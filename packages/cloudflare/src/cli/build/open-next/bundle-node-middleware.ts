@@ -2,6 +2,10 @@
  * Bundles the Node.js middleware (`proxy.ts` / `middleware.ts` with the `nodejs` runtime)
  * into a Workers compatible `middleware/handler.mjs`.
  *
+ * NOTE: Running Next.js Node.js middleware on workerd is experimental and is not supported
+ * by the OpenNext maintainers. It re-bundles the middleware compiled by Next.js, which is an
+ * internal output that can change between Next.js versions.
+ *
  * `@opennextjs/aws` bundles the external middleware for a Node.js server:
  * the OpenNext config is read from the filesystem at runtime and the middleware compiled
  * by Next.js is loaded with `await import("./.next/server/middleware.js")`.
