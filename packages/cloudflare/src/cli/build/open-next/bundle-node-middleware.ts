@@ -15,7 +15,7 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { isBuiltin } from "node:module";
+import { builtinModules, isBuiltin } from "node:module";
 import path from "node:path";
 
 import { type BuildOptions, getBundlerRuntime, getPackagePath } from "@opennextjs/aws/build/helper.js";
@@ -93,17 +93,20 @@ export function setCompiledMiddlewarePlugin(compiledMiddlewarePath: string): Plu
  */
 export function nodeBuiltinsPlugin(): Plugin {
 	const namespace = "node-builtins";
+	// Match only Node.js builtins so esbuild does not call back on every import:
+	// the `node:` prefixed form and the bare names (`crypto`, `fs`, ...).
+	const builtinsFilter = new RegExp(`^(node:|(${builtinModules.join("|")})$)`);
 	return {
 		name: namespace,
 		setup(build) {
-			build.onResolve({ filter: /.*/ }, ({ path: specifier, kind }) => {
+			build.onResolve({ filter: builtinsFilter }, ({ path: specifier, kind }) => {
 				if (!isBuiltin(specifier)) {
 					return undefined;
 				}
 				const prefixed = specifier.startsWith("node:") ? specifier : `node:${specifier}`;
 				return kind === "require-call" ? { path: prefixed, namespace } : { path: prefixed, external: true };
 			});
-			build.onLoad({ filter: /.*/, namespace }, ({ path: builtin }) => ({
+			build.onLoad({ filter: /^node:/, namespace }, ({ path: builtin }) => ({
 				contents: `
 					import * as mod from "${builtin}";
 					export * from "${builtin}";
@@ -145,6 +148,14 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 	}
 	const includeCache = config.dangerous?.enableCacheInterception;
 
+	// `next/dist/server/lib/trace/tracer.js` requires `@opentelemetry/api`, an optional
+	// dependency that most apps do not install. On the edge runtime Next.js does not fall
+	// back to its compiled copy when the require throws, so alias to that copy - but only
+	// when the app has not installed the real package, otherwise the real one is used.
+	const hasOpentelemetry = existsSync(
+		path.join(options.appBuildOutputPath, "node_modules", "@opentelemetry", "api")
+	);
+
 	await build({
 		entryPoints: [path.join(options.openNextDistDir, "adapters", "middleware.js")],
 		outfile: path.join(middlewareDir, "handler.mjs"),
@@ -172,11 +183,8 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 			path: "node:path",
 			stream: "node:stream",
 			fs: "node:fs",
-			// `next/dist/server/lib/trace/tracer.js` requires `@opentelemetry/api`, an optional
-			// dependency that most apps do not install. On the Node.js runtime Next.js falls back
-			// to its own compiled copy when the require throws, but not on the edge runtime.
-			// Use the compiled copy, which is always present.
-			"@opentelemetry/api": "next/dist/compiled/@opentelemetry/api",
+			// See `hasOpentelemetry` above.
+			...(hasOpentelemetry ? {} : { "@opentelemetry/api": "next/dist/compiled/@opentelemetry/api" }),
 		},
 		plugins: [
 			openNextResolvePlugin({
@@ -224,8 +232,8 @@ import { AsyncLocalStorage } from "node:async_hooks";
 globalThis.AsyncLocalStorage = AsyncLocalStorage;
 
 // Next.js sets \`__import_unsupported\` on \`globalThis\` with \`configurable: false\`.
-// The middleware and the server both run this code in the same Worker, the second
-// call would throw so it is skipped.
+// When the middleware and the server share a Worker, the second call would throw,
+// so it is skipped when the property is already set. Otherwise it runs as usual.
 // See https://github.com/vercel/next.js/blob/5b7833e3/packages/next/src/server/web/globals.ts#L94-L98
 const defaultDefineProperty = Object.defineProperty;
 Object.defineProperty = function (o, p, a) {
