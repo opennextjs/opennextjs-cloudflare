@@ -256,26 +256,42 @@ ${unrelatedIdleStartCheck}`;
 			`);
 	});
 
-	test("patches cache interception in the generated external middleware", () => {
-		mockFs({
-			"/output/middleware/handler.mjs": `export async function cacheInterceptor(event) {
+	const middlewareBundle = `export async function cacheInterceptor(event) {
   let localizedPath = event.rawPath;
   const isISR = Object.keys(PrerenderManifest?.routes ?? {}).includes(localizedPath);
   if (isISR) {
     return generateResult(event);
   }
   return event;
-}`,
+}`;
+
+	function mockMiddlewareBuild(nextConfig: object, middleware = middlewareBundle) {
+		mockFs({
+			"/app/.next/required-server-files.json": JSON.stringify({ config: nextConfig }),
+			"/output/middleware/handler.mjs": middleware,
 		});
 
-		patchMiddlewareCacheComponents({
+		return {
+			appBuildOutputPath: "/app",
 			outputDir: "/output",
 			config: { dangerous: { enableCacheInterception: true } },
-		} as BuildOptions);
+		} as BuildOptions;
+	}
+
+	test("patches cache interception in the generated external middleware", () => {
+		patchMiddlewareCacheComponents(mockMiddlewareBuild({ cacheComponents: true }));
 
 		expect(readFileSync("/output/middleware/handler.mjs", "utf8")).toContain(
 			'route.renderingMode === "PARTIALLY_STATIC"'
 		);
+	});
+
+	// Cache interception alone must not make the middleware bundle's shape build-critical.
+	test("leaves the middleware alone when the app does not use Cache Components", () => {
+		const buildOpts = mockMiddlewareBuild({}, "export function unrelated() {}");
+
+		expect(() => patchMiddlewareCacheComponents(buildOpts)).not.toThrow();
+		expect(readFileSync("/output/middleware/handler.mjs", "utf8")).toBe("export function unrelated() {}");
 	});
 
 	// The flag moved across Next canaries; missing a spelling would silently skip the patches.

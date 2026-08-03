@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+import { loadConfig } from "@opennextjs/aws/adapters/config/util.js";
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
@@ -112,9 +113,16 @@ export function patchCacheComponentsScheduler(contents: string, runtimePath: str
 /**
  * Cache interception is compiled into the external middleware before the server bundle plugins run,
  * so patch its generated output at the boundary where Cloudflare takes ownership of the AWS build.
+ *
+ * Only apps combining Cache Components with cache interception hit the unresumable shell, so apps
+ * without the flag must not depend on the shape of the generated middleware.
  */
 export function patchMiddlewareCacheComponents(buildOpts: BuildOptions): void {
 	if (buildOpts.config.dangerous?.enableCacheInterception !== true) {
+		return;
+	}
+
+	if (!usesCacheComponents(loadConfig(path.join(buildOpts.appBuildOutputPath, ".next")))) {
 		return;
 	}
 
