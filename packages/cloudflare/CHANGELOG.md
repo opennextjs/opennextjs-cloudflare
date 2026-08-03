@@ -1,5 +1,19 @@
 # @opennextjs/cloudflare
 
+## 1.20.2
+
+### Patch Changes
+
+- [#1312](https://github.com/opennextjs/opennextjs-cloudflare/pull/1312) [`38ea40b`](https://github.com/opennextjs/opennextjs-cloudflare/commit/38ea40b669be272ddf09a7df7e70c69d0b57404b) Thanks [@james-elicx](https://github.com/james-elicx)! - fix: handle encoded middleware and cache paths safely
+
+  Upgrade `@opennextjs/aws` to prevent encoded paths from bypassing middleware matching or selecting partially decoded cache entries.
+
+- [#1313](https://github.com/opennextjs/opennextjs-cloudflare/pull/1313) [`766eee9`](https://github.com/opennextjs/opennextjs-cloudflare/commit/766eee97c2fff176a85c4edea59b1e670106d5c5) Thanks [@james-elicx](https://github.com/james-elicx)! - chore: bump the Next.js peer dependency to 15.5.21 / 16.2.11
+
+- [#1306](https://github.com/opennextjs/opennextjs-cloudflare/pull/1306) [`97ef330`](https://github.com/opennextjs/opennextjs-cloudflare/commit/97ef330c6c976b15dd870f8cc280540f41e8833b) Thanks [@james-elicx](https://github.com/james-elicx)! - fix: normalize Windows paths when patching the Turbopack runtime
+
+  Ensure traced Turbopack chunks are included in the generated runtime loaders when builds run on Windows.
+
 ## 1.20.1
 
 ### Patch Changes
