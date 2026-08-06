@@ -98,8 +98,11 @@ export async function retrieveCompiledConfig() {
 	const configPath = path.join(nextAppDir, ".open-next/.build/open-next.config.edge.mjs");
 
 	if (!existsSync(configPath)) {
-		logger.error("Could not find compiled Open Next config, did you run the build command?");
-		process.exit(1);
+		// The path above does not follow a custom `buildOutputPath`, which moves the compiled
+		// config out of `<cwd>/.open-next`. It cannot be resolved here either -- it lives in
+		// the very config we are trying to load. Recompile from the source config instead:
+		// `compileOpenNextConfig` emits to a temp dir, so nothing lands in the project.
+		return compileConfig(undefined);
 	}
 
 	const config = await import(url.pathToFileURL(configPath).href).then((mod) => mod.default);
