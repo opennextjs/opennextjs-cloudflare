@@ -11,6 +11,7 @@ import { unstable_readConfig } from "wrangler";
 import type yargs from "yargs";
 
 import type { OpenNextConfig } from "../../../api/config.js";
+import { getOutputWorkerPath } from "../../build/bundle-server.js";
 import { ensureCloudflareConfig } from "../../build/utils/ensure-cf-config.js";
 import { askConfirmation } from "../../utils/ask-confirmation.js";
 import {
@@ -89,26 +90,48 @@ export async function compileConfig(configPath: string | undefined) {
 	return { config, buildDir };
 }
 
+const MISSING_BUILD_ERROR = "Could not find compiled Open Next config, did you run the build command?";
+
 /**
  * Retrieve a compiled OpenNext config, and ensure it is for Cloudflare.
  *
  * @returns OpenNext config.
  */
 export async function retrieveCompiledConfig() {
-	const configPath = path.join(nextAppDir, ".open-next/.build/open-next.config.edge.mjs");
+	const compiledConfigPath = path.join(nextAppDir, ".open-next/.build/open-next.config.edge.mjs");
 
-	if (!existsSync(configPath)) {
-		// The path above does not follow a custom `buildOutputPath`, which moves the compiled
-		// config out of `<cwd>/.open-next`. It cannot be resolved here either -- it lives in
-		// the very config we are trying to load. Recompile from the source config instead:
-		// `compileOpenNextConfig` emits to a temp dir, so nothing lands in the project.
-		return compileConfig(undefined);
+	if (existsSync(compiledConfigPath)) {
+		const config = await import(url.pathToFileURL(compiledConfigPath).href).then((mod) => mod.default);
+		ensureCloudflareConfig(config);
+
+		return { config };
 	}
 
-	const config = await import(url.pathToFileURL(configPath).href).then((mod) => mod.default);
-	ensureCloudflareConfig(config);
+	// The path above does not follow a custom `buildOutputPath`, and that value cannot be resolved
+	// here -- it lives in the very config we are trying to load. Recompile from the source config
+	// to find out where the build output actually is; `compileOpenNextConfig` emits to a temp dir,
+	// so nothing lands in the project.
+	//
+	// `findOpenNextConfig` is checked first so that a missing source config never reaches
+	// `compileConfig`, which would offer to create one -- these commands must not write to the
+	// project, and "no config at all" means the app was never built.
+	const sourceConfigPath = findOpenNextConfig(nextAppDir);
 
-	return { config };
+	if (!sourceConfigPath) {
+		logger.error(MISSING_BUILD_ERROR);
+		process.exit(1);
+	}
+
+	const { config, buildDir } = await compileConfig(sourceConfigPath);
+
+	// A source config on its own does not mean the app was built, so check for the worker the
+	// build emits. Without this, forgetting to build would surface as an obscure failure later.
+	if (!existsSync(getOutputWorkerPath(getNormalizedOptions(config)))) {
+		logger.error(MISSING_BUILD_ERROR);
+		process.exit(1);
+	}
+
+	return { config, buildDir };
 }
 
 /**
