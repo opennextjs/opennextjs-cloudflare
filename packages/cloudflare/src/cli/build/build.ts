@@ -85,7 +85,7 @@ export async function build(
 	const hasNodeMiddleware = useNodeMiddleware(options);
 	if (hasNodeMiddleware) {
 		logger.warn(
-			"Node.js middleware support is experimental, make sure that `nodejs_compat` is enabled in your wrangler configuration."
+			"Node.js middleware support is experimental in cloudflare, and not officially maintained by OpenNext maintainers. Use at your own risk.
 		);
 	}
 
