@@ -39,7 +39,7 @@ export function patchNextServer(updater: ContentUpdater, buildOpts: BuildOptions
 				);
 				contents = patchCode(contents, createComposableCacheHandlersRule(composableCacheHandler));
 
-				// Node middleware are not supported on Cloudflare yet
+				// Cloudflare bundles Node middleware as external middleware instead of loading it in NextServer.
 				contents = patchCode(contents, disableNodeMiddlewareRule);
 
 				contents = patchCode(contents, attachRequestMetaRule);
@@ -50,7 +50,7 @@ export function patchNextServer(updater: ContentUpdater, buildOpts: BuildOptions
 	]);
 }
 
-// Do not try to load Node middlewares
+// Do not let NextServer load Node middleware; the worker invokes the external middleware bundle.
 export const disableNodeMiddlewareRule = `
 rule:
   pattern:

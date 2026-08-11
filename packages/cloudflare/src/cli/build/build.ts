@@ -18,8 +18,9 @@ import { compileImages } from "./open-next/compile-images.js";
 import { compileInit } from "./open-next/compile-init.js";
 import { compileSkewProtection } from "./open-next/compile-skew-protection.js";
 import { compileDurableObjects } from "./open-next/compileDurableObjects.js";
+import { createCloudflareNodeMiddleware } from "./open-next/create-node-middleware.js";
 import { createServerBundle } from "./open-next/createServerBundle.js";
-import { useNodeMiddleware } from "./utils/middleware.js";
+import { useNodeMiddleware, validateNodeMiddlewareForWorkers } from "./utils/middleware.js";
 import { getVersion } from "./utils/version.js";
 
 /**
@@ -81,10 +82,10 @@ export async function build(
 		buildNextjsApp(options);
 	}
 
-	// Make sure no Node.js middleware is used
-	if (useNodeMiddleware(options)) {
-		logger.error("Node.js middleware is not currently supported. Consider switching to Edge Middleware.");
-		process.exit(1);
+	const hasNodeMiddleware = useNodeMiddleware(options);
+	if (hasNodeMiddleware) {
+		validateNodeMiddlewareForWorkers(options);
+		logger.warn("Experimental: bundling Node.js middleware/proxy for Cloudflare Workers-compatible APIs.");
 	}
 
 	// Generate deployable bundle
@@ -99,7 +100,11 @@ export async function build(
 	await compileSkewProtection(options, config);
 
 	// Compile middleware
-	await createMiddleware(options, { forceOnlyBuildOnce: true });
+	if (hasNodeMiddleware) {
+		await createCloudflareNodeMiddleware(options);
+	} else {
+		await createMiddleware(options, { forceOnlyBuildOnce: true });
+	}
 
 	createStaticAssets(options, { useBasePath: true });
 
