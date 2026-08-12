@@ -356,25 +356,21 @@ async function fetchWithRedirects(
 				};
 				return result;
 			}
-			let redirectTarget: string;
-			if (locationHeader.startsWith("/")) {
-				redirectTarget = new URL(locationHeader, url).href;
-			} else {
-				redirectTarget = locationHeader;
+			// Location may be any relative reference, so it is always resolved against
+			// the URL of the hop that sent it.
+			let parsedTarget: URL;
+			try {
+				parsedTarget = new URL(locationHeader, url);
+			} catch {
+				return { ok: false, error: "invalid_redirect" } satisfies FetchWithRedirectsErrorResult;
 			}
 			// The allow list is applied to the original URL only, so each hop is
 			// re-validated here. Scheme and literal address are all that can be checked:
 			// the Workers runtime has no DNS resolution API.
-			let parsedTarget: URL;
-			try {
-				parsedTarget = new URL(redirectTarget);
-			} catch {
-				return { ok: false, error: "invalid_redirect" } satisfies FetchWithRedirectsErrorResult;
-			}
 			if (!["http:", "https:"].includes(parsedTarget.protocol) || isNonRoutableHost(parsedTarget.hostname)) {
 				return { ok: false, error: "invalid_redirect" } satisfies FetchWithRedirectsErrorResult;
 			}
-			const result = await fetchWithRedirects(redirectTarget, timeoutMS, maxRedirectCount - 1);
+			const result = await fetchWithRedirects(parsedTarget.href, timeoutMS, maxRedirectCount - 1);
 			return result;
 		}
 	}
@@ -736,16 +732,16 @@ export function isNonRoutableHost(hostname: string): boolean {
 		return true;
 	}
 
-	// IPv6 arrives from URL.hostname without its surrounding brackets.
-	if (host.includes(":")) {
+	// IPv6 arrives from URL.hostname wrapped in brackets.
+	if (host.startsWith("[") || host.includes(":")) {
 		const v6 = host.startsWith("[") ? host.slice(1, -1) : host;
-		if (v6 === "::" || v6 === "::1") {
-			return true;
-		}
-		// fc00::/7 unique local, fe80::/10 link local.
-		return /^f[cd][0-9a-f]{2}:/.test(v6) || /^fe[89ab][0-9a-f]:/.test(v6);
+		return isNonRoutableIPv6(v6);
 	}
 
+	return isNonRoutableIPv4(host);
+}
+
+function isNonRoutableIPv4(host: string): boolean {
 	const octets = host.split(".");
 	if (octets.length !== 4) {
 		return false;
@@ -761,7 +757,84 @@ export function isNonRoutableHost(hostname: string): boolean {
 		a === 10 || // RFC1918
 		(a === 172 && b >= 16 && b <= 31) || // RFC1918
 		(a === 192 && b === 168) || // RFC1918
-		(a === 169 && b === 254) // link local, includes the metadata address
+		(a === 169 && b === 254) || // link local, includes the metadata address
+		(a === 100 && b >= 64 && b <= 127) || // 100.64.0.0/10 carrier grade NAT
+		(a === 198 && (b === 18 || b === 19)) || // 198.18.0.0/15 benchmarking
+		a >= 224 // multicast and reserved, includes 255.255.255.255
+	);
+}
+
+/**
+ * Expands an IPv6 literal to its eight 16 bit groups, or returns undefined when it
+ * does not parse. A trailing dotted quad (`::ffff:127.0.0.1`) becomes the last two
+ * groups, which is how an IPv4 mapped address is written.
+ */
+function expandIPv6(address: string): number[] | undefined {
+	let text = address;
+	const trailingIPv4 = /:((?:\d{1,3}\.){3}\d{1,3})$/.exec(text);
+	if (trailingIPv4) {
+		const quad = trailingIPv4[1]!.split(".").map(Number);
+		if (quad.some((octet) => octet > 255)) {
+			return undefined;
+		}
+		const [a, b, c, d] = quad as [number, number, number, number];
+		text = `${text.slice(0, trailingIPv4.index)}:${((a << 8) | b).toString(16)}:${((c << 8) | d).toString(16)}`;
+	}
+
+	const halves = text.split("::");
+	if (halves.length > 2) {
+		return undefined;
+	}
+	const parseGroups = (part: string) =>
+		part === ""
+			? []
+			: part.split(":").map((group) => (/^[0-9a-f]{1,4}$/.test(group) ? parseInt(group, 16) : NaN));
+
+	const head = parseGroups(halves[0]!);
+	const tail = halves.length === 2 ? parseGroups(halves[1]!) : [];
+	if ([...head, ...tail].some(Number.isNaN)) {
+		return undefined;
+	}
+
+	if (halves.length === 1) {
+		return head.length === 8 ? head : undefined;
+	}
+	const missing = 8 - head.length - tail.length;
+	if (missing < 1) {
+		return undefined;
+	}
+	return [...head, ...Array<number>(missing).fill(0), ...tail];
+}
+
+function isNonRoutableIPv6(address: string): boolean {
+	const groups = expandIPv6(address);
+	if (groups === undefined) {
+		return false;
+	}
+
+	// An address carrying an IPv4 one is only as safe as the address it carries:
+	// ::ffff:127.0.0.1 is loopback, and the well known NAT64 prefix reaches IPv4 too.
+	const embedsIPv4 =
+		(groups.slice(0, 5).every((group) => group === 0) && groups[5] === 0xffff) ||
+		(groups[0] === 0x0064 && groups[1] === 0xff9b && groups.slice(2, 6).every((group) => group === 0));
+	if (embedsIPv4) {
+		const high = groups[6]!;
+		const low = groups[7]!;
+		const dotted = `${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`;
+		return isNonRoutableIPv4(dotted);
+	}
+
+	if (groups.every((group) => group === 0)) {
+		return true; // ::
+	}
+	if (groups.slice(0, 7).every((group) => group === 0) && groups[7] === 1) {
+		return true; // ::1
+	}
+
+	const first = groups[0]!;
+	return (
+		(first & 0xfe00) === 0xfc00 || // fc00::/7 unique local
+		(first & 0xffc0) === 0xfe80 // fe80::/10 link local
 	);
 }
 

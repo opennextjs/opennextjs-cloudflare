@@ -597,6 +597,20 @@ describe("isNonRoutableHost", () => {
 		"fc00::1",
 		"fd12:3456::1",
 		"fe80::1",
+		"febf::1",
+		// IPv4 mapped, both as written and as URL.hostname serializes it
+		"::ffff:127.0.0.1",
+		"[::ffff:7f00:1]",
+		"[::ffff:a9fe:a9fe]",
+		"[::ffff:a00:1]",
+		"[0:0:0:0:0:ffff:c0a8:1]",
+		// NAT64 well known prefix
+		"[64:ff9b::7f00:1]",
+		"100.64.0.1",
+		"100.127.255.255",
+		"198.18.0.1",
+		"224.0.0.1",
+		"255.255.255.255",
 	])("rejects %s", (hostname) => {
 		expect(isNonRoutableHost(hostname)).toBe(true);
 	});
@@ -612,6 +626,14 @@ describe("isNonRoutableHost", () => {
 		"169.253.0.1",
 		"11.0.0.1",
 		"2606:4700::1111",
+		"100.63.255.255",
+		"100.128.0.1",
+		"198.17.0.1",
+		"198.20.0.1",
+		"223.255.255.255",
+		"[::ffff:8.8.8.8]",
+		"[2606:4700::1111]",
+		"fec0::1",
 	])("allows %s", (hostname) => {
 		expect(isNonRoutableHost(hostname)).toBe(false);
 	});
