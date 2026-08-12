@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { LocalPattern } from "./images.js";
 import {
 	detectImageContentType,
+	isNonRoutableHost,
 	matchLocalPattern,
 	matchRemotePattern as mRP,
 	parseCdnCgiImageRequest,
@@ -576,5 +577,47 @@ describe("detectImageContentType", () => {
 		buffer[1] = 0x02;
 		buffer[2] = 0x03;
 		expect(detectImageContentType(buffer)).toBeNull();
+	});
+});
+
+describe("isNonRoutableHost", () => {
+	it.each([
+		"localhost",
+		"app.localhost",
+		"127.0.0.1",
+		"127.1.2.3",
+		"0.0.0.0",
+		"10.0.0.1",
+		"172.16.0.1",
+		"172.31.255.255",
+		"192.168.1.1",
+		"169.254.169.254",
+		"::1",
+		"::",
+		"fc00::1",
+		"fd12:3456::1",
+		"fe80::1",
+	])("rejects %s", (hostname) => {
+		expect(isNonRoutableHost(hostname)).toBe(true);
+	});
+
+	it.each([
+		"example.com",
+		"cdn.example.com",
+		"1.1.1.1",
+		"8.8.8.8",
+		"172.32.0.1",
+		"172.15.0.1",
+		"192.169.1.1",
+		"169.253.0.1",
+		"11.0.0.1",
+		"2606:4700::1111",
+	])("allows %s", (hostname) => {
+		expect(isNonRoutableHost(hostname)).toBe(false);
+	});
+
+	it("is case insensitive", () => {
+		expect(isNonRoutableHost("LOCALHOST")).toBe(true);
+		expect(isNonRoutableHost("FE80::1")).toBe(true);
 	});
 });

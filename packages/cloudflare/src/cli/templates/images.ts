@@ -62,6 +62,11 @@ export async function handleImageRequest(
 					status: 504,
 				});
 			}
+			if (fetchImageResult.error === "invalid_redirect") {
+				return new Response('"url" parameter is valid but upstream response is invalid', {
+					status: 400,
+				});
+			}
 			if (fetchImageResult.error === "too_many_redirects") {
 				return new Response('"url" parameter is valid but upstream response is invalid', {
 					status: 508,
@@ -357,6 +362,18 @@ async function fetchWithRedirects(
 			} else {
 				redirectTarget = locationHeader;
 			}
+			// The allow list is applied to the original URL only, so each hop is
+			// re-validated here. Scheme and literal address are all that can be checked:
+			// the Workers runtime has no DNS resolution API.
+			let parsedTarget: URL;
+			try {
+				parsedTarget = new URL(redirectTarget);
+			} catch {
+				return { ok: false, error: "invalid_redirect" } satisfies FetchWithRedirectsErrorResult;
+			}
+			if (!["http:", "https:"].includes(parsedTarget.protocol) || isNonRoutableHost(parsedTarget.hostname)) {
+				return { ok: false, error: "invalid_redirect" } satisfies FetchWithRedirectsErrorResult;
+			}
 			const result = await fetchWithRedirects(redirectTarget, timeoutMS, maxRedirectCount - 1);
 			return result;
 		}
@@ -380,7 +397,7 @@ type FetchWithRedirectsErrorResult = {
 	error: FetchImageError;
 };
 
-type FetchImageError = "timed_out" | "too_many_redirects";
+type FetchImageError = "timed_out" | "too_many_redirects" | "invalid_redirect";
 
 const redirectResponseStatuses = [301, 302, 303, 307, 308];
 
@@ -702,6 +719,51 @@ type ParseRelativeURLResult = {
 	pathname: string;
 	search: string;
 };
+
+/**
+ * Checks whether a hostname is a literal address that should never be reached by
+ * following a redirect.
+ *
+ * Only literal addresses are considered. The Workers runtime has no DNS resolution
+ * API, so a hostname cannot be resolved to find out where it points, and this is a
+ * coarse filter rather than a substitute for the `remotePatterns` allow list that is
+ * applied to the original URL.
+ */
+export function isNonRoutableHost(hostname: string): boolean {
+	const host = hostname.toLowerCase();
+
+	if (host === "localhost" || host.endsWith(".localhost")) {
+		return true;
+	}
+
+	// IPv6 arrives from URL.hostname without its surrounding brackets.
+	if (host.includes(":")) {
+		const v6 = host.startsWith("[") ? host.slice(1, -1) : host;
+		if (v6 === "::" || v6 === "::1") {
+			return true;
+		}
+		// fc00::/7 unique local, fe80::/10 link local.
+		return /^f[cd][0-9a-f]{2}:/.test(v6) || /^fe[89ab][0-9a-f]:/.test(v6);
+	}
+
+	const octets = host.split(".");
+	if (octets.length !== 4) {
+		return false;
+	}
+	const parsed = octets.map((octet) => (/^\d{1,3}$/.test(octet) ? Number(octet) : NaN));
+	if (parsed.some((octet) => Number.isNaN(octet) || octet > 255)) {
+		return false;
+	}
+	const [a, b] = parsed as [number, number, number, number];
+	return (
+		a === 0 || // 0.0.0.0/8
+		a === 127 || // loopback
+		a === 10 || // RFC1918
+		(a === 172 && b >= 16 && b <= 31) || // RFC1918
+		(a === 192 && b === 168) || // RFC1918
+		(a === 169 && b === 254) // link local, includes the metadata address
+	);
+}
 
 export function matchLocalPattern(pattern: LocalPattern, url: { pathname: string; search: string }): boolean {
 	if (pattern.search !== undefined && pattern.search !== url.search) {
