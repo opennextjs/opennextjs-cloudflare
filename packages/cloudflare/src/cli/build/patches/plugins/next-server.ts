@@ -222,7 +222,6 @@ fix: |-
     };
   }
   _routerservercontext.routerServerGlobal[_routerservercontext.RouterServerContextSymbol][relativeProjectDir].nextConfig = this.nextConfig;
-  _routerservercontext.routerServerGlobal[_routerservercontext.RouterServerContextSymbol][relativeProjectDir].isWrappedByNextServer = true;
   return $EXPR;
 `;
 

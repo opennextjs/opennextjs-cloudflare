@@ -399,7 +399,7 @@ class NextNodeServer extends _baseserver.default {
 				     // ...
 				     makeRequestHandler() {
 				         // This is just optimization to fire prepare as soon as possible. It will be
-				@@ -9,8 +8,28 @@
+				@@ -9,8 +8,27 @@
 				         this.prepare().catch((err)=>{
 				             console.error('Failed to prepare server', err);
 				         });
@@ -424,7 +424,6 @@ class NextNodeServer extends _baseserver.default {
 				+  };
 				+}
 				+_routerservercontext.routerServerGlobal[_routerservercontext.RouterServerContextSymbol][relativeProjectDir].nextConfig = this.nextConfig;
-				+_routerservercontext.routerServerGlobal[_routerservercontext.RouterServerContextSymbol][relativeProjectDir].isWrappedByNextServer = true;
 				+return (req, res, parsedUrl)=>handler(this.normalizeReq(req), this.normalizeRes(res), parsedUrl);
 				     }
 				     // ...
