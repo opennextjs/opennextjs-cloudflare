@@ -83,7 +83,10 @@ async function fetchPath(
 	route: Route,
 	kind: keyof typeof VARIANTS
 ): Promise<Fetched> {
-	const response = await request.get(route.path, { headers: VARIANTS[kind] });
+	const response = await request.get(route.path, {
+		headers: VARIANTS[kind],
+		maxRedirects: 0,
+	});
 	return {
 		route,
 		kind,

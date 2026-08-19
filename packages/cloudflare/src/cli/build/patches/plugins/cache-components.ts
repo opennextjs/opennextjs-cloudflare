@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { loadConfig } from "@opennextjs/aws/adapters/config/util.js";
-import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
+import { type BuildOptions, compareSemver } from "@opennextjs/aws/build/helper.js";
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
 import type { NextConfig } from "@opennextjs/aws/types/next-types.js";
@@ -56,8 +56,12 @@ export const moduleLoadingSignalFileFilter = getCrossPlatformPathRegex(
  * fail-loudly errors) when the app actually enables Cache Components. Apps without the flag never
  * execute these code paths and must not have their builds fail when Next reshapes the internals.
  */
-export function patchCacheComponents(updater: ContentUpdater, nextConfig: NextConfig): Plugin {
-	if (!usesCacheComponents(nextConfig)) {
+export function patchCacheComponents(
+	updater: ContentUpdater,
+	nextConfig: NextConfig,
+	nextVersion: string
+): Plugin {
+	if (!usesCacheComponents(nextConfig) || compareSemver(nextVersion, "<", "16.2.11")) {
 		return {
 			name: "patch-cache-components",
 			setup() {},
@@ -121,13 +125,18 @@ export function patchModuleLoadingSignal(contents: string, modulePath: string): 
 	if (
 		trackedPromiseCount === 0 ||
 		trackedPromises === contents ||
-		(trackedPromises.match(/_moduleLoadingSignal\.add\s*\(/g)?.length ?? 0) !== trackedPromiseCount
+		(trackedPromises.match(/\.__openNextTrackModuleLoad\s*\(/g)?.length ?? 0) !== trackedPromiseCount
 	) {
 		throw new Error(`Failed to patch module promise tracking in ${modulePath}`);
 	}
 
-	const patchedContents = patchCode(trackedPromises, requestScopedModuleLoadingSignalRule);
-	if (patchedContents === trackedPromises) {
+	const forwardedPromises = patchCode(trackedPromises, forwardModuleLoadingPromisesRule);
+	if (forwardedPromises === trackedPromises) {
+		throw new Error(`Failed to patch module promise forwarding in ${modulePath}`);
+	}
+
+	const patchedContents = patchCode(forwardedPromises, requestScopedModuleLoadingSignalRule);
+	if (patchedContents === forwardedPromises) {
 		throw new Error(`Failed to patch the module loading signal in ${modulePath}`);
 	}
 
@@ -253,9 +262,9 @@ fix: |-
  * cleanup closures, so a later request notifying an older subscriber can clear a handle owned by that
  * older request. workerd rejects the cross-request I/O and the render returns a truncated Flight stream.
  *
- * Keep the signals and subscriptions request scoped. A shared Set retains only plain import promises,
- * so a later request can seed its own signal with imports that started elsewhere. Registering that
- * promise on the request's signal gives its completion callback and timer the correct request context.
+ * Keep the signals and subscriptions request scoped. A shared registry retains plain import promises
+ * and resolves request-owned notification promises when new imports start. Each notification resumes
+ * in the subscriber's request before it touches that request's signal or timer handles.
  */
 export const requestScopedModuleLoadingSignalRule = `
 rule:
@@ -265,34 +274,100 @@ rule:
 fix: |-
   function $FUNCTION() {
     if (!$SIGNAL) {
-      $SIGNAL = new Set();
+      $SIGNAL = {
+        pendingModuleLoads: new Set(),
+        moduleLoadSubscribers: new Set(),
+        requestSignals: new WeakMap(),
+      };
     }
 
-    const requestScope = globalThis[Symbol.for("__cloudflare-context__")] ?? $SIGNAL;
-    if (!requestScope.__openNextModuleLoadingSignal) {
-      const requestModuleLoadingSignal = new $CTOR();
-      for (const pendingModuleLoad of $SIGNAL) {
-        requestModuleLoadingSignal.trackRead(pendingModuleLoad);
-      }
-      requestScope.__openNextModuleLoadingSignal = requestModuleLoadingSignal;
+    const requestScope = globalThis[Symbol.for("__cloudflare-context__")] ?? globalThis;
+    let requestModuleLoadingSignal = $SIGNAL.requestSignals.get(requestScope);
+    if (!requestModuleLoadingSignal) {
+      requestModuleLoadingSignal = new $CTOR();
+      const trackedModuleLoads = new Set();
+
+      requestModuleLoadingSignal.__openNextModuleLoadingRegistry = $SIGNAL;
+      requestModuleLoadingSignal.__openNextTrackModuleLoad = function (promise) {
+        if (trackedModuleLoads.has(promise)) return;
+
+        trackedModuleLoads.add(promise);
+        promise.then(
+          () => trackedModuleLoads.delete(promise),
+          () => trackedModuleLoads.delete(promise)
+        );
+        requestModuleLoadingSignal.trackRead(promise);
+      };
+      $SIGNAL.requestSignals.set(requestScope, requestModuleLoadingSignal);
     }
-    return requestScope.__openNextModuleLoadingSignal;
+
+    for (const pendingModuleLoad of $SIGNAL.pendingModuleLoads) {
+      requestModuleLoadingSignal.__openNextTrackModuleLoad(pendingModuleLoad);
+    }
+    return requestModuleLoadingSignal;
   }
 `;
 
-/** Record each import promise before attaching it to the current request's module loading signal. */
+/** Record and announce each import before attaching it to the current request's signal. */
 export const trackModuleLoadingPromiseRule = `
 rule:
   pattern:
     selector: expression_statement
     context: "$MODULE_LOADING_SIGNAL.trackRead($PROMISE);"
 fix: |-
-  _moduleLoadingSignal.add($PROMISE);
+  $MODULE_LOADING_SIGNAL.__openNextModuleLoadingRegistry.pendingModuleLoads.add($PROMISE);
   $PROMISE.then(
-    () => _moduleLoadingSignal.delete($PROMISE),
-    () => _moduleLoadingSignal.delete($PROMISE)
+    () => $MODULE_LOADING_SIGNAL.__openNextModuleLoadingRegistry.pendingModuleLoads.delete($PROMISE),
+    () => $MODULE_LOADING_SIGNAL.__openNextModuleLoadingRegistry.pendingModuleLoads.delete($PROMISE)
   );
-  $MODULE_LOADING_SIGNAL.trackRead($PROMISE)
+  for (const notifyModuleLoad of $MODULE_LOADING_SIGNAL.__openNextModuleLoadingRegistry.moduleLoadSubscribers) {
+    notifyModuleLoad($PROMISE);
+  }
+  $MODULE_LOADING_SIGNAL.__openNextTrackModuleLoad($PROMISE)
+`;
+
+/** Forward future imports through promises created and observed by the subscribing request. */
+export const forwardModuleLoadingPromisesRule = `
+rule:
+  pattern:
+    selector: lexical_declaration
+    context: "const $UNSUBSCRIBE = $MODULE_LOADING_SIGNAL.subscribeToReads($CACHE_SIGNAL);"
+fix: |-
+  const openNextModuleLoadingRegistry = $MODULE_LOADING_SIGNAL.__openNextModuleLoadingRegistry;
+  const openNextQueuedModuleLoads = [];
+  let openNextSubscriptionActive = true;
+  let openNextResolveNotification;
+
+  function openNextWaitForModuleLoads() {
+    const notification = new Promise((resolve) => {
+      openNextResolveNotification = resolve;
+    });
+    void notification.then(() => {
+      openNextResolveNotification = undefined;
+      if (!openNextSubscriptionActive) return;
+
+      for (const promise of openNextQueuedModuleLoads.splice(0)) {
+        $MODULE_LOADING_SIGNAL.__openNextTrackModuleLoad(promise);
+      }
+      openNextWaitForModuleLoads();
+    });
+  }
+
+  openNextWaitForModuleLoads();
+  const openNextNotifyModuleLoad = (promise) => {
+    if (!openNextSubscriptionActive) return;
+    openNextQueuedModuleLoads.push(promise);
+    openNextResolveNotification();
+  };
+  openNextModuleLoadingRegistry.moduleLoadSubscribers.add(openNextNotifyModuleLoad);
+
+  const openNextUnsubscribe = $MODULE_LOADING_SIGNAL.subscribeToReads($CACHE_SIGNAL);
+  const $UNSUBSCRIBE = () => {
+      openNextSubscriptionActive = false;
+      openNextModuleLoadingRegistry.moduleLoadSubscribers.delete(openNextNotifyModuleLoad);
+      openNextResolveNotification();
+      openNextUnsubscribe();
+  };
 `;
 
 /**

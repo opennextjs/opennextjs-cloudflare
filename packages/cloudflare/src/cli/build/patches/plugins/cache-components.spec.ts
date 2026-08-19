@@ -30,6 +30,11 @@ const incompatibleSchedulerPattern = /["']_idleStart["']\s*in/;
 const nextRequire = createRequire(
 	new URL("../../../../../../../examples/e2e/experimental/package.json", import.meta.url)
 );
+const next15Require = createRequire(
+	new URL("../../../../../../../examples/playground15/package.json", import.meta.url)
+);
+const next15Version = (next15Require("next/package.json") as { version: string }).version;
+const next15RuntimePath = next15Require.resolve("next/dist/compiled/next-server/app-page.runtime.prod.js");
 const moduleTrackerPath = nextRequire.resolve(
 	"next/dist/server/app-render/module-loading/track-module-loading.instance.js"
 );
@@ -47,8 +52,11 @@ type ModuleTracker = {
 };
 
 /** Runs the patched copy of Next's real module tracker so its behaviour, not its text, is asserted. */
-function loadPatchedModuleTracker(): ModuleTracker {
-	const patched = patchModuleLoadingSignal(readFileSync(moduleTrackerPath, "utf8"), moduleTrackerPath);
+function loadPatchedModuleTracker(
+	contents = readFileSync(moduleTrackerPath, "utf8"),
+	modulePath = moduleTrackerPath
+): ModuleTracker {
+	const patched = patchModuleLoadingSignal(contents, modulePath);
 	const module = { exports: {} as ModuleTracker };
 
 	new Function("require", "module", "exports", patched)(trackerRequire, module, module.exports);
@@ -252,6 +260,37 @@ s.push(i(()=>{try{(0,oX.expectNoPendingImmediates)(),r(a)}catch(e){n(e)}}))})}`;
 		});
 	});
 
+	test("forwards an import that starts after another request subscribes", async () => {
+		const { trackPendingImport, trackPendingModules } = loadPatchedModuleTracker();
+
+		await withRequestScopes(async (enterRequest) => {
+			let settle: () => void = () => {};
+			const cachedImport = new Promise<void>((resolve) => (settle = resolve));
+
+			enterRequest("B");
+			const renderB = new CacheSignal();
+			trackPendingModules(renderB);
+
+			// A starts the only instrumented import after B subscribed. B later reuses the user-land
+			// cached promise, so the module tracker must forward A's future read to B's request signal.
+			enterRequest("A");
+			trackPendingImport(cachedImport);
+			enterRequest("B");
+			await Promise.resolve();
+
+			expect(renderB.hasPendingReads()).toBe(true);
+
+			let ready = false;
+			void renderB.cacheReady().then(() => (ready = true));
+			await tick();
+			expect(ready, "cacheReady must wait for a future import from another request").toBe(false);
+
+			settle();
+			await tick();
+			expect(ready).toBe(true);
+		});
+	});
+
 	test("does not clear a timer handle owned by another request", async () => {
 		const { trackPendingImport } = loadPatchedModuleTracker();
 
@@ -311,11 +350,26 @@ function getModuleLoadingSignal() {
 function trackPendingChunkLoad(promise) {
     const moduleLoadingSignal = getModuleLoadingSignal();
     moduleLoadingSignal.trackRead(promise);
+}
+function trackPendingModules(cacheSignal) {
+    const moduleLoadingSignal = getModuleLoadingSignal();
+    const unsubscribe = moduleLoadingSignal.subscribeToReads(cacheSignal);
+    cacheSignal.cacheReady().then(unsubscribe);
 }`;
 
 		expect(() => patchModuleLoadingSignal(code, "changed-module-loading.js")).toThrow(
 			"Failed to patch the module loading signal in changed-module-loading.js"
 		);
+	});
+
+	test("does not depend on the module loading signal's backing identifier", () => {
+		const renamedSource = readFileSync(moduleTrackerPath, "utf8").replaceAll(
+			"_moduleLoadingSignal",
+			"renamedModuleLoadingSignal"
+		);
+		const tracker = loadPatchedModuleTracker(renamedSource, "renamed-module-loading.js");
+
+		expect(() => tracker.trackPendingImport(Promise.resolve())).not.toThrow();
 	});
 
 	test("removes the separate atomic timer group emitted by webpack", () => {
@@ -448,18 +502,38 @@ ${unrelatedIdleStartCheck}`;
 		const updateContent = vi.fn();
 		const updater = { updateContent } as unknown as ContentUpdater;
 
-		patchCacheComponents(updater, {} as NextConfig);
+		patchCacheComponents(updater, {} as NextConfig, "16.2.11");
 		expect(updateContent).not.toHaveBeenCalled();
 
-		patchCacheComponents(updater, { cacheComponents: true } as NextConfig);
+		patchCacheComponents(updater, { cacheComponents: true } as NextConfig, "16.2.11");
 		expect(updateContent).toHaveBeenCalledWith("cache-components-scheduler", expect.anything());
 		expect(updateContent).toHaveBeenCalledWith("cache-components-module-loading-signal", expect.anything());
+	});
+
+	test("does not require Next 16 patches for Next 15 Cache Components", () => {
+		expect(next15Version).toBe("15.5.21");
+		expect(readFileSync(next15RuntimePath, "utf8")).not.toMatch(
+			/Cannot schedule more timers into a group that already executed/
+		);
+
+		const updater = { updateContent: vi.fn() } as unknown as ContentUpdater;
+		const plugin = patchCacheComponents(
+			updater,
+			{ experimental: { dynamicIO: true } } as NextConfig,
+			next15Version
+		);
+
+		expect(updater.updateContent).not.toHaveBeenCalled();
+
+		let onEnd: (result: { errors: unknown[] }) => void = () => {};
+		plugin.setup({ onEnd: (callback: typeof onEnd) => (onEnd = callback) } as never);
+		expect(() => onEnd({ errors: [] })).not.toThrow();
 	});
 
 	// A filter that stops matching skips the callback silently, which would ship an unpatched build.
 	test("fails the build when a patch matched nothing", () => {
 		const updater = { updateContent: vi.fn() } as unknown as ContentUpdater;
-		const plugin = patchCacheComponents(updater, { cacheComponents: true } as NextConfig);
+		const plugin = patchCacheComponents(updater, { cacheComponents: true } as NextConfig, "16.2.11");
 
 		let onEnd: (result: { errors: unknown[] }) => void = () => {};
 		plugin.setup({ onEnd: (callback: typeof onEnd) => (onEnd = callback) } as never);
