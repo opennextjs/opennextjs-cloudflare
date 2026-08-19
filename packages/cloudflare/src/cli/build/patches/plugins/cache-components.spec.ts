@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { join } from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import type { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
@@ -11,6 +12,7 @@ import { computePatchDiff } from "../../utils/test-patch.js";
 import {
 	bypassPprCacheInterceptionRule,
 	cacheComponentsSchedulerFileFilter,
+	cacheComponentsSchedulerModule,
 	moduleLoadingSignalFileFilter,
 	patchCacheComponents,
 	patchCacheComponentsScheduler,
@@ -100,6 +102,32 @@ async function withRequestScopes<T>(
 	}
 }
 
+function buildOptsFor(nextVersion: string): BuildOptions {
+	return { nextVersion, outputDir: "/output" } as BuildOptions;
+}
+
+type PluginHarness = {
+	onEnd: (result: { errors: unknown[] }) => void;
+	resolve: (specifier: string) => { path: string } | undefined;
+};
+
+/** Captures the esbuild callbacks the plugin registers so they can be exercised directly. */
+function setupPlugin(plugin: ReturnType<typeof patchCacheComponents>): PluginHarness {
+	const resolvers: Array<[RegExp, (args: { path: string }) => { path: string }]> = [];
+	let onEnd: PluginHarness["onEnd"] = () => {};
+
+	plugin.setup({
+		onEnd: (callback: PluginHarness["onEnd"]) => (onEnd = callback),
+		onResolve: (options: { filter: RegExp }, callback: (args: { path: string }) => { path: string }) =>
+			resolvers.push([options.filter, callback]),
+	} as never);
+
+	return {
+		onEnd: (result) => onEnd(result),
+		resolve: (specifier) => resolvers.find(([filter]) => filter.test(specifier))?.[1]({ path: specifier }),
+	};
+}
+
 function readSchedulerFixture(name: string): string {
 	return readFileSync(new URL(`./fixtures/cache-components/${name}`, import.meta.url), "utf8");
 }
@@ -121,7 +149,7 @@ s.push(i(()=>{try{(0,oX.expectNoPendingImmediates)(),r(a)}catch(e){n(e)}}))})}`;
 				===================================================================
 				--- app-render-render-utils.js
 				+++ app-render-render-utils.js
-				@@ -1,6 +1,48 @@
+				@@ -1,6 +1,4 @@
 				 let oX=require("next/dist/server/node-environment-extensions/fast-set-immediate.external.js");
 				-function oJ(e,...t){return new Promise((r,n)=>{let a,i=createAtomicTimerGroup(),s=[];
 				-if("_idleStart"in s)s._idleStart=0;
@@ -130,51 +158,7 @@ s.push(i(()=>{try{(0,oX.expectNoPendingImmediates)(),r(a)}catch(e){n(e)}}))})}`;
 				-s.push(i(()=>{try{(0,oX.expectNoPendingImmediates)(),r(a)}catch(e){n(e)}}))})}
 				\\ No newline at end of file
 				+function oJ(first, ...rest) {
-				+  const workerdFastSetImmediate = require("next/dist/server/node-environment-extensions/fast-set-immediate.external.js");
-				+  return new Promise((resolve, reject) => {
-				+    let result;
-				+    let failed = false;
-				+
-				+    function fail(err) {
-				+      failed = true;
-				+      reject(err);
-				+    }
-				+
-				+    function scheduleRest(index) {
-				+      (0, workerdFastSetImmediate.unpatchedSetImmediate)(() => {
-				+        if (failed) return;
-				+
-				+        try {
-				+          if (index === rest.length) {
-				+            (0, workerdFastSetImmediate.expectNoPendingImmediates)();
-				+            resolve(result);
-				+            return;
-				+          }
-				+
-				+          scheduleRest(index + 1);
-				+          (0, workerdFastSetImmediate.DANGEROUSLY_runPendingImmediatesAfterCurrentTask)();
-				+          rest[index]();
-				+        } catch (err) {
-				+          fail(err);
-				+        }
-				+      });
-				+    }
-				+
-				+    setTimeout(() => {
-				+      if (failed) return;
-				+
-				+      try {
-				+        scheduleRest(0);
-				+        (0, workerdFastSetImmediate.DANGEROUSLY_runPendingImmediatesAfterCurrentTask)();
-				+        result = first();
-				+        if (result && typeof result.then === "function") {
-				+          result.then(() => {}, () => {});
-				+        }
-				+      } catch (err) {
-				+        fail(err);
-				+      }
-				+    });
-				+  });
+				+  return require("__opennext_cache_components_scheduler").runInSequentialTasks(first, ...rest);
 				+}
 				\\ No newline at end of file
 				"
@@ -190,7 +174,7 @@ s.push(i(()=>{try{(0,oX.expectNoPendingImmediates)(),r(a)}catch(e){n(e)}}))})}`;
 
 		expect(patched).not.toBe(code);
 		expect(patched).not.toMatch(incompatibleSchedulerPattern);
-		expect(patched).toContain("workerdFastSetImmediate.unpatchedSetImmediate");
+		expect(patched).toContain(`require("${cacheComponentsSchedulerModule}").runInSequentialTasks`);
 	});
 
 	test.each([
@@ -392,7 +376,7 @@ ${unrelatedIdleStartCheck}`;
 		expect(patched).not.toContain("Cannot schedule more timers into a group that already executed");
 		expect(patched).toContain(unrelatedIdleStartCheck);
 		expect(patched).toContain("OpenNext replaced this incompatible Cache Components timer group");
-		expect(patched).toContain("workerdFastSetImmediate.unpatchedSetImmediate");
+		expect(patched).toContain(`require("${cacheComponentsSchedulerModule}").runInSequentialTasks`);
 	});
 
 	test("fails when an incompatible scheduler is present but cannot be patched", () => {
@@ -502,10 +486,10 @@ ${unrelatedIdleStartCheck}`;
 		const updateContent = vi.fn();
 		const updater = { updateContent } as unknown as ContentUpdater;
 
-		patchCacheComponents(updater, {} as NextConfig, "16.2.11");
+		patchCacheComponents(updater, buildOptsFor("16.2.11"), {} as NextConfig);
 		expect(updateContent).not.toHaveBeenCalled();
 
-		patchCacheComponents(updater, { cacheComponents: true } as NextConfig, "16.2.11");
+		patchCacheComponents(updater, buildOptsFor("16.2.11"), { cacheComponents: true } as NextConfig);
 		expect(updateContent).toHaveBeenCalledWith("cache-components-scheduler", expect.anything());
 		expect(updateContent).toHaveBeenCalledWith("cache-components-module-loading-signal", expect.anything());
 	});
@@ -517,29 +501,36 @@ ${unrelatedIdleStartCheck}`;
 		);
 
 		const updater = { updateContent: vi.fn() } as unknown as ContentUpdater;
-		const plugin = patchCacheComponents(
-			updater,
-			{ experimental: { dynamicIO: true } } as NextConfig,
-			next15Version
-		);
+		const plugin = patchCacheComponents(updater, buildOptsFor(next15Version), {
+			experimental: { dynamicIO: true },
+		} as NextConfig);
 
 		expect(updater.updateContent).not.toHaveBeenCalled();
-
-		let onEnd: (result: { errors: unknown[] }) => void = () => {};
-		plugin.setup({ onEnd: (callback: typeof onEnd) => (onEnd = callback) } as never);
-		expect(() => onEnd({ errors: [] })).not.toThrow();
+		expect(() => setupPlugin(plugin).onEnd({ errors: [] })).not.toThrow();
 	});
 
 	// A filter that stops matching skips the callback silently, which would ship an unpatched build.
 	test("fails the build when a patch matched nothing", () => {
 		const updater = { updateContent: vi.fn() } as unknown as ContentUpdater;
-		const plugin = patchCacheComponents(updater, { cacheComponents: true } as NextConfig, "16.2.11");
-
-		let onEnd: (result: { errors: unknown[] }) => void = () => {};
-		plugin.setup({ onEnd: (callback: typeof onEnd) => (onEnd = callback) } as never);
+		const plugin = patchCacheComponents(updater, buildOptsFor("16.2.11"), {
+			cacheComponents: true,
+		} as NextConfig);
+		const { onEnd } = setupPlugin(plugin);
 
 		expect(() => onEnd({ errors: [] })).toThrow(/scheduler and module loading signal patches/);
 		// A build that already failed keeps its own error.
 		expect(() => onEnd({ errors: [{ text: "something else broke" }] })).not.toThrow();
+	});
+	// The generated `require` must resolve to the adapter's own scheduler, not to a missing package.
+	test("resolves the scheduler module to the copied template", () => {
+		const plugin = patchCacheComponents(
+			{ updateContent: vi.fn() } as unknown as ContentUpdater,
+			buildOptsFor("16.2.11"),
+			{ cacheComponents: true } as NextConfig
+		);
+
+		expect(setupPlugin(plugin).resolve(cacheComponentsSchedulerModule)?.path).toBe(
+			join("/output", "cloudflare-templates/cache-components-scheduler.js")
+		);
 	});
 });

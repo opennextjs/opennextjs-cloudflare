@@ -28,6 +28,12 @@ export function usesCacheComponents(nextConfig: CacheComponentsNextConfig): bool
 	);
 }
 
+/**
+ * Bare specifier the patched scheduler requires. `patchCacheComponents` resolves it to the copied
+ * `cache-components-scheduler` template, so the generated code carries no build machine paths.
+ */
+export const cacheComponentsSchedulerModule = "__opennext_cache_components_scheduler";
+
 const atomicTimerGroupErrorPattern = /Cannot schedule more timers into a group that already executed/;
 
 const moduleLoadingSignalPattern = /moduleLoadingSignal/;
@@ -43,14 +49,12 @@ export const moduleLoadingSignalFileFilter = getCrossPlatformPathRegex(
 );
 
 /**
- * Next.js stages Cache Components renders with timers that it forces into the same Node.js timer
- * phase by mutating their private `_idleStart` field. workerd timer handles do not expose that
- * field and workerd may run an immediate between two timers, so the staged render can stall.
- *
- * Reserve the next stage before running the current one, then use Next's original setImmediate to
- * enter it. Next's fast-immediate patch drains next ticks, microtasks, and captured immediates before
- * the reserved stage runs. Reserving it first also prevents immediates scheduled by render code from
- * overtaking the next stage.
+ * Next.js stages Cache Components renders across event loop tasks. Its Node.js implementation keeps
+ * the stages in one timer phase by mutating each timer's private `_idleStart` field, and drains the
+ * render's immediates between two stages through `process.nextTick`. Neither works on workerd: timer
+ * handles have no `_idleStart`, and `process.nextTick` is `queueMicrotask`, so the drain ends before
+ * React has scheduled its flush. Replace the staged runner with a workerd implementation and leave
+ * the now unreachable timer group as a fail-fast stub.
  *
  * The matched code ships in every Next 16.2+ bundle, so only register the patches (and their
  * fail-loudly errors) when the app actually enables Cache Components. Apps without the flag never
@@ -58,15 +62,17 @@ export const moduleLoadingSignalFileFilter = getCrossPlatformPathRegex(
  */
 export function patchCacheComponents(
 	updater: ContentUpdater,
-	nextConfig: NextConfig,
-	nextVersion: string
+	buildOpts: BuildOptions,
+	nextConfig: NextConfig
 ): Plugin {
-	if (!usesCacheComponents(nextConfig) || compareSemver(nextVersion, "<", "16.2.11")) {
+	if (!usesCacheComponents(nextConfig) || compareSemver(buildOpts.nextVersion, "<", "16.2.11")) {
 		return {
 			name: "patch-cache-components",
 			setup() {},
 		};
 	}
+
+	const schedulerPath = path.join(buildOpts.outputDir, "cloudflare-templates/cache-components-scheduler.js");
 
 	// `ContentUpdater` skips a callback when the file filter or the content filter stops matching, so a
 	// renamed error message or a moved file would ship an unpatched build with no error at all.
@@ -97,6 +103,10 @@ export function patchCacheComponents(
 	return {
 		name: "patch-cache-components",
 		setup(build) {
+			build.onResolve({ filter: new RegExp(`^${cacheComponentsSchedulerModule}$`) }, () => ({
+				path: schedulerPath,
+			}));
+
 			build.onEnd((result) => {
 				// Another plugin already failed the build, so do not bury its error under ours.
 				if (result.errors.length > 0) {
@@ -209,51 +219,7 @@ rule:
             stopBy: end
 fix: |-
   function $FUNCTION(first, ...rest) {
-    const workerdFastSetImmediate = require("next/dist/server/node-environment-extensions/fast-set-immediate.external.js");
-    return new Promise((resolve, reject) => {
-      let result;
-      let failed = false;
-
-      function fail(err) {
-        failed = true;
-        reject(err);
-      }
-
-      function scheduleRest(index) {
-        (0, workerdFastSetImmediate.unpatchedSetImmediate)(() => {
-          if (failed) return;
-
-          try {
-            if (index === rest.length) {
-              (0, workerdFastSetImmediate.expectNoPendingImmediates)();
-              resolve(result);
-              return;
-            }
-
-            scheduleRest(index + 1);
-            (0, workerdFastSetImmediate.DANGEROUSLY_runPendingImmediatesAfterCurrentTask)();
-            rest[index]();
-          } catch (err) {
-            fail(err);
-          }
-        });
-      }
-
-      setTimeout(() => {
-        if (failed) return;
-
-        try {
-          scheduleRest(0);
-          (0, workerdFastSetImmediate.DANGEROUSLY_runPendingImmediatesAfterCurrentTask)();
-          result = first();
-          if (result && typeof result.then === "function") {
-            result.then(() => {}, () => {});
-          }
-        } catch (err) {
-          fail(err);
-        }
-      });
-    });
+    return require("${cacheComponentsSchedulerModule}").runInSequentialTasks(first, ...rest);
   }
 `;
 
