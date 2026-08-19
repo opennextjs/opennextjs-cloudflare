@@ -116,8 +116,18 @@ export function patchCacheComponents(updater: ContentUpdater, nextConfig: NextCo
 }
 
 export function patchModuleLoadingSignal(contents: string, modulePath: string): string {
-	const patchedContents = patchCode(contents, sharedModuleLoadingSignalRule);
-	if (patchedContents === contents) {
+	const trackedPromiseCount = contents.match(/\bmoduleLoadingSignal\.trackRead\s*\(/g)?.length ?? 0;
+	const trackedPromises = patchCode(contents, trackModuleLoadingPromiseRule);
+	if (
+		trackedPromiseCount === 0 ||
+		trackedPromises === contents ||
+		(trackedPromises.match(/_moduleLoadingSignal\.add\s*\(/g)?.length ?? 0) !== trackedPromiseCount
+	) {
+		throw new Error(`Failed to patch module promise tracking in ${modulePath}`);
+	}
+
+	const patchedContents = patchCode(trackedPromises, requestScopedModuleLoadingSignalRule);
+	if (patchedContents === trackedPromises) {
 		throw new Error(`Failed to patch the module loading signal in ${modulePath}`);
 	}
 
@@ -239,25 +249,15 @@ fix: |-
 `;
 
 /**
- * Next.js tracks in-flight dynamic imports and chunk loads on a single module scoped `CacheSignal`.
- * That signal stores `pendingTimeoutCleanup`, a closure over a `setImmediate` handle belonging to
- * whichever request scheduled it. A Worker isolate serves many requests against that one instance, so
- * the next request to import a module runs `beginRead()` and clears a handle owned by another request,
- * which workerd rejects with "Cannot perform I/O on behalf of a different request". The throw escapes
- * mid render, so that response never completes and the isolate keeps serving truncated bodies.
+ * Next.js subscribes every render's `CacheSignal` to one module-scoped signal. Both signals store timer
+ * cleanup closures, so a later request notifying an older subscriber can clear a handle owned by that
+ * older request. workerd rejects the cross-request I/O and the render returns a truncated Flight stream.
  *
- * The signal has to stay shared: an `import()` promise is commonly cached in user land, so only the
- * first render executes the instrumented import and every later render has to learn about that pending
- * promise from the shared signal (`subscribeToReads` replays in-flight reads to each new subscriber).
- * Per-request signals would let a second render's `cacheReady()` resolve while a module it depends on
- * is still loading.
- *
- * Only the timer is request bound, so drop it: `trackPendingModules` subscribes render signals instead
- * of registering listeners, so the shared signal has no listeners to notify and the scheduled callback
- * only ever walks empty arrays. Keep scheduling when a listener does exist, so a future Next.js that
- * awaits this signal directly fails loudly instead of silently never resolving.
+ * Keep the signals and subscriptions request scoped. A shared Set retains only plain import promises,
+ * so a later request can seed its own signal with imports that started elsewhere. Registering that
+ * promise on the request's signal gives its completion callback and timer the correct request context.
  */
-export const sharedModuleLoadingSignalRule = `
+export const requestScopedModuleLoadingSignalRule = `
 rule:
   pattern:
     selector: function_declaration
@@ -265,17 +265,34 @@ rule:
 fix: |-
   function $FUNCTION() {
     if (!$SIGNAL) {
-      $SIGNAL = new $CTOR();
-      const sharedSignal = $SIGNAL;
-      const scheduleListenerNotification = sharedSignal.noMorePendingCaches.bind(sharedSignal);
-      sharedSignal.noMorePendingCaches = function () {
-        if (sharedSignal.listeners.length > 0 || sharedSignal.earlyListeners.length > 0) {
-          scheduleListenerNotification();
-        }
-      };
+      $SIGNAL = new Set();
     }
-    return $SIGNAL;
+
+    const requestScope = globalThis[Symbol.for("__cloudflare-context__")] ?? $SIGNAL;
+    if (!requestScope.__openNextModuleLoadingSignal) {
+      const requestModuleLoadingSignal = new $CTOR();
+      for (const pendingModuleLoad of $SIGNAL) {
+        requestModuleLoadingSignal.trackRead(pendingModuleLoad);
+      }
+      requestScope.__openNextModuleLoadingSignal = requestModuleLoadingSignal;
+    }
+    return requestScope.__openNextModuleLoadingSignal;
   }
+`;
+
+/** Record each import promise before attaching it to the current request's module loading signal. */
+export const trackModuleLoadingPromiseRule = `
+rule:
+  pattern:
+    selector: expression_statement
+    context: "$MODULE_LOADING_SIGNAL.trackRead($PROMISE);"
+fix: |-
+  _moduleLoadingSignal.add($PROMISE);
+  $PROMISE.then(
+    () => _moduleLoadingSignal.delete($PROMISE),
+    () => _moduleLoadingSignal.delete($PROMISE)
+  );
+  $MODULE_LOADING_SIGNAL.trackRead($PROMISE)
 `;
 
 /**

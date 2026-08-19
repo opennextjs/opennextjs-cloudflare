@@ -15,29 +15,56 @@ const SEGMENT_PREFETCH = { ...ROUTE_PREFETCH, "next-router-segment-prefetch": "/
 const NAVIGATION = { rsc: "1", "next-url": "/" };
 
 /**
- * Every response is checked against content the route must contain, because a poisoned isolate answers
- * 200 with a body that is empty or cut short. `shell` is prerendered, so every variant carries it;
- * `resolved` is flushed last, so only a fully rendered response can contain it — that is what proves a
- * stream was not truncated. Prefetches deliberately stop at the shell and are not checked for it.
+ * Every response is checked against content it must contain, because a poisoned isolate answers 200
+ * with a body that is empty or cut short. Documents carry the prerendered `shell`; `resolvedHtml` and
+ * `resolvedRsc` are flushed last, so only a fully rendered response can contain them. Prefetch depth
+ * varies by route, but every valid prefetch contains a root model instead of only a close marker.
  *
  * The tracked-import routes await a dynamic import inside the render, which routes through
  * `trackPendingChunkLoad` and the module loading `CacheSignal` — the state this suite guards.
  */
 const ROUTES = [
-	{ path: "/ppr", shell: "static component that does not change", resolved: "This component should be SSR" },
-	{ path: "/ppr/first", shell: "Static shell", resolved: "Dynamic slug: first" },
-	{ path: "/ppr/second", shell: "Static shell", resolved: "Dynamic slug: second" },
-	{ path: "/use-cache/ssr", shell: "Cache", resolved: "fully-cached" },
-	{ path: "/use-cache/isr", shell: "Cache", resolved: "fully-cached" },
+	{
+		path: "/ppr",
+		shell: "static component that does not change",
+		resolvedHtml: "This component should be SSR",
+		resolvedRsc: "This component should be SSR",
+	},
+	{
+		path: "/ppr/first",
+		shell: "Static shell",
+		resolvedHtml: "Dynamic slug: first",
+		resolvedRsc: '"data-testid":"dynamic-slug"',
+	},
+	{
+		path: "/ppr/second",
+		shell: "Static shell",
+		resolvedHtml: "Dynamic slug: second",
+		resolvedRsc: '"data-testid":"dynamic-slug"',
+	},
+	{
+		path: "/use-cache/ssr",
+		shell: "Cache",
+		resolvedHtml: 'data-testid="fully-cached"',
+		resolvedRsc: '"data-testid":"fully-cached"',
+	},
+	{
+		path: "/use-cache/isr",
+		shell: "Cache",
+		resolvedHtml: 'data-testid="fully-cached"',
+		resolvedRsc: '"data-testid":"fully-cached"',
+	},
 	{
 		path: "/tracked-import/first",
 		shell: "Tracked import shell",
-		resolved: "Imported module for first",
+		resolvedHtml: "Imported module for first",
+		resolvedRsc: "Imported module for first",
 	},
 	{
 		path: "/tracked-import/second",
 		shell: "Tracked import shell",
-		resolved: "Imported module for second",
+		resolvedHtml: "Imported module for second",
+		resolvedRsc: "Imported module for second",
 	},
 ] as const;
 
@@ -81,22 +108,35 @@ function assertComplete(result: Fetched) {
 	expect(result.status, `${where} should complete`).toEqual(200);
 
 	const body = result.body.toString("utf8");
+	if (isPrefetch) {
+		// Prefetch depth varies by route: some include the static shell and some only router metadata. A
+		// usable response always has a root model; the reported failure had only a one-byte close marker.
+		expect(result.contentType, `${where} should be an RSC payload`).toContain("text/x-component");
+		expect(body, `${where} should contain a root model`).toContain("0:{");
+		expect(body, `${where} should not contain a Flight error record`).not.toMatch(/^\w+:E\{/m);
+
+		if (result.kind === "segment") {
+			expect(body, `${where} should contain its router tree`).toContain('"tree"');
+			expect(body, `${where} should identify its build`).toContain('"buildId"');
+		}
+		return;
+	}
+
 	expect(body, `${where} should contain its prerendered shell`).toContain(result.route.shell);
 
 	if (result.contentType.includes("text/html")) {
 		// Truncated streams lose the closing tag that Next.js flushes last.
 		expect(body, `${where} should not be truncated`).toContain("</html>");
-		expect(body, `${where} should have resolved its dynamic hole`).toContain(result.route.resolved);
+		expect(body.replaceAll("<!-- -->", ""), `${where} should have resolved its dynamic hole`).toContain(
+			result.route.resolvedHtml
+		);
 		return;
 	}
 
 	expect(result.contentType, `${where} should be an RSC payload`).toContain("text/x-component");
 
-	// A prefetch stops at the shell by design; a dynamic RSC response has to carry the resolved model,
-	// which is the part a truncated Flight stream loses.
-	if (!isPrefetch) {
-		expect(body, `${where} should have resolved its dynamic hole`).toContain(result.route.resolved);
-	}
+	// A dynamic RSC response has to carry the resolved model, which a truncated Flight stream loses.
+	expect(body, `${where} should have resolved its dynamic hole`).toContain(result.route.resolvedRsc);
 }
 
 test.describe("concurrent Cache Components requests", () => {

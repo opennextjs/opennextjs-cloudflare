@@ -62,11 +62,12 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 10));
 const cloudflareContextSymbol = Symbol.for("__cloudflare-context__");
 
 /**
- * `runWithCloudflareRequestContext` exposes the current request's store through this symbol, so a
- * patch that keys anything on it observes a different object per request. Mimic that here to prove the
- * module tracker does not.
+ * `runWithCloudflareRequestContext` exposes the current request's store through this symbol. Keep the
+ * getter installed across awaits so tests can model two requests sharing one module instance.
  */
-function withRequestScopes<T>(run: (enterRequest: (name: string) => void) => T): T {
+async function withRequestScopes<T>(
+	run: (enterRequest: (name: string) => void) => T | Promise<T>
+): Promise<T> {
 	let current: Record<string, unknown> | undefined;
 	const descriptor = Object.getOwnPropertyDescriptor(globalThis, cloudflareContextSymbol);
 	Object.defineProperty(globalThis, cloudflareContextSymbol, {
@@ -76,7 +77,7 @@ function withRequestScopes<T>(run: (enterRequest: (name: string) => void) => T):
 
 	const scopes = new Map<string, Record<string, unknown>>();
 	try {
-		return run((name) => {
+		return await run((name) => {
 			if (!scopes.has(name)) {
 				scopes.set(name, { env: {}, ctx: {}, cf: {} });
 			}
@@ -213,7 +214,7 @@ s.push(i(()=>{try{(0,oX.expectNoPendingImmediates)(),r(a)}catch(e){n(e)}}))})}`;
 	test("keeps a userspace cached import visible to a request that never executed it", async () => {
 		const { trackPendingImport, trackPendingModules } = loadPatchedModuleTracker();
 
-		const { renderB, settle } = withRequestScopes((enterRequest) => {
+		await withRequestScopes(async (enterRequest) => {
 			// The pattern Next.js documents on `trackDynamicImport`: only the first caller runs the
 			// instrumented `import()`, every later caller gets the already created promise back.
 			let cached: Promise<unknown> | undefined;
@@ -238,58 +239,78 @@ s.push(i(()=>{try{(0,oX.expectNoPendingImmediates)(),r(a)}catch(e){n(e)}}))})}`;
 			trackPendingModules(renderB);
 			loadOnce();
 
-			return { renderB, settle };
+			expect(renderB.hasPendingReads()).toBe(true);
+
+			let ready = false;
+			void renderB.cacheReady().then(() => (ready = true));
+			await tick();
+			expect(ready, "cacheReady must not resolve while the import is pending").toBe(false);
+
+			settle();
+			await tick();
+			expect(ready).toBe(true);
 		});
-
-		expect(renderB.hasPendingReads()).toBe(true);
-
-		let ready = false;
-		void renderB.cacheReady().then(() => (ready = true));
-		await tick();
-		expect(ready, "cacheReady must not resolve while the import is pending").toBe(false);
-
-		settle();
-		await tick();
-		expect(ready).toBe(true);
 	});
 
 	test("does not clear a timer handle owned by another request", async () => {
 		const { trackPendingImport } = loadPatchedModuleTracker();
 
-		// workerd rejects clearing a handle created by a different request. The shared signal is the one
-		// object every request touches, so a handle stored on it is the one that gets cleared foreign.
+		// Model workerd's ownership check on immediate handles. The first resolved import leaves a cleanup
+		// handle pending; starting an import in another request must not touch it.
+		const realSetImmediate = globalThis.setImmediate;
 		const realClearImmediate = globalThis.clearImmediate;
-		const realClearTimeout = globalThis.clearTimeout;
+		const scheduled = new Set<NodeJS.Immediate>();
+		const owners = new Map<NodeJS.Immediate, string>();
+		let currentRequest = "";
 		let cleanupAttempts = 0;
-		const rejectForeignCleanup = () => {
-			cleanupAttempts++;
-			throw new Error("Cannot perform I/O on behalf of a different request.");
-		};
 
 		try {
-			globalThis.clearImmediate = rejectForeignCleanup as typeof clearImmediate;
-			globalThis.clearTimeout = rejectForeignCleanup as typeof clearTimeout;
+			globalThis.setImmediate = ((callback: (...args: unknown[]) => void) => {
+				const handle = realSetImmediate(callback);
+				scheduled.add(handle);
+				owners.set(handle, currentRequest);
+				return handle;
+			}) as typeof setImmediate;
+			globalThis.clearImmediate = ((handle: NodeJS.Immediate) => {
+				if (owners.get(handle) !== currentRequest) {
+					cleanupAttempts++;
+					throw new Error("Cannot perform I/O on behalf of a different request.");
+				}
+				scheduled.delete(handle);
+				owners.delete(handle);
+				return realClearImmediate(handle);
+			}) as typeof clearImmediate;
 
-			// One request's import settles, which is what schedules the cleanup handle...
-			trackPendingImport(Promise.resolve());
-			await Promise.resolve();
-			await Promise.resolve();
+			await withRequestScopes(async (enterRequest) => {
+				currentRequest = "A";
+				enterRequest(currentRequest);
+				trackPendingImport(Promise.resolve());
+				await Promise.resolve();
+				await Promise.resolve();
 
-			// ...and the next request's import begins before that handle fires, which is where upstream
-			// clears a handle it may not own.
-			expect(() => trackPendingImport(Promise.resolve())).not.toThrow();
+				currentRequest = "B";
+				enterRequest(currentRequest);
+				expect(() => trackPendingImport(Promise.resolve())).not.toThrow();
+			});
 		} finally {
+			for (const handle of scheduled) {
+				realClearImmediate(handle);
+			}
+			globalThis.setImmediate = realSetImmediate;
 			globalThis.clearImmediate = realClearImmediate;
-			globalThis.clearTimeout = realClearTimeout;
 		}
 
-		expect(cleanupAttempts, "the shared signal must not hold request bound timer handles").toBe(0);
+		expect(cleanupAttempts, "one request must not clear another request's timer").toBe(0);
 	});
 
 	test("fails when the module loading signal getter cannot be patched", () => {
 		const code = `let _moduleLoadingSignal;
 function getModuleLoadingSignal() {
     return (_moduleLoadingSignal ??= new _cachesignal.CacheSignal());
+}
+function trackPendingChunkLoad(promise) {
+    const moduleLoadingSignal = getModuleLoadingSignal();
+    moduleLoadingSignal.trackRead(promise);
 }`;
 
 		expect(() => patchModuleLoadingSignal(code, "changed-module-loading.js")).toThrow(
