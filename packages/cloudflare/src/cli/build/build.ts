@@ -19,6 +19,7 @@ import { compileInit } from "./open-next/compile-init.js";
 import { compileSkewProtection } from "./open-next/compile-skew-protection.js";
 import { compileDurableObjects } from "./open-next/compileDurableObjects.js";
 import { createServerBundle } from "./open-next/createServerBundle.js";
+import { patchCacheInterceptor } from "./patches/ast/cache-interceptor.js";
 import { useNodeMiddleware } from "./utils/middleware.js";
 import { getVersion } from "./utils/version.js";
 
@@ -100,6 +101,9 @@ export async function build(
 
 	// Compile middleware
 	await createMiddleware(options, { forceOnlyBuildOnce: true });
+	if (config.dangerous?.enableCacheInterception === true) {
+		patchCacheInterceptor(options);
+	}
 
 	createStaticAssets(options, { useBasePath: true });
 
