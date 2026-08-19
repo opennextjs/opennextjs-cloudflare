@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { runInSequentialTasks } from "./cache-components-scheduler.js";
 
@@ -158,5 +158,64 @@ describe("runInSequentialTasks", () => {
 		);
 
 		expect(log).toEqual(["stage1"]);
+	});
+
+	// A clear that threw did not cancel anything, so releasing the count there would advance the stage
+	// over an immediate that is still going to run.
+	it("keeps waiting on an immediate whose clear failed", async () => {
+		const failure = new Error("clear failed");
+		globalThis.setImmediate = nativeSetImmediate;
+		globalThis.clearImmediate = (() => {
+			throw failure;
+		}) as unknown as typeof clearImmediate;
+		vi.resetModules();
+
+		try {
+			const { runInSequentialTasks: freshRunInSequentialTasks } = await import(
+				"./cache-components-scheduler.js"
+			);
+			const log: string[] = [];
+
+			await freshRunInSequentialTasks(
+				// Scheduling from a continuation puts the immediate behind the settle hop, so only the
+				// pending count can hold `stage1` back.
+				() =>
+					void Promise.resolve().then(() => {
+						const immediate = setImmediate(() => log.push("still live"));
+						try {
+							clearImmediate(immediate);
+						} catch (error) {
+							log.push(error === failure ? "clear failed" : "unexpected error");
+						}
+					}),
+				() => log.push("stage1")
+			);
+
+			expect(log).toEqual(["clear failed", "still live", "stage1"]);
+		} finally {
+			globalThis.setImmediate = nativeSetImmediate;
+			globalThis.clearImmediate = nativeClearImmediate;
+		}
+	});
+
+	// Resolving here would hand back a render whose last stage never flushed - the truncated response
+	// this scheduler exists to prevent, only silent.
+	it("rejects instead of advancing a stage that never settles", async () => {
+		let rescheduling = true;
+
+		const settled = runInSequentialTasks(
+			() => {
+				const reschedule = () => {
+					if (rescheduling) setImmediate(reschedule);
+				};
+				setImmediate(reschedule);
+			},
+			() => {
+				throw new Error("unreachable: the stage must not be entered");
+			}
+		);
+
+		await expect(settled).rejects.toThrow(/did not settle: 1 immediate\(s\) still pending/);
+		rescheduling = false;
 	});
 });

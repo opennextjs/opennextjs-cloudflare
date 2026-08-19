@@ -27,8 +27,9 @@ type ScheduleMacrotask = (callback: () => void) => unknown;
 const runStorage = new AsyncLocalStorage<StagedRun>();
 
 /**
- * An immediate we never see settle - one cleared through a handle we did not hand out, or a render
- * that never stops scheduling - must delay a stage rather than stall the pipeline for good.
+ * Bound on the tasks one stage waits for its own immediates. An immediate we never see settle - one
+ * cleared through a handle we did not hand out, or a render that never stops scheduling - fails the
+ * render, because advancing a stage over work it still owns is what truncates responses.
  */
 const MAX_SETTLE_HOPS = 1000;
 
@@ -56,7 +57,6 @@ function install(): ScheduleMacrotask {
 			return previousSetImmediate(callback, ...args);
 		}
 
-		run.pending++;
 		let released = false;
 		const release = () => {
 			if (!released) {
@@ -65,22 +65,30 @@ function install(): ScheduleMacrotask {
 			}
 		};
 
-		const immediate = previousSetImmediate(() => {
+		run.pending++;
+		try {
+			const immediate = previousSetImmediate(() => {
+				release();
+				callback(...args);
+			});
+			if (typeof immediate === "object" && immediate !== null) {
+				releaseByImmediate.set(immediate, release);
+			}
+			return immediate;
+		} catch (error) {
+			// A schedule that threw left nothing behind to settle the count.
 			release();
-			callback(...args);
-		});
-		if (typeof immediate === "object" && immediate !== null) {
-			releaseByImmediate.set(immediate, release);
+			throw error;
 		}
-		return immediate;
 	};
 	Object.defineProperty(countedSetImmediate, COUNTED, { value: true });
 
 	const countedClearImmediate = (immediate: unknown) => {
+		// A clear that threw left the immediate live, so it stays counted.
+		previousClearImmediate(immediate as Parameters<typeof clearImmediate>[0]);
 		if (typeof immediate === "object" && immediate !== null) {
 			releaseByImmediate.get(immediate)?.();
 		}
-		return previousClearImmediate(immediate as Parameters<typeof clearImmediate>[0]);
 	};
 
 	globalThis.setImmediate = countedSetImmediate as unknown as typeof setImmediate;
@@ -108,11 +116,19 @@ export function runInSequentialTasks<T>(first: () => T, ...rest: Array<() => voi
 
 		const settleThen = (next: () => void) => {
 			hop(() => {
-				if (run.pending > 0 && hops++ < MAX_SETTLE_HOPS) {
+				if (run.pending === 0) {
+					next();
+					return;
+				}
+				if (hops++ < MAX_SETTLE_HOPS) {
 					settleThen(next);
 					return;
 				}
-				next();
+				reject(
+					new Error(
+						`Cache Components render did not settle: ${run.pending} immediate(s) still pending after ${MAX_SETTLE_HOPS} tasks.`
+					)
+				);
 			});
 		};
 
