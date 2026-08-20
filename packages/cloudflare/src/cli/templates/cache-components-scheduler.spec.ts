@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+
 import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { runInSequentialTasks } from "./cache-components-scheduler.js";
@@ -5,15 +7,22 @@ import { runInSequentialTasks } from "./cache-components-scheduler.js";
 const nativeSetImmediate = globalThis.setImmediate;
 const nativeClearImmediate = globalThis.clearImmediate;
 
+/** Mirrors `init.ts`: an ALS store on a global symbol, wrapping the whole request. */
+const requestContextStorage = new AsyncLocalStorage<object>();
+Object.defineProperty(globalThis, Symbol.for("__cloudflare-context__"), {
+	get: () => requestContextStorage.getStore(),
+	configurable: true,
+});
+const withRequestContext = <T>(run: () => T): T => requestContextStorage.run({}, run);
+
 afterAll(() => {
 	globalThis.setImmediate = nativeSetImmediate;
 	globalThis.clearImmediate = nativeClearImmediate;
 });
 
 /**
- * Stands in for React Flight: a stage unblocks a gate, the component resumes across `hops` microtask
- * hops, and only then schedules the flush through `setImmediate`. Next's contract is that both the
- * work and its flush land before the next stage runs.
+ * Stands in for React Flight: a stage opens a gate, the component resumes `hops` microtasks later,
+ * then schedules its flush. Next's contract is that both land before the next stage.
  */
 function createGatedRender(stages: number, hops: number, log: string[]) {
 	const gates = Array.from({ length: stages }, () => {
@@ -127,6 +136,80 @@ describe("runInSequentialTasks", () => {
 				"flush3",
 			]);
 		}
+	});
+
+	// Next awaits the RSC payload before staging, so React resumes from promises created outside the
+	// run. Counting by run alone reads zero and every stage advances over a flush still in flight.
+	it("waits for work rooted outside the staged run", async () => {
+		const log: string[] = [];
+		const gates = Array.from({ length: 3 }, () => {
+			let open!: () => void;
+			const opened = new Promise<void>((resolve) => (open = resolve));
+			return { opened, open };
+		});
+
+		await withRequestContext(() => {
+			// Registered before the render, the way work rooted in the RSC payload is.
+			for (const [stage, gate] of gates.entries()) {
+				void gate.opened.then(async () => {
+					for (let hop = 0; hop < 4; hop++) await null;
+					setImmediate(() => {
+						log.push(`work${stage}`);
+						setImmediate(() => log.push(`flush${stage}`));
+					});
+				});
+			}
+
+			return runInSequentialTasks(
+				() => "rendered",
+				...gates.map((gate, stage) => () => {
+					log.push(`stage${stage}`);
+					gate.open();
+				})
+			);
+		});
+
+		expect(log).toEqual([
+			"stage0",
+			"work0",
+			"flush0",
+			"stage1",
+			"work1",
+			"flush1",
+			"stage2",
+			"work2",
+			"flush2",
+		]);
+	});
+
+	// Scoped to the request, not process wide like Next's capture, so requests stay independent.
+	it("keeps requests from gating each other", async () => {
+		const log: string[] = [];
+
+		const noisy = withRequestContext(() => {
+			let remaining = 300;
+			const spin = () => {
+				if (remaining-- > 0) setImmediate(spin);
+			};
+			return runInSequentialTasks(
+				() => setImmediate(spin),
+				() => log.push("noisy:stage0")
+			);
+		});
+
+		const quiet = withRequestContext(() => {
+			let open!: () => void;
+			const opened = new Promise<void>((resolve) => (open = resolve));
+			void opened.then(() => setImmediate(() => log.push("quiet:flush")));
+			return runInSequentialTasks(
+				() => open(),
+				() => log.push("quiet:stage0")
+			);
+		});
+
+		await Promise.all([noisy, quiet]);
+
+		expect(log.indexOf("quiet:flush")).toBeLessThan(log.indexOf("quiet:stage0"));
 	});
 
 	it("rejects and skips the remaining tasks when a task throws", async () => {

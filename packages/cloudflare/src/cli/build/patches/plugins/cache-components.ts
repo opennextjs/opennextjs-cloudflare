@@ -49,16 +49,12 @@ export const moduleLoadingSignalFileFilter = getCrossPlatformPathRegex(
 );
 
 /**
- * Next.js stages Cache Components renders across event loop tasks. Its Node.js implementation keeps
- * the stages in one timer phase by mutating each timer's private `_idleStart` field, and drains the
- * render's immediates between two stages through `process.nextTick`. Neither works on workerd: timer
- * handles have no `_idleStart`, and `process.nextTick` is `queueMicrotask`, so the drain ends before
- * React has scheduled its flush. Replace the staged runner with a workerd implementation and leave
- * the now unreachable timer group as a fail-fast stub.
+ * Next stages Cache Components renders across event loop tasks, using `_idleStart` timer alignment
+ * and `process.nextTick` to bound them. Neither behaves the same on workerd, so swap the staged
+ * runner for a workerd implementation and stub the now unreachable timer group.
  *
- * The matched code ships in every Next 16.2+ bundle, so only register the patches (and their
- * fail-loudly errors) when the app actually enables Cache Components. Apps without the flag never
- * execute these code paths and must not have their builds fail when Next reshapes the internals.
+ * The matched code ships in every Next 16.2+ bundle, so only register the patches - and their
+ * fail-loudly errors - for apps that actually enable Cache Components.
  */
 export function patchCacheComponents(
 	updater: ContentUpdater,
@@ -74,8 +70,8 @@ export function patchCacheComponents(
 
 	const schedulerPath = path.join(buildOpts.outputDir, "cloudflare-templates/cache-components-scheduler.js");
 
-	// `ContentUpdater` skips a callback when the file filter or the content filter stops matching, so a
-	// renamed error message or a moved file would ship an unpatched build with no error at all.
+	// `ContentUpdater` silently skips a callback whose filter stops matching, so a renamed error
+	// message or moved file would otherwise ship an unpatched build.
 	const applied = { scheduler: false, "module loading signal": false };
 
 	updater.updateContent("cache-components-scheduler", [
@@ -169,10 +165,8 @@ export function patchCacheComponentsScheduler(contents: string, runtimePath: str
 
 /**
  * Cache interception is compiled into the external middleware before the server bundle plugins run,
- * so patch its generated output at the boundary where Cloudflare takes ownership of the AWS build.
- *
- * Only apps combining Cache Components with cache interception hit the unresumable shell, so apps
- * without the flag must not depend on the shape of the generated middleware.
+ * so patch its output where Cloudflare takes ownership of the AWS build. Only apps combining Cache
+ * Components with cache interception hit the unresumable shell.
  */
 export function patchMiddlewareCacheComponents(buildOpts: BuildOptions): void {
 	if (buildOpts.config.dangerous?.enableCacheInterception !== true) {
@@ -224,13 +218,10 @@ fix: |-
 `;
 
 /**
- * Next.js subscribes every render's `CacheSignal` to one module-scoped signal. Both signals store timer
- * cleanup closures, so a later request notifying an older subscriber can clear a handle owned by that
- * older request. workerd rejects the cross-request I/O and the render returns a truncated Flight stream.
- *
- * Keep the signals and subscriptions request scoped. A shared registry retains plain import promises
- * and resolves request-owned notification promises when new imports start. Each notification resumes
- * in the subscriber's request before it touches that request's signal or timer handles.
+ * Next subscribes every render's `CacheSignal` to one module-scoped signal, and both store timer
+ * cleanup closures, so a later request can clear a handle owned by an older one. workerd rejects
+ * that cross-request I/O and the render truncates. Keep the signals and subscriptions request
+ * scoped, with a shared registry forwarding imports through request-owned notifications.
  */
 export const requestScopedModuleLoadingSignalRule = `
 rule:
@@ -337,9 +328,8 @@ fix: |-
 `;
 
 /**
- * Webpack emits the atomic timer group and sequential-task runner as separate modules. The runner
- * is replaced above, so leave a fail-fast guard in the now-unreachable timer-group implementation
- * instead of shipping workerd-incompatible `_idleStart` mutation code.
+ * Webpack emits the timer group and the sequential-task runner as separate modules. The runner is
+ * replaced above, so stub the unreachable timer group rather than ship its `_idleStart` mutation.
  */
 export const disableAtomicTimerGroupRule = `
 rule:
@@ -363,9 +353,8 @@ fix: |-
 `;
 
 /**
- * The cache interceptor can only return the cached PPR shell. It does not have the postponed state
- * that Next.js needs to resume a Cache Components render, so these routes must reach Next's request
- * handler. Other ISR routes keep using cache interception.
+ * The interceptor only has the cached PPR shell, not the postponed state Next needs to resume a
+ * Cache Components render, so these routes must reach Next's handler. Other ISR routes are unchanged.
  */
 export const bypassPprCacheInterceptionRule = `
 rule:

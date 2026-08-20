@@ -1,46 +1,58 @@
 /**
  * Cache Components staged rendering for workerd.
  *
- * Next renders Cache Components as a pipeline of tasks and, between two of them, runs every
- * immediate the previous task queued so React flushes that stage before the next one unblocks more
- * content. On Node it gets that boundary from `process.nextTick`, which runs once the microtask
- * queue is exhausted. workerd implements `process.nextTick` with `queueMicrotask`, so Next's drain
- * gives up two microtask hops in - before React has scheduled its flush - and the render slips a
- * stage behind. Runtime prefetches drop every chunk that arrives after their last task aborts the
- * render, so the slip reaches the client as a prefetch body holding only the one byte partial
- * marker, and a full render loses whatever the last stage produced.
- *
- * workerd runs timers and immediates from a single ordered macrotask queue and always drains
- * microtasks between two of them, so scheduling an immediate is an exact "everything queued before
- * me has run" signal. Count the immediates each staged render causes and hop until that count
- * reaches zero before entering the next stage. Next's own fast-immediate capture is never engaged,
- * which also keeps its process-wide capture slot free while requests overlap.
+ * Next drains the immediates React queued between two stages so each stage flushes before the next
+ * unblocks more content. It builds that boundary from `process.nextTick`, which workerd implements
+ * as `queueMicrotask`, so the drain ends before React has scheduled its flush and the render slips a
+ * stage. workerd runs timers and immediates from one ordered macrotask queue and drains microtasks
+ * between two of them, so an immediate is an exact "everything queued before me has run" signal:
+ * count the outstanding ones and hop until none remain.
  */
 
 import { AsyncLocalStorage } from "node:async_hooks";
 
-type StagedRun = { pending: number };
+type StagedRun = { pending: number; scope: RequestScope };
+
+/** Immediates the request caused that no staged run owns. Shared by the request's renders. */
+type RequestScope = { unattributed: number };
 
 type ScheduleMacrotask = (callback: () => void) => unknown;
 
-/** Attributes an immediate to the staged render that caused it, so one render never waits on another. */
+/** Keeps one render from waiting on another's immediates. */
 const runStorage = new AsyncLocalStorage<StagedRun>();
 
+const REQUEST_CONTEXT = Symbol.for("__cloudflare-context__");
+
 /**
- * Bound on the tasks one stage waits for its own immediates. An immediate we never see settle - one
- * cleared through a handle we did not hand out, or a render that never stops scheduling - fails the
- * render, because advancing a stage over work it still owns is what truncates responses.
+ * Next awaits the RSC payload before it stages, so React resumes from promises created outside the
+ * run where `runStorage` cannot see it - which is why Next's own capture is process wide. The
+ * request is the next widest owner that still keeps one request from gating another.
  */
+const scopes = new WeakMap<object, RequestScope>();
+const isolateScope: RequestScope = { unattributed: 0 };
+
+function currentScope(): RequestScope {
+	const context = (globalThis as Record<symbol, unknown>)[REQUEST_CONTEXT];
+	if (typeof context !== "object" || context === null) {
+		return isolateScope;
+	}
+
+	let scope = scopes.get(context);
+	if (!scope) {
+		scope = { unattributed: 0 };
+		scopes.set(context, scope);
+	}
+	return scope;
+}
+
+/** Fail rather than advance a stage over work it still owns, which is what truncates responses. */
 const MAX_SETTLE_HOPS = 1000;
 
 const COUNTED = Symbol.for("__opennext.cache-components.countedSetImmediate");
 
 let scheduleMacrotask: ScheduleMacrotask | undefined;
 
-/**
- * Count the immediates of the running staged render. Next patches `setImmediate` when its server
- * environment loads, so wrap whatever is installed and keep delegating to it.
- */
+/** Next patches `setImmediate` when its server environment loads, so wrap whatever is installed. */
 function install(): ScheduleMacrotask {
 	const current = globalThis.setImmediate as typeof setImmediate & { [COUNTED]?: true };
 	if (scheduleMacrotask && current[COUNTED]) {
@@ -53,19 +65,22 @@ function install(): ScheduleMacrotask {
 
 	const countedSetImmediate = (callback: (...args: unknown[]) => void, ...args: unknown[]) => {
 		const run = runStorage.getStore();
-		if (!run) {
+		// A render must also wait for work it did not root itself, so charge the rest to the request.
+		const owner = run ?? currentScope();
+		if (owner === isolateScope) {
 			return previousSetImmediate(callback, ...args);
 		}
 
 		let released = false;
 		const release = () => {
-			if (!released) {
-				released = true;
-				run.pending--;
-			}
+			if (released) return;
+			released = true;
+			if (run) run.pending--;
+			else (owner as RequestScope).unattributed--;
 		};
 
-		run.pending++;
+		if (run) run.pending++;
+		else (owner as RequestScope).unattributed++;
 		try {
 			const immediate = previousSetImmediate(() => {
 				release();
@@ -76,7 +91,7 @@ function install(): ScheduleMacrotask {
 			}
 			return immediate;
 		} catch (error) {
-			// A schedule that threw left nothing behind to settle the count.
+			// Nothing was scheduled, so nothing will settle the count.
 			release();
 			throw error;
 		}
@@ -101,13 +116,10 @@ function install(): ScheduleMacrotask {
 
 function ignore(): void {}
 
-/**
- * Drop-in replacement for Next's `runInSequentialTasks`: run `first`, then each of `rest` in its own
- * task, and resolve with whatever `first` returned once the last task has settled.
- */
+/** Drop-in for Next's `runInSequentialTasks`: each callback gets its own settled task. */
 export function runInSequentialTasks<T>(first: () => T, ...rest: Array<() => void>): Promise<T> {
 	const hop = install();
-	const run: StagedRun = { pending: 0 };
+	const run: StagedRun = { pending: 0, scope: currentScope() };
 
 	return new Promise<T>((resolve, reject) => {
 		let result: T;
@@ -116,7 +128,8 @@ export function runInSequentialTasks<T>(first: () => T, ...rest: Array<() => voi
 
 		const settleThen = (next: () => void) => {
 			hop(() => {
-				if (run.pending === 0) {
+				const pending = run.pending + run.scope.unattributed;
+				if (pending === 0) {
 					next();
 					return;
 				}
@@ -126,7 +139,7 @@ export function runInSequentialTasks<T>(first: () => T, ...rest: Array<() => voi
 				}
 				reject(
 					new Error(
-						`Cache Components render did not settle: ${run.pending} immediate(s) still pending after ${MAX_SETTLE_HOPS} tasks.`
+						`Cache Components render did not settle: ${pending} immediate(s) still pending after ${MAX_SETTLE_HOPS} tasks.`
 					)
 				);
 			});
@@ -137,7 +150,7 @@ export function runInSequentialTasks<T>(first: () => T, ...rest: Array<() => voi
 				runStorage.run(run, () => {
 					if (stage === 0) {
 						result = first();
-						// A later task may reject this; the caller observes it through the returned promise.
+						// A later task may reject this; the caller sees it through the returned promise.
 						const thenable = result as PromiseLike<unknown> | null | undefined;
 						if (thenable && typeof thenable.then === "function") {
 							thenable.then(ignore, ignore);

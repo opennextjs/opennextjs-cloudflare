@@ -1,12 +1,10 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 
 /**
- * Cache Components state that Next.js keeps per process is shared by every request in a Worker
- * isolate. When such state holds request bound I/O handles, an overlapping request clears a handle it
- * does not own, workerd rejects it with "Cannot perform I/O on behalf of a different request", and the
- * throw escapes mid render — the response never completes and the isolate keeps serving truncated
- * bodies afterwards. Overlapping route and segment RSC prefetches are what a browser issues while
- * hovering links, so they are the cheapest way to force that overlap.
+ * Cache Components state Next keeps per process is shared by every request in a Worker isolate. When
+ * it holds request-bound I/O handles, an overlapping request clears a handle it does not own and
+ * workerd rejects it mid render, poisoning the isolate. Overlapping RSC prefetches are what a browser
+ * issues while hovering links, so they force that overlap cheaply.
  */
 
 const ROUTE_PREFETCH = { rsc: "1", "next-router-prefetch": "1" };
