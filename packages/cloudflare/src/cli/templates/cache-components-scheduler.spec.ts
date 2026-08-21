@@ -1,11 +1,9 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { clearImmediate as nativeClearImmediate, setImmediate as nativeSetImmediate } from "node:timers";
 
 import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { runInSequentialTasks } from "./cache-components-scheduler.js";
-
-const nativeSetImmediate = globalThis.setImmediate;
-const nativeClearImmediate = globalThis.clearImmediate;
 
 /** Mirrors `init.ts`: an ALS store on a global symbol, wrapping the whole request. */
 const requestContextStorage = new AsyncLocalStorage<object>();
@@ -118,7 +116,10 @@ describe("runInSequentialTasks", () => {
 
 		// The slow render keeps scheduling immediates long after the fast one is done, which must not
 		// hold the fast render's stages back.
-		await Promise.all([runGatedRender(4, 12, slowLog), runGatedRender(4, 0, fastLog)]);
+		await Promise.all([
+			withRequestContext(() => runGatedRender(4, 12, slowLog)),
+			withRequestContext(() => runGatedRender(4, 0, fastLog)),
+		]);
 
 		for (const log of [slowLog, fastLog]) {
 			expect(log).toEqual([
@@ -136,6 +137,95 @@ describe("runInSequentialTasks", () => {
 				"flush3",
 			]);
 		}
+	});
+
+	it("runs staged renders from one request without interleaving their stages", async () => {
+		const log: string[] = [];
+
+		await withRequestContext(() =>
+			Promise.all([
+				runInSequentialTasks(
+					() => log.push("first:a"),
+					() => log.push("second:a"),
+					() => log.push("third:a")
+				),
+				runInSequentialTasks(
+					() => log.push("first:b"),
+					() => log.push("second:b"),
+					() => log.push("third:b")
+				),
+			])
+		);
+
+		expect(log).toEqual(["first:a", "second:a", "third:a", "first:b", "second:b", "third:b"]);
+	});
+
+	it("preserves the async context of a staged render while it waits for an earlier render", async () => {
+		const workStorage = new AsyncLocalStorage<string>();
+		const log: string[] = [];
+
+		await withRequestContext(() =>
+			Promise.all([
+				workStorage.run("a", () =>
+					runInSequentialTasks(
+						() => log.push(`first:${workStorage.getStore()}`),
+						() => log.push(`second:${workStorage.getStore()}`)
+					)
+				),
+				workStorage.run("b", () =>
+					runInSequentialTasks(
+						() => log.push(`first:${workStorage.getStore()}`),
+						() => log.push(`second:${workStorage.getStore()}`)
+					)
+				),
+			])
+		);
+
+		expect(log).toEqual(["first:a", "second:a", "first:b", "second:b"]);
+	});
+
+	it("starts the next staged render after an earlier render throws", async () => {
+		const failure = new Error("stage failed");
+		const log: string[] = [];
+
+		await withRequestContext(async () => {
+			const failed = runInSequentialTasks(
+				() => log.push("failed:first"),
+				() => {
+					throw failure;
+				}
+			);
+			const recovered = runInSequentialTasks(
+				() => {
+					log.push("recovered:first");
+					return "recovered";
+				},
+				() => log.push("recovered:second")
+			);
+
+			await expect(failed).rejects.toBe(failure);
+			await expect(recovered).resolves.toEqual("recovered");
+		});
+
+		expect(log).toEqual(["failed:first", "recovered:first", "recovered:second"]);
+	});
+
+	it("releases the queue after the stages finish without awaiting the first result", async () => {
+		const log: string[] = [];
+
+		await withRequestContext(async () => {
+			void runInSequentialTasks(
+				() => new Promise<never>(() => {}),
+				() => log.push("pending:stage")
+			);
+
+			await runInSequentialTasks(
+				() => log.push("next:first"),
+				() => log.push("next:second")
+			);
+		});
+
+		expect(log).toEqual(["pending:stage", "next:first", "next:second"]);
 	});
 
 	// Next awaits the RSC payload before staging, so React resumes from promises created outside the
@@ -180,6 +270,26 @@ describe("runInSequentialTasks", () => {
 			"work2",
 			"flush2",
 		]);
+	});
+
+	// React chooses and stores its scheduler when the runtime module loads. A wrapper installed on the
+	// first render cannot observe work sent through that earlier reference.
+	it("waits for work scheduled through an immediate reference captured during initialization", async () => {
+		const capturedSetImmediate = globalThis.setImmediate;
+		const log: string[] = [];
+
+		await withRequestContext(() =>
+			runInSequentialTasks(
+				() => {
+					void Promise.resolve().then(() => {
+						capturedSetImmediate(() => log.push("work"));
+					});
+				},
+				() => log.push("stage")
+			)
+		);
+
+		expect(log).toEqual(["work", "stage"]);
 	});
 
 	// Scoped to the request, not process wide like Next's capture, so requests stay independent.

@@ -14,7 +14,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 type StagedRun = { pending: number; scope: RequestScope };
 
 /** Immediates the request caused that no staged run owns. Shared by the request's renders. */
-type RequestScope = { unattributed: number };
+type RequestScope = { unattributed: number; stagedTail: Promise<void> };
 
 type ScheduleMacrotask = (callback: () => void) => unknown;
 
@@ -23,13 +23,17 @@ const runStorage = new AsyncLocalStorage<StagedRun>();
 
 const REQUEST_CONTEXT = Symbol.for("__cloudflare-context__");
 
+function createRequestScope(): RequestScope {
+	return { unattributed: 0, stagedTail: Promise.resolve() };
+}
+
 /**
  * Next awaits the RSC payload before it stages, so React resumes from promises created outside the
  * run where `runStorage` cannot see it - which is why Next's own capture is process wide. The
  * request is the next widest owner that still keeps one request from gating another.
  */
 const scopes = new WeakMap<object, RequestScope>();
-const isolateScope: RequestScope = { unattributed: 0 };
+const isolateScope = createRequestScope();
 
 function currentScope(): RequestScope {
 	const context = (globalThis as Record<symbol, unknown>)[REQUEST_CONTEXT];
@@ -39,7 +43,7 @@ function currentScope(): RequestScope {
 
 	let scope = scopes.get(context);
 	if (!scope) {
-		scope = { unattributed: 0 };
+		scope = createRequestScope();
 		scopes.set(context, scope);
 	}
 	return scope;
@@ -116,18 +120,49 @@ function install(): ScheduleMacrotask {
 
 function ignore(): void {}
 
+// React captures `setImmediate` while its runtime loads. Install before the Next server is evaluated
+// so those captured references are counted too; installing only on the first staged render is late.
+install();
+
 /** Drop-in for Next's `runInSequentialTasks`: each callback gets its own settled task. */
 export function runInSequentialTasks<T>(first: () => T, ...rest: Array<() => void>): Promise<T> {
 	const hop = install();
-	const run: StagedRun = { pending: 0, scope: currentScope() };
+	const scope = currentScope();
+	const run: StagedRun = { pending: 0, scope };
+	const previousRun = scope.stagedTail;
+	let releaseRun!: () => void;
+	scope.stagedTail = new Promise<void>((resolve) => (releaseRun = resolve));
 
 	return new Promise<T>((resolve, reject) => {
 		let result: T;
 		let stage = 0;
 		let hops = 0;
+		let finished = false;
+
+		const fail = (error: unknown) => {
+			if (finished) return;
+			finished = true;
+			releaseRun();
+			reject(error);
+		};
+
+		const complete = () => {
+			if (finished) return;
+			finished = true;
+			releaseRun();
+			resolve(result);
+		};
+
+		const schedule = (callback: () => void) => {
+			try {
+				hop(callback);
+			} catch (error) {
+				fail(error);
+			}
+		};
 
 		const settleThen = (next: () => void) => {
-			hop(() => {
+			schedule(() => {
 				const pending = run.pending + run.scope.unattributed;
 				if (pending === 0) {
 					next();
@@ -137,7 +172,7 @@ export function runInSequentialTasks<T>(first: () => T, ...rest: Array<() => voi
 					settleThen(next);
 					return;
 				}
-				reject(
+				fail(
 					new Error(
 						`Cache Components render did not settle: ${pending} immediate(s) still pending after ${MAX_SETTLE_HOPS} tasks.`
 					)
@@ -160,16 +195,17 @@ export function runInSequentialTasks<T>(first: () => T, ...rest: Array<() => voi
 					}
 				});
 			} catch (error) {
-				reject(error);
+				fail(error);
 				return;
 			}
 
 			stage++;
 			hops = 0;
-			settleThen(stage > rest.length ? () => resolve(result) : enterStage);
+			settleThen(stage > rest.length ? complete : enterStage);
 		};
 
-		// Start from a fresh task, the way Next's first timer does.
-		hop(enterStage);
+		// Next schedules one timer group at a time. Queue groups from this request so their stages do
+		// not alternate, but do not make one request wait for another request's render.
+		void previousRun.then(() => schedule(enterStage));
 	});
 }

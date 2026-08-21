@@ -64,6 +64,12 @@ const ROUTES = [
 		resolvedHtml: "Imported module for second",
 		resolvedRsc: "Imported module for second",
 	},
+	{
+		path: "/large-shell/concurrent",
+		shell: "Large shell",
+		resolvedHtml: "Large dynamic: ",
+		resolvedRsc: '"data-testid":"large-dynamic"',
+	},
 ] as const;
 
 type Route = (typeof ROUTES)[number];
@@ -81,10 +87,33 @@ async function fetchPath(
 	route: Route,
 	kind: keyof typeof VARIANTS
 ): Promise<Fetched> {
-	const response = await request.get(route.path, {
+	let response = await request.get(route.path, {
 		headers: VARIANTS[kind],
 		maxRedirects: 0,
 	});
+
+	// Next 16.3 redirects synthetic RSC requests for a fully static route to the same route with the
+	// cache-busting `_rsc` key that a browser normally supplies. Follow only that exact redirect shape,
+	// while keeping every other redirect visible as a failure below.
+	if (kind !== "document" && (response.status() === 307 || response.status() === 308)) {
+		const location = response.headers().location;
+		const redirected = location ? new URL(location, "http://opennext.invalid") : undefined;
+		if (
+			!location?.startsWith("/") ||
+			location.startsWith("//") ||
+			redirected?.pathname !== route.path ||
+			!redirected.searchParams.has("_rsc")
+		) {
+			throw new Error(`${kind} ${route.path} returned an unexpected redirect to ${location ?? "nowhere"}`);
+		}
+
+		await response.dispose();
+		response = await request.get(`${redirected.pathname}${redirected.search}`, {
+			headers: VARIANTS[kind],
+			maxRedirects: 0,
+		});
+	}
+
 	return {
 		route,
 		kind,

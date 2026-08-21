@@ -13,7 +13,11 @@ import type { ProjectOptions } from "../project-options.js";
 import { normalizePath } from "../utils/normalize-path.js";
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
-import { patchCacheComponents } from "./patches/plugins/cache-components.js";
+import {
+	cacheComponentsSchedulerModule,
+	patchCacheComponents,
+	usesCacheComponents,
+} from "./patches/plugins/cache-components.js";
 import { inlineDynamicRequires } from "./patches/plugins/dynamic-requires.js";
 import { inlineFindDir } from "./patches/plugins/find-dir.js";
 import { patchInstrumentation } from "./patches/plugins/instrumentation.js";
@@ -70,11 +74,21 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 	const packagePath = getPackagePath(buildOpts);
 	const openNextServer = path.join(outputPath, packagePath, `index.mjs`);
 	const openNextServerBundle = path.join(outputPath, packagePath, `handler.mjs`);
+	const initializeCacheComponentsScheduler =
+		usesCacheComponents(nextConfig) && !buildHelper.compareSemver(buildOpts.nextVersion, "<", "16.2.11");
 
 	const updater = new ContentUpdater(buildOpts);
 
 	const result = await build({
-		entryPoints: [openNextServer],
+		...(initializeCacheComponentsScheduler
+			? {
+					stdin: {
+						contents: `import "${cacheComponentsSchedulerModule}"; export { handler } from ${JSON.stringify(openNextServer)};`,
+						resolveDir: buildOpts.appPath,
+						sourcefile: "cache-components-server-entry.mjs",
+					},
+				}
+			: { entryPoints: [openNextServer] }),
 		bundle: true,
 		outfile: openNextServerBundle,
 		format: "esm",

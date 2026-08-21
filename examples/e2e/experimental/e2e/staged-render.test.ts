@@ -94,4 +94,70 @@ test.describe("staged Cache Components rendering", () => {
 			expect(text, `${where} served another request's session`).toContain(sessions[index]!);
 		}
 	});
+
+	test("large runtime prefetches are complete across repeated and overlapping renders", async ({
+		request,
+	}) => {
+		const sessions = Array.from({ length: 30 }, (_, index) => `large-${index}`);
+		const responses = [];
+
+		for (const session of sessions.slice(0, 10)) {
+			responses.push(await runtimePrefetch(request, "/large-shell/one", session));
+		}
+		responses.push(
+			...(await Promise.all(
+				sessions.slice(10).map((session) => runtimePrefetch(request, "/large-shell/one", session))
+			))
+		);
+
+		for (const [index, response] of responses.entries()) {
+			const body = await response.body();
+			const where = `large prefetch ${index}`;
+
+			expectRuntimePrefetch(body, where);
+			expect(body.byteLength, `${where} was truncated`).toBeGreaterThan(60 * 1024);
+			const text = body.toString("utf8");
+			expect(text, `${where} lost its final cached block`).toContain('"data-large-block":63');
+		}
+	});
+
+	test("a cold large shell keeps request-time random values out of prerendering", async ({ request }) => {
+		const path = `/large-shell/cold-${Date.now()}`;
+		const session = `document-session-${Date.now()}`;
+		const document = await request.get(path, { headers: { "x-session": session } });
+		const html = await document.text();
+
+		expect(document.status()).toEqual(200);
+		expect(html).toContain("</html>");
+		expect(html).toContain('data-large-block="63"');
+		expect(html).toContain("Large dynamic: ");
+		expect(html).toContain(session);
+
+		for (const headers of [ROUTE_PREFETCH, SEGMENT_PREFETCH]) {
+			const response = await request.get(path, { headers });
+			const body = (await response.body()).toString("utf8");
+
+			expect(response.status(), `prefetch ${JSON.stringify(headers)} should complete`).toEqual(200);
+			expect(response.headers()["content-type"]).toContain("text/x-component");
+			expect(body).toContain("0:{");
+			expect(body).not.toMatch(/^\w+:E\{/m);
+		}
+	});
+
+	test("client navigation to a large dynamic shell does not reload the document", async ({ page }) => {
+		const session = `navigation-session-${Date.now()}`;
+		await page.setExtraHTTPHeaders({ "x-session": session });
+		await page.goto("/large-shell/navigation-first");
+
+		await expect(
+			page.getByTestId("large-dynamic").filter({ hasText: `Large dynamic: navigation-first:${session}:` })
+		).toBeVisible();
+		await page.getByRole("link", { name: "Large shell second item" }).click();
+		await page.waitForURL("/large-shell/navigation-second");
+		await expect(
+			page.getByTestId("large-dynamic").filter({ hasText: `Large dynamic: navigation-second:${session}:` })
+		).toBeVisible();
+		await expect(page.locator('[data-large-block="63"]:visible')).toBeAttached();
+		expect(await page.evaluate(() => performance.getEntriesByType("navigation").length)).toEqual(1);
+	});
 });
