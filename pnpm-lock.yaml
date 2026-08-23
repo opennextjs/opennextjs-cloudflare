@@ -1095,6 +1095,9 @@ importers:
       enquirer:
         specifier: ^2.4.1
         version: 2.4.1
+      esbuild:
+        specifier: 'catalog:'
+        version: 0.27.3
       glob:
         specifier: 'catalog:'
         version: 12.0.0
@@ -1135,9 +1138,6 @@ importers:
       diff:
         specifier: ^8.0.2
         version: 8.0.2
-      esbuild:
-        specifier: 'catalog:'
-        version: 0.27.3
       eslint:
         specifier: 'catalog:'
         version: 9.31.0(jiti@2.6.1)
