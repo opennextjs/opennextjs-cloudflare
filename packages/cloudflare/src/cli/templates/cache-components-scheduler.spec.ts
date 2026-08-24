@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { clearImmediate as nativeClearImmediate, setImmediate as nativeSetImmediate } from "node:timers";
+import { promisify } from "node:util";
 
 import { afterAll, describe, expect, it, vi } from "vitest";
 
@@ -290,6 +291,89 @@ describe("runInSequentialTasks", () => {
 		);
 
 		expect(log).toEqual(["work", "stage"]);
+	});
+
+	it("preserves and waits for the promise-based immediate captured by Next", async () => {
+		type PromisifiedImmediate = <T>(value?: T, options?: { signal?: AbortSignal }) => Promise<T>;
+		const capturedSetImmediatePromise = (
+			globalThis.setImmediate as typeof setImmediate & {
+				[promisify.custom]?: PromisifiedImmediate;
+			}
+		)[promisify.custom];
+		const log: string[] = [];
+
+		expect(capturedSetImmediatePromise).toBeTypeOf("function");
+		await withRequestContext(() =>
+			runInSequentialTasks(
+				() => {
+					void capturedSetImmediatePromise!("preserved").then((value) => log.push(value));
+				},
+				() => log.push("stage")
+			)
+		);
+
+		expect(log).toEqual(["preserved", "stage"]);
+	});
+
+	it("releases a rejected promise-based immediate", async () => {
+		type PromisifiedImmediate = <T>(value?: T, options?: { signal?: AbortSignal }) => Promise<T>;
+		const capturedSetImmediatePromise = (
+			globalThis.setImmediate as typeof setImmediate & {
+				[promisify.custom]?: PromisifiedImmediate;
+			}
+		)[promisify.custom];
+		const abort = new AbortController();
+		const log: string[] = [];
+
+		await withRequestContext(() =>
+			runInSequentialTasks(
+				() => {
+					const pending = capturedSetImmediatePromise!(undefined, { signal: abort.signal });
+					void pending.catch(() => log.push("aborted"));
+					abort.abort();
+				},
+				() => log.push("stage")
+			)
+		);
+
+		expect(log).toEqual(["aborted", "stage"]);
+	});
+
+	it("supplies the promise hook missing from workerd's global immediate", async () => {
+		const workerdSetImmediate = ((callback: (...args: unknown[]) => void, ...args: unknown[]) =>
+			nativeSetImmediate(callback, ...args)) as typeof setImmediate;
+		globalThis.setImmediate = workerdSetImmediate;
+		globalThis.clearImmediate = nativeClearImmediate;
+		vi.resetModules();
+
+		try {
+			const { runInSequentialTasks: freshRunInSequentialTasks } = await import(
+				"./cache-components-scheduler.js"
+			);
+			type PromisifiedImmediate = <T>(value?: T) => Promise<T>;
+			const capturedSetImmediatePromise = (
+				globalThis.setImmediate as typeof setImmediate & {
+					[promisify.custom]?: PromisifiedImmediate;
+				}
+			)[promisify.custom];
+			const log: string[] = [];
+
+			expect(workerdSetImmediate[promisify.custom]).toBeUndefined();
+			expect(capturedSetImmediatePromise).toBeTypeOf("function");
+			await withRequestContext(() =>
+				freshRunInSequentialTasks(
+					() => {
+						void capturedSetImmediatePromise!().then(() => log.push("work"));
+					},
+					() => log.push("stage")
+				)
+			);
+
+			expect(log).toEqual(["work", "stage"]);
+		} finally {
+			globalThis.setImmediate = nativeSetImmediate;
+			globalThis.clearImmediate = nativeClearImmediate;
+		}
 	});
 
 	// Scoped to the request, not process wide like Next's capture, so requests stay independent.

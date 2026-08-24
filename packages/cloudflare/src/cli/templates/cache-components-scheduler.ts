@@ -10,6 +10,8 @@
  */
 
 import { AsyncLocalStorage } from "node:async_hooks";
+import { setImmediate as timersPromisesSetImmediate } from "node:timers/promises";
+import { promisify } from "node:util";
 
 type StagedRun = { pending: number; scope: RequestScope };
 
@@ -17,6 +19,10 @@ type StagedRun = { pending: number; scope: RequestScope };
 type RequestScope = { unattributed: number; stagedTail: Promise<void> };
 
 type ScheduleMacrotask = (callback: () => void) => unknown;
+type PromisifiedSetImmediate = <T>(
+	value?: T,
+	options?: { ref?: boolean; signal?: AbortSignal }
+) => Promise<T>;
 
 /** Keeps one render from waiting on another's immediates. */
 const runStorage = new AsyncLocalStorage<StagedRun>();
@@ -55,6 +61,9 @@ const MAX_SETTLE_HOPS = 1000;
 const COUNTED = Symbol.for("__opennext.cache-components.countedSetImmediate");
 
 let scheduleMacrotask: ScheduleMacrotask | undefined;
+// workerd's global callback API does not expose Node's custom-promisify hook. Capture its native
+// promise API before Next replaces the `node:timers/promises` export, then expose that as the hook.
+const scheduleMacrotaskPromisified = timersPromisesSetImmediate as PromisifiedSetImmediate;
 
 /** Next patches `setImmediate` when its server environment loads, so wrap whatever is installed. */
 function install(): ScheduleMacrotask {
@@ -66,41 +75,76 @@ function install(): ScheduleMacrotask {
 	const previousSetImmediate = globalThis.setImmediate;
 	const previousClearImmediate = globalThis.clearImmediate;
 	const releaseByImmediate = new WeakMap<object, () => void>();
+	const previousPromisifiedSetImmediate =
+		(previousSetImmediate as typeof setImmediate & { [promisify.custom]?: PromisifiedSetImmediate })[
+			promisify.custom
+		] ?? scheduleMacrotaskPromisified;
 
-	const countedSetImmediate = (callback: (...args: unknown[]) => void, ...args: unknown[]) => {
+	const countCurrentWork = () => {
 		const run = runStorage.getStore();
 		// A render must also wait for work it did not root itself, so charge the rest to the request.
 		const owner = run ?? currentScope();
-		if (owner === isolateScope) {
-			return previousSetImmediate(callback, ...args);
-		}
+		if (owner === isolateScope) return;
 
 		let released = false;
-		const release = () => {
+		if (run) run.pending++;
+		else (owner as RequestScope).unattributed++;
+
+		return () => {
 			if (released) return;
 			released = true;
 			if (run) run.pending--;
 			else (owner as RequestScope).unattributed--;
 		};
+	};
 
-		if (run) run.pending++;
-		else (owner as RequestScope).unattributed++;
+	const countedSetImmediate = (callback: (...args: unknown[]) => void, ...args: unknown[]) => {
+		const release = countCurrentWork();
 		try {
 			const immediate = previousSetImmediate(() => {
-				release();
+				release?.();
 				callback(...args);
 			});
-			if (typeof immediate === "object" && immediate !== null) {
+			if (release && typeof immediate === "object" && immediate !== null) {
 				releaseByImmediate.set(immediate, release);
 			}
 			return immediate;
 		} catch (error) {
 			// Nothing was scheduled, so nothing will settle the count.
-			release();
+			release?.();
 			throw error;
 		}
 	};
 	Object.defineProperty(countedSetImmediate, COUNTED, { value: true });
+
+	if (previousPromisifiedSetImmediate) {
+		const countedSetImmediatePromise: PromisifiedSetImmediate = <T>(
+			value?: T,
+			options?: { ref?: boolean; signal?: AbortSignal }
+		) => {
+			const release = countCurrentWork();
+			try {
+				const pending = previousPromisifiedSetImmediate(value, options);
+				if (!release) return pending;
+				return pending.then(
+					(result) => {
+						release();
+						return result;
+					},
+					(error: unknown) => {
+						release();
+						throw error;
+					}
+				);
+			} catch (error) {
+				release?.();
+				throw error;
+			}
+		};
+		Object.defineProperty(countedSetImmediate, promisify.custom, {
+			value: countedSetImmediatePromise,
+		});
+	}
 
 	const countedClearImmediate = (immediate: unknown) => {
 		// A clear that threw left the immediate live, so it stays counted.
