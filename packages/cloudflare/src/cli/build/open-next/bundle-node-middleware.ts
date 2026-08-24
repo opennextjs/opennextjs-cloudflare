@@ -75,6 +75,10 @@ async function inlineMiddlewareChunks(options: BuildOptions, dotNextServerDir: s
 
 /**
  * Resolves the middleware compiled by Next.js to the copy created by `copyTracedFiles`.
+ *
+ * `@opennextjs/aws`'s `nodeMiddlewareHandler` loads the middleware with a dynamic
+ * `await import("./.next/server/middleware.js")` that nothing on the aws side resolves (it relies
+ * on the adapter bundling it), so this resolves that specifier to the traced copy.
  */
 export function setCompiledMiddlewarePlugin(compiledMiddlewarePath: string): Plugin {
 	return {
@@ -176,17 +180,14 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 		mainFields: ["module", "main"],
 		external: ["node:*", "./open-next.config.mjs"],
 		define: {
-			// The base of the middleware compiled by Next.js is runtime agnostic.
-			// "edge" skips the setup of the Node.js environment (`setup-node-env.external.js`
-			// patches globals that are read-only in workerd). Node.js builtin modules used by
-			// the middleware are provided by workerd via `nodejs_compat`.
+			// The base of the middleware compiled by Next.js is runtime agnostic. "edge" selects its
+			// Web API code paths (which workerd supports) over the Node.js server paths (which it does
+			// not): it also skips `setup-node-env.external.js`, which patches read-only workerd globals.
+			// Node.js builtins used by the middleware are still provided by workerd via `nodejs_compat`.
 			"process.env.NEXT_RUNTIME": '"edge"',
 			"process.env.NODE_ENV": '"production"',
 		},
 		alias: {
-			path: "node:path",
-			stream: "node:stream",
-			fs: "node:fs",
 			// See `hasOpentelemetry` above.
 			...(hasOpentelemetry ? {} : { "@opentelemetry/api": "next/dist/compiled/@opentelemetry/api" }),
 		},
@@ -232,6 +233,9 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 import { Buffer } from "node:buffer";
 globalThis.Buffer = Buffer;
 
+// Next.js' compiled middleware references \`AsyncLocalStorage\` as a global. workerd only
+// exposes it via \`node:async_hooks\` (not as a global, even with \`nodejs_compat\`), so it is
+// assigned here - as \`@opennextjs/aws\`'s edge middleware bundler does.
 import { AsyncLocalStorage } from "node:async_hooks";
 globalThis.AsyncLocalStorage = AsyncLocalStorage;
 
