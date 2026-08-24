@@ -85,7 +85,7 @@ export async function build(
 	const hasNodeMiddleware = useNodeMiddleware(options);
 	if (hasNodeMiddleware) {
 		logger.warn(
-			"Node.js middleware support is experimental in cloudflare, and not officially maintained by OpenNext maintainers. Use at your own risk.
+			"Node.js middleware support is experimental in cloudflare, and not officially maintained by OpenNext maintainers. Use at your own risk."
 		);
 	}
 
