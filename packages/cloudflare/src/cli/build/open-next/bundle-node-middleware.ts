@@ -98,6 +98,13 @@ export function setCompiledMiddlewarePlugin(compiledMiddlewarePath: string): Plu
  * `require` calls are converted into ESM imports via a virtual module. The virtual module
  * re-exports the default export so that the interop helpers in the middleware compiled by
  * Next.js receive the full module (`export * from ...` alone would drop the default export).
+ *
+ * This mirrors `handleRequireCallsToNodeJSBuiltins` in wrangler's `hybrid-nodejs-compat`
+ * esbuild plugin, which applies the same `require` to ESM conversion for `nodejs_compat`.
+ * Keep the two in sync:
+ * https://github.com/cloudflare/workers-sdk/blob/c457bfc6b5a575586354f5b0ad7a1100eff915fe/packages/wrangler/src/deployment-bundle/esbuild-plugins/hybrid-nodejs-compat.ts#L102-L133
+ * The virtual module here additionally re-exports the named exports and falls back to the
+ * whole module when the builtin has no default export.
  */
 export function nodeBuiltinsPlugin(): Plugin {
 	const namespace = "node-builtins";
