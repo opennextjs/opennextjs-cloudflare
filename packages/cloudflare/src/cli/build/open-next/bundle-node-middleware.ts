@@ -95,16 +95,20 @@ export function setCompiledMiddlewarePlugin(compiledMiddlewarePath: string): Plu
  * Makes the Node.js builtins used by the bundled code (i.e. `require("crypto")` or
  * `import from "node:crypto"`) resolve to the modules workerd provides via `nodejs_compat`.
  *
- * `require` calls are converted into ESM imports via a virtual module. The virtual module
- * re-exports the default export so that the interop helpers in the middleware compiled by
- * Next.js receive the full module (`export * from ...` alone would drop the default export).
+ * `require` calls are converted into a virtual CommonJS module re-exporting the builtin.
+ * The virtual module has to stay CommonJS - esbuild classifies it as such because it assigns to
+ * `module.exports` and uses no `export` keyword - so that `require("crypto")` receives the module
+ * workerd provides rather than an esbuild `__toCommonJS` wrapper built from its named exports,
+ * which would drop whatever the named exports do not expose and add a synthetic `__esModule`.
  *
- * This mirrors `handleRequireCallsToNodeJSBuiltins` in wrangler's `hybrid-nodejs-compat`
- * esbuild plugin, which applies the same `require` to ESM conversion for `nodejs_compat`.
- * Keep the two in sync:
+ * The conversion is kept in sync with `handleRequireCallsToNodeJSBuiltins` in wrangler's
+ * `hybrid-nodejs-compat` esbuild plugin, which is the source of truth:
  * https://github.com/cloudflare/workers-sdk/blob/c457bfc6b5a575586354f5b0ad7a1100eff915fe/packages/wrangler/src/deployment-bundle/esbuild-plugins/hybrid-nodejs-compat.ts#L102-L133
- * The virtual module here additionally re-exports the named exports and falls back to the
- * whole module when the builtin has no default export.
+ *
+ * It differs on a single intentional point: the builtin is imported as a namespace and
+ * `mod.default ?? mod` is used rather than a default import, so that a builtin without a `default`
+ * export can not fail to link in workerd. wrangler applies the same fallback to its unenv aliases
+ * in `handleUnenvAliasedPackages`.
  */
 export function nodeBuiltinsPlugin(): Plugin {
 	const namespace = "node-builtins";
@@ -124,8 +128,7 @@ export function nodeBuiltinsPlugin(): Plugin {
 			build.onLoad({ filter: /^node:/, namespace }, ({ path: builtin }) => ({
 				contents: `
 					import * as mod from "${builtin}";
-					export * from "${builtin}";
-					export default mod.default ?? mod;
+					module.exports = mod.default ?? mod;
 				`,
 				loader: "js",
 			}));
