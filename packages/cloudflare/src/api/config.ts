@@ -44,7 +44,9 @@ export type CloudflareOverrides = {
 
 	/**
 	 * Enable cache interception
-	 * Should be `false` when PPR is used
+	 * Cache Components routes bypass interception so Next.js can resume their postponed work.
+	 * Should still be `false` with `experimental.ppr` alone: the interceptor only holds the cached
+	 * shell, so it would serve a partial page as if it were complete.
 	 * @default false
 	 */
 	enableCacheInterception?: boolean;

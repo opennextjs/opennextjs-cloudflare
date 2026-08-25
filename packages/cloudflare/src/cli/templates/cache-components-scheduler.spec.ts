@@ -1,0 +1,498 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+import { clearImmediate as nativeClearImmediate, setImmediate as nativeSetImmediate } from "node:timers";
+import { promisify } from "node:util";
+
+import { afterAll, describe, expect, it, vi } from "vitest";
+
+import { runInSequentialTasks } from "./cache-components-scheduler.js";
+
+/** Mirrors `init.ts`: an ALS store on a global symbol, wrapping the whole request. */
+const requestContextStorage = new AsyncLocalStorage<object>();
+Object.defineProperty(globalThis, Symbol.for("__cloudflare-context__"), {
+	get: () => requestContextStorage.getStore(),
+	configurable: true,
+});
+const withRequestContext = <T>(run: () => T): T => requestContextStorage.run({}, run);
+
+afterAll(() => {
+	globalThis.setImmediate = nativeSetImmediate;
+	globalThis.clearImmediate = nativeClearImmediate;
+});
+
+/**
+ * Stands in for React Flight: a stage opens a gate, the component resumes `hops` microtasks later,
+ * then schedules its flush. Next's contract is that both land before the next stage.
+ */
+function createGatedRender(stages: number, hops: number, log: string[]) {
+	const gates = Array.from({ length: stages }, () => {
+		let open!: () => void;
+		const opened = new Promise<void>((resolve) => (open = resolve));
+		return { opened, open };
+	});
+
+	return {
+		start() {
+			for (const [stage, gate] of gates.entries()) {
+				void gate.opened.then(async () => {
+					for (let hop = 0; hop < hops; hop++) await null;
+					setImmediate(() => {
+						log.push(`work${stage}`);
+						setImmediate(() => log.push(`flush${stage}`));
+					});
+				});
+			}
+		},
+		advance: (stage: number) => gates[stage]!.open(),
+	};
+}
+
+function runGatedRender(stages: number, hops: number, log: string[]) {
+	const render = createGatedRender(stages, hops, log);
+	return runInSequentialTasks(
+		() => {
+			render.start();
+			return "rendered";
+		},
+		...Array.from({ length: stages }, (_, stage) => () => {
+			log.push(`stage${stage}`);
+			render.advance(stage);
+		})
+	);
+}
+
+describe("runInSequentialTasks", () => {
+	it("resolves with what the first task returned", async () => {
+		const order: string[] = [];
+		const result = await runInSequentialTasks(
+			() => {
+				order.push("first");
+				return 42;
+			},
+			() => order.push("second"),
+			() => order.push("third")
+		);
+
+		expect(result).toEqual(42);
+		expect(order).toEqual(["first", "second", "third"]);
+	});
+
+	it("adopts a promise returned by the first task", async () => {
+		await expect(
+			runInSequentialTasks(
+				async () => "async result",
+				() => {}
+			)
+		).resolves.toEqual("async result");
+	});
+
+	// The regression: on workerd the render's flush used to slip behind the stage that unblocked it,
+	// so a runtime prefetch aborted before the content it had already rendered was collected.
+	it.each([0, 1, 3, 12])(
+		"flushes each stage's work before the next stage, %i microtask hops in",
+		async (hops) => {
+			const log: string[] = [];
+
+			await runGatedRender(4, hops, log);
+
+			expect(log).toEqual([
+				"stage0",
+				"work0",
+				"flush0",
+				"stage1",
+				"work1",
+				"flush1",
+				"stage2",
+				"work2",
+				"flush2",
+				"stage3",
+				"work3",
+				"flush3",
+			]);
+		}
+	);
+
+	it("keeps overlapping renders from gating each other", async () => {
+		const slowLog: string[] = [];
+		const fastLog: string[] = [];
+
+		// The slow render keeps scheduling immediates long after the fast one is done, which must not
+		// hold the fast render's stages back.
+		await Promise.all([
+			withRequestContext(() => runGatedRender(4, 12, slowLog)),
+			withRequestContext(() => runGatedRender(4, 0, fastLog)),
+		]);
+
+		for (const log of [slowLog, fastLog]) {
+			expect(log).toEqual([
+				"stage0",
+				"work0",
+				"flush0",
+				"stage1",
+				"work1",
+				"flush1",
+				"stage2",
+				"work2",
+				"flush2",
+				"stage3",
+				"work3",
+				"flush3",
+			]);
+		}
+	});
+
+	it("runs staged renders from one request without interleaving their stages", async () => {
+		const log: string[] = [];
+
+		await withRequestContext(() =>
+			Promise.all([
+				runInSequentialTasks(
+					() => log.push("first:a"),
+					() => log.push("second:a"),
+					() => log.push("third:a")
+				),
+				runInSequentialTasks(
+					() => log.push("first:b"),
+					() => log.push("second:b"),
+					() => log.push("third:b")
+				),
+			])
+		);
+
+		expect(log).toEqual(["first:a", "second:a", "third:a", "first:b", "second:b", "third:b"]);
+	});
+
+	it("preserves the async context of a staged render while it waits for an earlier render", async () => {
+		const workStorage = new AsyncLocalStorage<string>();
+		const log: string[] = [];
+
+		await withRequestContext(() =>
+			Promise.all([
+				workStorage.run("a", () =>
+					runInSequentialTasks(
+						() => log.push(`first:${workStorage.getStore()}`),
+						() => log.push(`second:${workStorage.getStore()}`)
+					)
+				),
+				workStorage.run("b", () =>
+					runInSequentialTasks(
+						() => log.push(`first:${workStorage.getStore()}`),
+						() => log.push(`second:${workStorage.getStore()}`)
+					)
+				),
+			])
+		);
+
+		expect(log).toEqual(["first:a", "second:a", "first:b", "second:b"]);
+	});
+
+	it("starts the next staged render after an earlier render throws", async () => {
+		const failure = new Error("stage failed");
+		const log: string[] = [];
+
+		await withRequestContext(async () => {
+			const failed = runInSequentialTasks(
+				() => log.push("failed:first"),
+				() => {
+					throw failure;
+				}
+			);
+			const recovered = runInSequentialTasks(
+				() => {
+					log.push("recovered:first");
+					return "recovered";
+				},
+				() => log.push("recovered:second")
+			);
+
+			await expect(failed).rejects.toBe(failure);
+			await expect(recovered).resolves.toEqual("recovered");
+		});
+
+		expect(log).toEqual(["failed:first", "recovered:first", "recovered:second"]);
+	});
+
+	it("releases the queue after the stages finish without awaiting the first result", async () => {
+		const log: string[] = [];
+
+		await withRequestContext(async () => {
+			void runInSequentialTasks(
+				() => new Promise<never>(() => {}),
+				() => log.push("pending:stage")
+			);
+
+			await runInSequentialTasks(
+				() => log.push("next:first"),
+				() => log.push("next:second")
+			);
+		});
+
+		expect(log).toEqual(["pending:stage", "next:first", "next:second"]);
+	});
+
+	// Next awaits the RSC payload before staging, so React resumes from promises created outside the
+	// run. Counting by run alone reads zero and every stage advances over a flush still in flight.
+	it("waits for work rooted outside the staged run", async () => {
+		const log: string[] = [];
+		const gates = Array.from({ length: 3 }, () => {
+			let open!: () => void;
+			const opened = new Promise<void>((resolve) => (open = resolve));
+			return { opened, open };
+		});
+
+		await withRequestContext(() => {
+			// Registered before the render, the way work rooted in the RSC payload is.
+			for (const [stage, gate] of gates.entries()) {
+				void gate.opened.then(async () => {
+					for (let hop = 0; hop < 4; hop++) await null;
+					setImmediate(() => {
+						log.push(`work${stage}`);
+						setImmediate(() => log.push(`flush${stage}`));
+					});
+				});
+			}
+
+			return runInSequentialTasks(
+				() => "rendered",
+				...gates.map((gate, stage) => () => {
+					log.push(`stage${stage}`);
+					gate.open();
+				})
+			);
+		});
+
+		expect(log).toEqual([
+			"stage0",
+			"work0",
+			"flush0",
+			"stage1",
+			"work1",
+			"flush1",
+			"stage2",
+			"work2",
+			"flush2",
+		]);
+	});
+
+	// React chooses and stores its scheduler when the runtime module loads. A wrapper installed on the
+	// first render cannot observe work sent through that earlier reference.
+	it("waits for work scheduled through an immediate reference captured during initialization", async () => {
+		const capturedSetImmediate = globalThis.setImmediate;
+		const log: string[] = [];
+
+		await withRequestContext(() =>
+			runInSequentialTasks(
+				() => {
+					void Promise.resolve().then(() => {
+						capturedSetImmediate(() => log.push("work"));
+					});
+				},
+				() => log.push("stage")
+			)
+		);
+
+		expect(log).toEqual(["work", "stage"]);
+	});
+
+	it("preserves and waits for the promise-based immediate captured by Next", async () => {
+		type PromisifiedImmediate = <T>(value?: T, options?: { signal?: AbortSignal }) => Promise<T>;
+		const capturedSetImmediatePromise = (
+			globalThis.setImmediate as typeof setImmediate & {
+				[promisify.custom]?: PromisifiedImmediate;
+			}
+		)[promisify.custom];
+		const log: string[] = [];
+
+		expect(capturedSetImmediatePromise).toBeTypeOf("function");
+		await withRequestContext(() =>
+			runInSequentialTasks(
+				() => {
+					void capturedSetImmediatePromise!("preserved").then((value) => log.push(value));
+				},
+				() => log.push("stage")
+			)
+		);
+
+		expect(log).toEqual(["preserved", "stage"]);
+	});
+
+	it("releases a rejected promise-based immediate", async () => {
+		type PromisifiedImmediate = <T>(value?: T, options?: { signal?: AbortSignal }) => Promise<T>;
+		const capturedSetImmediatePromise = (
+			globalThis.setImmediate as typeof setImmediate & {
+				[promisify.custom]?: PromisifiedImmediate;
+			}
+		)[promisify.custom];
+		const abort = new AbortController();
+		const log: string[] = [];
+
+		await withRequestContext(() =>
+			runInSequentialTasks(
+				() => {
+					const pending = capturedSetImmediatePromise!(undefined, { signal: abort.signal });
+					void pending.catch(() => log.push("aborted"));
+					abort.abort();
+				},
+				() => log.push("stage")
+			)
+		);
+
+		expect(log).toEqual(["aborted", "stage"]);
+	});
+
+	it("supplies the promise hook missing from workerd's global immediate", async () => {
+		const workerdSetImmediate = ((callback: (...args: unknown[]) => void, ...args: unknown[]) =>
+			nativeSetImmediate(callback, ...args)) as typeof setImmediate;
+		globalThis.setImmediate = workerdSetImmediate;
+		globalThis.clearImmediate = nativeClearImmediate;
+		vi.resetModules();
+
+		try {
+			const { runInSequentialTasks: freshRunInSequentialTasks } = await import(
+				"./cache-components-scheduler.js"
+			);
+			type PromisifiedImmediate = <T>(value?: T) => Promise<T>;
+			const capturedSetImmediatePromise = (
+				globalThis.setImmediate as typeof setImmediate & {
+					[promisify.custom]?: PromisifiedImmediate;
+				}
+			)[promisify.custom];
+			const log: string[] = [];
+
+			expect(workerdSetImmediate[promisify.custom]).toBeUndefined();
+			expect(capturedSetImmediatePromise).toBeTypeOf("function");
+			await withRequestContext(() =>
+				freshRunInSequentialTasks(
+					() => {
+						void capturedSetImmediatePromise!().then(() => log.push("work"));
+					},
+					() => log.push("stage")
+				)
+			);
+
+			expect(log).toEqual(["work", "stage"]);
+		} finally {
+			globalThis.setImmediate = nativeSetImmediate;
+			globalThis.clearImmediate = nativeClearImmediate;
+		}
+	});
+
+	// Scoped to the request, not process wide like Next's capture, so requests stay independent.
+	it("keeps requests from gating each other", async () => {
+		const log: string[] = [];
+
+		const noisy = withRequestContext(() => {
+			let remaining = 300;
+			const spin = () => {
+				if (remaining-- > 0) setImmediate(spin);
+			};
+			return runInSequentialTasks(
+				() => setImmediate(spin),
+				() => log.push("noisy:stage0")
+			);
+		});
+
+		const quiet = withRequestContext(() => {
+			let open!: () => void;
+			const opened = new Promise<void>((resolve) => (open = resolve));
+			void opened.then(() => setImmediate(() => log.push("quiet:flush")));
+			return runInSequentialTasks(
+				() => open(),
+				() => log.push("quiet:stage0")
+			);
+		});
+
+		await Promise.all([noisy, quiet]);
+
+		expect(log.indexOf("quiet:flush")).toBeLessThan(log.indexOf("quiet:stage0"));
+	});
+
+	it("rejects and skips the remaining tasks when a task throws", async () => {
+		const order: string[] = [];
+		const failure = new Error("stage failed");
+
+		await expect(
+			runInSequentialTasks(
+				() => order.push("first"),
+				() => {
+					throw failure;
+				},
+				() => order.push("never")
+			)
+		).rejects.toBe(failure);
+
+		expect(order).toEqual(["first"]);
+	});
+
+	it("does not wait on an immediate that was cleared", async () => {
+		const log: string[] = [];
+
+		await runInSequentialTasks(
+			() => {
+				const immediate = setImmediate(() => log.push("cleared"));
+				clearImmediate(immediate);
+			},
+			() => log.push("stage1")
+		);
+
+		expect(log).toEqual(["stage1"]);
+	});
+
+	// A clear that threw did not cancel anything, so releasing the count there would advance the stage
+	// over an immediate that is still going to run.
+	it("keeps waiting on an immediate whose clear failed", async () => {
+		const failure = new Error("clear failed");
+		globalThis.setImmediate = nativeSetImmediate;
+		globalThis.clearImmediate = (() => {
+			throw failure;
+		}) as unknown as typeof clearImmediate;
+		vi.resetModules();
+
+		try {
+			const { runInSequentialTasks: freshRunInSequentialTasks } = await import(
+				"./cache-components-scheduler.js"
+			);
+			const log: string[] = [];
+
+			await freshRunInSequentialTasks(
+				// Scheduling from a continuation puts the immediate behind the settle hop, so only the
+				// pending count can hold `stage1` back.
+				() =>
+					void Promise.resolve().then(() => {
+						const immediate = setImmediate(() => log.push("still live"));
+						try {
+							clearImmediate(immediate);
+						} catch (error) {
+							log.push(error === failure ? "clear failed" : "unexpected error");
+						}
+					}),
+				() => log.push("stage1")
+			);
+
+			expect(log).toEqual(["clear failed", "still live", "stage1"]);
+		} finally {
+			globalThis.setImmediate = nativeSetImmediate;
+			globalThis.clearImmediate = nativeClearImmediate;
+		}
+	});
+
+	// Resolving here would hand back a render whose last stage never flushed - the truncated response
+	// this scheduler exists to prevent, only silent.
+	it("rejects instead of advancing a stage that never settles", async () => {
+		let rescheduling = true;
+
+		const settled = runInSequentialTasks(
+			() => {
+				const reschedule = () => {
+					if (rescheduling) setImmediate(reschedule);
+				};
+				setImmediate(reschedule);
+			},
+			() => {
+				throw new Error("unreachable: the stage must not be entered");
+			}
+		);
+
+		await expect(settled).rejects.toThrow(/did not settle: 1 immediate\(s\) still pending/);
+		rescheduling = false;
+	});
+});

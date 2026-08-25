@@ -1,0 +1,255 @@
+/**
+ * Cache Components staged rendering for workerd.
+ *
+ * Next drains the immediates React queued between two stages so each stage flushes before the next
+ * unblocks more content. It builds that boundary from `process.nextTick`, which workerd implements
+ * as `queueMicrotask`, so the drain ends before React has scheduled its flush and the render slips a
+ * stage. workerd runs timers and immediates from one ordered macrotask queue and drains microtasks
+ * between two of them, so an immediate is an exact "everything queued before me has run" signal:
+ * count the outstanding ones and hop until none remain.
+ */
+
+import { AsyncLocalStorage } from "node:async_hooks";
+import { setImmediate as timersPromisesSetImmediate } from "node:timers/promises";
+import { promisify } from "node:util";
+
+type StagedRun = { pending: number; scope: RequestScope };
+
+/** Immediates the request caused that no staged run owns. Shared by the request's renders. */
+type RequestScope = { unattributed: number; stagedTail: Promise<void> };
+
+type ScheduleMacrotask = (callback: () => void) => unknown;
+type PromisifiedSetImmediate = <T>(
+	value?: T,
+	options?: { ref?: boolean; signal?: AbortSignal }
+) => Promise<T>;
+
+/** Keeps one render from waiting on another's immediates. */
+const runStorage = new AsyncLocalStorage<StagedRun>();
+
+const REQUEST_CONTEXT = Symbol.for("__cloudflare-context__");
+
+function createRequestScope(): RequestScope {
+	return { unattributed: 0, stagedTail: Promise.resolve() };
+}
+
+/**
+ * Next awaits the RSC payload before it stages, so React resumes from promises created outside the
+ * run where `runStorage` cannot see it - which is why Next's own capture is process wide. The
+ * request is the next widest owner that still keeps one request from gating another.
+ */
+const scopes = new WeakMap<object, RequestScope>();
+const isolateScope = createRequestScope();
+
+function currentScope(): RequestScope {
+	const context = (globalThis as Record<symbol, unknown>)[REQUEST_CONTEXT];
+	if (typeof context !== "object" || context === null) {
+		return isolateScope;
+	}
+
+	let scope = scopes.get(context);
+	if (!scope) {
+		scope = createRequestScope();
+		scopes.set(context, scope);
+	}
+	return scope;
+}
+
+/** Fail rather than advance a stage over work it still owns, which is what truncates responses. */
+const MAX_SETTLE_HOPS = 1000;
+
+const COUNTED = Symbol.for("__opennext.cache-components.countedSetImmediate");
+
+let scheduleMacrotask: ScheduleMacrotask | undefined;
+// workerd's global callback API does not expose Node's custom-promisify hook. Capture its native
+// promise API before Next replaces the `node:timers/promises` export, then expose that as the hook.
+const scheduleMacrotaskPromisified = timersPromisesSetImmediate as PromisifiedSetImmediate;
+
+/** Next patches `setImmediate` when its server environment loads, so wrap whatever is installed. */
+function install(): ScheduleMacrotask {
+	const current = globalThis.setImmediate as typeof setImmediate & { [COUNTED]?: true };
+	if (scheduleMacrotask && current[COUNTED]) {
+		return scheduleMacrotask;
+	}
+
+	const previousSetImmediate = globalThis.setImmediate;
+	const previousClearImmediate = globalThis.clearImmediate;
+	const releaseByImmediate = new WeakMap<object, () => void>();
+	const previousPromisifiedSetImmediate =
+		(previousSetImmediate as typeof setImmediate & { [promisify.custom]?: PromisifiedSetImmediate })[
+			promisify.custom
+		] ?? scheduleMacrotaskPromisified;
+
+	const countCurrentWork = () => {
+		const run = runStorage.getStore();
+		// A render must also wait for work it did not root itself, so charge the rest to the request.
+		const owner = run ?? currentScope();
+		if (owner === isolateScope) return;
+
+		let released = false;
+		if (run) run.pending++;
+		else (owner as RequestScope).unattributed++;
+
+		return () => {
+			if (released) return;
+			released = true;
+			if (run) run.pending--;
+			else (owner as RequestScope).unattributed--;
+		};
+	};
+
+	const countedSetImmediate = (callback: (...args: unknown[]) => void, ...args: unknown[]) => {
+		const release = countCurrentWork();
+		try {
+			const immediate = previousSetImmediate(() => {
+				release?.();
+				callback(...args);
+			});
+			if (release && typeof immediate === "object" && immediate !== null) {
+				releaseByImmediate.set(immediate, release);
+			}
+			return immediate;
+		} catch (error) {
+			// Nothing was scheduled, so nothing will settle the count.
+			release?.();
+			throw error;
+		}
+	};
+	Object.defineProperty(countedSetImmediate, COUNTED, { value: true });
+
+	if (previousPromisifiedSetImmediate) {
+		const countedSetImmediatePromise: PromisifiedSetImmediate = <T>(
+			value?: T,
+			options?: { ref?: boolean; signal?: AbortSignal }
+		) => {
+			const release = countCurrentWork();
+			try {
+				const pending = previousPromisifiedSetImmediate(value, options);
+				if (!release) return pending;
+				return pending.then(
+					(result) => {
+						release();
+						return result;
+					},
+					(error: unknown) => {
+						release();
+						throw error;
+					}
+				);
+			} catch (error) {
+				release?.();
+				throw error;
+			}
+		};
+		Object.defineProperty(countedSetImmediate, promisify.custom, {
+			value: countedSetImmediatePromise,
+		});
+	}
+
+	const countedClearImmediate = (immediate: unknown) => {
+		// A clear that threw left the immediate live, so it stays counted.
+		previousClearImmediate(immediate as Parameters<typeof clearImmediate>[0]);
+		if (typeof immediate === "object" && immediate !== null) {
+			releaseByImmediate.get(immediate)?.();
+		}
+	};
+
+	globalThis.setImmediate = countedSetImmediate as unknown as typeof setImmediate;
+	globalThis.clearImmediate = countedClearImmediate as unknown as typeof clearImmediate;
+
+	// Hops must not count themselves, so they go through the unwrapped function.
+	scheduleMacrotask = previousSetImmediate as unknown as ScheduleMacrotask;
+	return scheduleMacrotask;
+}
+
+function ignore(): void {}
+
+// React captures `setImmediate` while its runtime loads. Install before the Next server is evaluated
+// so those captured references are counted too; installing only on the first staged render is late.
+install();
+
+/** Drop-in for Next's `runInSequentialTasks`: each callback gets its own settled task. */
+export function runInSequentialTasks<T>(first: () => T, ...rest: Array<() => void>): Promise<T> {
+	const hop = install();
+	const scope = currentScope();
+	const run: StagedRun = { pending: 0, scope };
+	const previousRun = scope.stagedTail;
+	let releaseRun!: () => void;
+	scope.stagedTail = new Promise<void>((resolve) => (releaseRun = resolve));
+
+	return new Promise<T>((resolve, reject) => {
+		let result: T;
+		let stage = 0;
+		let hops = 0;
+		let finished = false;
+
+		const fail = (error: unknown) => {
+			if (finished) return;
+			finished = true;
+			releaseRun();
+			reject(error);
+		};
+
+		const complete = () => {
+			if (finished) return;
+			finished = true;
+			releaseRun();
+			resolve(result);
+		};
+
+		const schedule = (callback: () => void) => {
+			try {
+				hop(callback);
+			} catch (error) {
+				fail(error);
+			}
+		};
+
+		const settleThen = (next: () => void) => {
+			schedule(() => {
+				const pending = run.pending + run.scope.unattributed;
+				if (pending === 0) {
+					next();
+					return;
+				}
+				if (hops++ < MAX_SETTLE_HOPS) {
+					settleThen(next);
+					return;
+				}
+				fail(
+					new Error(
+						`Cache Components render did not settle: ${pending} immediate(s) still pending after ${MAX_SETTLE_HOPS} tasks.`
+					)
+				);
+			});
+		};
+
+		const enterStage = () => {
+			try {
+				runStorage.run(run, () => {
+					if (stage === 0) {
+						result = first();
+						// A later task may reject this; the caller sees it through the returned promise.
+						const thenable = result as PromiseLike<unknown> | null | undefined;
+						if (thenable && typeof thenable.then === "function") {
+							thenable.then(ignore, ignore);
+						}
+					} else {
+						rest[stage - 1]!();
+					}
+				});
+			} catch (error) {
+				fail(error);
+				return;
+			}
+
+			stage++;
+			hops = 0;
+			settleThen(stage > rest.length ? complete : enterStage);
+		};
+
+		// Next schedules one timer group at a time. Queue groups from this request so their stages do
+		// not alternate, but do not make one request wait for another request's render.
+		void previousRun.then(() => schedule(enterStage));
+	});
+}
