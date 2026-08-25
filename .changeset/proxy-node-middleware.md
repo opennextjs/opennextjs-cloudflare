@@ -1,5 +1,5 @@
 ---
-"@opennextjs/cloudflare": minor
+"@opennextjs/cloudflare": patch
 ---
 
 feature: support Node.js middleware (`proxy.ts`)
