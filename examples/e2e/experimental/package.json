@@ -15,7 +15,7 @@
 	},
 	"dependencies": {
 		"@opennextjs/cloudflare": "workspace:*",
-		"next": "catalog:e2e",
+		"next": "16.2.11",
 		"react": "catalog:e2e",
 		"react-dom": "catalog:e2e"
 	},
