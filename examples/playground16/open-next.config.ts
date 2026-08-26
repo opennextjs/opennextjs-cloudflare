@@ -5,6 +5,7 @@ import d1NextTagCache from "@opennextjs/cloudflare/overrides/tag-cache/d1-next-t
 
 export default {
 	...defineCloudflareConfig({
+		enableCacheInterception: true,
 		incrementalCache: r2IncrementalCache,
 		queue: doQueue,
 		tagCache: d1NextTagCache,
