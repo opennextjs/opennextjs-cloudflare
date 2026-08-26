@@ -396,7 +396,10 @@ export const patchTurbopackRuntime: CodePatcher = {
 				patchTurbopackRuntimeCode({ code, filePath, tracedFiles }),
 		},
 		{
-			versions: ">=15.0.0",
+			// Next.js 16.3.0 moved the wasm loaders out of the Turbopack runtime and started
+			// emitting them on demand in the chunks that need them. Earlier versions are handled
+			// by the runtime patch above.
+			versions: ">=16.3.0",
 			pathFilter: getCrossPlatformPathRegex(String.raw`/\.next/server/chunks/.+\.js$`, {
 				escape: false,
 			}),
