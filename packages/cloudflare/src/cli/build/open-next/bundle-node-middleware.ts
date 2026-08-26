@@ -24,6 +24,7 @@ import path from "node:path";
 
 import { type BuildOptions, getBundlerRuntime, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import logger from "@opennextjs/aws/logger.js";
+import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
 import { openNextEdgePlugins } from "@opennextjs/aws/plugins/edge.js";
 import { openNextExternalMiddlewarePlugin } from "@opennextjs/aws/plugins/externalMiddleware.js";
 import { openNextReplacementPlugin } from "@opennextjs/aws/plugins/replacement.js";
@@ -34,6 +35,7 @@ import { glob } from "glob";
 
 import { normalizePath } from "../../utils/normalize-path.js";
 import { patchWebpackRuntime } from "../patches/ast/webpack-runtime.js";
+import { patchInstrumentation } from "../patches/plugins/instrumentation.js";
 import { patchTurbopackRuntimeCode } from "../patches/plugins/turbopack.js";
 import { setWranglerExternal } from "../patches/plugins/wrangler-external.js";
 
@@ -174,6 +176,8 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 		path.join(options.appBuildOutputPath, "node_modules", "@opentelemetry", "api")
 	);
 
+	const updater = new ContentUpdater(options);
+
 	await build({
 		entryPoints: [path.join(options.openNextDistDir, "adapters", "middleware.js")],
 		outfile: path.join(middlewareDir, "handler.mjs"),
@@ -237,6 +241,19 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 				nextDir: path.join(options.appBuildOutputPath, ".next"),
 				isInCloudflare: true,
 			}),
+			// Next.js 16.3 registers the instrumentation hook from the middleware itself when the
+			// middleware does not run on the edge runtime, by dynamically requiring
+			// `.next/server/instrumentation.js` - which workerd does not support.
+			//
+			// The guard Next.js uses (`process.env.NEXT_RUNTIME !== "edge"`) is inlined to `"nodejs"`
+			// when Next.js compiles the middleware, so the `define` above can not eliminate the branch.
+			// The loader is stubbed out instead, which matches what the edge runtime does here: it has
+			// no instrumentation entry to register, and the server function - which shares the isolate -
+			// already registers the hook.
+			// See https://github.com/opennextjs/opennextjs-cloudflare/issues/1362
+			patchInstrumentation(updater, options, { loadInstrumentation: false }),
+			// Apply updater updates, must be the last plugin
+			updater.plugin,
 		] as Plugin[],
 		banner: {
 			js: `
