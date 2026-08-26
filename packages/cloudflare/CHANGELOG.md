@@ -1,5 +1,52 @@
 # @opennextjs/cloudflare
 
+## 1.20.3
+
+### Patch Changes
+
+- [#1361](https://github.com/opennextjs/opennextjs-cloudflare/pull/1361) [`8c31fbc`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8c31fbcd197d30b940354233cbff091264be7a58) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.1
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.1>
+
+- [#1359](https://github.com/opennextjs/opennextjs-cloudflare/pull/1359) [`65e4487`](https://github.com/opennextjs/opennextjs-cloudflare/commit/65e44874d881f8ed6e0324c90e0ba43744c3b26c) Thanks [@vicb](https://github.com/vicb)! - chore: bump the Next.js peer dependency to 15.5.24 / 16.3.3
+
+- [#1359](https://github.com/opennextjs/opennextjs-cloudflare/pull/1359) [`65e4487`](https://github.com/opennextjs/opennextjs-cloudflare/commit/65e44874d881f8ed6e0324c90e0ba43744c3b26c) Thanks [@vicb](https://github.com/vicb)! - fix: patch the Turbopack wasm helpers that Next.js 16.3 emits in the chunks
+
+  Until Next.js 16.2 the Turbopack wasm loaders were named `loadWebAssembly` and
+  `loadWebAssemblyModule` functions living in `[turbopack]_runtime.js`, which the adapter rewrote to
+  resolve the chunk through a static `import()`. Next.js 16.3 emits them on demand in the chunks
+  instead (`[turbopack-wasm]/node/loadWasm.ts`), so the existing patch silently stopped matching and
+  `WebAssembly.compileStreaming` - which workerd does not implement - survived into the Worker.
+
+  Every wasm backed import then threw `TypeError: WebAssembly.compileStreaming is not a function` at
+  runtime, most visibly breaking Prisma with the `workerd` client runtime.
+
+  The chunks emitted by Turbopack are now patched as well, for both the server and the Node.js
+  middleware bundles.
+
+- [#1309](https://github.com/opennextjs/opennextjs-cloudflare/pull/1309) [`56dfacc`](https://github.com/opennextjs/opennextjs-cloudflare/commit/56dfacc1cdeb6422eb59b23dcc80dc844e5f2529) Thanks [@ScienHAC](https://github.com/ScienHAC)! - feature: support Node.js middleware (`proxy.ts`)
+
+  Next.js 16 replaces `middleware.ts` with `proxy.ts` which always runs on the Node.js runtime.
+
+  The Node.js middleware is now bundled into a Workers compatible `middleware/handler.mjs`:
+  the OpenNext config manifests are inlined at build time (as for the edge middleware) and the
+  middleware compiled by Next.js is statically bundled instead of being loaded from the
+  filesystem at runtime (workerd can not access the filesystem nor load modules at runtime).
+
+  The support is experimental and requires the `nodejs_compat` compatibility flag.
+
+- [#1359](https://github.com/opennextjs/opennextjs-cloudflare/pull/1359) [`65e4487`](https://github.com/opennextjs/opennextjs-cloudflare/commit/65e44874d881f8ed6e0324c90e0ba43744c3b26c) Thanks [@vicb](https://github.com/vicb)! - fix: do not load the instrumentation hook from the Node.js middleware bundle
+
+  Next.js 16.3 registers the instrumentation hook from the middleware itself when the middleware
+  does not run on the edge runtime, by dynamically requiring `.next/server/instrumentation.js`.
+  workerd does not support dynamic requires so every request handled by the Node.js middleware
+  (`proxy.ts`) failed with `Dynamic require of ".next/server/instrumentation.js" is not supported`.
+
+  The guard Next.js uses (`process.env.NEXT_RUNTIME !== "edge"`) is inlined by Next.js when it
+  compiles the middleware, so it can not be eliminated when the middleware is re-bundled. The loader
+  is stubbed out instead, which matches the edge runtime behaviour: the server function - which
+  shares the isolate - keeps registering the hook.
+
 ## 1.20.2
 
 ### Patch Changes
