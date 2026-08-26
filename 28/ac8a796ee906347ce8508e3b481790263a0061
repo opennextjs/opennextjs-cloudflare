@@ -1,0 +1,21 @@
+packages/cloudflare/src/cli/build/open-next/bundle-node-middleware.ts
+  s_d1d6abcdfa197f::t_5cbe26b4883e6d 27,38,179-180,244-256
+packages/cloudflare/src/cli/build/patches/plugins/instrumentation.spec.ts
+  s_d1d6abcdfa197f::t_bd098e81272efb 1-4,6-8,10-11,162-256
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "28ac8a796ee906347ce8508e3b481790263a0061",
+  "prompts": {},
+  "sessions": {
+    "s_d1d6abcdfa197f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fc2ea82c1ffe6Ge1y6o45EZS5i",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
