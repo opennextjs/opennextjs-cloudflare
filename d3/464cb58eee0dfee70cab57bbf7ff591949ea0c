@@ -1,0 +1,23 @@
+packages/cloudflare/src/cli/build/open-next/bundle-node-middleware.ts
+  s_d1d6abcdfa197f::t_cbb086477344b3 39,76-87
+packages/cloudflare/src/cli/build/patches/plugins/turbopack.spec.ts
+  s_d1d6abcdfa197f::t_67809c5cc615c0 7-9,75-154
+packages/cloudflare/src/cli/build/patches/plugins/turbopack.ts
+  s_d1d6abcdfa197f::t_1d54dcb9a2998d 4,58-121,354-385,398-405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d3464cb58eee0dfee70cab57bbf7ff591949ea0c",
+  "prompts": {},
+  "sessions": {
+    "s_d1d6abcdfa197f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fc2ea82c1ffe6Ge1y6o45EZS5i",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
