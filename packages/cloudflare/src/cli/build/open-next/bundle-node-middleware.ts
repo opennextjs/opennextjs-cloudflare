@@ -36,7 +36,7 @@ import { glob } from "glob";
 import { normalizePath } from "../../utils/normalize-path.js";
 import { patchWebpackRuntime } from "../patches/ast/webpack-runtime.js";
 import { patchInstrumentation } from "../patches/plugins/instrumentation.js";
-import { patchTurbopackRuntimeCode } from "../patches/plugins/turbopack.js";
+import { patchTurbopackRuntimeCode, patchTurbopackWasmChunkCode } from "../patches/plugins/turbopack.js";
 import { setWranglerExternal } from "../patches/plugins/wrangler-external.js";
 
 /**
@@ -73,6 +73,18 @@ async function inlineMiddlewareChunks(options: BuildOptions, dotNextServerDir: s
 			tracedFiles,
 		})
 	);
+
+	// Since Next.js 16.3 the wasm helpers are emitted in the chunks rather than in the runtime.
+	for (const chunkPath of tracedFiles) {
+		if (!chunkPath.endsWith(".js") || normalizePath(chunkPath) === normalizePath(runtimePath)) {
+			continue;
+		}
+		const code = readFileSync(chunkPath, "utf-8");
+		const patched = patchTurbopackWasmChunkCode({ code, tracedFiles });
+		if (patched !== code) {
+			writeFileSync(chunkPath, patched);
+		}
+	}
 }
 
 /**
