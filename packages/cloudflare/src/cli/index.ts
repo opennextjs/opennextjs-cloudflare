@@ -11,8 +11,10 @@ import { addPopulateCacheCommand } from "./commands/populate-cache.js";
 import { addPreviewCommand } from "./commands/preview.js";
 import { addUploadCommand } from "./commands/upload.js";
 
+const nodeProcess = process as NodeJS.Process;
+
 export function runCommand() {
-	const y = yargs(process.argv.slice(2).filter((arg) => arg !== "--"))
+	const y = yargs(nodeProcess.argv.slice(2).filter((arg) => arg !== "--"))
 		.scriptName("opennextjs-cloudflare")
 		.parserConfiguration({ "unknown-options-as-args": true })
 		.strictCommands()
