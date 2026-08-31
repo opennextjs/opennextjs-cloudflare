@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { type PoolWorker, runWorkerPool } from "./apply-code-patches.js";
+import { enqueuePatching, type PoolWorker, runWorkerPool } from "./apply-code-patches.js";
 import type { PatchWorkerRequest, PatchWorkerResponse } from "./code-patches.js";
 
 type Listener = (...args: never[]) => void;
@@ -91,6 +91,24 @@ describe("runWorkerPool", () => {
 		expect(workers.every((worker) => worker.terminated)).toBe(true);
 	});
 
+	it("terminates the created workers when creating another worker fails", async () => {
+		const workers: FakeWorker[] = [];
+		const createWorker = () => {
+			if (workers.length === 1) {
+				throw new Error("worker creation failed");
+			}
+			const worker = new FakeWorker(async () => {});
+			workers.push(worker);
+			return worker;
+		};
+
+		await expect(runWorkerPool(["/a.js", "/b.js"], 2, createWorker)).rejects.toThrow(
+			"worker creation failed"
+		);
+		expect(workers).toHaveLength(1);
+		expect(workers[0]?.terminated).toBe(true);
+	});
+
 	it("rejects when a worker crashes", async () => {
 		const createWorker = () => {
 			const worker = new FakeWorker(async () => {
@@ -100,5 +118,35 @@ describe("runWorkerPool", () => {
 		};
 
 		await expect(runWorkerPool(["/a.js"], 1, createWorker)).rejects.toThrow("worker crashed");
+	});
+});
+
+describe("enqueuePatching", () => {
+	it("does not overlap two patching runs", async () => {
+		const events: string[] = [];
+		const first = enqueuePatching(async () => {
+			events.push("first start");
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			events.push("first end");
+			return 1;
+		});
+		const second = enqueuePatching(async () => {
+			events.push("second start");
+			return 2;
+		});
+
+		await expect(first).resolves.toEqual(1);
+		await expect(second).resolves.toEqual(2);
+		expect(events).toEqual(["first start", "first end", "second start"]);
+	});
+
+	it("runs the next run after a failed one", async () => {
+		const failed = enqueuePatching(async () => {
+			throw new Error("patching failed");
+		});
+		const next = enqueuePatching(async () => "ok");
+
+		await expect(failed).rejects.toThrow("patching failed");
+		await expect(next).resolves.toEqual("ok");
 	});
 });

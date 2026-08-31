@@ -44,7 +44,33 @@ export interface PoolWorker {
  * The pool size can be overridden with the `OPEN_NEXT_PATCH_WORKERS` environment variable
  * (`0` and `1` disable the pool).
  */
-export async function applyCodePatchesInWorkers(
+export function applyCodePatchesInWorkers(
+	buildOptions: BuildOptions,
+	tracedFiles: string[],
+	manifests: Manifests,
+	additionalCodePatches: CodePatcher[]
+): Promise<void> {
+	// `createServerBundle` generates the bundles of split functions concurrently
+	// (`Promise.all`): serialize the patching so that a split configuration never runs more
+	// than one pool at a time (a single run already uses all the available cores).
+	return enqueuePatching(() =>
+		applyCodePatchesToBundle(buildOptions, tracedFiles, manifests, additionalCodePatches)
+	);
+}
+
+let patchingChain: Promise<unknown> = Promise.resolve();
+
+/**
+ * Chains the patching runs so that they never overlap. A failed run still lets the next
+ * one start, and its error propagates to its own caller.
+ */
+export function enqueuePatching<T>(run: () => Promise<T>): Promise<T> {
+	const result = patchingChain.then(run);
+	patchingChain = result.catch(() => undefined);
+	return result;
+}
+
+async function applyCodePatchesToBundle(
 	buildOptions: BuildOptions,
 	tracedFiles: string[],
 	manifests: Manifests,
@@ -101,7 +127,19 @@ export async function runWorkerPool(
 	createWorker: () => PoolWorker
 ): Promise<void> {
 	const queue = [...files];
-	const workers = Array.from({ length: Math.min(poolSize, queue.length) }, createWorker);
+	const workers: PoolWorker[] = [];
+	try {
+		for (let index = 0; index < Math.min(poolSize, queue.length); index++) {
+			workers.push(createWorker());
+		}
+	} catch (error) {
+		// Do not leave the already created workers alive: they would never receive work
+		// nor the `null` telling them to exit.
+		for (const worker of workers) {
+			void worker.terminate();
+		}
+		throw error;
+	}
 
 	await new Promise<void>((resolve, reject) => {
 		let settled = false;
