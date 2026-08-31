@@ -12,8 +12,6 @@ import { copyMiddlewareResources, generateEdgeBundle } from "@opennextjs/aws/bui
 import * as buildHelper from "@opennextjs/aws/build/helper.js";
 import { installDependencies } from "@opennextjs/aws/build/installDeps.js";
 import type { CodePatcher } from "@opennextjs/aws/build/patch/codePatcher.js";
-import { applyCodePatches } from "@opennextjs/aws/build/patch/codePatcher.js";
-import * as awsPatches from "@opennextjs/aws/build/patch/patches/index.js";
 import logger from "@opennextjs/aws/logger.js";
 import { minifyAll } from "@opennextjs/aws/minimize-js.js";
 import type { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
@@ -27,10 +25,8 @@ import type { Plugin } from "esbuild";
 
 import { getOpenNextConfig } from "../../../api/config.js";
 import { normalizePath } from "../../utils/normalize-path.js";
-import { patchResRevalidate } from "../patches/plugins/res-revalidate.js";
-import { patchTurbopackRuntime } from "../patches/plugins/turbopack.js";
-import { patchUseCacheIO } from "../patches/plugins/use-cache.js";
 import { copyWorkerdPackages } from "../utils/workerd.js";
+import { applyCodePatchesInWorkers } from "./apply-code-patches.js";
 
 interface CodeCustomization {
 	// These patches are meant to apply on user and next generated code
@@ -199,21 +195,9 @@ async function generateBundle(
 
 	const additionalCodePatches = codeCustomization?.additionalCodePatches ?? [];
 
-	await applyCodePatches(options, tracedFiles, manifests, [
-		awsPatches.patchFetchCacheSetMissingWaitUntil,
-		awsPatches.patchFetchCacheForISR,
-		awsPatches.patchUnstableCacheForISR,
-		awsPatches.patchUseCacheForISR,
-		awsPatches.patchNextServer,
-		awsPatches.getEnvVarsPatch(options),
-		awsPatches.patchBackgroundRevalidation,
-		awsPatches.patchNodeEnvironment,
-		// Cloudflare specific patches
-		patchResRevalidate,
-		patchUseCacheIO,
-		patchTurbopackRuntime,
-		...additionalCodePatches,
-	]);
+	// The patches (see `getCodePatchers` in `code-patches.ts`) are applied on a pool of
+	// worker threads, as they are CPU bound and independent per file.
+	await applyCodePatchesInWorkers(options, tracedFiles, manifests, additionalCodePatches);
 
 	// Build Lambda code
 	// note: bundle in OpenNext package b/c the adapter relies on the
