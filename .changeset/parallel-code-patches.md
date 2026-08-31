@@ -2,7 +2,7 @@
 "@opennextjs/cloudflare": patch
 ---
 
-perf: apply the code patches on a pool of worker threads
+fix: use the available cores when applying the code patches
 
 The "Applying code patches" step of `opennextjs-cloudflare build` ran on a single core: every patch ends in the synchronous `@ast-grep/napi` API, so the `Promise.all` over the traced files never overlapped any CPU work and the bundle generation sat at ~100% of one core no matter how many were available.
 
