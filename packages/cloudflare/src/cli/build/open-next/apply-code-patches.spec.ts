@@ -1,6 +1,14 @@
-import { describe, expect, it } from "vitest";
+import os from "node:os";
 
-import { enqueuePatching, type PoolWorker, runWorkerPool } from "./apply-code-patches.js";
+import { afterEach, describe, expect, it } from "vitest";
+
+import {
+	enqueuePatching,
+	getMaxWorkers,
+	type PoolWorker,
+	runWorkerPool,
+	splitPoolFiles,
+} from "./apply-code-patches.js";
 import type { PatchWorkerRequest, PatchWorkerResponse } from "./code-patches.js";
 
 type Listener = (...args: never[]) => void;
@@ -11,9 +19,14 @@ class FakeWorker implements PoolWorker {
 
 	constructor(private handler: (filePath: string) => Promise<void>) {}
 
+	exited = false;
+
 	postMessage(message: PatchWorkerRequest): void {
 		if (message === null) {
-			queueMicrotask(() => this.emit("exit", 0));
+			setTimeout(() => {
+				this.exited = true;
+				this.emit("exit", 0);
+			}, 1);
 			return;
 		}
 		void this.handler(message)
@@ -91,6 +104,19 @@ describe("runWorkerPool", () => {
 		expect(workers.every((worker) => worker.terminated)).toBe(true);
 	});
 
+	it("resolves only after every worker exited", async () => {
+		const workers: FakeWorker[] = [];
+		const createWorker = () => {
+			const worker = new FakeWorker(async () => {});
+			workers.push(worker);
+			return worker;
+		};
+
+		await runWorkerPool(["/a.js", "/b.js", "/c.js"], 2, createWorker);
+
+		expect(workers.every((worker) => worker.exited)).toBe(true);
+	});
+
 	it("terminates the created workers when creating another worker fails", async () => {
 		const workers: FakeWorker[] = [];
 		const createWorker = () => {
@@ -148,5 +174,47 @@ describe("enqueuePatching", () => {
 
 		await expect(failed).rejects.toThrow("patching failed");
 		await expect(next).resolves.toEqual("ok");
+	});
+});
+
+describe("splitPoolFiles", () => {
+	it("keeps the Turbopack runtime out of the pool", () => {
+		const files = [
+			"/out/.next/server/chunks/ssr/[turbopack]_runtime.js",
+			"/out/.next/server/chunks/ssr/page.js",
+			"/out/node_modules/next/dist/server/next-server.js",
+		];
+
+		expect(splitPoolFiles(files)).toEqual({
+			poolFiles: [
+				"/out/.next/server/chunks/ssr/page.js",
+				"/out/node_modules/next/dist/server/next-server.js",
+			],
+			serialFiles: ["/out/.next/server/chunks/ssr/[turbopack]_runtime.js"],
+		});
+	});
+});
+
+describe("getMaxWorkers", () => {
+	afterEach(() => {
+		delete process.env.OPEN_NEXT_PATCH_WORKERS;
+	});
+
+	it("defaults to the available parallelism", () => {
+		expect(getMaxWorkers()).toEqual(os.availableParallelism());
+	});
+
+	it("uses OPEN_NEXT_PATCH_WORKERS when it is a number", () => {
+		process.env.OPEN_NEXT_PATCH_WORKERS = "3";
+		expect(getMaxWorkers()).toEqual(3);
+		process.env.OPEN_NEXT_PATCH_WORKERS = "0";
+		expect(getMaxWorkers()).toEqual(0);
+	});
+
+	it("ignores OPEN_NEXT_PATCH_WORKERS when it is not a number", () => {
+		process.env.OPEN_NEXT_PATCH_WORKERS = "2abc";
+		expect(getMaxWorkers()).toEqual(os.availableParallelism());
+		process.env.OPEN_NEXT_PATCH_WORKERS = "-1";
+		expect(getMaxWorkers()).toEqual(os.availableParallelism());
 	});
 });

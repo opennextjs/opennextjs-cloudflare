@@ -7,9 +7,10 @@
  * is distributed here over `worker_threads` sized to the available parallelism.
  *
  * Patches coming from the user configuration (`codeCustomization.additionalCodePatches`)
- * contain arbitrary functions that can not cross the thread boundary: they are applied
- * in-thread by the upstream `applyCodePatches` after the pool completes. They are the last
- * patches of the list, so the per-file patch order is preserved.
+ * contain arbitrary functions that can not cross the thread boundary. When the configuration
+ * has such patches the whole run falls back to the in-thread upstream `applyCodePatches`,
+ * which keeps their exact semantics (i.e. the content filters of every patch match the
+ * pristine content read from disk).
  */
 import os from "node:os";
 import path from "node:path";
@@ -21,8 +22,14 @@ import type { CodePatcher } from "@opennextjs/aws/build/patch/codePatcher.js";
 import { applyCodePatches } from "@opennextjs/aws/build/patch/codePatcher.js";
 import logger from "@opennextjs/aws/logger.js";
 
+import { turbopackRuntimePathFilter } from "../patches/plugins/turbopack.js";
 import type { Manifests, PatchWorkerData, PatchWorkerRequest, PatchWorkerResponse } from "./code-patches.js";
-import { getCodePatchers, getPatchesForVersion, toSerializableBuildOptions } from "./code-patches.js";
+import {
+	getCodePatchers,
+	getPatchesForVersion,
+	patchFile,
+	toSerializableBuildOptions,
+} from "./code-patches.js";
 
 /** The subset of `worker_threads.Worker` used by {@link runWorkerPool}. */
 export interface PoolWorker {
@@ -35,11 +42,13 @@ export interface PoolWorker {
 
 /**
  * Applies the code patches of {@link getCodePatchers} to the traced files, distributing the
- * work over a pool of worker threads, then applies the additional code patches from the user
- * configuration in-thread.
+ * work over a pool of worker threads.
  *
  * Falls back to the in-thread upstream `applyCodePatches` when the pool would not help
- * (single core, or a single file to patch).
+ * (single core, or a single file to patch) and when the user configuration provides
+ * `additionalCodePatches`: those are functions that can not cross the thread boundary, and
+ * running them in a separate pass would let their content filters observe already patched
+ * content, unlike upstream.
  *
  * The pool size can be overridden with the `OPEN_NEXT_PATCH_WORKERS` environment variable
  * (`0` and `1` disable the pool).
@@ -82,9 +91,10 @@ async function applyCodePatchesToBundle(
 	const filesToPatch = tracedFiles.filter((filePath) =>
 		patches.some(({ patch }) => filePath.match(patch.pathFilter))
 	);
-	const poolSize = Math.min(getMaxWorkers(), filesToPatch.length);
+	const { poolFiles, serialFiles } = splitPoolFiles(filesToPatch);
+	const poolSize = Math.min(getMaxWorkers(), poolFiles.length);
 
-	if (poolSize <= 1) {
+	if (additionalCodePatches.length > 0 || poolSize <= 1) {
 		await applyCodePatches(buildOptions, tracedFiles, manifests, [...codePatchers, ...additionalCodePatches]);
 		return;
 	}
@@ -99,26 +109,45 @@ async function applyCodePatchesToBundle(
 
 	const workerScript = path.join(path.dirname(fileURLToPath(import.meta.url)), "code-patches-worker.js");
 
-	await runWorkerPool(filesToPatch, poolSize, () => new Worker(workerScript, { workerData }));
+	await runWorkerPool(poolFiles, poolSize, () => new Worker(workerScript, { workerData }));
+
+	// Patched after the pool because patching them reads other traced files (see
+	// `splitPoolFiles`): every file is final at this point.
+	for (const filePath of serialFiles) {
+		await patchFile(filePath, patches, { buildOptions, tracedFiles, manifests });
+	}
 
 	logger.timeEnd("Applying code patches");
-
-	if (additionalCodePatches.length > 0) {
-		await applyCodePatches(buildOptions, tracedFiles, manifests, additionalCodePatches);
-	}
 }
 
-function getMaxWorkers(): number {
-	const fromEnv = Number.parseInt(process.env.OPEN_NEXT_PATCH_WORKERS ?? "", 10);
-	return Number.isNaN(fromEnv) ? os.availableParallelism() : fromEnv;
+/**
+ * Splits the files to patch between the pool and the files patched in-thread after it.
+ *
+ * Patching the Turbopack runtime reads the traced chunks from disk (to build the externals
+ * switch): it must not run while a pool worker may be mid-write on one of those chunks, and
+ * patching it after the pool lets it observe their final content.
+ */
+export function splitPoolFiles(files: string[]): { poolFiles: string[]; serialFiles: string[] } {
+	const poolFiles: string[] = [];
+	const serialFiles: string[] = [];
+	for (const filePath of files) {
+		(filePath.match(turbopackRuntimePathFilter) ? serialFiles : poolFiles).push(filePath);
+	}
+	return { poolFiles, serialFiles };
+}
+
+/** The maximum pool size: `OPEN_NEXT_PATCH_WORKERS` when it is a whole number, else the available parallelism. */
+export function getMaxWorkers(): number {
+	const fromEnv = process.env.OPEN_NEXT_PATCH_WORKERS ?? "";
+	return /^\d+$/.test(fromEnv) ? Number(fromEnv) : os.availableParallelism();
 }
 
 /**
  * Distributes the files over a pool of workers.
  *
- * Files are dispatched one at a time so that the cheap files do not queue behind the expensive
- * ones (i.e. the Turbopack runtime). The returned promise resolves when every file has been
- * patched and rejects on the first error, mirroring the `Promise.all` of the upstream
+ * Files are dispatched one at a time so that the cheap files do not queue behind the
+ * expensive ones. The returned promise resolves when every file has been patched and every
+ * worker exited, and rejects on the first error, mirroring the `Promise.all` of the upstream
  * `applyCodePatches`.
  */
 export async function runWorkerPool(
@@ -143,7 +172,7 @@ export async function runWorkerPool(
 
 	await new Promise<void>((resolve, reject) => {
 		let settled = false;
-		let running = workers.length;
+		let exited = 0;
 
 		const fail = (error: Error) => {
 			if (!settled) {
@@ -161,17 +190,8 @@ export async function runWorkerPool(
 					return;
 				}
 				const filePath = queue.shift();
-				if (filePath === undefined) {
-					// `null` terminates the worker
-					worker.postMessage(null);
-					running -= 1;
-					if (running === 0 && !settled) {
-						settled = true;
-						resolve();
-					}
-					return;
-				}
-				worker.postMessage(filePath);
+				// `null` tells the worker to exit
+				worker.postMessage(filePath ?? null);
 			};
 
 			worker.on("message", ({ filePath, error }) => {
@@ -187,6 +207,13 @@ export async function runWorkerPool(
 			worker.on("exit", (code) => {
 				if (code !== 0) {
 					fail(new Error(`A code patch worker exited with code ${code}`));
+					return;
+				}
+				// Only resolve once every worker exited so that no thread outlives the pool
+				exited += 1;
+				if (exited === workers.length && !settled) {
+					settled = true;
+					resolve();
 				}
 			});
 
