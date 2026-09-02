@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 1.20.6
+
+### Patch Changes
+
+- [#1378](https://github.com/opennextjs/opennextjs-cloudflare/pull/1378) [`7a990e7`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7a990e7cdb9d770a5f4d71fbb32bc105ac944ff5) Thanks [@vicb](https://github.com/vicb)! - Bump Next to 16.3.4 and `@opennextjs/aws` to 4.1.4
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.4>
+
 ## 1.20.5
 
 ### Patch Changes
