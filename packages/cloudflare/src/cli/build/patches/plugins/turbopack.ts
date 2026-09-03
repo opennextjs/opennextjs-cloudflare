@@ -383,14 +383,24 @@ export function patchTurbopackWasmChunkCode({
 	return `${root.commitEdits(edits)}\n${loadWasmChunkFn(tracedFiles.map(normalizePath))}`;
 }
 
+/**
+ * Matches the Turbopack runtime file.
+ *
+ * Note: patching the runtime reads other traced files from disk (see
+ * {@link discoverExternalModuleMappings} and {@link buildExternalImportRule}), so
+ * `apply-code-patches.ts` patches the files matching this filter in-thread, after the worker
+ * pool completed, to never observe a file mid-write.
+ */
+export const turbopackRuntimePathFilter = getCrossPlatformPathRegex(String.raw`\[turbopack\]_runtime\.js$`, {
+	escape: false,
+});
+
 export const patchTurbopackRuntime: CodePatcher = {
 	name: "inline-turbopack-chunks",
 	patches: [
 		{
 			versions: ">=15.0.0",
-			pathFilter: getCrossPlatformPathRegex(String.raw`\[turbopack\]_runtime\.js$`, {
-				escape: false,
-			}),
+			pathFilter: turbopackRuntimePathFilter,
 			contentFilter: /loadRuntimeChunkPath/,
 			patchCode: async ({ code, tracedFiles, filePath }) =>
 				patchTurbopackRuntimeCode({ code, filePath, tracedFiles }),
