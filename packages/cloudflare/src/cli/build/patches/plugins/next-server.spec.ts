@@ -7,6 +7,7 @@ import {
 	createCacheHandlerRule,
 	createComposableCacheHandlersRule,
 	disableNodeMiddlewareRule,
+	registerRouterServerContextRule,
 } from "./next-server.js";
 
 describe("Next Server", () => {
@@ -359,6 +360,74 @@ class NextNodeServer extends _baseserver.default {
 				         var _this_renderOpts, _this_serverOptions;
 				         if (this._cachedPreviewManifest) {
 				             return this._cachedPreviewManifest;
+				"
+			`);
+	});
+
+	// Note: the leading single-line comments before `this.prepare().catch(...)` (as found in real
+	// Next.js 16.2.11 builds) are intentional - a previous version of `registerRouterServerContextRule`
+	// captured/reprinted the whole method body via a `$$$BODY` meta-variable, which collapsed these
+	// comments onto a single line and turned the rest of the method into a comment, corrupting it.
+	const makeRequestHandlerCode = `
+class NextNodeServer extends _baseserver.default {
+    // ...
+    makeRequestHandler() {
+        // This is just optimization to fire prepare as soon as possible. It will be
+        // properly awaited later. We add the catch here to ensure that it does not
+        // cause an unhandled promise rejection. The promise rejection will be
+        // handled later on via the \`await\` when the request handler is called.
+        this.prepare().catch((err)=>{
+            console.error('Failed to prepare server', err);
+        });
+        const handler = super.getRequestHandler();
+        return (req, res, parsedUrl)=>handler(this.normalizeReq(req), this.normalizeRes(res), parsedUrl);
+    }
+    // ...
+}
+`;
+
+	test("register router server context", () => {
+		expect(computePatchDiff("next-server.js", makeRequestHandlerCode, registerRouterServerContextRule))
+			.toMatchInlineSnapshot(`
+				"Index: next-server.js
+				===================================================================
+				--- next-server.js
+				+++ next-server.js
+				@@ -1,5 +1,4 @@
+				-
+				 class NextNodeServer extends _baseserver.default {
+				     // ...
+				     makeRequestHandler() {
+				         // This is just optimization to fire prepare as soon as possible. It will be
+				@@ -9,8 +8,27 @@
+				         this.prepare().catch((err)=>{
+				             console.error('Failed to prepare server', err);
+				         });
+				         const handler = super.getRequestHandler();
+				-        return (req, res, parsedUrl)=>handler(this.normalizeReq(req), this.normalizeRes(res), parsedUrl);
+				+        if (!_routerservercontext.routerServerGlobal[_routerservercontext.RouterServerContextSymbol]) {
+				+  _routerservercontext.routerServerGlobal[_routerservercontext.RouterServerContextSymbol] = {};
+				+}
+				+// Note: this is hardcoded to "" rather than computed via \`_path.relative(process.cwd(), this.dir)\`
+				+// (which is what Next.js's own self-registration in \`handleCatchallRenderRequest\` does) because
+				+// \`process.cwd()\` at request-handling time is not guaranteed to match \`process.cwd()\` at
+				+// \`NextNodeServer\` construction time in this runtime (observed to differ by one directory level,
+				+// e.g. yielding ".." here). The read side, \`RouteModule#getRouterServerContext\`, falls back to
+				+// \`this.relativeProjectDir\`, which every route module in the OpenNext build has hardcoded to ""
+				+// (OpenNext always constructs \`NextServer\` with \`dir: ""\`). Using "" here keeps the write side in
+				+// sync with that build-time constant instead of a runtime-computed value that can drift from it.
+				+const relativeProjectDir = "";
+				+const existingServerContext = _routerservercontext.routerServerGlobal[_routerservercontext.RouterServerContextSymbol][relativeProjectDir];
+				+if (!existingServerContext) {
+				+  _routerservercontext.routerServerGlobal[_routerservercontext.RouterServerContextSymbol][relativeProjectDir] = {
+				+    render404: this.render404.bind(this)
+				+  };
+				+}
+				+_routerservercontext.routerServerGlobal[_routerservercontext.RouterServerContextSymbol][relativeProjectDir].nextConfig = this.nextConfig;
+				+return (req, res, parsedUrl)=>handler(this.normalizeReq(req), this.normalizeRes(res), parsedUrl);
+				     }
+				     // ...
+				 }
 				"
 			`);
 	});
