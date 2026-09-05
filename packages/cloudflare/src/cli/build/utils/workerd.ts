@@ -76,9 +76,27 @@ export function transformPackageJson(json: PackageJson) {
 	return { transformed, hasBuildCondition };
 }
 
-export async function copyWorkerdPackages(options: BuildOptions, nodePackages: Map<string, string>) {
-	const isNodeModuleRegex = getCrossPlatformPathRegex(`.*/node_modules/(?<pkg>.*)`, { escape: false });
+const NODE_MODULES_PATH_REGEX = getCrossPlatformPathRegex(`.*/node_modules/(?<pkg>.*)`, { escape: false });
 
+/**
+ * Extracts the npm package name from a path inside `node_modules`.
+ *
+ * Normalizes Windows backslashes to POSIX separators so the result can be
+ * compared against `serverExternalPackages` entries (which always use `/`).
+ * Trims back to the package name proper, so nested `package.json` files
+ * (e.g. `@scope/pkg/lib-cjs/package.json`) return `@scope/pkg`.
+ *
+ * @returns The package name, or `undefined` if `src` is not under `node_modules`.
+ */
+export function extractExternalPackageName(src: string): string | undefined {
+	const match = src.match(NODE_MODULES_PATH_REGEX);
+	const raw = match?.groups?.pkg;
+	if (!raw) return undefined;
+	const parts = raw.replaceAll("\\", "/").split("/");
+	return parts[0]?.startsWith("@") ? parts.slice(0, 2).join("/") : parts[0];
+}
+
+export async function copyWorkerdPackages(options: BuildOptions, nodePackages: Map<string, string>) {
 	// Copy full external packages when they use "workerd" build condition
 	const nextConfig = loadConfig(path.join(options.appBuildOutputPath, ".next"));
 	const externalPackages =
@@ -88,8 +106,8 @@ export async function copyWorkerdPackages(options: BuildOptions, nodePackages: M
 		try {
 			const pkgJson = JSON.parse(await fs.readFile(path.join(src, "package.json"), "utf8"));
 			const { transformed, hasBuildCondition } = transformPackageJson(pkgJson);
-			const match = src.match(isNodeModuleRegex);
-			if (match?.groups?.pkg && externalPackages.includes(match.groups.pkg) && hasBuildCondition) {
+			const pkg = extractExternalPackageName(src);
+			if (pkg && externalPackages.includes(pkg) && hasBuildCondition) {
 				logger.debug(
 					`Copying package using a workerd condition: ${path.relative(options.appPath, src)} -> ${path.relative(options.appPath, dst)}`
 				);
