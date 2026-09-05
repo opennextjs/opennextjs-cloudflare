@@ -67,6 +67,17 @@ interface PutToCacheInput {
 	key: string;
 	cacheType?: CacheEntryType;
 	entry: IncrementalCacheEntry<CacheEntryType>;
+	expectedRevision?: number;
+}
+
+interface CacheState {
+	revision: number;
+	references: number;
+}
+
+interface CapturedCacheState {
+	state: CacheState;
+	revision: number;
 }
 
 /**
@@ -85,6 +96,8 @@ class RegionalCache implements IncrementalCache {
 	public name: string;
 
 	protected localCache: Cache | undefined;
+	protected pendingCacheOperations = new Map<string, Promise<void>>();
+	protected cacheStates = new Map<string, CacheState>();
 
 	constructor(
 		private store: IncrementalCache,
@@ -127,44 +140,90 @@ class RegionalCache implements IncrementalCache {
 		try {
 			const cache = await this.getCacheInstance();
 			const urlKey = this.getCacheUrlKey(key, cacheType);
+			const capturedState = this.captureCacheState(urlKey);
 
 			// Check for a cached entry as this will be faster than the store response.
-			const cachedResponse = await cache.match(urlKey);
+			let cachedResponse: Response | undefined;
+			try {
+				cachedResponse = await cache.match(urlKey);
+			} catch (e) {
+				this.releaseCacheState(urlKey, capturedState.state);
+				throw e;
+			}
 
 			if (cachedResponse) {
 				debugCache("RegionalCache", `get ${key} -> cached response`);
+				let cachedEntry: IncrementalCacheEntry<CacheType>;
+				try {
+					cachedEntry = await cachedResponse.json<IncrementalCacheEntry<CacheType>>();
+				} catch (e) {
+					try {
+						await this.deleteFromCache(urlKey, capturedState.revision);
+					} finally {
+						this.releaseCacheState(urlKey, capturedState.state);
+					}
+					throw e;
+				}
 
 				// Re-fetch from the store and update the regional cache in the background.
 				// Note: this is only useful when the Cache API is not purged automatically.
 				if (this.opts.shouldLazilyUpdateOnCacheHit) {
 					getCloudflareContext().ctx.waitUntil(
-						this.store.get(key, cacheType).then(async (rawEntry) => {
-							const { value, lastModified } = rawEntry ?? {};
+						(async () => {
+							try {
+								const rawEntry = await this.store.get(key, cacheType);
+								const { value, lastModified } = rawEntry ?? {};
 
-							if (value && typeof lastModified === "number") {
-								await this.putToCache({ key, cacheType, entry: { value, lastModified } });
+								if (value && typeof lastModified === "number" && lastModified > cachedEntry.lastModified) {
+									await this.putToCache({
+										key,
+										cacheType,
+										entry: { value, lastModified },
+										expectedRevision: capturedState.revision,
+									});
+								}
+							} catch (e) {
+								error(`Failed to lazily update regional cache for ${key}`, e);
+							} finally {
+								this.releaseCacheState(urlKey, capturedState.state);
 							}
-						})
+						})()
 					);
+				} else {
+					this.releaseCacheState(urlKey, capturedState.state);
 				}
 
-				const responseJson: Record<string, unknown> = await cachedResponse.json();
-
 				return {
-					...responseJson,
+					...cachedEntry,
 					shouldBypassTagCache: this.opts.bypassTagCacheOnCacheHit,
 				};
 			}
 
-			const rawEntry = await this.store.get(key, cacheType);
+			let rawEntry: WithLastModified<CacheValue<CacheType>> | null;
+			try {
+				rawEntry = await this.store.get(key, cacheType);
+			} catch (e) {
+				this.releaseCacheState(urlKey, capturedState.state);
+				throw e;
+			}
 			const { value, lastModified } = rawEntry ?? {};
-			if (!value || typeof lastModified !== "number") return null;
+			if (!value || typeof lastModified !== "number") {
+				this.releaseCacheState(urlKey, capturedState.state);
+				return null;
+			}
 
 			debugCache("RegionalCache", `get ${key} -> put to cache`);
 
 			// Update the locale cache after retrieving from the store.
 			getCloudflareContext().ctx.waitUntil(
-				this.putToCache({ key, cacheType, entry: { value, lastModified } })
+				this.putToCache({
+					key,
+					cacheType,
+					entry: { value, lastModified },
+					expectedRevision: capturedState.revision,
+				})
+					.catch((e) => error(`Failed to populate regional cache for ${key}`, e))
+					.finally(() => this.releaseCacheState(urlKey, capturedState.state))
 			);
 
 			return { value, lastModified };
@@ -182,18 +241,26 @@ class RegionalCache implements IncrementalCache {
 		try {
 			debugCache("RegionalCache", `set ${key}`);
 
-			await this.store.set(key, value, cacheType);
-
-			await this.putToCache({
-				key,
-				cacheType,
-				entry: {
-					value,
-					// Note: `Date.now()` returns the time of the last IO rather than the actual time.
-					//       See https://developers.cloudflare.com/workers/reference/security-model/
-					lastModified: Date.now(),
-				},
-			});
+			const urlKey = this.getCacheUrlKey(key, cacheType);
+			const capturedState = this.captureCacheState(urlKey);
+			const cacheState = capturedState.state;
+			cacheState.revision++;
+			try {
+				await this.store.set(key, value, cacheType);
+				await this.putToCache({
+					key,
+					cacheType,
+					entry: {
+						value,
+						// Note: `Date.now()` returns the time of the last IO rather than the actual time.
+						//       See https://developers.cloudflare.com/workers/reference/security-model/
+						lastModified: Date.now(),
+					},
+				});
+			} finally {
+				cacheState.revision++;
+				this.releaseCacheState(urlKey, cacheState);
+			}
 		} catch (e) {
 			error(`Failed to set the regional cache`, e);
 		}
@@ -201,13 +268,19 @@ class RegionalCache implements IncrementalCache {
 
 	async delete(key: string): Promise<void> {
 		debugCache("RegionalCache", `delete ${key}`);
+		const urlKey = this.getCacheUrlKey(key);
+		const capturedState = this.captureCacheState(urlKey);
+		const cacheState = capturedState.state;
+		cacheState.revision++;
 		try {
 			await this.store.delete(key);
 
-			const cache = await this.getCacheInstance();
-			await cache.delete(this.getCacheUrlKey(key));
+			await this.deleteFromCache(urlKey);
 		} catch (e) {
 			error("Failed to delete from regional cache", e);
+		} finally {
+			cacheState.revision++;
+			this.releaseCacheState(urlKey, cacheState);
 		}
 	}
 
@@ -223,31 +296,93 @@ class RegionalCache implements IncrementalCache {
 		return "http://cache.local" + `/${buildId}/${key}`.replace(/\/+/g, "/") + `.${cacheType ?? "cache"}`;
 	}
 
-	protected async putToCache({ key, cacheType, entry }: PutToCacheInput): Promise<void> {
+	protected async putToCache({ key, cacheType, entry, expectedRevision }: PutToCacheInput): Promise<void> {
 		const urlKey = this.getCacheUrlKey(key, cacheType);
-		const cache = await this.getCacheInstance();
+		return this.enqueueCacheOperation(urlKey, async (cacheState) => {
+			if (expectedRevision !== undefined && cacheState.revision !== expectedRevision) return;
 
-		const age =
-			this.opts.mode === "short-lived"
-				? ONE_MINUTE_IN_SECONDS
-				: entry.value.revalidate || this.opts.defaultLongLivedTtlSec || THIRTY_MINUTES_IN_SECONDS;
+			const cache = await this.getCacheInstance();
+			const age =
+				this.opts.mode === "short-lived"
+					? ONE_MINUTE_IN_SECONDS
+					: entry.value.revalidate || this.opts.defaultLongLivedTtlSec || THIRTY_MINUTES_IN_SECONDS;
 
-		// We default to the entry key if no tags are found.
-		// so that we can also revalidate page router based entry this way.
-		const tags = getTagsFromCacheEntry(entry) ?? [key];
-		await cache.put(
-			urlKey,
-			new Response(JSON.stringify(entry), {
-				headers: new Headers({
-					"cache-control": `max-age=${age}`,
-					...(tags.length > 0
-						? {
-								"cache-tag": tags.join(","),
-							}
-						: {}),
-				}),
-			})
-		);
+			// We default to the entry key if no tags are found.
+			// so that we can also revalidate page router based entry this way.
+			const tags = getTagsFromCacheEntry(entry) ?? [key];
+			await cache.put(
+				urlKey,
+				new Response(JSON.stringify(entry), {
+					headers: new Headers({
+						"cache-control": `max-age=${age}`,
+						...(tags.length > 0
+							? {
+									"cache-tag": tags.join(","),
+								}
+							: {}),
+					}),
+				})
+			);
+			cacheState.revision++;
+		});
+	}
+
+	protected async deleteFromCache(urlKey: string, expectedRevision?: number): Promise<void> {
+		return this.enqueueCacheOperation(urlKey, async (cacheState) => {
+			if (expectedRevision !== undefined && cacheState.revision !== expectedRevision) return;
+			const cache = await this.getCacheInstance();
+			await cache.delete(urlKey);
+			cacheState.revision++;
+		});
+	}
+
+	protected getCacheState(urlKey: string): CacheState {
+		let cacheState = this.cacheStates.get(urlKey);
+		if (!cacheState) {
+			cacheState = { revision: 0, references: 0 };
+			this.cacheStates.set(urlKey, cacheState);
+		}
+		return cacheState;
+	}
+
+	protected captureCacheState(urlKey: string): CapturedCacheState {
+		const state = this.getCacheState(urlKey);
+		state.references++;
+		return { state, revision: state.revision };
+	}
+
+	protected releaseCacheState(urlKey: string, state: CacheState): void {
+		state.references--;
+		this.cleanupCacheState(urlKey, state);
+	}
+
+	protected async enqueueCacheOperation(
+		urlKey: string,
+		operation: (cacheState: CacheState) => Promise<void>
+	): Promise<void> {
+		const pendingOperation =
+			this.pendingCacheOperations.get(urlKey)?.catch(() => undefined) ?? Promise.resolve();
+		const cacheOperation = pendingOperation.then(() => operation(this.getCacheState(urlKey)));
+		this.pendingCacheOperations.set(urlKey, cacheOperation);
+		try {
+			await cacheOperation;
+		} finally {
+			if (this.pendingCacheOperations.get(urlKey) === cacheOperation) {
+				this.pendingCacheOperations.delete(urlKey);
+			}
+			const cacheState = this.cacheStates.get(urlKey);
+			if (cacheState) this.cleanupCacheState(urlKey, cacheState);
+		}
+	}
+
+	protected cleanupCacheState(urlKey: string, state: CacheState): void {
+		if (
+			this.cacheStates.get(urlKey) === state &&
+			state.references === 0 &&
+			!this.pendingCacheOperations.has(urlKey)
+		) {
+			this.cacheStates.delete(urlKey);
+		}
 	}
 }
 
