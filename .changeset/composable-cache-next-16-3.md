@@ -12,6 +12,6 @@ native code referenced bindings that were no longer declared. Every request to t
 Next.js 16.3.x), while builds stayed green because the unminified `next-server.js` short-circuits on
 `if (!cacheHandlers) return` before the orphaned binding is read.
 
-The patch now replaces the whole method body (the same shape as the node middleware patch) and wires the
-composable cache registry to the static `require()` as before, so no native reference to a dropped binding
-can survive. The rule still matches pre-16.3 chunks, so older Next.js versions are unaffected.
+The patch now replaces the whole method body while preserving its signature and wires the composable cache
+registry to the static `require()` as before, so no native reference to a dropped binding can survive. The
+rule still matches pre-16.3 chunks, so older Next.js versions are unaffected.

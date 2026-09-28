@@ -268,7 +268,7 @@ class NextNodeServer extends _baseserver.default {
 			     constructor(options){
 			         // Initialize super class
 			         super(options);
-			@@ -35,18 +34,16 @@
+			@@ -35,18 +34,15 @@
 			         const manifest = require(this.middlewareManifestPath);
 			         return manifest;
 			     }
@@ -283,7 +283,6 @@ class NextNodeServer extends _baseserver.default {
 			-            (0, _handlers.setCacheHandler)(kind, (0, _interopdefault.interopDefault)(await dynamicImportEsmDefault((0, _formatdynamicimportpath.formatDynamicImportPath)(this.distDir, handler))));
 			-        }
 			-    }
-			+  const handlersSymbol = Symbol.for('@next/cache-handlers');
 			+  const handlersMapSymbol = Symbol.for('@next/cache-handlers-map');
 			+  const handlersSetSymbol = Symbol.for('@next/cache-handlers-set');
 			+  globalThis[handlersMapSymbol] = new Map();
@@ -307,7 +306,7 @@ class NextNodeServer extends _baseserver.default {
 			===================================================================
 			--- next-server.js
 			+++ next-server.js
-			@@ -1,17 +1,14 @@
+			@@ -1,17 +1,13 @@
 			-
 			 class NextNodeServer extends _baseserver.default {
 			     // ...
@@ -323,7 +322,6 @@ class NextNodeServer extends _baseserver.default {
 			-            (0, _handlers.setCacheHandler)(kind, (0, _interopdefault.interopDefault)(await dynamicImportEsmDefault((0, _formatdynamicimportpath.formatDynamicImportPath)(this.distDir, handler))));
 			-        }
 			-    }
-			+  const handlersSymbol = Symbol.for('@next/cache-handlers');
 			+  const handlersMapSymbol = Symbol.for('@next/cache-handlers-map');
 			+  const handlersSetSymbol = Symbol.for('@next/cache-handlers-set');
 			+  globalThis[handlersMapSymbol] = new Map();
