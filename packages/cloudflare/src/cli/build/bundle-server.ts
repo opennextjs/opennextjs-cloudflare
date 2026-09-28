@@ -192,12 +192,28 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 }
 
 /**
+ * Restores esbuild's `__require` helper to a bare `require`.
+ *
+ * esbuild rewrites `require(...)` calls to its own `__require(...)` helper, which throws
+ * "Dynamic require of ... is not supported" at runtime. Workers provide a real `require`
+ * via `nodejs_compat`, so the helper is renamed back.
+ *
+ * Only identifiers are renamed. `@rollup/plugin-commonjs` publishes `exports.__require`
+ * lazy-init wrappers, so a name preceded by `.`, `#`, `$` or a word character belongs to
+ * bundled code and is left alone.
+ */
+export function patchRequireHelper(code: string): string {
+	return code
+		.replace(/(?<![.#$\w])__require\d?\(/g, "require(")
+		.replace(/(?<![.#$\w])__require\d?\./g, "require.");
+}
+
+/**
  * This function apply updates to the bundled code.
  */
 export async function updateWorkerBundledCode(workerOutputFile: string): Promise<void> {
 	const code = await readFile(workerOutputFile, "utf8");
-	const patchedCode = code.replace(/__require\d?\(/g, "require(").replace(/__require\d?\./g, "require.");
-	await writeFile(workerOutputFile, patchedCode);
+	await writeFile(workerOutputFile, patchRequireHelper(code));
 }
 
 /**
