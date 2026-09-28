@@ -53,9 +53,12 @@ export function handleOptionalDependencies(dependencies: string[]) {
 			});
 
 			// Replaces missing dependency with a throwing implementation.
+			// The error carries Node's `MODULE_NOT_FOUND` code because callers fall back on it,
+			// i.e. Next.js `ReactDOMServerPages` falls back from `react-dom/server.edge` to
+			// `react-dom/server.browser` for React 18, and rethrows any other error.
 			build.onLoad({ filter: /.*/, namespace: nsMissingDependency }, ({ pluginData }) => {
 				return {
-					contents: `throw new Error('Missing optional dependency "${pluginData.name}"')`,
+					contents: `const error = new Error('Missing optional dependency "${pluginData.name}"'); error.code = "MODULE_NOT_FOUND"; throw error;`,
 				};
 			});
 		},
