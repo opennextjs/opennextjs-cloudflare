@@ -99,30 +99,39 @@ fix: |-
 `;
 }
 
+/**
+ * Creates a rule that statically wires the composable cache handler.
+ *
+ * The rule replaces only the method body so minified route-module parameters and
+ * any future method modifiers remain intact.
+ *
+ * @param handlerPath Path to the generated composable cache handler.
+ * @return An ast-grep rule replacing `loadCustomCacheHandlers`' body.
+ */
 export function createComposableCacheHandlersRule(handlerPath: string) {
 	return `
 rule:
-  # matches
-  # - const { cacheHandlers } = this.nextConfig.experimental; pre Next 16
-  # - const { cacheMaxMemorySize, cacheHandlers } = this.nextConfig; from Next 16
-  kind: lexical_declaration
-  regex: cacheHandlers
+  # Next 16.3 rebinds cacheMaxMemorySize into the same declaration as cacheHandlers,
+  # and the native method body consumes both. Replacing only the declaration orphans
+  # those bindings once minified (ReferenceError at runtime). Replace the whole method
+  # body so no native reference to a dropped binding can survive.
+  kind: statement_block
   inside:
     kind: method_definition
+    field: body
     has:
       field: name
       regex: ^loadCustomCacheHandlers$
-    stopBy: end
 
 fix: |-
-  const cacheHandlers = null;
-  const handlersSymbol = Symbol.for('@next/cache-handlers');
-  const handlersMapSymbol = Symbol.for('@next/cache-handlers-map');
-  const handlersSetSymbol = Symbol.for('@next/cache-handlers-set');
-  globalThis[handlersMapSymbol] = new Map();
-  globalThis[handlersMapSymbol].set("default", require('${normalizePath(handlerPath)}').default);
-  globalThis[handlersMapSymbol].set("remote", require('${normalizePath(handlerPath)}').default);
-  globalThis[handlersSetSymbol] = new Set(globalThis[handlersMapSymbol].values());
+  {
+    const handlersMapSymbol = Symbol.for('@next/cache-handlers-map');
+    const handlersSetSymbol = Symbol.for('@next/cache-handlers-set');
+    globalThis[handlersMapSymbol] = new Map();
+    globalThis[handlersMapSymbol].set("default", require('${normalizePath(handlerPath)}').default);
+    globalThis[handlersMapSymbol].set("remote", require('${normalizePath(handlerPath)}').default);
+    globalThis[handlersSetSymbol] = new Set(globalThis[handlersMapSymbol].values());
+  }
 `;
 }
 
