@@ -16,6 +16,18 @@ async function search(formData: FormData): Promise<never> {
 	redirect(`/search-query?searchParams=${query}`);
 }
 
+// For: serverActions.test.ts, a relative redirect whose target Next renders through a subrequest
+/**
+ * Redirects to the page that renders the host of the request.
+ *
+ * @returns This action does not return because it redirects.
+ * @throws Always throws the Next.js redirect signal.
+ */
+async function redirectToHost(): Promise<never> {
+	"use server";
+	redirect("/server-actions/host");
+}
+
 export default function Page() {
 	return (
 		<div>
@@ -24,6 +36,9 @@ export default function Page() {
 			<form action={search}>
 				<input name="query" aria-label="Query" />
 				<button type="submit">Submit Form Action</button>
+			</form>
+			<form action={redirectToHost}>
+				<button type="submit">Redirect To Host</button>
 			</form>
 		</div>
 	);
