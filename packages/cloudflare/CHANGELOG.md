@@ -1,5 +1,17 @@
 # @opennextjs/cloudflare
 
+## 1.20.8
+
+### Patch Changes
+
+- [#1411](https://github.com/opennextjs/opennextjs-cloudflare/pull/1411) [`1551d6f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/1551d6f998d462523246f024cf75ca53d12e54cf) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.7
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.7>
+
+- [#1411](https://github.com/opennextjs/opennextjs-cloudflare/pull/1411) [`31009e1`](https://github.com/opennextjs/opennextjs-cloudflare/commit/31009e13ad3b5a496fec4c9883771a0fd7ae5e6a) Thanks [@vicb](https://github.com/vicb)! - chore: require Next.js 15.5.27 or 16.3.8
+
+  Raise the supported Next.js version floor to 15.5.27 and 16.3.8 to include the latest security fixes.
+
 ## 1.20.7
 
 ### Patch Changes
