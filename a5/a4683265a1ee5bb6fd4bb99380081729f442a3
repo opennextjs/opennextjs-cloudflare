@@ -1,0 +1,19 @@
+pnpm-lock.yaml
+  s_0f3464b6ae9460::t_1dc41b3ad41660 1084-1085,3973-3974,3977,13257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a5a4683265a1ee5bb6fd4bb99380081729f442a3",
+  "prompts": {},
+  "sessions": {
+    "s_0f3464b6ae9460": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f032f7170ffe0ufiGvl2T1S56m",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
