@@ -1,3 +1,4 @@
+import { cloudflareTest } from "@cloudflare/vitest-plugin";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -16,8 +17,30 @@ export default defineConfig({
 		 * See: https://vitest.dev/config/
 		 */
 		root: ".",
-		dir: "src",
-		clearMocks: true,
-		restoreMocks: true,
+		projects: [
+			{
+				test: {
+					name: "node",
+					dir: "src",
+					exclude: ["**/*.workerd.spec.ts"],
+					clearMocks: true,
+					restoreMocks: true,
+				},
+			},
+			{
+				plugins: [
+					cloudflareTest({
+						wrangler: { configPath: "./wrangler.test.jsonc" },
+					}),
+				],
+				test: {
+					name: "workerd",
+					dir: "src",
+					include: ["**/*.workerd.spec.ts"],
+					clearMocks: true,
+					restoreMocks: true,
+				},
+			},
+		],
 	},
 });

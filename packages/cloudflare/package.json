@@ -64,6 +64,7 @@
 		"yargs": "catalog:"
 	},
 	"devDependencies": {
+		"@cloudflare/vitest-plugin": "catalog:",
 		"@cloudflare/workers-types": "catalog:",
 		"@eslint/js": "catalog:",
 		"@tsconfig/strictest": "catalog:",

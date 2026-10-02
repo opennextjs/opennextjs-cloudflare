@@ -1,0 +1,23 @@
+{
+	"name": "bucket-cache-purge-test",
+	"compatibility_date": "2025-01-01",
+	"main": "src/api/durable-objects/bucket-cache-purge.ts",
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "BUCKET_CACHE_PURGE",
+				"class_name": "BucketCachePurge"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["BucketCachePurge"]
+		}
+	],
+	"vars": {
+		"CACHE_PURGE_ZONE_ID": "test-zone-a,test-zone-b",
+		"CACHE_PURGE_API_TOKEN": "test-token"
+	}
+}
