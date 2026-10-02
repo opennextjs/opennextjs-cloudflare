@@ -43,6 +43,39 @@ test.describe("Composable Cache", () => {
 		expect(newFullyCachedText).not.toEqual(initialFullyCachedText);
 	});
 
+	test("revalidateTag should invalidate an on-demand use cache page", async ({ page, request }) => {
+		test.setTimeout(90000);
+		const path = `/use-cache/on-demand/${Date.now()}`;
+
+		const initialResponse = await page.goto(path);
+		expect(initialResponse?.status()).toEqual(200);
+		const taggedComponent = page.getByTestId("fully-cached-with-tag");
+		await expect(taggedComponent).toBeVisible();
+		const initialText = await taggedComponent.textContent();
+
+		// Next.js 16.2 PPR responses expose neither cache header used by the newer upstream test.
+		// Repeated stable reads establish that the tagged component has reached its cached state.
+		for (let attempt = 0; attempt < 3; attempt++) {
+			await page.waitForTimeout(1000);
+			await page.goto(path);
+			await expect(taggedComponent).toHaveText(initialText ?? "");
+		}
+
+		const response = await request.get("/api/revalidate");
+		expect(response.status()).toEqual(200);
+		expect(await response.text()).toEqual("DONE");
+
+		await page.goto(path);
+		let refreshedText = await taggedComponent.textContent();
+		for (let attempt = 0; attempt < 10 && refreshedText === initialText; attempt++) {
+			await page.waitForTimeout(1000);
+			await page.goto(path);
+			refreshedText = await taggedComponent.textContent();
+		}
+
+		expect(refreshedText).not.toEqual(initialText);
+	});
+
 	test("cached component should work in isr", async ({ page }) => {
 		await page.goto("/use-cache/isr");
 
