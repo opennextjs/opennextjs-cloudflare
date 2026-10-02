@@ -89,7 +89,7 @@
 		"vitest": "catalog:"
 	},
 	"peerDependencies": {
-		"next": ">=15.5.26 <16 || >=16.3.6",
+		"next": ">=15.5.27 <16 || >=16.3.8",
 		"rclone.js": "^0.6.6",
 		"wrangler": "catalog:"
 	},
