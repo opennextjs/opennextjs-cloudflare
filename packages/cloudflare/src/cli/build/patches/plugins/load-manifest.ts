@@ -39,8 +39,13 @@ async function getLoadManifestRule(buildOpts: BuildOptions) {
 	const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts));
 	const dotNextDir = join(baseDir, ".next");
 
+	// Most server manifests are named `*-manifest.json`, but a few are not:
+	// `required-server-files.json`, `prefetch-hints.json` (Next 16.2+) and
+	// `server/preview-props.json` (Next 16.4+, previously inlined in the
+	// prerender manifest). They are loaded unconditionally by `NextNodeServer`,
+	// so they must be inlined rather than falling back to `{}`.
 	const manifests = await glob(
-		join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints}.json"),
+		join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints,preview-props}.json"),
 		{
 			windowsPathsNoEscape: true,
 		}
