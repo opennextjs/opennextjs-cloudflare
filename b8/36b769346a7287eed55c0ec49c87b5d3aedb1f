@@ -1,0 +1,51 @@
+examples/bugs/aws-1266/.gitignore
+  s_f4d606f49bd1a0::t_ad9ef990b27751 1-10
+examples/bugs/aws-1266/app/control/[id]/route.ts
+  s_f4d606f49bd1a0::t_4f5f8fbfc63be9 1-40
+examples/bugs/aws-1266/app/isr/[id]/page.tsx
+  s_f4d606f49bd1a0::t_e478cff9a55b59 1-26
+examples/bugs/aws-1266/app/layout.tsx
+  s_f4d606f49bd1a0::t_1a248ce6038082 1-13
+examples/bugs/aws-1266/app/page.tsx
+  s_f4d606f49bd1a0::t_17fe3d36b9415f 1-8
+examples/bugs/aws-1266/bucket.ts
+  s_f4d606f49bd1a0::t_7d27d3065e32ef 1-13
+examples/bugs/aws-1266/e2e/playwright.config.ts
+  s_f4d606f49bd1a0::t_21fae568e5d1a5 1-3
+examples/bugs/aws-1266/e2e/playwright.turbopack.config.ts
+  s_f4d606f49bd1a0::t_923a7d2fbf64a7 1-3
+examples/bugs/aws-1266/next.config.ts
+  s_f4d606f49bd1a0::t_89564a4bba2090 1-3
+examples/bugs/aws-1266/open-next.config.ts
+  s_f4d606f49bd1a0::t_9b6a5b9b1189f3 1-13
+examples/bugs/aws-1266/open-next.turbopack.config.ts
+  s_f4d606f49bd1a0::t_6b1270dbcc0411 1-3
+examples/bugs/aws-1266/package.json
+  s_f4d606f49bd1a0::t_fce11f9e6497ed 1-29
+examples/bugs/aws-1266/queue.ts
+  s_f4d606f49bd1a0::t_c5eacd1af0e855 1-22
+examples/bugs/aws-1266/tsconfig.json
+  s_f4d606f49bd1a0::t_cff5e195b24cad 1-25
+examples/bugs/aws-1266/wrangler.jsonc
+  s_f4d606f49bd1a0::t_f86aa1f7b5c396 1-21
+examples/common/apps.ts
+  s_f4d606f49bd1a0::t_c57bb3aff1a4c6 27
+pnpm-lock.yaml
+  s_f4d606f49bd1a0::t_8aa9f2ee0e30dd 157-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b836b769346a7287eed55c0ec49c87b5d3aedb1f",
+  "prompts": {},
+  "sessions": {
+    "s_f4d606f49bd1a0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ef52089efffekv6JFk09biOtWl",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
