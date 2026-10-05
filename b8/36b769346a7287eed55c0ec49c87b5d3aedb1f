@@ -6,6 +6,7 @@ examples/bugs/aws-1266/app/isr/[id]/page.tsx
   s_f4d606f49bd1a0::t_e478cff9a55b59 1-26
 examples/bugs/aws-1266/app/layout.tsx
   s_f4d606f49bd1a0::t_1a248ce6038082 1-13
+  s_f4d606f49bd1a0::t_bcf652456ecbcd 1-13
 examples/bugs/aws-1266/app/page.tsx
   s_f4d606f49bd1a0::t_17fe3d36b9415f 1-8
 examples/bugs/aws-1266/bucket.ts
@@ -26,12 +27,16 @@ examples/bugs/aws-1266/queue.ts
   s_f4d606f49bd1a0::t_c5eacd1af0e855 1-22
 examples/bugs/aws-1266/tsconfig.json
   s_f4d606f49bd1a0::t_cff5e195b24cad 1-25
+  s_f4d606f49bd1a0::t_8ee736957fe6b1 1-25
 examples/bugs/aws-1266/wrangler.jsonc
   s_f4d606f49bd1a0::t_f86aa1f7b5c396 1-21
 examples/common/apps.ts
   s_f4d606f49bd1a0::t_c57bb3aff1a4c6 27
 pnpm-lock.yaml
   s_f4d606f49bd1a0::t_8aa9f2ee0e30dd 157-193
+  s_f4d606f49bd1a0::t_ac9ae52c001c30 157-193
+examples/bugs/aws-1266/e2e/isr.spec.ts
+  s_f4d606f49bd1a0::t_bafa6377f37bf2 1-21,39-58,61-68,70,72-86
 ---
 {
   "schema_version": "authorship/3.0.0",
