@@ -1,0 +1,25 @@
+examples/bugs/aws-1266/app/layout.tsx
+  s_f4d606f49bd1a0::t_bcf652456ecbcd 1-13
+examples/bugs/aws-1266/e2e/isr.spec.ts
+  s_f4d606f49bd1a0::t_bafa6377f37bf2 1-71
+examples/bugs/aws-1266/tsconfig.json
+  s_f4d606f49bd1a0::t_8ee736957fe6b1 1-25
+pnpm-lock.yaml
+  s_f4d606f49bd1a0::t_ac9ae52c001c30 157-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7d9509ee3f32cffcf1ef81c39d7be9ddfd866276",
+  "prompts": {},
+  "sessions": {
+    "s_f4d606f49bd1a0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ef52089efffekv6JFk09biOtWl",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
