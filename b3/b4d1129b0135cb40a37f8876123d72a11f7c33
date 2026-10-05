@@ -1,0 +1,19 @@
+packages/cloudflare/src/cli/build/open-next/createServerBundle.ts
+  s_f4d606f49bd1a0::t_0e0ef7439c535e 32,207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b3b4d1129b0135cb40a37f8876123d72a11f7c33",
+  "prompts": {},
+  "sessions": {
+    "s_f4d606f49bd1a0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ef52089efffekv6JFk09biOtWl",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
