@@ -1,0 +1,19 @@
+pnpm-lock.yaml
+  s_7b27b1fc643698::t_506714ec5c45d4 529-530
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "cc280268ab8bc867b4ef330330fa7577ee0fe42e",
+  "prompts": {},
+  "sessions": {
+    "s_7b27b1fc643698": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ef00bc6b3ffeEVMgnPUpHX91w0",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
