@@ -1,5 +1,17 @@
 # @opennextjs/cloudflare
 
+## 1.20.9
+
+### Patch Changes
+
+- [#1416](https://github.com/opennextjs/opennextjs-cloudflare/pull/1416) [`63cbece`](https://github.com/opennextjs/opennextjs-cloudflare/commit/63cbece5b9ef8209eb6f92998fb6f848e3cf620c) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.8
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.8>
+
+- [#1416](https://github.com/opennextjs/opennextjs-cloudflare/pull/1416) [`63cbece`](https://github.com/opennextjs/opennextjs-cloudflare/commit/63cbece5b9ef8209eb6f92998fb6f848e3cf620c) Thanks [@vicb](https://github.com/vicb)! - fix: isolate module-loading cache signals between requests
+
+  Prevent Next.js 15.4 and newer Cache Components from failing under concurrent traffic with `Cannot perform I/O on behalf of a different request` when module-loading timers cross Cloudflare Worker request contexts.
+
 ## 1.20.8
 
 ### Patch Changes
