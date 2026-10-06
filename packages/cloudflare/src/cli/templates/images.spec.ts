@@ -1,9 +1,10 @@
 import pm from "picomatch";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { LocalPattern } from "./images.js";
 import {
 	detectImageContentType,
+	handleImageRequest,
 	matchLocalPattern,
 	matchRemotePattern as mRP,
 	parseCdnCgiImageRequest,
@@ -576,5 +577,83 @@ describe("detectImageContentType", () => {
 		buffer[1] = 0x02;
 		buffer[2] = 0x03;
 		expect(detectImageContentType(buffer)).toBeNull();
+	});
+});
+
+describe("handleImageRequest", () => {
+	const PNG_HEADER = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+	const GIF_HEADER = [0x47, 0x49, 0x46, 0x38];
+
+	/**
+	 * Creates the env for an image request.
+	 *
+	 * @param sourceHeader The first bytes of the source image, used to detect its content type.
+	 * @param producedContentType The content type of the image produced by the Images binding.
+	 * @returns The env and a spy on the `output()` method of the Images binding.
+	 */
+	function createEnv(sourceHeader: number[], producedContentType: string) {
+		const headerBytes = new Uint8Array(32);
+		headerBytes.set(sourceHeader);
+		// Note: `readAtLeast()` is only available in workerd.
+		const headerStream = { getReader: () => ({ readAtLeast: async () => ({ value: headerBytes }) }) };
+		const imageResponse = {
+			ok: true,
+			status: 200,
+			headers: new Headers(),
+			body: { tee: () => [headerStream, new ReadableStream()] },
+		};
+
+		const output = vi.fn(async () => ({
+			contentType: () => producedContentType,
+			image: () => new ReadableStream(),
+		}));
+		const env = {
+			ASSETS: { fetch: async () => imageResponse },
+			IMAGES: { input: () => ({ transform: () => ({ output }) }) },
+		} as unknown as CloudflareEnv;
+
+		return { env, output };
+	}
+
+	// Note: static assets are not matched against the local patterns.
+	const requestURL = new URL(
+		"https://example.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fimage.png&w=640&q=75"
+	);
+
+	beforeEach(() => {
+		globalThis.__NEXT_BASE_PATH__ = "";
+		globalThis.__IMAGES_DEVICE_SIZES__ = [640];
+		globalThis.__IMAGES_IMAGE_SIZES__ = [];
+		globalThis.__IMAGES_QUALITIES__ = [75];
+		globalThis.__IMAGES_FORMATS__ = ["image/avif", "image/webp"];
+		globalThis.__IMAGES_CONTENT_DISPOSITION__ = "attachment";
+		globalThis.__IMAGES_CONTENT_SECURITY_POLICY__ = "script-src 'none'";
+	});
+
+	it("should use the requested format as the content type when the binding produces it", async () => {
+		const { env, output } = createEnv(PNG_HEADER, "image/avif");
+
+		const response = await handleImageRequest(requestURL, new Headers({ Accept: "image/avif" }), env);
+
+		expect(output).toHaveBeenCalledWith({ quality: 75, format: "image/avif" });
+		expect(response.headers.get("Content-Type")).toBe("image/avif");
+	});
+
+	it("should use the produced format as the content type when the binding falls back", async () => {
+		const { env, output } = createEnv(PNG_HEADER, "image/webp");
+
+		const response = await handleImageRequest(requestURL, new Headers({ Accept: "image/avif" }), env);
+
+		expect(output).toHaveBeenCalledWith({ quality: 75, format: "image/avif" });
+		expect(response.headers.get("Content-Type")).toBe("image/webp");
+	});
+
+	it("should use the produced format as the content type for GIF images", async () => {
+		const { env, output } = createEnv(GIF_HEADER, "image/webp");
+
+		const response = await handleImageRequest(requestURL, new Headers({ Accept: "image/avif" }), env);
+
+		expect(output).toHaveBeenCalledWith({ quality: 75, format: "image/gif" });
+		expect(response.headers.get("Content-Type")).toBe("image/webp");
 	});
 });

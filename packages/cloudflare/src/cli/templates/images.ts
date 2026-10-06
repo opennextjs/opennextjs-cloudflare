@@ -132,7 +132,7 @@ export async function handleImageRequest(
 				format: GIF,
 			});
 		const outputImageStream = imageTransformationResult.image();
-		const response = createImageResponse(outputImageStream, GIF, {
+		const response = createImageResponse(outputImageStream, imageTransformationResult.contentType(), {
 			immutable,
 		});
 		return response;
@@ -159,7 +159,8 @@ export async function handleImageRequest(
 				format: outputFormat,
 			});
 		const outputImageStream = imageTransformationResult.image();
-		const response = createImageResponse(outputImageStream, outputFormat, {
+		// Note: the binding can fall back to another format than the requested one (i.e. AVIF to WebP for large images).
+		const response = createImageResponse(outputImageStream, imageTransformationResult.contentType(), {
 			immutable,
 		});
 		return response;
