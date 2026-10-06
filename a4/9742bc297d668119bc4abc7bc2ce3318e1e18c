@@ -1,0 +1,19 @@
+packages/cloudflare/src/cli/build/patches/plugins/module-loading.spec.ts
+  s_7b27b1fc643698::t_64d775f773d835 1-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a49742bc297d668119bc4abc7bc2ce3318e1e18c",
+  "prompts": {},
+  "sessions": {
+    "s_7b27b1fc643698": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ef00bc6b3ffeEVMgnPUpHX91w0",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
