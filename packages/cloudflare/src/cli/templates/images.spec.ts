@@ -1,5 +1,5 @@
 import pm from "picomatch";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { LocalPattern } from "./images.js";
 import {
@@ -621,13 +621,17 @@ describe("handleImageRequest", () => {
 	);
 
 	beforeEach(() => {
-		globalThis.__NEXT_BASE_PATH__ = "";
-		globalThis.__IMAGES_DEVICE_SIZES__ = [640];
-		globalThis.__IMAGES_IMAGE_SIZES__ = [];
-		globalThis.__IMAGES_QUALITIES__ = [75];
-		globalThis.__IMAGES_FORMATS__ = ["image/avif", "image/webp"];
-		globalThis.__IMAGES_CONTENT_DISPOSITION__ = "attachment";
-		globalThis.__IMAGES_CONTENT_SECURITY_POLICY__ = "script-src 'none'";
+		vi.stubGlobal("__NEXT_BASE_PATH__", "");
+		vi.stubGlobal("__IMAGES_DEVICE_SIZES__", [640]);
+		vi.stubGlobal("__IMAGES_IMAGE_SIZES__", []);
+		vi.stubGlobal("__IMAGES_QUALITIES__", [75]);
+		vi.stubGlobal("__IMAGES_FORMATS__", ["image/avif", "image/webp"]);
+		vi.stubGlobal("__IMAGES_CONTENT_DISPOSITION__", "attachment");
+		vi.stubGlobal("__IMAGES_CONTENT_SECURITY_POLICY__", "script-src 'none'");
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
 	});
 
 	it("should use the requested format as the content type when the binding produces it", async () => {
