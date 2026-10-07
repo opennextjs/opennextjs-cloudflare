@@ -1,6 +1,17 @@
-import { describe, expect, test } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
-import { factorManifestValue, factorObjectValues, getOrCreateVarName } from "./load-manifest.js";
+import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
+import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
+import mockFs from "mock-fs";
+import { afterEach, describe, expect, test } from "vitest";
+
+import {
+	factorManifestValue,
+	factorObjectValues,
+	getOrCreateVarName,
+	inlineLoadManifest,
+} from "./load-manifest.js";
 
 describe("getOrCreateVarName", () => {
 	test("returns a variable name starting with 'v' followed by a 3-char prefix", () => {
@@ -262,5 +273,89 @@ describe("factorObjectValues", () => {
 
 		expect(result).toBe(input);
 		expect(sharedVars.size).toBe(0);
+	});
+});
+
+describe("inlineLoadManifest", () => {
+	const monorepoRoot = "/app";
+	const appBuildOutputPath = "/app";
+	const outputDir = "/app/.open-next";
+	const dotNextDir = join(outputDir, "server-functions/default/.next");
+	const loadManifestPath = join(
+		outputDir,
+		"server-functions/default/node_modules/next/dist/server/load-manifest.js"
+	);
+
+	const buildOpts = {
+		appBuildOutputPath,
+		monorepoRoot,
+		outputDir,
+		nextVersion: "16.3.3",
+	} as BuildOptions;
+
+	const loadManifestJs = `
+function loadManifest(path, shouldCache = true) {
+  return require(path);
+}
+function evalManifest(path, shouldCache = true) {
+  return require(path);
+}
+`;
+
+	/**
+	 * Applies the content updates registered by `inlineLoadManifest` to a file, as esbuild would.
+	 *
+	 * @param path The path of the file to load.
+	 * @returns The patched content of the file.
+	 */
+	async function loadPatched(path: string): Promise<string> {
+		const updater = new ContentUpdater(buildOpts);
+		inlineLoadManifest(updater, buildOpts);
+
+		type OnLoad = (args: { path: string; namespace: string }) => Promise<{ contents: string } | undefined>;
+		let onLoad: OnLoad | undefined;
+		await updater.plugin.setup({
+			onLoad: (_filter: unknown, callback: OnLoad) => {
+				onLoad = callback;
+			},
+		} as never);
+
+		const result = await onLoad?.({ path, namespace: "file" });
+		return result?.contents ?? readFileSync(path, "utf-8");
+	}
+
+	afterEach(() => mockFs.restore());
+
+	// Regression test for https://github.com/opennextjs/opennextjs-cloudflare/issues/1360:
+	// an App Router route at `src/app/mail-manifest.json/route.ts` builds the
+	// `server/app/mail-manifest.json/` directory, which matches the manifest glob.
+	test("ignores route directories matching the loadManifest glob", async () => {
+		mockFs({
+			[loadManifestPath]: loadManifestJs,
+			[join(dotNextDir, "server/app/mail-manifest.json/route.js")]: "exports.GET = () => {};",
+			[join(dotNextDir, "server/app/mail-manifest.json/route.js.nft.json")]: "{}",
+			[join(dotNextDir, "server/app-paths-manifest.json")]: "{}",
+		});
+
+		const patched = loadPatched(loadManifestPath);
+
+		await expect(patched).resolves.toContain('endsWith("/server/app-paths-manifest.json")');
+		await expect(patched).resolves.not.toContain("mail-manifest");
+	});
+
+	// A route directory matching `*_client-reference-manifest.js` crashes the
+	// evalManifest glob the same way (only `page_` files are read, so use one).
+	test("ignores route directories matching the evalManifest glob", async () => {
+		mockFs({
+			[loadManifestPath]: loadManifestJs,
+			[join(dotNextDir, "server/app/page_client-reference-manifest.js/route.js")]: "exports.GET = () => {};",
+			[join(dotNextDir, "server/app/index_client-reference-manifest.js")]:
+				'globalThis.__RSC_MANIFEST["/index"] = {};',
+		});
+
+		const patched = loadPatched(loadManifestPath);
+
+		await expect(patched).resolves.toContain("index_client-reference-manifest.js");
+		await expect(patched).resolves.not.toContain("page_client-reference-manifest");
 	});
 });
