@@ -43,6 +43,7 @@ async function getLoadManifestRule(buildOpts: BuildOptions) {
 		join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints}.json"),
 		{
 			windowsPathsNoEscape: true,
+			nodir: true,
 		}
 	);
 
@@ -100,6 +101,7 @@ async function getEvalManifestRule(buildOpts: BuildOptions) {
 	const appDir = join(baseDir, "server/app");
 	const manifestPaths = await glob(join(baseDir, "**/*_client-reference-manifest.js"), {
 		windowsPathsNoEscape: true,
+		nodir: true,
 	});
 
 	// Map of factored large objects (variable name -> {...})
