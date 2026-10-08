@@ -3,8 +3,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import * as buildHelper from "@opennextjs/aws/build/helper.js";
+import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
 import { build, type Plugin } from "esbuild";
 

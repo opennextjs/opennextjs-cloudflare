@@ -79,7 +79,9 @@ test.describe("Next Config Redirect", () => {
 		});
 		page.getByTestId("redirect-link").click();
 		const res = await responsePromise;
-		await page.waitForURL("/config-redirect/dest?q=äöå€");
+		await page.waitForURL((url) => {
+			return url.pathname === "/config-redirect/dest" && url.searchParams.get("q") === "äöå€";
+		});
 
 		const locationHeader = res.headers().location;
 		expect(locationHeader).toBe("/config-redirect/dest?q=%C3%A4%C3%B6%C3%A5%E2%82%AC");
@@ -95,7 +97,9 @@ test.describe("Next Config Redirect", () => {
 		});
 		page.getByTestId("redirect-link-already-encoded").click();
 		const res = await responsePromise;
-		await page.waitForURL("/config-redirect/dest?q=äöå€");
+		await page.waitForURL((url) => {
+			return url.pathname === "/config-redirect/dest" && url.searchParams.get("q") === "äöå€";
+		});
 
 		const locationHeader = res.headers().location;
 		expect(locationHeader).toBe("/config-redirect/dest?q=%C3%A4%C3%B6%C3%A5%E2%82%AC");

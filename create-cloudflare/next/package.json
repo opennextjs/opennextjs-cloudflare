@@ -28,6 +28,6 @@
 		"eslint-config-next": "16.3.8",
 		"tailwindcss": "^4",
 		"typescript": "^5.7.4",
-		"wrangler": "^4.125.0"
+		"wrangler": "^4.134.0"
 	}
 }
