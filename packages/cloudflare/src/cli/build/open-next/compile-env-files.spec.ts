@@ -31,6 +31,7 @@ describe("compileEnvFiles", () => {
 		`);
 	});
 
+	// See https://github.com/opennextjs/opennextjs-cloudflare/issues/1274
 	it("should write the same content when called twice", () => {
 		compileEnvFiles(options);
 		compileEnvFiles(options);
