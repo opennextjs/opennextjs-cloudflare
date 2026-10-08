@@ -51,7 +51,8 @@ export function transformBuildCondition(
 // We only care about these 2 fields
 interface PackageJson {
 	name: string;
-	exports?: { [key: string]: unknown };
+	// Note: `exports` can be a string, i.e. `"exports": "./index.js"`
+	exports?: string | { [key: string]: unknown };
 	imports?: { [key: string]: unknown };
 }
 
@@ -63,7 +64,7 @@ interface PackageJson {
 export function transformPackageJson(json: PackageJson) {
 	const transformed: PackageJson = structuredClone(json);
 	let hasBuildCondition = false;
-	if (json.exports) {
+	if (json.exports && typeof json.exports === "object") {
 		const exp = transformBuildCondition(json.exports, "workerd");
 		transformed.exports = exp.transformedExports;
 		hasBuildCondition ||= exp.hasBuildCondition;
@@ -97,8 +98,8 @@ export async function copyWorkerdPackages(options: BuildOptions, nodePackages: M
 				// Overwrite with  the transformed package.json
 				await fs.writeFile(path.join(dst, "package.json"), JSON.stringify(transformed), "utf8");
 			}
-		} catch {
-			logger.error(`Failed to copy ${src}`);
+		} catch (e) {
+			logger.error(`Failed to copy ${src}:`, e instanceof Error ? e.message : e);
 		}
 	}
 }
