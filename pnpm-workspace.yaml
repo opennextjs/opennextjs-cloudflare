@@ -12,8 +12,6 @@ overrides:
   "@cloudflare/workers-types": 5.20261007.1
   # Keep Next.js optional peer contexts on the same reviewed Playwright/browser release.
   "@playwright/test": 1.63.0
-  # Keep the published peer range broad while avoiding the regression introduced in 4.135.0.
-  wrangler: 4.134.0
 
 catalog:
   "@cloudflare/workers-types": ^5.20261007.1
@@ -43,7 +41,7 @@ catalog:
   typescript: ^5.9.3
   typescript-eslint: ^8.71.1
   vitest: ^4.1.11
-  wrangler: ^4.134.0
+  wrangler: ^4.148.0
   yargs: ^18.2.0
 
 catalogs:
