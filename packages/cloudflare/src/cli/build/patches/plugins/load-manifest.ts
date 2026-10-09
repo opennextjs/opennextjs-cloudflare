@@ -17,6 +17,28 @@ import { glob } from "glob";
 
 import { normalizePath } from "../../../utils/normalize-path.js";
 
+/**
+ * Build-output manifests inlined with their real contents.
+ *
+ * `preview-props.json` was added for Next.js 16.4, which introduced
+ * `getPreviewProps()` reading `.next/server/preview-props.json`. The file is
+ * written unconditionally by the build (`writeManifest(join(distDir, "server",
+ * PREVIEW_PROPS_MANIFEST), previewProps)`) and is listed in
+ * `required-server-files`, so it is present in the output — it simply did not
+ * match any pattern here, and every SSR request threw
+ * `Unexpected loadManifest(/.next/server/preview-props.json) call!`.
+ *
+ * It belongs here rather than in the "known optional manifests" block below:
+ * Next.js loads it WITHOUT `handleMissing`, unlike `getPrefetchHints()`, so it
+ * is required rather than optional. Returning `{}` would hand the server empty
+ * preview props — `previewModeId` and the signing and encryption keys — which
+ * breaks draft mode silently instead of loudly.
+ *
+ * Exported so the pattern itself can be asserted; see load-manifest.spec.ts.
+ */
+export const INLINED_MANIFESTS_GLOB =
+	"**/{*-manifest,required-server-files,prefetch-hints,preview-props}.json";
+
 export function inlineLoadManifest(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
 	return updater.updateContent("inline-load-manifest", [
 		{
@@ -39,13 +61,10 @@ async function getLoadManifestRule(buildOpts: BuildOptions) {
 	const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts));
 	const dotNextDir = join(baseDir, ".next");
 
-	const manifests = await glob(
-		join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints}.json"),
-		{
-			windowsPathsNoEscape: true,
-			nodir: true,
-		}
-	);
+	const manifests = await glob(join(dotNextDir, INLINED_MANIFESTS_GLOB), {
+		windowsPathsNoEscape: true,
+		nodir: true,
+	});
 
 	const returnManifests = (
 		await Promise.all(
