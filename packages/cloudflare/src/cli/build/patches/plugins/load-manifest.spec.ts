@@ -1,6 +1,16 @@
-import { describe, expect, test } from "vitest";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, relative, sep } from "node:path";
 
-import { factorManifestValue, factorObjectValues, getOrCreateVarName } from "./load-manifest.js";
+import { glob } from "glob";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
+
+import {
+	factorManifestValue,
+	factorObjectValues,
+	getOrCreateVarName,
+	INLINED_MANIFESTS_GLOB,
+} from "./load-manifest.js";
 
 describe("getOrCreateVarName", () => {
 	test("returns a variable name starting with 'v' followed by a 3-char prefix", () => {
@@ -262,5 +272,61 @@ describe("factorObjectValues", () => {
 
 		expect(result).toBe(input);
 		expect(sharedVars.size).toBe(0);
+	});
+});
+
+describe("INLINED_MANIFESTS_GLOB", () => {
+	// Matched against a real fixture tree rather than asserted as a string, so
+	// the test exercises the same glob the build runs.
+	let dir: string;
+
+	beforeAll(async () => {
+		dir = await mkdtemp(join(tmpdir(), "inlined-manifests-"));
+		await mkdir(join(dir, "server"), { recursive: true });
+		for (const f of [
+			"routes-manifest.json",
+			"required-server-files.json",
+			"server/prefetch-hints.json",
+			"server/preview-props.json",
+			"server/pages-manifest.json",
+			"server/unrelated.json",
+			"server/preview-props.js",
+		]) {
+			await writeFile(join(dir, f), "{}");
+		}
+	});
+
+	afterAll(async () => {
+		await rm(dir, { recursive: true, force: true });
+	});
+
+	const matched = async () => {
+		const hits = await glob(join(dir, INLINED_MANIFESTS_GLOB), {
+			windowsPathsNoEscape: true,
+			nodir: true,
+		});
+		return hits.map((p) => relative(dir, p).split(sep).join("/")).sort();
+	};
+
+	test("matches preview-props.json, which Next.js 16.4 requires", async () => {
+		// Regression: without this, every SSR request threw
+		// `Unexpected loadManifest(/.next/server/preview-props.json) call!`
+		expect(await matched()).toContain("server/preview-props.json");
+	});
+
+	test("still matches the manifests it matched before", async () => {
+		const hits = await matched();
+		expect(hits).toContain("routes-manifest.json");
+		expect(hits).toContain("required-server-files.json");
+		expect(hits).toContain("server/prefetch-hints.json");
+		expect(hits).toContain("server/pages-manifest.json");
+	});
+
+	test("does not widen to unrelated json or non-json files", async () => {
+		const hits = await matched();
+		// NB "not-a-manifest.json" would MATCH — it ends in "-manifest" — which is
+		// why the negative fixture is named "unrelated.json" instead.
+		expect(hits).not.toContain("server/unrelated.json");
+		expect(hits).not.toContain("server/preview-props.js");
 	});
 });
