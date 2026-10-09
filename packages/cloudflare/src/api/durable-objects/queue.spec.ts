@@ -323,6 +323,51 @@ describe("DurableObjectQueue", () => {
 		});
 	});
 
+	describe("failed state cleanup", () => {
+		const failedStateFor = (id: string) => ({
+			msg: createMessage(id),
+			retryCount: 1,
+			nextAlarmMs: Date.now() - 1000,
+		});
+
+		it.each([
+			{ outcome: "succeeds", statusCode: 200, cacheHeader: "REVALIDATED" },
+			{ outcome: "returns a 404", statusCode: 404, cacheHeader: "REVALIDATED" },
+			{ outcome: "returns a 200 that is not revalidated", statusCode: 200, cacheHeader: "MISS" },
+		])("should delete the persisted row when the retry $outcome", async ({ statusCode, cacheHeader }) => {
+			const queue = createDurableObjectQueue({
+				fetchDuration: 10,
+				statusCode,
+				headers: new Headers([["x-nextjs-cache", cacheHeader]]),
+			});
+			queue.routeInFailedState.set("id", failedStateFor("id"));
+
+			await queue.alarm();
+
+			expect(queue.routeInFailedState.size).toBe(0);
+			expect(queue.sql.exec).toHaveBeenCalledWith("DELETE FROM failed_state WHERE id = ?", "id");
+		});
+
+		it("should delete the persisted row when the max retries is reached", async () => {
+			const queue = createDurableObjectQueue({ fetchDuration: 10 });
+			queue.routeInFailedState.set("id", { ...failedStateFor("id"), retryCount: 6 });
+
+			await queue.addToFailedState(createMessage("id"));
+
+			expect(queue.routeInFailedState.size).toBe(0);
+			expect(queue.sql.exec).toHaveBeenCalledWith("DELETE FROM failed_state WHERE id = ?", "id");
+		});
+
+		it("should not delete a row for a route that was never in the failed state", async () => {
+			const queue = createDurableObjectQueue({ fetchDuration: 10 });
+
+			await queue.revalidate(createMessage("id"));
+			await queue.ongoingRevalidations.get("id");
+
+			expect(queue.sql.exec).not.toHaveBeenCalledWith("DELETE FROM failed_state WHERE id = ?", "id");
+		});
+	});
+
 	describe("disableSQLite", () => {
 		it("should not initialize the sqlite storage", async () => {
 			const queue = createDurableObjectQueue({ fetchDuration: 10, disableSQLite: true });
@@ -338,6 +383,18 @@ describe("DurableObjectQueue", () => {
 		it("should not read from the sqlite storage on checkSyncTable", async () => {
 			const queue = createDurableObjectQueue({ fetchDuration: 10, disableSQLite: true });
 			queue.checkSyncTable(createMessage("id"));
+			expect(queue.sql.exec).not.toHaveBeenCalled();
+		});
+
+		it("should not delete from sql when a retry succeeds", async () => {
+			const queue = createDurableObjectQueue({ fetchDuration: 10, disableSQLite: true });
+			queue.routeInFailedState.set("id", {
+				msg: createMessage("id"),
+				retryCount: 1,
+				nextAlarmMs: Date.now() - 1000,
+			});
+			await queue.alarm();
+			expect(queue.routeInFailedState.size).toBe(0);
 			expect(queue.sql.exec).not.toHaveBeenCalled();
 		});
 

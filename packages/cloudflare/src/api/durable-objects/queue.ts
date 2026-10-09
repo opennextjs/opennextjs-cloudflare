@@ -133,14 +133,14 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 			});
 			// Now we need to handle errors from the fetch
 			if (response.status === 200 && response.headers.get("x-nextjs-cache") !== "REVALIDATED") {
-				this.routeInFailedState.delete(msg.MessageDeduplicationId);
+				this.removeFromFailedState(msg.MessageDeduplicationId);
 				throw new FatalError(
 					`The revalidation for ${host}${url} cannot be done. This error should never happen.`
 				);
 			} else if (response.status === 404) {
 				// The page is not found, we should not revalidate it
 				// We remove the route from the failed state because it might be expected (i.e. a route that was deleted)
-				this.routeInFailedState.delete(msg.MessageDeduplicationId);
+				this.removeFromFailedState(msg.MessageDeduplicationId);
 				throw new IgnorableError(
 					`The revalidation for ${host}${url} cannot be done because the page is not found. It's either expected or an error in user code itself`
 				);
@@ -171,7 +171,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 				);
 			}
 			// If everything went well, we can remove the route from the failed state
-			this.routeInFailedState.delete(msg.MessageDeduplicationId);
+			this.removeFromFailedState(msg.MessageDeduplicationId);
 		} catch (e) {
 			// Do we want to propagate the error to the calling worker?
 			if (!isOpenNextError(e)) {
@@ -217,7 +217,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 				error(
 					`The revalidation for ${msg.MessageBody.host}${msg.MessageBody.url} has failed after ${this.maxRetries} retries. It will not be tried again, but subsequent ISR requests will retry.`
 				);
-				this.routeInFailedState.delete(msg.MessageDeduplicationId);
+				this.removeFromFailedState(msg.MessageDeduplicationId);
 				return;
 			}
 			const nextAlarmMs =
@@ -245,6 +245,15 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 		}
 		// We probably want to do something if routeInFailedState is becoming too big, at least log it
 		await this.addAlarm();
+	}
+
+	// Removes the route from the in-memory failed state and its persisted row,
+	// so that `initState()` does not restore it on the next start.
+	// Every persisted row is also in the map, so a missing map entry means there is no row to delete.
+	removeFromFailedState(id: string) {
+		if (this.routeInFailedState.delete(id) && !this.disableSQLite) {
+			this.sql.exec("DELETE FROM failed_state WHERE id = ?", id);
+		}
 	}
 
 	async addAlarm() {
