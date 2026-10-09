@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { askConfirmation } from "../../utils/ask-confirmation.js";
 import { createOpenNextConfigFile, findOpenNextConfig } from "../../utils/create-open-next-config.js";
 import { isNonInteractiveOrCI } from "../../utils/is-interactive.js";
-import { compileConfig } from "./utils.js";
+import { compileConfig, withWranglerPassthroughArgs } from "./utils.js";
 
 const { mockExistsSync } = vi.hoisted(() => ({
 	mockExistsSync: vi.fn(),
@@ -160,5 +160,27 @@ describe("compileConfig", () => {
 
 		expect(askConfirmation).toHaveBeenCalledOnce();
 		expect(createOpenNextConfigFile).toHaveBeenCalledOnce();
+	});
+});
+
+describe("withWranglerPassthroughArgs", () => {
+	const baseArgs = { _: [], $0: "opennextjs-cloudflare", configPath: undefined, config: undefined };
+
+	it("should not pass `--env` when no environment is provided", () => {
+		const { wranglerArgs } = withWranglerPassthroughArgs({ ...baseArgs, env: undefined });
+
+		expect(wranglerArgs).toEqual([]);
+	});
+
+	it("should pass a named environment", () => {
+		const { wranglerArgs } = withWranglerPassthroughArgs({ ...baseArgs, env: "staging" });
+
+		expect(wranglerArgs).toEqual(["--env", "staging"]);
+	});
+
+	it("should pass an empty environment to target the top-level environment", () => {
+		const { wranglerArgs } = withWranglerPassthroughArgs({ ...baseArgs, env: "" });
+
+		expect(wranglerArgs).toEqual(['--env=""']);
 	});
 });
