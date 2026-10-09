@@ -21,6 +21,20 @@ test("Server Actions", async ({ page }) => {
 	await expect(el).toBeVisible();
 });
 
+// Next renders the target of a server action redirect through a subrequest to `process.env.__NEXT_PRIVATE_ORIGIN`.
+// A worker serving several hosts must not send it to the host that happened to initialize the isolate.
+test("Server Action redirect is rendered for the host of the request", async ({ page }) => {
+	await page.goto("/server-actions");
+	const { port } = new URL(page.url());
+
+	for (const host of [`localhost:${port}`, `127.0.0.1:${port}`]) {
+		await page.goto(`http://${host}/server-actions`);
+		await page.getByRole("button", { name: "Redirect To Host" }).click();
+
+		await expect(page.getByText(`Rendered for host: ${host}`)).toBeVisible();
+	}
+});
+
 // A form submitted before hydration or with JavaScript disabled is a multipart POST
 // whose server action id is in the body, not in the `next-action` header. This app
 // runs with `dangerous.enableCacheInterception` and /server-actions is prerendered,
