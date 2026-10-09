@@ -61,12 +61,15 @@ export function maybeGetSkewProtectionResponse(request: Request): Promise<Respon
 
 		const versionDomain = version.split("-")[0];
 		const hostname = `${versionDomain}-${process.env.CF_WORKER_NAME}.${process.env.CF_PREVIEW_DOMAIN}.workers.dev`;
+		const requestedHost = url.host;
 		url.hostname = hostname;
 		const requestToOlderDeployment = new Request(url!, request);
 
 		// Remove the origin header to prevent an error with POST requests
 		const headers = new Headers(request.headers);
 		headers.delete("origin");
+		// An inbound x-forwarded-host is client-controlled, so it is replaced rather than preserved.
+		headers.set("x-forwarded-host", requestedHost);
 
 		return fetch(requestToOlderDeployment, { headers });
 	}
