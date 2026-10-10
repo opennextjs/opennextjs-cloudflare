@@ -13,6 +13,6 @@ The adapter is meant to copy the `workerd` build of such packages, but it only d
 The module "./dist/index.js" was not found on the file system
 ```
 
-The adapter now copies the `workerd` build of every traced package that declares the condition, so `pg` builds without `outputFileTracingIncludes` workarounds. As a consequence, a traced package that declares a `workerd` condition now always resolves to that build in the server bundle, even when the user did not list it in `serverExternalPackages`.
+The adapter now copies the `workerd` build of every traced package that declares the condition, so `pg` builds without `outputFileTracingIncludes` workarounds. The dependencies that only the `workerd` build uses are copied along, as Next.js does not trace them either. As a consequence, a traced package that declares a `workerd` condition now always resolves to that build in the server bundle, even when the user did not list it in `serverExternalPackages`.
 
 Fixes #1214. Refs #1322.

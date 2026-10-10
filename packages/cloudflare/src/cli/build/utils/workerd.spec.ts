@@ -464,4 +464,117 @@ describe("copyWorkerdPackages", () => {
 		expect(fs.existsSync(path.join(dst, "package.json"))).toBe(false);
 		expect(errorSpy).not.toHaveBeenCalled();
 	});
+
+	/**
+	 * Installs a package in the pnpm store and links it next to `dependent` as pnpm does for its dependencies.
+	 *
+	 * The package is not traced: it only exists in the installed tree.
+	 *
+	 * @param dependent Installed directory of the package depending on `name`
+	 * @param name Name of the dependency
+	 * @param version Version of the dependency
+	 * @param packageJson Content of the `package.json`
+	 * @param files Files of the dependency
+	 * @returns The installed directory of the dependency
+	 */
+	function installDependency(
+		dependent: string,
+		name: string,
+		version: string,
+		packageJson: object,
+		files: Record<string, string>
+	) {
+		const real = path.join(appPath, "node_modules/.pnpm", `${name}@${version}`, "node_modules", name);
+		fs.mkdirSync(real, { recursive: true });
+		fs.writeFileSync(path.join(real, "package.json"), JSON.stringify(packageJson, null, 2));
+		for (const [file, content] of Object.entries(files)) {
+			fs.writeFileSync(path.join(real, file), content);
+		}
+		const link = path.join(path.dirname(dependent), name);
+		fs.symlinkSync(path.relative(path.dirname(link), real), link);
+		return real;
+	}
+
+	test("copies the untraced dependencies of a workerd build", async () => {
+		const { src, dst } = createPackage(
+			"socket-adapter",
+			{
+				name: "socket-adapter",
+				exports: { workerd: "./workerd.js", default: "./node.js" },
+				dependencies: { "worker-transport": "1.0.0" },
+				optionalDependencies: { "not-installed": "1.0.0" },
+			},
+			{ "workerd.js": "export { connect } from 'worker-transport';" },
+			{ "node.js": "export const connect = () => {};" },
+			"1.0.0"
+		);
+		const transport = installDependency(
+			src,
+			"worker-transport",
+			"1.0.0",
+			{ name: "worker-transport", dependencies: { "transport-core": "1.0.0" } },
+			{ "index.js": "export { connect } from 'transport-core';" }
+		);
+		installDependency(
+			transport,
+			"transport-core",
+			"1.0.0",
+			{ name: "transport-core" },
+			{ "index.js": "export const connect = () => {};" }
+		);
+
+		await copyWorkerdPackages({ appPath }, new Map([[src, dst]]));
+
+		const dstStore = path.join(appPath, ".open-next/server-functions/default/node_modules/.pnpm");
+		const transportDst = path.join(dstStore, "worker-transport@1.0.0/node_modules/worker-transport");
+		const coreDst = path.join(dstStore, "transport-core@1.0.0/node_modules/transport-core");
+		expect(fs.readFileSync(path.join(transportDst, "index.js"), "utf8")).toBe(
+			"export { connect } from 'transport-core';"
+		);
+		expect(fs.readFileSync(path.join(coreDst, "index.js"), "utf8")).toBe("export const connect = () => {};");
+		// The symlinks pnpm uses to expose the dependencies are recreated in the output
+		const transportLink = path.join(path.dirname(dst), "worker-transport");
+		expect(fs.readlinkSync(transportLink)).toBe("../../worker-transport@1.0.0/node_modules/worker-transport");
+		expect(fs.realpathSync(transportLink)).toBe(fs.realpathSync(transportDst));
+		const coreLink = path.join(path.dirname(transportDst), "transport-core");
+		expect(fs.readlinkSync(coreLink)).toBe("../../transport-core@1.0.0/node_modules/transport-core");
+		expect(fs.realpathSync(coreLink)).toBe(fs.realpathSync(coreDst));
+		expect(errorSpy).not.toHaveBeenCalled();
+	});
+
+	test("leaves the traced dependencies of a workerd build untouched", async () => {
+		const { src, dst } = createPackage(
+			"socket-adapter",
+			{
+				name: "socket-adapter",
+				exports: { workerd: "./workerd.js", default: "./node.js" },
+				dependencies: { "traced-dep": "1.0.0" },
+			},
+			{ "workerd.js": "export { connect } from 'traced-dep';" },
+			{ "node.js": "export { connect } from 'traced-dep';" },
+			"1.0.0"
+		);
+		const dep = createPackage(
+			"traced-dep",
+			{ name: "traced-dep" },
+			{ "untraced.js": "export const unused = true;" },
+			{ "index.js": "export const connect = () => {};" },
+			"1.0.0"
+		);
+		const link = path.join(path.dirname(src), "traced-dep");
+		fs.symlinkSync(path.relative(path.dirname(link), dep.src), link);
+
+		await copyWorkerdPackages(
+			{ appPath },
+			new Map([
+				[src, dst],
+				[dep.src, dep.dst],
+			])
+		);
+
+		expect(fs.existsSync(path.join(dst, "workerd.js"))).toBe(true);
+		expect(fs.existsSync(path.join(dep.dst, "index.js"))).toBe(true);
+		expect(fs.existsSync(path.join(dep.dst, "untraced.js"))).toBe(false);
+		expect(errorSpy).not.toHaveBeenCalled();
+	});
 });
