@@ -2,16 +2,18 @@ import logger from "@opennextjs/aws/logger.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { runWrangler } from "../commands/utils/run-wrangler.js";
+import { askAccountSelection } from "./ask-account-selection.js";
 import { ensureR2Bucket } from "./ensure-r2-bucket.js";
 import { isNonInteractiveOrCI } from "./is-interactive.js";
 
-const { MockCloudflare, mockR2BucketsGet } = vi.hoisted(() => {
+const { MockCloudflare, mockR2BucketsGet, mockAccountsList } = vi.hoisted(() => {
 	const mockR2BucketsGet = vi.fn();
+	const mockAccountsList = vi.fn();
 
 	class MockCloudflare {
 		static NotFoundError = class extends Error {};
 
-		accounts = { list: vi.fn(() => []) };
+		accounts = { list: mockAccountsList };
 
 		r2 = {
 			buckets: {
@@ -21,7 +23,7 @@ const { MockCloudflare, mockR2BucketsGet } = vi.hoisted(() => {
 		};
 	}
 
-	return { MockCloudflare: vi.fn(MockCloudflare), mockR2BucketsGet };
+	return { MockCloudflare: vi.fn(MockCloudflare), mockR2BucketsGet, mockAccountsList };
 });
 
 vi.mock("@opennextjs/aws/build/helper.js", () => ({
@@ -53,10 +55,12 @@ describe("ensureR2Bucket", () => {
 		vi.clearAllMocks();
 		vi.mocked(isNonInteractiveOrCI).mockReturnValue(false);
 		vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "test-account-id");
+		vi.stubEnv("CF_ACCOUNT_ID", "");
 		vi.stubEnv("CLOUDFLARE_API_TOKEN", "");
 		vi.stubEnv("CLOUDFLARE_API_KEY", "");
 		vi.stubEnv("CLOUDFLARE_EMAIL", "");
 		mockR2BucketsGet.mockResolvedValue({});
+		mockAccountsList.mockResolvedValue([]);
 	});
 
 	afterEach(() => {
@@ -171,6 +175,52 @@ describe("ensureR2Bucket", () => {
 			expect.anything(),
 			["auth", "token", "--json"],
 			expect.objectContaining({ env: expect.objectContaining({ WRANGLER_LOG: "log" }) })
+		);
+	});
+
+	it("does not leak the wrangler output when it is not valid JSON", async () => {
+		vi.mocked(runWrangler).mockReturnValue({ success: true, stdout: "oops secret-token", stderr: "" });
+		vi.mocked(isNonInteractiveOrCI).mockReturnValue(true);
+
+		await expect(ensureR2Bucket("/tmp/app", "test-bucket")).resolves.toMatchObject({ success: false });
+		expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining("as JSON"));
+		for (const call of vi.mocked(logger.debug).mock.calls) {
+			expect(String(call[0])).not.toContain("secret-token");
+		}
+	});
+
+	it("does not prompt for an account in non-interactive environments", async () => {
+		vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "");
+		vi.stubEnv("CLOUDFLARE_API_TOKEN", "env-token");
+		vi.mocked(isNonInteractiveOrCI).mockReturnValue(true);
+		mockAccountsList.mockResolvedValue([
+			{ id: "account-1", name: "Account 1" },
+			{ id: "account-2", name: "Account 2" },
+		]);
+
+		await expect(ensureR2Bucket("/tmp/app", "test-bucket")).resolves.toEqual({
+			success: false,
+			error: expect.stringContaining("CLOUDFLARE_ACCOUNT_ID"),
+		});
+		expect(askAccountSelection).not.toHaveBeenCalled();
+	});
+
+	it("prompts for an account in interactive environments", async () => {
+		vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "");
+		vi.stubEnv("CLOUDFLARE_API_TOKEN", "env-token");
+		mockAccountsList.mockResolvedValue([
+			{ id: "account-1", name: "Account 1" },
+			{ id: "account-2", name: "Account 2" },
+		]);
+		vi.mocked(askAccountSelection).mockResolvedValue("account-2");
+
+		await expect(ensureR2Bucket("/tmp/app", "test-bucket")).resolves.toEqual({
+			success: true,
+			bucketName: "test-bucket",
+		});
+		expect(mockR2BucketsGet).toHaveBeenCalledWith(
+			"test-bucket",
+			expect.objectContaining({ account_id: "account-2" })
 		);
 	});
 });

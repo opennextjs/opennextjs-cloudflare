@@ -77,8 +77,9 @@ function getAuthCredentials(options: PackagerDetails): AuthCredentials | undefin
 			return { type: "token", token: json.token };
 		}
 		logger.debug("`wrangler auth token --json` output did not contain a token");
-	} catch (error) {
-		logger.debug(`Could not parse the output of \`wrangler auth token --json\`: ${getErrorMessage(error)}`);
+	} catch {
+		// The parse error could echo fragments of the output, which may contain a credential.
+		logger.debug("Could not parse the output of `wrangler auth token --json` as JSON");
 	}
 
 	return undefined;
@@ -90,6 +91,7 @@ function getAuthCredentials(options: PackagerDetails): AuthCredentials | undefin
  * Tries the following sources in order:
  * 1. CLOUDFLARE_ACCOUNT_ID or CF_ACCOUNT_ID environment variable
  * 2. List accounts using the SDK and return the first one
+ *    (when there are several, the user is prompted in interactive environments only)
  *
  * @param client The Cloudflare SDK client
  * @returns The account ID if available, undefined otherwise
@@ -112,6 +114,12 @@ async function getAccountId(client: Cloudflare): Promise<string | undefined> {
 
 		if (accounts.length === 1 && accounts[0]) {
 			return accounts[0].id;
+		}
+
+		if (isNonInteractiveOrCI()) {
+			// The selection prompt would hang waiting for input.
+			logger.debug(`Found ${accounts.length} Cloudflare accounts but cannot prompt for a selection`);
+			return undefined;
 		}
 
 		return await askAccountSelection(accounts);
@@ -190,7 +198,10 @@ export async function ensureR2Bucket(
 
 		const accountId = await getAccountId(client);
 		if (!accountId) {
-			return { success: false, error: "Could not determine Cloudflare account ID" };
+			return {
+				success: false,
+				error: "Could not determine Cloudflare account ID, set `CLOUDFLARE_ACCOUNT_ID` to select the account",
+			};
 		}
 
 		// Check if bucket already exists
