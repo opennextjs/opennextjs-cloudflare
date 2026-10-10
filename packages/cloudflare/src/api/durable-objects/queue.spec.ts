@@ -16,11 +16,13 @@ const createDurableObjectQueue = ({
 	statusCode,
 	headers,
 	disableSQLite,
+	sqlExec,
 }: {
 	fetchDuration: number;
 	statusCode?: number;
 	headers?: Headers;
 	disableSQLite?: boolean;
+	sqlExec?: (...args: unknown[]) => unknown;
 }) => {
 	const mockState = {
 		waitUntil: vi.fn(),
@@ -29,9 +31,12 @@ const createDurableObjectQueue = ({
 			setAlarm: vi.fn(),
 			getAlarm: vi.fn(),
 			sql: {
-				exec: vi.fn().mockImplementation(() => ({
-					one: vi.fn(),
-				})),
+				exec: vi.fn().mockImplementation(
+					sqlExec ??
+						(() => ({
+							one: vi.fn(),
+						}))
+				),
 			},
 		},
 	};
@@ -345,6 +350,50 @@ describe("DurableObjectQueue", () => {
 			const queue = createDurableObjectQueue({ fetchDuration: 10, disableSQLite: true });
 			await queue.revalidate(createMessage("id"));
 			expect(queue.sql.exec).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("sync table", () => {
+		// Minimal in-memory stand-in for the `sync` table
+		const createSyncSql = () => {
+			const rows = new Map<string, number>();
+			const exec = (query: string, ...args: unknown[]) => {
+				if (query.startsWith("INSERT OR REPLACE INTO sync")) {
+					rows.set(args[0] as string, args[1] as number);
+				}
+				if (query.startsWith("SELECT 1 FROM sync")) {
+					const lastSuccess = rows.get(args[0] as string);
+					return {
+						toArray: () => (lastSuccess !== undefined && lastSuccess > (args[1] as number) ? [1] : []),
+					};
+				}
+				return { toArray: () => [], one: vi.fn() };
+			};
+			return exec;
+		};
+
+		it("should not skip an entry written during a slow revalidation", async () => {
+			vi.useFakeTimers();
+			try {
+				vi.setSystemTime(new Date("2025-01-01T00:00:10.200Z"));
+				const queue = createDurableObjectQueue({ fetchDuration: 2_000, sqlExec: createSyncSql() });
+				const beforeStart = Date.now() - 5_000;
+				await queue.revalidate(createMessage("id", beforeStart));
+				const revalidation = queue.ongoingRevalidations.get("id");
+
+				// The incremental cache writes the entry while the revalidation request is running
+				await vi.advanceTimersByTimeAsync(500);
+				const writtenDuringRevalidation = Date.now();
+				await vi.advanceTimersByTimeAsync(1_500);
+				await revalidation;
+
+				// A stale hit on the fresh entry must trigger a new revalidation
+				expect(queue.checkSyncTable(createMessage("id2", writtenDuringRevalidation))).toBe(false);
+				// An entry written before the revalidation started is already covered by it
+				expect(queue.checkSyncTable(createMessage("id3", beforeStart))).toBe(true);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 });
