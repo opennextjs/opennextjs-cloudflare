@@ -321,6 +321,27 @@ describe("DurableObjectQueue", () => {
 			expect(queue.routeInFailedState.size).toBe(0);
 			expect(queue.service.fetch).toHaveBeenCalledTimes(2);
 		});
+
+		it("should set an alarm for the events that were not retried", async () => {
+			const queue = createDurableObjectQueue({ fetchDuration: 10 });
+			const nextAlarmMs = Date.now() + 2000;
+			queue.routeInFailedState.set("id", {
+				msg: createMessage("id"),
+				retryCount: 0,
+				nextAlarmMs: Date.now() - 1000,
+			});
+			queue.routeInFailedState.set("id2", {
+				msg: createMessage("id2"),
+				retryCount: 0,
+				nextAlarmMs: Date.now() + 500,
+			});
+			queue.routeInFailedState.set("id3", { msg: createMessage("id3"), retryCount: 0, nextAlarmMs });
+			await queue.alarm();
+			expect(queue.service.fetch).toHaveBeenCalledTimes(2);
+			expect([...queue.routeInFailedState.keys()]).toEqual(["id3"]);
+			// @ts-expect-error - ctx is a protected field
+			expect(queue.ctx.storage.setAlarm).toHaveBeenCalledWith(nextAlarmMs);
+		});
 	});
 
 	describe("disableSQLite", () => {

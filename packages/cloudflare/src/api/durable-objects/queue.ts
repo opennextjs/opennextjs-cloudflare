@@ -204,6 +204,9 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 			debug(`Retrying revalidation for ${event.msg.MessageBody.host}${event.msg.MessageBody.url}`);
 			await this.executeRevalidation(event.msg);
 		}
+		// The events that were not retried in this run still need an alarm,
+		// otherwise they stay in the failed state and their revalidations are skipped
+		await this.addAlarm();
 	}
 
 	async addToFailedState(msg: QueueMessage) {
