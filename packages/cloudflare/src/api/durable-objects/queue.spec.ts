@@ -65,6 +65,11 @@ const createMessage = (dedupId: string, lastModified = Date.now()) => ({
 	previewModeId: "test",
 });
 
+const getStorage = (queue: DOQueueHandler): DurableObjectStorage => {
+	// @ts-expect-error - ctx is a protected field
+	return queue.ctx.storage;
+};
+
 describe("DurableObjectQueue", () => {
 	describe("successful revalidation", () => {
 		it("should process a single revalidation", async () => {
@@ -194,11 +199,6 @@ describe("DurableObjectQueue", () => {
 	});
 
 	describe("addAlarm", () => {
-		const getStorage = (queue: DOQueueHandler): DurableObjectStorage => {
-			// @ts-expect-error - ctx is a protected field
-			return queue.ctx.storage;
-		};
-
 		it("should not add an alarm if there are no failed states", async () => {
 			const queue = createDurableObjectQueue({ fetchDuration: 10 });
 			await queue.addAlarm();
@@ -285,6 +285,7 @@ describe("DurableObjectQueue", () => {
 			await queue.alarm();
 			expect(queue.routeInFailedState.size).toBe(0);
 			expect(queue.service.fetch).toHaveBeenCalledTimes(2);
+			expect(getStorage(queue).setAlarm).not.toHaveBeenCalled();
 		});
 
 		it("should execute revalidations for the next event to retry", async () => {
@@ -339,8 +340,26 @@ describe("DurableObjectQueue", () => {
 			await queue.alarm();
 			expect(queue.service.fetch).toHaveBeenCalledTimes(2);
 			expect([...queue.routeInFailedState.keys()]).toEqual(["id3"]);
-			// @ts-expect-error - ctx is a protected field
-			expect(queue.ctx.storage.setAlarm).toHaveBeenCalledWith(nextAlarmMs);
+			expect(getStorage(queue).setAlarm).toHaveBeenCalledWith(nextAlarmMs);
+		});
+
+		it("should not set a second alarm when a retry fails again and sets one", async () => {
+			const queue = createDurableObjectQueue({ fetchDuration: 10, statusCode: 500 });
+			const storage = getStorage(queue);
+			let scheduledAlarm: number | null = null;
+			vi.mocked(storage.getAlarm).mockImplementation(async () => scheduledAlarm);
+			vi.mocked(storage.setAlarm).mockImplementation(async (scheduledTime) => {
+				scheduledAlarm = Number(scheduledTime);
+			});
+			queue.routeInFailedState.set("id", {
+				msg: createMessage("id"),
+				retryCount: 1,
+				nextAlarmMs: Date.now() - 1000,
+			});
+			await queue.alarm();
+			expect(queue.routeInFailedState.get("id")?.retryCount).toBe(2);
+			expect(storage.setAlarm).toHaveBeenCalledTimes(1);
+			expect(scheduledAlarm).toBe(queue.routeInFailedState.get("id")?.nextAlarmMs);
 		});
 	});
 
