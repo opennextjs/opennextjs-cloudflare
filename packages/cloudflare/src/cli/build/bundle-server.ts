@@ -17,6 +17,7 @@ import { inlineDynamicRequires } from "./patches/plugins/dynamic-requires.js";
 import { inlineFindDir } from "./patches/plugins/find-dir.js";
 import { patchInstrumentation } from "./patches/plugins/instrumentation.js";
 import { inlineLoadManifest } from "./patches/plugins/load-manifest.js";
+import { stubNativeAddons } from "./patches/plugins/native-addons.js";
 import { patchNextServer } from "./patches/plugins/next-server.js";
 import { patchResolveCache, patchSetWorkingDirectory } from "./patches/plugins/open-next.js";
 import { handleOptionalDependencies } from "./patches/plugins/optional-deps.js";
@@ -101,6 +102,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			setWranglerExternal(),
 			fixRequire(updater),
 			handleOptionalDependencies(optionalDependencies),
+			stubNativeAddons(),
 			patchInstrumentation(updater, buildOpts),
 			patchPagesRouterContext(buildOpts),
 			inlineFindDir(updater, buildOpts),
