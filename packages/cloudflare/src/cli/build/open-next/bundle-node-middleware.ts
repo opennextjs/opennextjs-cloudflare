@@ -150,6 +150,40 @@ export function nodeBuiltinsPlugin(): Plugin {
 	};
 }
 
+/**
+ * Resolves `@opentelemetry/api` to the copy compiled into Next.js when the real package can not
+ * be resolved.
+ *
+ * `next/dist/server/lib/trace/tracer.js` requires `@opentelemetry/api`, an optional dependency
+ * that most apps do not install. On the edge runtime Next.js does not fall back to its compiled
+ * copy when the require throws, so the fallback is applied here.
+ *
+ * The package being installed does not mean that it can be resolved: Next.js only traces its
+ * CommonJS build (`build/src`) while the `module` condition used for this bundle points to its
+ * ESM build (`build/esm`), which is then missing from the middleware output.
+ * See https://github.com/opennextjs/opennextjs-cloudflare/issues/1400
+ */
+export function opentelemetryFallbackPlugin(): Plugin {
+	const name = "opentelemetry-fallback";
+	return {
+		name,
+		setup(build) {
+			build.onResolve({ filter: /^@opentelemetry\/api$/ }, async ({ kind, resolveDir, pluginData }) => {
+				// `build.resolve` calls back into this plugin
+				if (pluginData === name) {
+					return undefined;
+				}
+				const resolved = await build.resolve("@opentelemetry/api", { kind, resolveDir, pluginData: name });
+				if (resolved.errors.length === 0) {
+					return resolved;
+				}
+				// Resolved from the importer, as the `require` of the fallback in `tracer.js` would be
+				return build.resolve("next/dist/compiled/@opentelemetry/api", { kind, resolveDir });
+			});
+		},
+	};
+}
+
 export async function bundleNodeMiddleware(options: BuildOptions): Promise<void> {
 	const { config, outputDir } = options;
 
@@ -180,14 +214,6 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 	}
 	const includeCache = config.dangerous?.enableCacheInterception;
 
-	// `next/dist/server/lib/trace/tracer.js` requires `@opentelemetry/api`, an optional
-	// dependency that most apps do not install. On the edge runtime Next.js does not fall
-	// back to its compiled copy when the require throws, so alias to that copy - but only
-	// when the app has not installed the real package, otherwise the real one is used.
-	const hasOpentelemetry = existsSync(
-		path.join(options.appBuildOutputPath, "node_modules", "@opentelemetry", "api")
-	);
-
 	const updater = new ContentUpdater(options);
 
 	await build({
@@ -213,11 +239,9 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 			"process.env.NEXT_RUNTIME": '"edge"',
 			"process.env.NODE_ENV": '"production"',
 		},
-		alias: {
-			// See `hasOpentelemetry` above.
-			...(hasOpentelemetry ? {} : { "@opentelemetry/api": "next/dist/compiled/@opentelemetry/api" }),
-		},
 		plugins: [
+			// Use the real `@opentelemetry/api` when it can be resolved, the copy of Next.js otherwise
+			opentelemetryFallbackPlugin(),
 			openNextResolvePlugin({
 				overrides: {
 					wrapper: override("wrapper") ?? "cloudflare-edge",
