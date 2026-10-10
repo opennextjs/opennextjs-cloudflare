@@ -32,6 +32,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
+import logger from "@opennextjs/aws/logger.js";
 
 /**
  * Builds the switch that requires the chunk files.
@@ -151,6 +152,16 @@ export async function patchWebpackRuntime(dotNextServerDir: string) {
 }
 
 /**
+ * Whether the code still contains the dynamic chunk require of the webpack runtime.
+ *
+ * @param code The webpack runtime code.
+ * @returns `true` when `require("./chunks/" + ...)` is present.
+ */
+export function hasDynamicChunkRequire(code: string): boolean {
+	return /require\("\.\/chunks\/"\s*\+/.test(code);
+}
+
+/**
  * Inline the chunks in a webpack runtime file.
  *
  * @param filename Path to the webpack runtime.
@@ -160,5 +171,13 @@ function patchFile(filename: string, chunks: string[]) {
 	let code = readFileSync(filename, "utf-8");
 	code = patchCode(code, buildMultipleChunksRule(chunks));
 	code = patchCode(code, buildSingleChunkRule(chunks));
+
+	// A silent non-match would only surface at runtime when the worker fails to load a chunk
+	if (hasDynamicChunkRequire(code)) {
+		logger.error(
+			`Failed to inline the dynamic chunk requires in ${filename}: the webpack runtime has an unexpected shape and loading chunks will fail at runtime.`
+		);
+	}
+
 	writeFileSync(filename, code);
 }

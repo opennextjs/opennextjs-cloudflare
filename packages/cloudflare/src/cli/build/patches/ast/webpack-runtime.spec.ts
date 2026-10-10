@@ -4,7 +4,12 @@ import { applyRule, parseCode, patchCode } from "@opennextjs/aws/build/patch/ast
 import mockFs from "mock-fs";
 import { afterEach, describe, expect, test } from "vitest";
 
-import { buildMultipleChunksRule, buildSingleChunkRule, listChunks } from "./webpack-runtime.js";
+import {
+	buildMultipleChunksRule,
+	buildSingleChunkRule,
+	hasDynamicChunkRequire,
+	listChunks,
+} from "./webpack-runtime.js";
 
 describe("webpack runtime", () => {
 	describe("multiple chunks", () => {
@@ -307,6 +312,22 @@ __webpack_require__.f.require = (chunkId, promises) => {
 
 		expect(applyRule(buildSingleChunkRule(["1.js"]), parseCode(multiple)).edits).toHaveLength(0);
 		expect(applyRule(buildMultipleChunksRule(["1.js"]), parseCode(single)).edits).toHaveLength(0);
+	});
+
+	describe("hasDynamicChunkRequire", () => {
+		test("detects the dynamic require of the webpack runtime", () => {
+			expect(
+				hasDynamicChunkRequire(`installChunk(require("./chunks/" + __webpack_require__.u(chunkId)));`)
+			).toBe(true);
+			expect(hasDynamicChunkRequire(`r(require("./chunks/"+t.u(o)))`)).toBe(true);
+		});
+
+		test("does not detect a patched runtime", () => {
+			const code = `t.f.require=(o,n)=>{e[o]||(658!=o?r(require("./chunks/"+t.u(o))):e[o]=1)}`;
+			const patched = patchCode(code, buildMultipleChunksRule(["1.js", "named-chunk.js"]));
+
+			expect(hasDynamicChunkRequire(patched)).toBe(false);
+		});
 	});
 
 	describe("listChunks", () => {
