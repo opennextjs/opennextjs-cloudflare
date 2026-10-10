@@ -1,10 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { loadConfig } from "@opennextjs/aws/adapters/config/util.js";
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import logger from "@opennextjs/aws/logger.js";
-import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
 /**
  * This function transforms the exports (or imports) object from the package.json
@@ -77,20 +75,44 @@ export function transformPackageJson(json: PackageJson) {
 	return { transformed, hasBuildCondition };
 }
 
-export async function copyWorkerdPackages(options: BuildOptions, nodePackages: Map<string, string>) {
-	const isNodeModuleRegex = getCrossPlatformPathRegex(`.*/node_modules/(?<pkg>.*)`, { escape: false });
+/**
+ * Copies the `workerd` build of the traced packages into the output directory.
+ *
+ * Next.js does not bundle every package: the packages it leaves external are traced with
+ * `@vercel/nft`, which resolves imports with the Node.js conditions. The files only reachable
+ * through a `workerd` export or import condition are therefore missing from the traced copy.
+ *
+ * The traced packages are the ones Next.js does not bundle: the packages listed in the user's
+ * `serverExternalPackages`, the ones in the Next.js built-in list (e.g. `pg`, `@prisma/client`),
+ * their transitive dependencies (e.g. `pg-cloudflare`, pulled in by `pg`), and the dependencies of
+ * the Next.js server itself. The user's `serverExternalPackages` is not enough to find the packages
+ * with a `workerd` build, so all of them are checked. The ones declaring a `workerd` condition are
+ * copied in full with a `package.json` that only keeps that condition, so that the server bundle
+ * resolves their `workerd` build.
+ *
+ * Only the root folder of packages installed in a `node_modules` folder is considered: the trace
+ * also lists the `package.json` of the app itself (copying the app into its own output would not end
+ * well), nested `package.json` files used as module type markers, and workspace packages living
+ * outside of `node_modules` (not supported).
+ *
+ * @param options Build options, `appPath` is only used to log relative paths
+ * @param nodePackages Map of the traced package directories to their copy in the output directory
+ */
+export async function copyWorkerdPackages(
+	options: Pick<BuildOptions, "appPath">,
+	nodePackages: Map<string, string>
+) {
+	// The root folder of a (possibly scoped) package inside a `node_modules` folder, on posix and Windows.
+	const packageRootRegex = /[\\/]node_modules[\\/](?:@[^\\/]+[\\/])?[^\\/]+$/;
 
-	// Copy full external packages when they use "workerd" build condition
-	const nextConfig = loadConfig(path.join(options.appBuildOutputPath, ".next"));
-	const externalPackages =
-		// @ts-expect-error In Next 14 its under experimental.serverComponentsExternalPackages
-		nextConfig.serverExternalPackages ?? nextConfig.experimental.serverComponentsExternalPackages ?? [];
 	for (const [src, dst] of nodePackages.entries()) {
+		if (!packageRootRegex.test(src)) {
+			continue;
+		}
 		try {
 			const pkgJson = JSON.parse(await fs.readFile(path.join(src, "package.json"), "utf8"));
 			const { transformed, hasBuildCondition } = transformPackageJson(pkgJson);
-			const match = src.match(isNodeModuleRegex);
-			if (match?.groups?.pkg && externalPackages.includes(match.groups.pkg) && hasBuildCondition) {
+			if (hasBuildCondition) {
 				logger.debug(
 					`Copying package using a workerd condition: ${path.relative(options.appPath, src)} -> ${path.relative(options.appPath, dst)}`
 				);

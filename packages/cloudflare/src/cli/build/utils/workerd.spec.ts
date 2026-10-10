@@ -1,6 +1,11 @@
-import { describe, expect, test } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
-import { transformBuildCondition, transformPackageJson } from "./workerd.js";
+import logger from "@opennextjs/aws/logger.js";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
+import { copyWorkerdPackages, transformBuildCondition, transformPackageJson } from "./workerd.js";
 
 describe("transformBuildCondition", () => {
 	test("top level", () => {
@@ -264,5 +269,199 @@ describe("transformPackageJson", () => {
 			},
 		});
 		expect(hasBuildCondition).toBe(true);
+	});
+});
+
+describe("copyWorkerdPackages", () => {
+	let appPath: string;
+	let errorSpy: ReturnType<typeof vi.spyOn>;
+
+	/**
+	 * Creates a package in the app `node_modules` (source) and its traced copy in the output (destination).
+	 *
+	 * The package is installed in the pnpm layout (`node_modules/.pnpm/<name>@<version>/node_modules/<name>`)
+	 * when a version is given.
+	 *
+	 * @param name Name of the package
+	 * @param packageJson Content of the `package.json`, written to both the source and the destination
+	 * @param srcFiles Files only present in the source, as the trace does not include them
+	 * @param dstFiles Files present in both the source and the destination, as the trace includes them
+	 * @param version Version of the package, for the pnpm layout
+	 * @returns The source and destination directories of the package
+	 */
+	function createPackage(
+		name: string,
+		packageJson: object,
+		srcFiles: Record<string, string>,
+		dstFiles: Record<string, string>,
+		version?: string
+	) {
+		const modulesDir = version
+			? path.join("node_modules/.pnpm", `${name.replace("/", "+")}@${version}`, "node_modules")
+			: "node_modules";
+		const src = path.join(appPath, modulesDir, name);
+		const dst = path.join(appPath, ".open-next/server-functions/default", modulesDir, name);
+		const write = (dir: string, files: Record<string, string>) => {
+			for (const [file, content] of Object.entries(files)) {
+				fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+				fs.writeFileSync(path.join(dir, file), content);
+			}
+		};
+		const pkgJson = { "package.json": JSON.stringify(packageJson, null, 2) };
+		write(src, { ...pkgJson, ...srcFiles, ...dstFiles });
+		write(dst, { ...pkgJson, ...dstFiles });
+		return { src, dst };
+	}
+
+	beforeEach(() => {
+		appPath = fs.mkdtempSync(path.join(os.tmpdir(), "copy-workerd-packages-"));
+		errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		errorSpy.mockRestore();
+		fs.rmSync(appPath, { recursive: true, force: true });
+	});
+
+	// Matches pg-cloudflare@1.4.1, a dependency of `pg` that nobody lists in `serverExternalPackages`.
+	test("copies the workerd build of a traced package without any serverExternalPackages configuration", async () => {
+		const { src, dst } = createPackage(
+			"pg-cloudflare",
+			{
+				name: "pg-cloudflare",
+				exports: {
+					".": {
+						workerd: {
+							import: "./esm/index.mjs",
+							require: "./dist/index.js",
+						},
+						default: "./dist/empty.js",
+					},
+					"./package.json": "./package.json",
+				},
+			},
+			{
+				"dist/index.js": "exports.CloudflareSocket = class {};",
+				"esm/index.mjs": "export class CloudflareSocket {}",
+			},
+			{ "dist/empty.js": "module.exports = {};" },
+			"1.4.1"
+		);
+
+		await copyWorkerdPackages({ appPath }, new Map([[src, dst]]));
+
+		expect(fs.readFileSync(path.join(dst, "dist/index.js"), "utf8")).toBe(
+			"exports.CloudflareSocket = class {};"
+		);
+		expect(fs.readFileSync(path.join(dst, "esm/index.mjs"), "utf8")).toBe("export class CloudflareSocket {}");
+		expect(JSON.parse(fs.readFileSync(path.join(dst, "package.json"), "utf8"))).toEqual({
+			name: "pg-cloudflare",
+			exports: {
+				".": {
+					workerd: {
+						import: "./esm/index.mjs",
+						require: "./dist/index.js",
+					},
+				},
+				"./package.json": "./package.json",
+			},
+		});
+		expect(errorSpy).not.toHaveBeenCalled();
+	});
+
+	test("leaves a traced package without a workerd condition untouched", async () => {
+		const packageJson = {
+			name: "pg",
+			exports: {
+				".": {
+					import: "./esm/index.mjs",
+					require: "./lib/index.js",
+				},
+			},
+		};
+		const { src, dst } = createPackage(
+			"pg",
+			packageJson,
+			{ "lib/untraced.js": "module.exports = {};" },
+			{ "lib/index.js": "module.exports = {};" }
+		);
+
+		await copyWorkerdPackages({ appPath }, new Map([[src, dst]]));
+
+		expect(fs.existsSync(path.join(dst, "lib/untraced.js"))).toBe(false);
+		expect(fs.readFileSync(path.join(dst, "package.json"), "utf8")).toBe(
+			JSON.stringify(packageJson, null, 2)
+		);
+		expect(errorSpy).not.toHaveBeenCalled();
+	});
+
+	test("skips a package whose exports is a string without logging an error", async () => {
+		const packageJson = { name: "string-exports", exports: "./index.js" };
+		const { src, dst } = createPackage(
+			"string-exports",
+			packageJson,
+			{ "untraced.js": "module.exports = {};" },
+			{ "index.js": "module.exports = {};" }
+		);
+
+		await copyWorkerdPackages({ appPath }, new Map([[src, dst]]));
+
+		expect(fs.existsSync(path.join(dst, "untraced.js"))).toBe(false);
+		expect(fs.readFileSync(path.join(dst, "package.json"), "utf8")).toBe(
+			JSON.stringify(packageJson, null, 2)
+		);
+		expect(errorSpy).not.toHaveBeenCalled();
+	});
+
+	test("copies the workerd build of a scoped package", async () => {
+		const { src, dst } = createPackage(
+			"@scope/pkg",
+			{ name: "@scope/pkg", exports: { workerd: "./workerd.js", default: "./node.js" } },
+			{ "workerd.js": "export const runtime = 'workerd';" },
+			{ "node.js": "export const runtime = 'node';" },
+			"1.0.0"
+		);
+
+		await copyWorkerdPackages({ appPath }, new Map([[src, dst]]));
+
+		expect(fs.existsSync(path.join(dst, "workerd.js"))).toBe(true);
+		expect(JSON.parse(fs.readFileSync(path.join(dst, "package.json"), "utf8"))).toEqual({
+			name: "@scope/pkg",
+			exports: { workerd: "./workerd.js" },
+		});
+		expect(errorSpy).not.toHaveBeenCalled();
+	});
+
+	// Nested `package.json` files are module type markers (`{ "type": "module" }`), not packages.
+	test("ignores a traced package.json nested in a package", async () => {
+		const { src, dst } = createPackage(
+			"nested",
+			{ name: "nested", exports: { workerd: "./workerd.js", default: "./node.js" } },
+			{ "workerd.js": "export const runtime = 'workerd';" },
+			{ "node.js": "export const runtime = 'node';", "esm/package.json": '{ "type": "module" }' }
+		);
+
+		await copyWorkerdPackages({ appPath }, new Map([[path.join(src, "esm"), path.join(dst, "esm")]]));
+
+		expect(fs.existsSync(path.join(dst, "workerd.js"))).toBe(false);
+		expect(errorSpy).not.toHaveBeenCalled();
+	});
+
+	// The trace lists the `package.json` of the app itself, it must not be copied into its own output.
+	test("ignores a traced package.json outside of node_modules", async () => {
+		const packageJson = {
+			name: "app",
+			imports: { "#db": { workerd: "./db.workerd.js", default: "./db.js" } },
+		};
+		fs.writeFileSync(path.join(appPath, "package.json"), JSON.stringify(packageJson, null, 2));
+		fs.writeFileSync(path.join(appPath, "db.workerd.js"), "export const db = 'workerd';");
+		const dst = path.join(appPath, ".open-next/server-functions/default");
+		fs.mkdirSync(dst, { recursive: true });
+
+		await copyWorkerdPackages({ appPath }, new Map([[appPath, dst]]));
+
+		expect(fs.existsSync(path.join(dst, "db.workerd.js"))).toBe(false);
+		expect(fs.existsSync(path.join(dst, "package.json"))).toBe(false);
+		expect(errorSpy).not.toHaveBeenCalled();
 	});
 });
