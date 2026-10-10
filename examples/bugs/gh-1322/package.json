@@ -1,0 +1,32 @@
+{
+	"name": "gh-1322",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"dev": "next dev",
+		"build": "next build",
+		"start": "next start",
+		"build:worker": "pnpm opennextjs-cloudflare build",
+		"preview:worker": "pnpm opennextjs-cloudflare preview",
+		"preview": "pnpm build:worker && pnpm preview:worker",
+		"e2e": "playwright test -c e2e/playwright.config.ts",
+		"deploy:worker": "pnpm run build:worker && pnpm wrangler deploy"
+	},
+	"dependencies": {
+		"@prisma/adapter-pg": "^7.10.0",
+		"next": "catalog:e2e",
+		"pg": "^8.23.1",
+		"react": "catalog:e2e",
+		"react-dom": "catalog:e2e"
+	},
+	"devDependencies": {
+		"@opennextjs/cloudflare": "workspace:*",
+		"@playwright/test": "catalog:",
+		"@types/node": "catalog:",
+		"@types/pg": "^8.16.0",
+		"@types/react": "catalog:e2e",
+		"@types/react-dom": "catalog:e2e",
+		"typescript": "catalog:",
+		"wrangler": "catalog:"
+	}
+}
