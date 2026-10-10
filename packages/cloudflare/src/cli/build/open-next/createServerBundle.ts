@@ -31,6 +31,7 @@ import { patchModuleLoadingSignal } from "../patches/plugins/module-loading.js";
 import { patchResRevalidate } from "../patches/plugins/res-revalidate.js";
 import { patchTurbopackRuntime } from "../patches/plugins/turbopack.js";
 import { patchUseCacheIO } from "../patches/plugins/use-cache.js";
+import { getEdgeRuntimeRoutes, getUnhandledEdgeRuntimeRoutes } from "../utils/edge-runtime.js";
 import { copyWorkerdPackages } from "../utils/workerd.js";
 
 interface CodeCustomization {
@@ -66,7 +67,7 @@ export async function createServerBundle(
 		}
 	});
 
-	//TODO: throw an error if not all edge runtime routes has been bundled in a separate function
+	warnAboutEdgeRuntimeRoutes(options, foundRoutes);
 
 	// We build every other function than default before so we know which route there is left
 	await Promise.all(promises);
@@ -120,6 +121,28 @@ export async function createServerBundle(
 		routes: Array.from(remainingRoutes),
 		patterns: ["*"],
 	});
+}
+
+/**
+ * Logs an error for the edge runtime routes that are not bundled in a separate edge function.
+ *
+ * Those routes build fine but fail at runtime with a 500 error.
+ * This does not throw because the unsupported routes may not be used.
+ */
+function warnAboutEdgeRuntimeRoutes(options: buildHelper.BuildOptions, foundRoutes: Set<string>) {
+	const unsupportedRoutes = getUnhandledEdgeRuntimeRoutes(getEdgeRuntimeRoutes(options), foundRoutes);
+
+	if (unsupportedRoutes.length === 0) {
+		return;
+	}
+
+	logger.error(
+		[
+			"The following routes use the edge runtime, which is not supported by @opennextjs/cloudflare and will fail at runtime with a 500 error:",
+			...unsupportedRoutes.map((route) => `  - ${route}`),
+			'Remove `export const runtime = "edge"` from these routes: on Cloudflare Workers every route already runs at the edge, so the Node.js runtime can be used instead.',
+		].join("\n")
+	);
 }
 
 async function generateBundle(
