@@ -71,10 +71,27 @@ describe("BucketCachePurge", () => {
 		it("should not set an alarm if one is already set", async () => {
 			const cache = createBucketCachePurge();
 			// @ts-expect-error - testing private method
-			cache.ctx.storage.getAlarm.mockResolvedValueOnce(true);
+			cache.ctx.storage.getAlarm.mockResolvedValueOnce(Date.now() + 10_000);
 			await cache.purgeCacheByTags(["tag"]);
 			// @ts-expect-error - testing private method
 			expect(cache.ctx.storage.setAlarm).not.toHaveBeenCalled();
+		});
+
+		it("should re-arm the alarm when the stored alarm is in the past", async () => {
+			vi.useFakeTimers();
+			try {
+				const now = 1_700_000_000_000;
+				vi.setSystemTime(now);
+				const cache = createBucketCachePurge();
+				// A stale alarm left over after the alarm handler exhausted its retries (#929)
+				// @ts-expect-error - testing private method
+				cache.ctx.storage.getAlarm.mockResolvedValueOnce(now - 8 * 24 * 60 * 60 * 1000);
+				await cache.purgeCacheByTags(["tag"]);
+				// @ts-expect-error - testing private method
+				expect(cache.ctx.storage.setAlarm).toHaveBeenCalledWith(now + 5_000);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 
