@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import type { Context, RunningCodeOptions } from "node:vm";
 
 import type { GetPlatformProxyOptions } from "wrangler";
@@ -131,6 +132,19 @@ type InternalGlobalThis<
 	__NEXT_DATA__: Record<string, unknown>;
 };
 
+/**
+ * Env var holding the wrangler environment to use when getting the context from wrangler.
+ */
+const WRANGLER_ENV_VAR = "NEXT_DEV_WRANGLER_ENV";
+
+/**
+ * Env var holding the (absolute) path of the wrangler config file to use when getting the context from wrangler.
+ *
+ * `initOpenNextCloudflareForDev` and the `build` command persist it so that the SSG worker processes spawned by
+ * `next build` (which do not share the global state) use the same wrangler config.
+ */
+export const WRANGLER_CONFIG_PATH_ENV_VAR = "NEXT_DEV_WRANGLER_CONFIG_PATH";
+
 type GetCloudflareContextOptions = {
 	/**
 	 * When `true`, `getCloudflareContext` returns a promise of the cloudflare context instead of the context,
@@ -261,6 +275,17 @@ export async function initOpenNextCloudflareForDev(options?: GetPlatformProxyOpt
 		);
 	}
 
+	// Persist the options in the environment so that child processes (i.e. the SSG workers spawned by
+	// `next build`) inherit them. Options explicitly passed here take precedence over values already set in
+	// the environment; undefined options leave the environment untouched.
+	// The config path is made absolute as the workers might not share the same cwd.
+	if (options?.configPath) {
+		process.env[WRANGLER_CONFIG_PATH_ENV_VAR] = resolve(options.configPath);
+	}
+	if (options?.environment) {
+		process.env[WRANGLER_ENV_VAR] = options.environment;
+	}
+
 	const context = await getCloudflareContextFromWrangler(options);
 
 	addCloudflareContextToNodejsGlobal(context);
@@ -345,10 +370,13 @@ async function getCloudflareContextFromWrangler<
 	const { getPlatformProxy } = await import(/* webpackIgnore: true */ `${"__wrangler".replaceAll("_", "")}`);
 
 	// This allows the selection of a wrangler environment while running in next dev mode
-	const environment = options?.environment ?? process.env.NEXT_DEV_WRANGLER_ENV;
+	const environment = options?.environment ?? process.env[WRANGLER_ENV_VAR];
+	// Explicit options win over the env var (set by `initOpenNextCloudflareForDev` or the build command)
+	const configPath = options?.configPath ?? process.env[WRANGLER_CONFIG_PATH_ENV_VAR];
 
 	const { env, cf, ctx } = await getPlatformProxy({
 		...options,
+		...(configPath ? { configPath } : {}),
 		// The `env` passed to the fetch handler does not contain variables from `.env*` files.
 		// because we invoke wrangler with `CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV`=`"false"`.
 		// Initializing `envFiles` with an empty list is the equivalent for this API call.
