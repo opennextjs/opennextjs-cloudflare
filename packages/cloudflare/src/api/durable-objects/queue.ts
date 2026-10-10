@@ -114,6 +114,9 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 
 	async executeRevalidation(msg: QueueMessage) {
 		let response: Response | undefined;
+		// Seconds since epoch, captured BEFORE the revalidation request is issued.
+		// This is what we record as `lastSuccess` (see below).
+		const revalidationStartSeconds = Math.floor(Date.now() / 1000);
 		try {
 			debug(`Revalidating ${msg.MessageBody.host}${msg.MessageBody.url}`);
 			const {
@@ -160,13 +163,20 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 				throw new RecoverableError(`An unknown error occurred while revalidating ${host}${url}`);
 			}
 			// Everything went well, we can update the sync table
-			// We use unixepoch here,it also works with Date.now()/1000, but not with Date.now() alone.
-			// TODO: This needs to be investigated
+			// `lastSuccess` is the time the revalidation STARTED, not when it finished.
+			// The incremental cache stamps `lastModified` with `Date.now()` when the new entry is written, which
+			// happens during the revalidation request (and possibly later, in `waitUntil`). Recording the completion
+			// time would make `lastSuccess` newer than the fresh entry's `lastModified` for any page that takes
+			// more than a moment to render, so `checkSyncTable` would skip every later revalidation of that page.
+			// With the start time, any entry written by this revalidation has `lastModified >= lastSuccess`
+			// (not skipped), while entries written before it started are still deduplicated.
+			// The row is only written on success, so concurrent requests are still deduped by `ongoingRevalidations`.
 			if (!this.disableSQLite) {
 				this.sql.exec(
-					"INSERT OR REPLACE INTO sync (id, lastSuccess, buildId) VALUES (?, unixepoch(), ?)",
+					"INSERT OR REPLACE INTO sync (id, lastSuccess, buildId) VALUES (?, ?, ?)",
 					// We cannot use the deduplication id because it's not unique per route - every time a route is revalidated, the deduplication id is different.
 					`${host}${url}`,
+					revalidationStartSeconds,
 					process.env.__OPEN_NEXT_BUILD_ID
 				);
 			}
