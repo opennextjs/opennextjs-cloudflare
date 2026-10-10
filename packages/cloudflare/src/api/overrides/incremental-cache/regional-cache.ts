@@ -70,6 +70,17 @@ interface PutToCacheInput {
 }
 
 /**
+ * Everything written to the Cache API for an entry, computed synchronously from the entry.
+ */
+interface PreparedCacheEntry {
+	urlKey: string;
+	body: string;
+	headers: Record<string, string>;
+	/** Tags of the entry as found in the value, used to check the tag cache. */
+	tags: string[];
+}
+
+/**
  * Wrapper adding a regional cache on an `IncrementalCache` implementation.
  *
  * Using a the `RegionalCache` does not directly improves the performance much.
@@ -142,7 +153,7 @@ class RegionalCache implements IncrementalCache {
 							const { value, lastModified } = rawEntry ?? {};
 
 							if (value && typeof lastModified === "number") {
-								await this.putToCache({ key, cacheType, entry: { value, lastModified } });
+								await this.refillFromStore({ key, cacheType, entry: { value, lastModified } });
 							}
 						})
 					);
@@ -162,9 +173,11 @@ class RegionalCache implements IncrementalCache {
 
 			debugCache("RegionalCache", `get ${key} -> put to cache`);
 
-			// Update the locale cache after retrieving from the store.
+			// Update the local cache after retrieving from the store.
+			// Note: `refillFromStore` snapshots the entry synchronously, before the caller gets the value back.
+			//       That matters because `@opennextjs/aws` deletes the `x-next-cache-tags` header from the value.
 			getCloudflareContext().ctx.waitUntil(
-				this.putToCache({ key, cacheType, entry: { value, lastModified } })
+				this.refillFromStore({ key, cacheType, entry: { value, lastModified } })
 			);
 
 			return { value, lastModified };
@@ -223,31 +236,75 @@ class RegionalCache implements IncrementalCache {
 		return "http://cache.local" + `/${buildId}/${key}`.replace(/\/+/g, "/") + `.${cacheType ?? "cache"}`;
 	}
 
-	protected async putToCache({ key, cacheType, entry }: PutToCacheInput): Promise<void> {
+	/**
+	 * Computes what is written to the Cache API for an entry.
+	 *
+	 * This must run synchronously when the entry is received:
+	 * `getTagsFromValue` from `@opennextjs/aws` deletes the `x-next-cache-tags` header from the (shared) value.
+	 * Reading the tags after an `await` could store an entry without tags, that would never be purged.
+	 */
+	protected prepareCacheEntry({ key, cacheType, entry }: PutToCacheInput): PreparedCacheEntry {
 		const urlKey = this.getCacheUrlKey(key, cacheType);
-		const cache = await this.getCacheInstance();
 
 		const age =
 			this.opts.mode === "short-lived"
 				? ONE_MINUTE_IN_SECONDS
 				: entry.value.revalidate || this.opts.defaultLongLivedTtlSec || THIRTY_MINUTES_IN_SECONDS;
 
+		const entryTags = getTagsFromCacheEntry(entry);
 		// We default to the entry key if no tags are found.
 		// so that we can also revalidate page router based entry this way.
-		const tags = getTagsFromCacheEntry(entry) ?? [key];
-		await cache.put(
+		const cacheTags = entryTags ?? [key];
+
+		return {
 			urlKey,
-			new Response(JSON.stringify(entry), {
-				headers: new Headers({
-					"cache-control": `max-age=${age}`,
-					...(tags.length > 0
-						? {
-								"cache-tag": tags.join(","),
-							}
-						: {}),
-				}),
-			})
-		);
+			body: JSON.stringify(entry),
+			headers: {
+				"cache-control": `max-age=${age}`,
+				...(cacheTags.length > 0 ? { "cache-tag": cacheTags.join(",") } : {}),
+			},
+			tags: [...(entryTags ?? [])],
+		};
+	}
+
+	protected async putToCache(input: PutToCacheInput): Promise<void> {
+		// Snapshot the entry before any `await` (see `prepareCacheEntry`).
+		const prepared = this.prepareCacheEntry(input);
+		await this.writeToCache(prepared);
+	}
+
+	/**
+	 * Seeds the regional cache with an entry read from the store.
+	 *
+	 * When the tag cache is bypassed on cache hits, the entry is only stored when the tag cache reports it as
+	 * neither revalidated nor stale. Otherwise a revalidated entry would be served (as fresh) from the
+	 * regional cache without ever consulting the tag cache, until it expires or is purged again.
+	 */
+	protected async refillFromStore(input: PutToCacheInput): Promise<void> {
+		// Snapshot the entry before any `await` (see `prepareCacheEntry`).
+		const prepared = this.prepareCacheEntry(input);
+
+		try {
+			if (
+				this.opts.bypassTagCacheOnCacheHit &&
+				(await isRevalidatedInTagCache(input.key, prepared.tags, input.entry.lastModified))
+			) {
+				debugCache(
+					"RegionalCache",
+					`${input.key} has been revalidated, not storing it in the regional cache`
+				);
+				return;
+			}
+
+			await this.writeToCache(prepared);
+		} catch (e) {
+			error("Failed to refill the regional cache", e);
+		}
+	}
+
+	protected async writeToCache({ urlKey, body, headers }: PreparedCacheEntry): Promise<void> {
+		const cache = await this.getCacheInstance();
+		await cache.put(urlKey, new Response(body, { headers: new Headers(headers) }));
 	}
 }
 
@@ -266,6 +323,41 @@ class RegionalCache implements IncrementalCache {
  */
 export function withRegionalCache(cache: IncrementalCache, opts: Options) {
 	return new RegionalCache(cache, opts);
+}
+
+/**
+ * Whether the tag cache reports an entry as revalidated or stale.
+ *
+ * This mirrors the checks `@opennextjs/aws` performs on entries that do not bypass the tag cache.
+ * They are not imported from `@opennextjs/aws/utils/cache.js` which can not be loaded outside of a bundle.
+ *
+ * @param key The key of the entry
+ * @param tags The tags of the entry
+ * @param lastModified The last modified time of the entry
+ */
+async function isRevalidatedInTagCache(key: string, tags: string[], lastModified: number): Promise<boolean> {
+	if (globalThis.openNextConfig?.dangerous?.disableTagCache) {
+		return false;
+	}
+
+	const { tagCache } = globalThis;
+	// SWR for `revalidateTag` (stale but not expired entries) is only supported from Next 16.
+	const supportsStale = Boolean(globalThis.nextVersion) && compareSemver(globalThis.nextVersion, ">=", "16");
+
+	if (tagCache.mode === "nextMode") {
+		if (tags.length === 0) {
+			return false;
+		}
+		if (await tagCache.hasBeenRevalidated(tags, lastModified)) {
+			return true;
+		}
+		return supportsStale && ((await tagCache.isStale?.(tags, lastModified)) ?? false);
+	}
+
+	if ((await tagCache.getLastModified(key, lastModified)) === -1) {
+		return true;
+	}
+	return supportsStale && ((await tagCache.isStale?.(key, lastModified)) ?? false);
 }
 
 /**
