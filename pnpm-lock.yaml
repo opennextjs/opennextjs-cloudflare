@@ -552,8 +552,23 @@ importers:
         specifier: 'catalog:'
         version: 4.149.0(@cloudflare/workers-types@5.20261007.1)(@types/node@20.17.6)
 
+  examples/e2e/external-head:
+    devDependencies:
+      next:
+        specifier: catalog:e2e
+        version: 16.3.8(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@22.12.0)(react-dom@19.0.6(react@19.0.6))(react@19.0.6)
+      react:
+        specifier: catalog:e2e
+        version: 19.0.6
+      react-dom:
+        specifier: catalog:e2e
+        version: 19.0.6(react@19.0.6)
+
   examples/e2e/pages-router:
     dependencies:
+      '@example/external-head':
+        specifier: workspace:*
+        version: file:examples/e2e/external-head(next@16.3.8(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@20.17.6)(react-dom@19.0.6(react@19.0.6))(react@19.0.6))(react@19.0.6)
       '@example/shared':
         specifier: workspace:*
         version: link:../shared
@@ -569,6 +584,9 @@ importers:
       react-dom:
         specifier: catalog:e2e
         version: 19.0.6(react@19.0.6)
+    dependenciesMeta:
+      '@example/external-head':
+        injected: true
     devDependencies:
       '@playwright/test':
         specifier: 1.63.0
@@ -2391,6 +2409,12 @@ packages:
   '@eslint/plugin-kit@0.4.1':
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@example/external-head@file:examples/e2e/external-head':
+    resolution: {directory: examples/e2e/external-head, type: directory}
+    peerDependencies:
+      next: '*'
+      react: '*'
 
   '@fastify/busboy@2.1.1':
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
@@ -10855,6 +10879,11 @@ snapshots:
     dependencies:
       '@eslint/core': 0.17.0
       levn: 0.4.1
+
+  '@example/external-head@file:examples/e2e/external-head(next@16.3.8(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@20.17.6)(react-dom@19.0.6(react@19.0.6))(react@19.0.6))(react@19.0.6)':
+    dependencies:
+      next: 16.3.8(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@20.17.6)(react-dom@19.0.6(react@19.0.6))(react@19.0.6)
+      react: 19.0.6
 
   '@fastify/busboy@2.1.1': {}
 

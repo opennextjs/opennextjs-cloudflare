@@ -1,0 +1,17 @@
+{
+	"name": "@example/external-head",
+	"version": "0.0.0",
+	"private": true,
+	"description": "A Pages Router dependency that renders `next/head` from `node_modules`, like `next-seo`",
+	"main": "index.js",
+	"types": "index.d.ts",
+	"peerDependencies": {
+		"next": "*",
+		"react": "*"
+	},
+	"devDependencies": {
+		"next": "catalog:e2e",
+		"react": "catalog:e2e",
+		"react-dom": "catalog:e2e"
+	}
+}
