@@ -21,6 +21,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { builtinModules, isBuiltin } from "node:module";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { type BuildOptions, getBundlerRuntime, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import logger from "@opennextjs/aws/logger.js";
@@ -150,6 +151,27 @@ export function nodeBuiltinsPlugin(): Plugin {
 	};
 }
 
+/**
+ * Whether the middleware uses `@vercel/og`, from the files Next.js traced for the middleware.
+ *
+ * This is the same signal `patchVercelOgLibrary` uses for the server. With Turbopack the og entry
+ * is externalized and traced. With webpack the import targets `index.node.js`, which is not
+ * traced and which the `index.edge.js` alias in `bundleNodeMiddleware` does not touch, so a
+ * `false` there is harmless.
+ *
+ * Falls back to `true` (keep `@vercel/og`) when the trace is missing or unreadable.
+ */
+export function middlewareUsesVercelOg(options: BuildOptions): boolean {
+	try {
+		const trace = JSON.parse(
+			readFileSync(path.join(options.appBuildOutputPath, ".next/server/middleware.js.nft.json"), "utf-8")
+		) as { files?: string[] };
+		return (trace.files ?? []).some((file) => file.endsWith("@vercel/og/index.node.js"));
+	} catch {
+		return true;
+	}
+}
+
 export async function bundleNodeMiddleware(options: BuildOptions): Promise<void> {
 	const { config, outputDir } = options;
 
@@ -188,6 +210,14 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 		path.join(options.appBuildOutputPath, "node_modules", "@opentelemetry", "api")
 	);
 
+	const usesOg = middlewareUsesVercelOg(options);
+	// `cloudflare-templates` is only copied to the output dir by `bundleServer`, after this
+	// bundle is built, so the shim is taken from the package dist.
+	const throwShimPath = path.join(
+		path.dirname(fileURLToPath(import.meta.url)),
+		"../../templates/shims/throw.js"
+	);
+
 	const updater = new ContentUpdater(options);
 
 	await build({
@@ -216,6 +246,11 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 		alias: {
 			// See `hasOpentelemetry` above.
 			...(hasOpentelemetry ? {} : { "@opentelemetry/api": "next/dist/compiled/@opentelemetry/api" }),
+			// When @vercel/og is not used, alias the edge entry to a throwing shim so the
+			// `import("next/dist/compiled/@vercel/og/index.edge.js")` that the Turbopack runtime
+			// patch emits does not drag the library (~800 KiB) and its `resvg.wasm` into the bundle.
+			// Same as the server bundle, see `bundle-server.ts`.
+			...(usesOg ? {} : { "next/dist/compiled/@vercel/og/index.edge.js": throwShimPath }),
 		},
 		plugins: [
 			openNextResolvePlugin({
