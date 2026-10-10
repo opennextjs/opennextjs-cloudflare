@@ -120,7 +120,7 @@ export abstract class BucketCachePurgeBase<Batch, Result> extends DurableObject<
 	 * Adds cache tags to the buffered purge queue.
 	 *
 	 * An alarm is scheduled after the configured buffer delay only when no alarm is
-	 * already pending.
+	 * pending in the future.
 	 *
 	 * @param tags Cache tags to enqueue for purging.
 	 * @returns A promise that resolves after the tags are stored and an alarm is scheduled if needed.
@@ -131,7 +131,11 @@ export abstract class BucketCachePurgeBase<Batch, Result> extends DurableObject<
 		await this.enqueueTags(tags);
 
 		const nextAlarm = await this.ctx.storage.getAlarm();
-		if (!nextAlarm) {
+		// A past alarm is either about to fire, waiting for a retry, or a stale leftover once the
+		// alarm handler has exhausted its retries. In the last case no alarm would ever be scheduled
+		// again and every later purge would stay queued forever (#929), so the alarm is re-armed.
+		// Re-arming is safe: `alarm()` drains whatever tags remain.
+		if (!nextAlarm || nextAlarm <= Date.now()) {
 			await this.ctx.storage.setAlarm(Date.now() + this.bufferTimeInSeconds * 1000);
 		}
 	}
