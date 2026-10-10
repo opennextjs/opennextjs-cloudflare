@@ -1,8 +1,10 @@
 import { findPackagerAndRoot } from "@opennextjs/aws/build/helper.js";
+import logger from "@opennextjs/aws/logger.js";
 import Cloudflare from "cloudflare";
 
 import { type PackagerDetails, runWrangler } from "../commands/utils/run-wrangler.js";
 import { askAccountSelection } from "./ask-account-selection.js";
+import { isNonInteractiveOrCI } from "./is-interactive.js";
 
 /**
  * Auth credentials returned by `wrangler auth token --json`.
@@ -22,17 +24,42 @@ function getErrorMessage(error: unknown): string {
 /**
  * Gets the authentication credentials for Cloudflare API calls.
  *
- * Uses `wrangler auth token --json` which checks the following sources in order:
+ * Checks the following sources in order:
  * 1. CLOUDFLARE_API_TOKEN environment variable
  * 2. CLOUDFLARE_API_KEY + CLOUDFLARE_EMAIL environment variables
- * 3. OAuth token from `wrangler login`
+ * 3. `wrangler auth token --json` (e.g. OAuth token from `wrangler login`)
+ *
+ * The environment variables are read directly instead of going through wrangler, because the
+ * wrangler output can be empty (e.g. with a stricter `WRANGLER_LOG`).
  *
  * @param options The build options containing packager and monorepo root
  * @returns The auth credentials if available, undefined otherwise
  */
 function getAuthCredentials(options: PackagerDetails): AuthCredentials | undefined {
-	const result = runWrangler(options, ["auth", "token", "--json"], { logging: "none" });
+	if (process.env.CLOUDFLARE_API_TOKEN) {
+		return { type: "token", token: process.env.CLOUDFLARE_API_TOKEN };
+	}
+
+	if (process.env.CLOUDFLARE_API_KEY && process.env.CLOUDFLARE_EMAIL) {
+		return {
+			type: "api_key",
+			apiKey: process.env.CLOUDFLARE_API_KEY,
+			apiEmail: process.env.CLOUDFLARE_EMAIL,
+		};
+	}
+
+	// The token is printed through wrangler's `logger.log`, so force the log level to not hide it.
+	const result = runWrangler(options, ["auth", "token", "--json"], {
+		logging: "none",
+		env: { WRANGLER_LOG: "log" },
+	});
 	if (!result.success) {
+		logger.debug(`\`wrangler auth token --json\` failed: ${result.stderr.trim()}`);
+		return undefined;
+	}
+
+	if (!result.stdout.trim()) {
+		logger.debug("`wrangler auth token --json` succeeded but printed nothing on stdout");
 		return undefined;
 	}
 
@@ -49,8 +76,9 @@ function getAuthCredentials(options: PackagerDetails): AuthCredentials | undefin
 		if (json.token) {
 			return { type: "token", token: json.token };
 		}
-	} catch {
-		/* empty */
+		logger.debug("`wrangler auth token --json` output did not contain a token");
+	} catch (error) {
+		logger.debug(`Could not parse the output of \`wrangler auth token --json\`: ${getErrorMessage(error)}`);
 	}
 
 	return undefined;
@@ -108,7 +136,8 @@ function wranglerLogin(options: PackagerDetails): boolean {
 /**
  * Creates an R2 bucket if it doesn't already exist
  *
- * If no auth credentials are available, falls back to wrangler login for OAuth authentication.
+ * If no auth credentials are available, falls back to wrangler login for OAuth authentication
+ * (only in interactive environments, an error is returned otherwise).
  *
  * @param projectDir The project directory to detect the package manager
  * @param bucketName The name of the R2 bucket to create
@@ -124,6 +153,14 @@ export async function ensureR2Bucket(
 		const options = { packager, monorepoRoot };
 
 		let authCredentials = getAuthCredentials(options);
+
+		if (!authCredentials && isNonInteractiveOrCI()) {
+			// `wrangler login` would hang waiting for a browser flow.
+			const error =
+				"No Cloudflare credentials found. Set `CLOUDFLARE_API_TOKEN` (or `CLOUDFLARE_API_KEY` and `CLOUDFLARE_EMAIL`) to create the R2 bucket in a non-interactive environment.";
+			logger.warn(error);
+			return { success: false, error };
+		}
 
 		// If no credentials available, fall back to wrangler login
 		if (!authCredentials) {
