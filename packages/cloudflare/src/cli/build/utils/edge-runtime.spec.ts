@@ -65,7 +65,7 @@ describe("getEdgeRuntimeRoutes", () => {
 });
 
 describe("getUnhandledEdgeRuntimeRoutes", () => {
-	it("keeps the routes that are not handled by a separate function", () => {
+	it("keeps the routes that are not handled by a separate edge function", () => {
 		expect(getUnhandledEdgeRuntimeRoutes(["/api/hello/route", "/api/hello", "/"], new Set())).toEqual([
 			"/api/hello/route",
 			"/api/hello",
@@ -73,13 +73,13 @@ describe("getUnhandledEdgeRuntimeRoutes", () => {
 		]);
 	});
 
-	it("drops app router routes handled by a separate function", () => {
+	it("drops app router routes handled by a separate edge function", () => {
 		expect(
 			getUnhandledEdgeRuntimeRoutes(["/api/hello/route", "/dashboard/page"], new Set(["app/api/hello/route"]))
 		).toEqual(["/dashboard/page"]);
 	});
 
-	it("drops pages router routes handled by a separate function", () => {
+	it("drops pages router routes handled by a separate edge function", () => {
 		expect(
 			getUnhandledEdgeRuntimeRoutes(
 				["/api/hello", "/", "/about"],

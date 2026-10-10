@@ -48,6 +48,8 @@ export async function createServerBundle(
 ) {
 	const { config } = options;
 	const foundRoutes = new Set<string>();
+	// Routes handled by a separate function that uses the edge runtime
+	const edgeFunctionRoutes = new Set<string>();
 	// Get all functions to build
 	const defaultFn = config.default;
 	const functions = Object.entries(config.functions ?? {});
@@ -61,13 +63,14 @@ export async function createServerBundle(
 		const routes = fnOptions.routes;
 		routes.forEach((route) => foundRoutes.add(route));
 		if (fnOptions.runtime === "edge") {
+			routes.forEach((route) => edgeFunctionRoutes.add(route));
 			await generateEdgeBundle(name, options, fnOptions);
 		} else {
 			await generateBundle(name, options, fnOptions, codeCustomization);
 		}
 	});
 
-	warnAboutEdgeRuntimeRoutes(options, foundRoutes);
+	warnAboutEdgeRuntimeRoutes(options, edgeFunctionRoutes);
 
 	// We build every other function than default before so we know which route there is left
 	await Promise.all(promises);
@@ -129,8 +132,8 @@ export async function createServerBundle(
  * Those routes build fine but fail at runtime with a 500 error.
  * This does not throw because the unsupported routes may not be used.
  */
-function warnAboutEdgeRuntimeRoutes(options: buildHelper.BuildOptions, foundRoutes: Set<string>) {
-	const unsupportedRoutes = getUnhandledEdgeRuntimeRoutes(getEdgeRuntimeRoutes(options), foundRoutes);
+function warnAboutEdgeRuntimeRoutes(options: buildHelper.BuildOptions, edgeFunctionRoutes: Set<string>) {
+	const unsupportedRoutes = getUnhandledEdgeRuntimeRoutes(getEdgeRuntimeRoutes(options), edgeFunctionRoutes);
 
 	if (unsupportedRoutes.length === 0) {
 		return;
