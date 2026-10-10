@@ -1,9 +1,16 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
-import { describe, expect, test } from "vitest";
+import { build } from "esbuild";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import {
 	loadWasmChunkFn,
+	packageNameFromSymlinkTarget,
 	patchTurbopackRuntime,
+	patchTurbopackRuntimeCode,
 	patchTurbopackWasmChunkCode,
 	replaceCompileModuleRule,
 	replaceInstantiateModuleRule,
@@ -185,5 +192,181 @@ describe("loadWasmChunkFn", () => {
 			  }
 			"
 		`);
+	});
+});
+
+describe("packageNameFromSymlinkTarget", () => {
+	test.each([
+		["../../node_modules/shiki", "shiki"],
+		["../../node_modules/@scope/name", "@scope/name"],
+		["../../../../node_modules/.pnpm/pg@8.23.1/node_modules/pg", "pg"],
+		["../../../../node_modules/.pnpm/@scope+name@1.0.0/node_modules/@scope/name", "@scope/name"],
+		["/abs/path/node_modules/.pnpm/x@1.0.0/node_modules/x", "x"],
+		["../../node_modules/shiki/", "shiki"],
+		[String.raw`..\..\node_modules\shiki`, "shiki"],
+		["C:\\project\\node_modules\\.pnpm\\@scope+name@1.0.0\\node_modules\\@scope\\name\\", "@scope/name"],
+	])("maps %s to %s", (target, expected) => {
+		expect(packageNameFromSymlinkTarget(target)).toBe(expected);
+	});
+
+	test.each([["../../packages/lib"], ["../../node_modules"], ["../../node_modules/"], ["my_node_modules/x"]])(
+		"returns undefined for %s",
+		(target) => {
+			expect(packageNameFromSymlinkTarget(target)).toBeUndefined();
+		}
+	);
+});
+
+/**
+ * Create the symlink `linksDir/name` -> `target`, and the linked package.
+ *
+ * @param linksDir The `.next/node_modules` directory holding the Turbopack links.
+ * @param name Name of the link, i.e. the hashed id.
+ * @param target Target of the link, relative to `linksDir`.
+ * @param files Files of the linked package, `undefined` for a dangling link.
+ */
+function linkPackage(linksDir: string, name: string, target: string, files?: Record<string, string>) {
+	if (files) {
+		const dir = path.resolve(linksDir, target);
+		fs.mkdirSync(dir, { recursive: true });
+		for (const [file, content] of Object.entries(files)) {
+			fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+			fs.writeFileSync(path.join(dir, file), content);
+		}
+	}
+	fs.symlinkSync(target, path.join(linksDir, name), "dir");
+}
+
+const externalImportRuntime = `
+function loadRuntimeChunkPath() {}
+async function externalImport(id) {
+  let raw;
+  raw = await import(id);
+  return raw;
+}
+contextPrototype.y = externalImport;
+`;
+
+describe("discoverExternalModuleMappings (via patchTurbopackRuntimeCode)", () => {
+	let tmpDir: string;
+	let runtimePath: string;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "turbopack-externals-"));
+		const dotNextDir = path.join(tmpDir, "app/.open-next/server-functions/default/.next");
+		runtimePath = path.join(dotNextDir, "server/chunks/ssr/[turbopack]_runtime.js");
+		fs.mkdirSync(path.dirname(runtimePath), { recursive: true });
+		fs.writeFileSync(runtimePath, externalImportRuntime);
+
+		const linksDir = path.join(dotNextDir, "node_modules");
+		fs.mkdirSync(linksDir, { recursive: true });
+		const link = (name: string, target: string, files?: Record<string, string>) =>
+			linkPackage(linksDir, name, target, files);
+
+		// pnpm, unscoped
+		link("pg-abc123", "../../../../node_modules/.pnpm/pg@8.23.1/node_modules/pg", {
+			"package.json": '{"name":"pg"}',
+		});
+		// pnpm, scoped
+		link("scoped-def456", "../../../../node_modules/.pnpm/@scope+name@1.0.0/node_modules/@scope/name", {
+			"package.json": '{"name":"@scope/name"}',
+		});
+		// npm / yarn classic
+		link("shiki-789", "../../node_modules/shiki", { "package.json": '{"name":"shiki"}' });
+		// pnpm, without a package.json
+		link("nopkg-000", "../../../../node_modules/.pnpm/nopkg@1.0.0/node_modules/nopkg", {});
+		// workspace package, outside of any `node_modules` folder
+		link("ws-lib-222", "../../../../packages/ws-lib", { "package.json": '{"name":"@acme/ws-lib"}' });
+		// dangling symlinks
+		link("broken-111", "../../../../node_modules/.pnpm/does-not-exist@1.0.0/node_modules/does-not-exist");
+		link("broken-no-name-333", "../../../../packages/no-name");
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	test("maps live links to their hashed id and dangling links to the package name", () => {
+		const patched = patchTurbopackRuntimeCode({
+			code: externalImportRuntime,
+			filePath: runtimePath,
+			tracedFiles: [],
+		});
+
+		const expectCase = (id: string, specifier: string) =>
+			expect(patched.replace(/\s+/g, " ")).toContain(
+				`case "${id}": raw = await import("${specifier}"); break;`
+			);
+
+		expectCase("pg-abc123", "pg-abc123");
+		expectCase("scoped-def456", "scoped-def456");
+		expectCase("shiki-789", "shiki-789");
+		expectCase("nopkg-000", "nopkg-000");
+		expectCase("ws-lib-222", "ws-lib-222");
+		// A dangling link is mapped from its target path, so that the package can be resolved from the app.
+		expectCase("broken-111", "does-not-exist");
+
+		expect(patched).not.toContain('case "broken-no-name-333"');
+		expect(patched).not.toContain(".pnpm");
+		expect(patched).not.toContain("node_modules");
+	});
+});
+
+describe("Turbopack externals resolution with esbuild", () => {
+	let tmpDir: string;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "turbopack-externals-esbuild-"));
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	// See https://github.com/opennextjs/opennextjs-cloudflare/issues/1409
+	test("bundles the `workerd` export of a package linked from the pnpm store", async () => {
+		const dotNextDir = path.join(tmpDir, "app/.next");
+		const runtimePath = path.join(dotNextDir, "server/chunks/ssr/[turbopack]_runtime.js");
+		fs.mkdirSync(path.dirname(runtimePath), { recursive: true });
+		const linksDir = path.join(dotNextDir, "node_modules");
+		fs.mkdirSync(linksDir, { recursive: true });
+
+		// `postgres` is not a direct dependency of the app: it is only reachable through the link.
+		linkPackage(
+			linksDir,
+			"postgres-abc",
+			"../../../node_modules/.pnpm/postgres@3.4.7/node_modules/postgres",
+			{
+				"package.json": JSON.stringify({
+					name: "postgres",
+					main: "cjs/src/index.js",
+					exports: { ".": { workerd: "./cf/src/index.js", default: "./cjs/src/index.js" } },
+				}),
+				"cf/src/index.js": 'export default "postgres-for-workerd";',
+				"cjs/src/index.js": 'export default "postgres-for-node";',
+			}
+		);
+
+		const code = `${externalImportRuntime}\nexport const db = externalImport("postgres-abc");\n`;
+		fs.writeFileSync(
+			runtimePath,
+			patchTurbopackRuntimeCode({ code, filePath: runtimePath, tracedFiles: [] })
+		);
+
+		const result = await build({
+			entryPoints: [runtimePath],
+			bundle: true,
+			write: false,
+			format: "esm",
+			platform: "node",
+			conditions: ["workerd"],
+			// The `@vercel/og` case is always generated, `next` is not installed in the fixture.
+			external: ["next/*"],
+			logLevel: "silent",
+		});
+		const output = result.outputFiles[0]!.text;
+
+		expect(output).toContain("postgres-for-workerd");
+		expect(output).not.toContain("postgres-for-node");
 	});
 });
