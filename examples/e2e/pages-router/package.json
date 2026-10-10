@@ -19,9 +19,15 @@
 	"dependencies": {
 		"@opennextjs/cloudflare": "workspace:*",
 		"@example/shared": "workspace:*",
+		"@example/external-head": "workspace:*",
 		"next": "catalog:e2e",
 		"react": "catalog:e2e",
 		"react-dom": "catalog:e2e"
+	},
+	"dependenciesMeta": {
+		"@example/external-head": {
+			"injected": true
+		}
 	},
 	"devDependencies": {
 		"@playwright/test": "catalog:",
