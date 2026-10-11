@@ -14,6 +14,11 @@ import type { ProjectOptions } from "../project-options.js";
 import { normalizePath } from "../utils/normalize-path.js";
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
+import {
+	cacheComponentsSchedulerModule,
+	needsCacheComponentsScheduler,
+	patchCacheComponents,
+} from "./patches/plugins/cache-components.js";
 import { inlineDynamicRequires } from "./patches/plugins/dynamic-requires.js";
 import { inlineFindDir } from "./patches/plugins/find-dir.js";
 import { patchInstrumentation } from "./patches/plugins/instrumentation.js";
@@ -88,7 +93,16 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 	const updater = new ContentUpdater(buildOpts);
 
 	const result = await build({
-		entryPoints: [openNextServer],
+		// The scheduler wraps `setImmediate`, so it must load before the Next.js server captures it.
+		...(needsCacheComponentsScheduler(buildOpts, nextConfig)
+			? {
+					stdin: {
+						contents: `import "${cacheComponentsSchedulerModule}"; export { handler } from ${JSON.stringify(openNextServer)};`,
+						resolveDir: appPath,
+						sourcefile: "cache-components-server-entry.mjs",
+					},
+				}
+			: { entryPoints: [openNextServer] }),
 		bundle: true,
 		outfile: openNextServerBundle,
 		format: "esm",
@@ -117,6 +131,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			fixRequire(updater),
 			handleOptionalDependencies(optionalDependencies),
 			patchInstrumentation(updater, buildOpts),
+			patchCacheComponents(updater, buildOpts, nextConfig),
 			patchPagesRouterContext(buildOpts),
 			inlineFindDir(updater, buildOpts),
 			inlineLoadManifest(updater, buildOpts),
