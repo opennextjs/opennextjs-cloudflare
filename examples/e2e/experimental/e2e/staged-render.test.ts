@@ -21,7 +21,7 @@ test.describe("Cache Components staged rendering", () => {
 	test("a runtime prefetch contains the shell and the request content", async ({ request }) => {
 		const body = await runtimePrefetch(request, "/runtime-prefetch/one", "xyz");
 
-		// The reported symptom is a body of one byte, the `~` marker.
+		// `~` marks a response with content that is left to the navigation.
 		expect(body.startsWith("~")).toBe(true);
 		expect(body).toContain("Runtime shell");
 		expect(body).toContain('"Runtime session: ","xyz"');

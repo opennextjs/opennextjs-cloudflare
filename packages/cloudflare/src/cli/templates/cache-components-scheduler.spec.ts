@@ -14,11 +14,10 @@ Object.defineProperty(globalThis, Symbol.for("__cloudflare-context__"), {
 });
 const inRequest = <T>(run: () => T): T => requestContextStorage.run({}, run);
 
-// The scheduler replaced these when it was imported.
+// The scheduler replaced the global function when it was imported.
 const countedSetImmediate = globalThis.setImmediate;
 afterAll(() => {
 	globalThis.setImmediate = nativeSetImmediate;
-	globalThis.clearImmediate = nativeClearImmediate;
 });
 
 /**
@@ -122,7 +121,8 @@ describe("runInSequentialTasks", () => {
 		await inRequest(() =>
 			runInSequentialTasks(
 				() => {
-					void setImmediatePromise("flush").then((value) => log.push(value));
+					// React schedules its work from a microtask, after the stage returns.
+					void Promise.resolve().then(() => setImmediatePromise("flush").then((value) => log.push(value)));
 				},
 				() => log.push("stage 1")
 			)
@@ -131,19 +131,26 @@ describe("runInSequentialTasks", () => {
 		expect(log).toEqual(["flush", "stage 1"]);
 	});
 
-	it("does not wait for an immediate that was cleared", async () => {
+	// Only the first way goes through the global `clearImmediate`. A stage that waits for an immediate
+	// that was cancelled never ends, and the request cannot render again.
+	it.each([
+		["the global `clearImmediate`", (immediate: NodeJS.Immediate) => clearImmediate(immediate)],
+		["`clearImmediate` from `node:timers`", (immediate: NodeJS.Immediate) => nativeClearImmediate(immediate)],
+		["`Symbol.dispose`", (immediate: NodeJS.Immediate) => immediate[Symbol.dispose]()],
+	])("does not wait for an immediate that %s cancelled", async (_, cancel) => {
 		const log: string[] = [];
 
-		await inRequest(() =>
-			runInSequentialTasks(
+		await inRequest(async () => {
+			await runInSequentialTasks(
 				() => {
-					clearImmediate(setImmediate(() => log.push("cleared")));
+					void Promise.resolve().then(() => cancel(setImmediate(() => log.push("cancelled"))));
 				},
 				() => log.push("stage 1")
-			)
-		);
+			);
+			await runInSequentialTasks(() => log.push("next render"));
+		});
 
-		expect(log).toEqual(["stage 1"]);
+		expect(log).toEqual(["stage 1", "next render"]);
 	});
 
 	it("does not interleave the stages of two renders of one request", async () => {
@@ -262,7 +269,7 @@ describe("runInSequentialTasks", () => {
 						() => {}
 					)
 				)
-			).rejects.toThrow(/did not settle: 1 immediate\(s\) still pending/);
+			).rejects.toThrow(/did not settle: the request still schedules immediates after 1000 tasks/);
 		} finally {
 			active = false;
 		}
