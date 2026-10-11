@@ -7,9 +7,10 @@
  * `queueMicrotask`: the callback runs before the render has scheduled its work, and the stage
  * boundary lands too early.
  *
- * workerd runs timers and immediates from one ordered queue and drains the microtasks between two
- * of them. An immediate is then an exact "everything queued before me has run" signal: count the
- * immediates of the request and enter the next stage when none is left.
+ * Immediates run in the order in which they were scheduled, and the runtime drains the microtasks
+ * between two of them. An immediate is then an exact "everything scheduled before me has run" signal.
+ * A stage has settled when such an immediate runs and the request has scheduled no other immediate
+ * in the meantime.
  *
  * See https://github.com/cloudflare/workerd/issues/7687
  */
@@ -17,15 +18,14 @@
 import { setImmediate as setImmediatePromise } from "node:timers/promises";
 import { promisify } from "node:util";
 
-/** The immediates a request has scheduled and not run yet, and the end of its last staged render. */
-type RequestScope = { pendingImmediates: number; lastRender: Promise<void> };
+/** How many immediates a request has scheduled, and the end of its last staged render. */
+type RequestScope = { scheduledImmediates: number; lastRender: Promise<void> };
 
 type PromisifiedSetImmediate = typeof setImmediatePromise;
 
 // Captured before Next.js replaces them: the stage hops must not be counted, and Next.js makes its
 // own `node:timers/promises` `setImmediate` call back into this module.
 const nativeSetImmediate = globalThis.setImmediate;
-const nativeClearImmediate = globalThis.clearImmediate;
 const nativeSetImmediatePromise = setImmediatePromise;
 
 const REQUEST_CONTEXT = Symbol.for("__cloudflare-context__");
@@ -36,7 +36,7 @@ const REQUEST_CONTEXT = Symbol.for("__cloudflare-context__");
  * and still keeps one request from waiting on another.
  */
 const scopes = new WeakMap<object, RequestScope>();
-const scopeOutsideRequest: RequestScope = { pendingImmediates: 0, lastRender: Promise.resolve() };
+const scopeOutsideRequest: RequestScope = { scheduledImmediates: 0, lastRender: Promise.resolve() };
 
 function currentScope(): RequestScope {
 	const context = (globalThis as Record<symbol, unknown>)[REQUEST_CONTEXT];
@@ -46,70 +46,32 @@ function currentScope(): RequestScope {
 
 	let scope = scopes.get(context);
 	if (!scope) {
-		scope = { pendingImmediates: 0, lastRender: Promise.resolve() };
+		scope = { scheduledImmediates: 0, lastRender: Promise.resolve() };
 		scopes.set(context, scope);
 	}
 	return scope;
 }
 
-/** Counts an immediate of the current request, and returns the function that marks it as done. */
-function trackImmediate(): () => void {
-	const scope = currentScope();
-	scope.pendingImmediates++;
-
-	let done = false;
-	return () => {
-		if (done) return;
-		done = true;
-		scope.pendingImmediates--;
-	};
-}
-
-const untrackByImmediate = new WeakMap<object, () => void>();
-
+// Only the scheduling is counted. To count the immediates that are still pending, every way to cancel
+// one would have to be seen, and `Symbol.dispose` and the `clearImmediate` of `node:timers` do not go
+// through the global `clearImmediate`.
 function countedSetImmediate(callback: (...args: unknown[]) => void, ...args: unknown[]) {
-	const untrack = trackImmediate();
-	let immediate: ReturnType<typeof nativeSetImmediate>;
-	try {
-		immediate = nativeSetImmediate(() => {
-			untrack();
-			callback(...args);
-		});
-	} catch (error) {
-		// Nothing was scheduled, so nothing would mark the immediate as done.
-		untrack();
-		throw error;
-	}
-	untrackByImmediate.set(immediate, untrack);
-	return immediate;
+	currentScope().scheduledImmediates++;
+	return nativeSetImmediate(callback, ...args);
 }
 
 const countedSetImmediatePromise = ((value, options) => {
-	const untrack = trackImmediate();
-	try {
-		return nativeSetImmediatePromise(value, options).finally(untrack);
-	} catch (error) {
-		untrack();
-		throw error;
-	}
+	currentScope().scheduledImmediates++;
+	return nativeSetImmediatePromise(value, options);
 }) as PromisifiedSetImmediate;
 
 // Next.js reads this hook when it installs its own `node:timers/promises` `setImmediate`. Node.js
 // defines the hook on the global function, workerd does not.
 Object.defineProperty(countedSetImmediate, promisify.custom, { value: countedSetImmediatePromise });
 
-function countedClearImmediate(immediate: Parameters<typeof nativeClearImmediate>[0]) {
-	// A clear that throws leaves the immediate scheduled, so it stays counted.
-	nativeClearImmediate(immediate);
-	if (typeof immediate === "object" && immediate !== null) {
-		untrackByImmediate.get(immediate)?.();
-	}
-}
-
 // Next.js and React capture `setImmediate` while they load. This module loads first, so every
 // reference they keep is counted.
 globalThis.setImmediate = countedSetImmediate as unknown as typeof setImmediate;
-globalThis.clearImmediate = countedClearImmediate as typeof clearImmediate;
 
 /** A render whose immediates reschedule themselves forever must fail, not hang the request. */
 const MAX_TASKS_PER_STAGE = 1000;
@@ -130,17 +92,19 @@ export function runInSequentialTasks<T>(first: () => T, ...rest: Array<() => voi
 			reject(error);
 		};
 
-		/** Calls `next` in the first task that finds no pending immediate. */
+		/** Calls `next` in the first task before which the request scheduled no new immediate. */
 		const afterImmediates = (next: () => void, tasks = 0) => {
+			// Read before the hop is queued: the hop runs after every immediate counted up to here.
+			const scheduled = scope.scheduledImmediates;
 			nativeSetImmediate(() => {
-				if (scope.pendingImmediates === 0) {
+				if (scope.scheduledImmediates === scheduled) {
 					next();
 				} else if (tasks < MAX_TASKS_PER_STAGE) {
 					afterImmediates(next, tasks + 1);
 				} else {
 					fail(
 						new Error(
-							`Cache Components render did not settle: ${scope.pendingImmediates} immediate(s) still pending after ${MAX_TASKS_PER_STAGE} tasks.`
+							`Cache Components render did not settle: the request still schedules immediates after ${MAX_TASKS_PER_STAGE} tasks.`
 						)
 					);
 				}
