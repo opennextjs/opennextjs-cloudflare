@@ -8,7 +8,7 @@ With Next.js 16.3 and Turbopack, the Node.js middleware bundle (`middleware/hand
 
 When one of those packages was externalized and used conditional subpath imports (e.g. `@logtape/logtape`), the build failed with `Could not resolve "#util"`: the middleware was bundled without the `node` condition, so the `import` branch was selected, and with the `module` condition, which can select files Next.js did not trace.
 
-The chunks only traced for the instrumentation hook are now left out of the middleware bundle, and the middleware packages are resolved like the server ones (`node` platform, `workerd` condition, no `module` condition).
+The chunks only traced for the instrumentation hook are now left out of the middleware bundle (unless a middleware chunk loads them), and the middleware packages are resolved like the server ones (`node` platform, `workerd` condition, no `module` condition).
 
 The middleware bundle also gets the same shims as the server (`ws`, `node-fetch`, `@ampproject/toolbox-optimizer` and `edge-runtime`) and no longer bundles `@opentelemetry/api` twice. Its esbuild metafile is written to `middleware/handler.mjs.meta.json` to help analyze its size.
 

@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import path from "node:path";
 import { promisify } from "node:util";
 
 import logger from "@opennextjs/aws/logger.js";
@@ -191,9 +192,19 @@ describe("excludeInstrumentationOnlyFiles", () => {
 		"./chunks/app_instrumentation_0mntc31.js",
 		"./chunks/shared_0a1b2c3._.js",
 	];
+	const noRefs = () => "";
+
+	/**
+	 * Returns a `readFile` callback serving `contents`, keyed by the path relative to the server dir.
+	 */
+	function readFrom(contents: Record<string, string>) {
+		return (file: string) => contents[path.relative(serverDir, file)] ?? "";
+	}
 
 	test("removes the files only traced for the instrumentation hook", () => {
-		expect(excludeInstrumentationOnlyFiles(files, serverDir, middlewareTrace, instrumentationTrace)).toEqual([
+		expect(
+			excludeInstrumentationOnlyFiles(files, serverDir, middlewareTrace, instrumentationTrace, noRefs)
+		).toEqual([
 			`${serverDir}/middleware.js`,
 			`${serverDir}/chunks/[turbopack]_runtime.js`,
 			`${serverDir}/chunks/[externals]__1k9zbry._.js`,
@@ -210,7 +221,8 @@ describe("excludeInstrumentationOnlyFiles", () => {
 			files,
 			serverDir,
 			[],
-			["./middleware.js", "./chunks/[turbopack]_runtime.js"]
+			["./middleware.js", "./chunks/[turbopack]_runtime.js"],
+			noRefs
 		);
 		expect(result).toContain(`${serverDir}/middleware.js`);
 		expect(result).toContain(`${serverDir}/chunks/[turbopack]_runtime.js`);
@@ -218,9 +230,13 @@ describe("excludeInstrumentationOnlyFiles", () => {
 	});
 
 	test("resolves `..` entries back into the server dir", () => {
-		const result = excludeInstrumentationOnlyFiles(files, serverDir, middlewareTrace, [
-			"../server/chunks/app_instrumentation_0mntc31.js",
-		]);
+		const result = excludeInstrumentationOnlyFiles(
+			files,
+			serverDir,
+			middlewareTrace,
+			["../server/chunks/app_instrumentation_0mntc31.js"],
+			noRefs
+		);
 		expect(result).not.toContain(`${serverDir}/chunks/app_instrumentation_0mntc31.js`);
 		expect(result).toHaveLength(files.length - 2);
 	});
@@ -230,18 +246,69 @@ describe("excludeInstrumentationOnlyFiles", () => {
 			files,
 			serverDir,
 			[".\\chunks\\shared_0a1b2c3._.js"],
-			[".\\chunks\\app_instrumentation_0mntc31.js", ".\\chunks\\shared_0a1b2c3._.js"]
+			[".\\chunks\\app_instrumentation_0mntc31.js", ".\\chunks\\shared_0a1b2c3._.js"],
+			noRefs
 		);
 		expect(result).not.toContain(`${serverDir}/chunks/app_instrumentation_0mntc31.js`);
 		expect(result).toContain(`${serverDir}/chunks/shared_0a1b2c3._.js`);
 	});
 
 	test("keeps all the files when the instrumentation trace is missing", () => {
-		expect(excludeInstrumentationOnlyFiles(files, serverDir, middlewareTrace, undefined)).toEqual(files);
+		expect(excludeInstrumentationOnlyFiles(files, serverDir, middlewareTrace, undefined, noRefs)).toEqual(
+			files
+		);
 	});
 
 	test("keeps all the files when the middleware trace is missing", () => {
-		expect(excludeInstrumentationOnlyFiles(files, serverDir, undefined, instrumentationTrace)).toEqual(files);
+		expect(
+			excludeInstrumentationOnlyFiles(files, serverDir, undefined, instrumentationTrace, noRefs)
+		).toEqual(files);
+	});
+
+	test("keeps an instrumentation only chunk loaded by a kept chunk", () => {
+		// The shared chunk is traced for the instrumentation hook but not for the middleware.
+		const result = excludeInstrumentationOnlyFiles(
+			files,
+			serverDir,
+			middlewareTrace.filter((file) => !file.includes("shared")),
+			instrumentationTrace,
+			readFrom({
+				"chunks/[root-of-the-server]__0ckz_qj._.js": `e.v(r=>Promise.all(["server/chunks/shared_0a1b2c3._.js"].map(r=>e.l(r))))`,
+			})
+		);
+		expect(result).toContain(`${serverDir}/chunks/shared_0a1b2c3._.js`);
+		expect(result).not.toContain(`${serverDir}/chunks/app_instrumentation_0mntc31.js`);
+		expect(result).not.toContain(`${serverDir}/instrumentation.js`);
+	});
+
+	test("follows the references transitively through the candidates", () => {
+		const result = excludeInstrumentationOnlyFiles(
+			files,
+			serverDir,
+			middlewareTrace.filter((file) => !file.includes("shared")),
+			instrumentationTrace,
+			readFrom({
+				"middleware.js": `R.c("server/chunks/shared_0a1b2c3._.js")`,
+				"chunks/shared_0a1b2c3._.js": `R.c("server/chunks/app_instrumentation_0mntc31.js")`,
+			})
+		);
+		expect(result).toContain(`${serverDir}/chunks/shared_0a1b2c3._.js`);
+		expect(result).toContain(`${serverDir}/chunks/app_instrumentation_0mntc31.js`);
+	});
+
+	test("does not keep the instrumentation entry when its name is mentioned", () => {
+		const result = excludeInstrumentationOnlyFiles(
+			files,
+			serverDir,
+			middlewareTrace,
+			instrumentationTrace,
+			readFrom({
+				"chunks/[root-of-the-server]__0ckz_qj._.js": `require(path.join(distDir, "server/instrumentation.js")); "instrumentation.js"; "app_instrumentation_0mntc31.js"`,
+			})
+		);
+		expect(result).not.toContain(`${serverDir}/instrumentation.js`);
+		// Only the full chunk path counts as a reference, not the file name.
+		expect(result).not.toContain(`${serverDir}/chunks/app_instrumentation_0mntc31.js`);
 	});
 });
 

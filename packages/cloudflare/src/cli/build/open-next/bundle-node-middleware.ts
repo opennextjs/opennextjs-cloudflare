@@ -71,32 +71,67 @@ export function readNftTrace(tracePath: string): string[] | undefined {
  * middleware ones. Inlining them would bundle code the middleware never loads - and fail the build
  * when that code imports a package that is not traced for the middleware (see #1401).
  *
- * Only the files traced for the instrumentation hook and not for the middleware are removed, so a
- * chunk missing from the middleware trace (e.g. loaded by an `await import()`) is still inlined.
- * Nothing is removed when either trace is missing. The middleware and the Turbopack runtime are
- * always kept.
+ * Only the files traced for the instrumentation hook and not for the middleware are candidates for
+ * removal, so a chunk missing from both traces is still inlined. Nothing is removed when either
+ * trace is missing. The middleware and the Turbopack runtime are always kept.
+ *
+ * A candidate chunk is kept when a kept file references it: Turbopack loads the chunks by their
+ * path relative to `.next` (e.g. `"server/chunks/foo.js"`), so a chunk loaded by an `await import()`
+ * is kept even if the middleware trace were to miss it. The references are followed transitively.
  *
  * @param files Absolute paths of the files in `.next/server`.
  * @param dotNextServerDir The `.next/server` directory, the traces are relative to it.
  * @param middlewareTrace The files traced for the middleware.
  * @param instrumentationTrace The files traced for the instrumentation hook.
+ * @param readFile Returns the content of a file from `files`.
  * @returns The files to inline.
  */
 export function excludeInstrumentationOnlyFiles(
 	files: string[],
 	dotNextServerDir: string,
 	middlewareTrace: string[] | undefined,
-	instrumentationTrace: string[] | undefined
+	instrumentationTrace: string[] | undefined,
+	readFile: (file: string) => string
 ): string[] {
 	if (middlewareTrace === undefined || instrumentationTrace === undefined) {
 		return files;
 	}
 	const resolve = (file: string) => normalizePath(path.resolve(dotNextServerDir, normalizePath(file)));
-	const keep = new Set([...middlewareTrace, "middleware.js", "chunks/[turbopack]_runtime.js"].map(resolve));
-	const exclude = new Set(
-		[...instrumentationTrace, "instrumentation.js"].map(resolve).filter((file) => !keep.has(file))
+	const traced = new Set([...middlewareTrace, "middleware.js", "chunks/[turbopack]_runtime.js"].map(resolve));
+	const instrumentationOnly = new Set(
+		[...instrumentationTrace, "instrumentation.js"].map(resolve).filter((file) => !traced.has(file))
 	);
-	return files.filter((file) => !exclude.has(normalizePath(path.resolve(file))));
+
+	// Candidate files mapped to the path the Turbopack runtime loads them with.
+	// Only the chunks can be loaded by the runtime: `instrumentation.js` (the entry) is never kept.
+	const candidates = new Map<string, string | undefined>();
+	const kept: string[] = [];
+	for (const file of files) {
+		if (instrumentationOnly.has(normalizePath(path.resolve(file)))) {
+			const chunkPath = normalizePath(
+				path.posix.join("server", normalizePath(path.relative(dotNextServerDir, file)))
+			);
+			candidates.set(file, chunkPath.startsWith("server/chunks/") ? chunkPath : undefined);
+		} else {
+			kept.push(file);
+		}
+	}
+
+	const toScan = [...kept];
+	for (let file = toScan.pop(); file !== undefined && candidates.size > 0; file = toScan.pop()) {
+		if (!file.endsWith(".js")) {
+			continue;
+		}
+		const code = readFile(file);
+		for (const [candidate, chunkPath] of candidates) {
+			if (chunkPath !== undefined && code.includes(chunkPath)) {
+				candidates.delete(candidate);
+				toScan.push(candidate);
+			}
+		}
+	}
+
+	return files.filter((file) => !candidates.has(file));
 }
 
 /**
@@ -127,7 +162,8 @@ async function inlineMiddlewareChunks(options: BuildOptions, dotNextServerDir: s
 		await glob(path.join(dotNextServerDir, "**/*.{js,wasm}"), { windowsPathsNoEscape: true }),
 		dotNextServerDir,
 		readNftTrace(path.join(appServerDir, "middleware.js.nft.json")),
-		readNftTrace(path.join(appServerDir, "instrumentation.js.nft.json"))
+		readNftTrace(path.join(appServerDir, "instrumentation.js.nft.json")),
+		(file) => readFileSync(file, "utf-8")
 	);
 
 	writeFileSync(
