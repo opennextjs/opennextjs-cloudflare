@@ -173,6 +173,39 @@ describe("RegionalCache", () => {
 			expect(next?.shouldBypassTagCache).toBe(true);
 		});
 
+		it("removes the entry when the tag is revalidated while it is being stored", async () => {
+			// The first check passes, then `revalidateTag` completes (and purges) before the write lands.
+			tagCache.hasBeenRevalidated.mockResolvedValueOnce(false).mockResolvedValue(true);
+			const regionalCache = createRegionalCache();
+
+			await regionalCache.get(KEY, "cache");
+			await flushWaitUntil();
+
+			expect(tagCache.hasBeenRevalidated).toHaveBeenCalledTimes(2);
+			expect(mockCache.put).toHaveBeenCalledTimes(1);
+			expect(mockCache.entries.has(URL_KEY)).toBe(false);
+
+			const next = await regionalCache.get(KEY, "cache");
+			expect(store.get).toHaveBeenCalledTimes(2);
+			expect(next?.shouldBypassTagCache).toBeUndefined();
+		});
+
+		it("keeps a newer entry stored by a concurrent set when the tag is revalidated during the refill", async () => {
+			const regionalCache = createRegionalCache();
+			const newer = { body: '{"newer":true}', headers: new Headers() };
+			tagCache.hasBeenRevalidated.mockResolvedValueOnce(false).mockImplementation(async () => {
+				// A concurrent `set` regenerated the page after the refill was written.
+				mockCache.entries.set(URL_KEY, newer);
+				return true;
+			});
+
+			await regionalCache.get(KEY, "cache");
+			await flushWaitUntil();
+
+			expect(mockCache.delete).not.toHaveBeenCalled();
+			expect(mockCache.entries.get(URL_KEY)).toBe(newer);
+		});
+
 		it("does not consult the tag cache when the tag cache is not bypassed on hits", async () => {
 			tagCache.hasBeenRevalidated.mockResolvedValue(true);
 			const regionalCache = createRegionalCache({ bypassTagCacheOnCacheHit: false });

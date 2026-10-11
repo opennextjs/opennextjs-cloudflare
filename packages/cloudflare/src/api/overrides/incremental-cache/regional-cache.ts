@@ -279,16 +279,22 @@ class RegionalCache implements IncrementalCache {
 	 * When the tag cache is bypassed on cache hits, the entry is only stored when the tag cache reports it as
 	 * neither revalidated nor stale. Otherwise a revalidated entry would be served (as fresh) from the
 	 * regional cache without ever consulting the tag cache, until it expires or is purged again.
+	 *
+	 * The tag cache is checked again once the entry is stored: a `revalidateTag` completing between the first
+	 * check and the write purges the regional cache before the entry is in it, so the purge would miss it.
 	 */
 	protected async refillFromStore(input: PutToCacheInput): Promise<void> {
 		// Snapshot the entry before any `await` (see `prepareCacheEntry`).
 		const prepared = this.prepareCacheEntry(input);
+		const isRevalidated = () => isRevalidatedInTagCache(input.key, prepared.tags, input.entry.lastModified);
 
 		try {
-			if (
-				this.opts.bypassTagCacheOnCacheHit &&
-				(await isRevalidatedInTagCache(input.key, prepared.tags, input.entry.lastModified))
-			) {
+			if (!this.opts.bypassTagCacheOnCacheHit) {
+				await this.writeToCache(prepared);
+				return;
+			}
+
+			if (await isRevalidated()) {
 				debugCache(
 					"RegionalCache",
 					`${input.key} has been revalidated, not storing it in the regional cache`
@@ -297,8 +303,28 @@ class RegionalCache implements IncrementalCache {
 			}
 
 			await this.writeToCache(prepared);
+
+			if (await isRevalidated()) {
+				debugCache(
+					"RegionalCache",
+					`${input.key} has been revalidated while it was stored, removing it from the regional cache`
+				);
+				await this.deleteIfUnchanged(prepared);
+			}
 		} catch (e) {
 			error("Failed to refill the regional cache", e);
+		}
+	}
+
+	/**
+	 * Deletes an entry from the Cache API, unless it has been replaced in the meantime (i.e. by a concurrent `set`
+	 * storing a newer value, which must be kept).
+	 */
+	protected async deleteIfUnchanged({ urlKey, body }: PreparedCacheEntry): Promise<void> {
+		const cache = await this.getCacheInstance();
+		const stored = await cache.match(urlKey);
+		if (stored && (await stored.text()) === body) {
+			await cache.delete(urlKey);
 		}
 	}
 
