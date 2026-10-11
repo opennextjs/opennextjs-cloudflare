@@ -1,10 +1,16 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
+import logger from "@opennextjs/aws/logger.js";
 import { build, type BuildOptions } from "esbuild";
-import { describe, expect, test } from "vitest";
+import mockFs from "mock-fs";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { nodeBuiltinsPlugin } from "./bundle-node-middleware.js";
+import {
+	excludeInstrumentationOnlyFiles,
+	nodeBuiltinsPlugin,
+	readNftTrace,
+} from "./bundle-node-middleware.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -12,7 +18,8 @@ const execFileAsync = promisify(execFile);
  * Bundles `contents` with `nodeBuiltinsPlugin` installed.
  *
  * Mirrors the esbuild options `bundleNodeMiddleware` uses, as the plugin behaviour depends on
- * them: `platform: "neutral"` means esbuild does not handle the Node.js builtins itself.
+ * them: with `platform: "node"` esbuild would handle the Node.js builtins itself (as `__require`
+ * calls) when the plugin did not resolve them first.
  *
  * @param contents Source of the entry point, treated as CommonJS.
  * @param options Extra esbuild options.
@@ -23,7 +30,7 @@ async function bundle(contents: string, options: BuildOptions = {}): Promise<str
 		stdin: { contents, loader: "js", resolveDir: import.meta.dirname },
 		bundle: true,
 		format: "esm",
-		platform: "neutral",
+		platform: "node",
 		target: "es2022",
 		write: false,
 		logLevel: "silent",
@@ -156,5 +163,115 @@ describe("nodeBuiltinsPlugin", () => {
 		`);
 
 		expect(uuid).toMatch(/^[0-9a-f-]{36}$/);
+	});
+});
+
+describe("excludeInstrumentationOnlyFiles", () => {
+	const serverDir = "/app/.open-next/middleware/.next/server";
+	const files = [
+		`${serverDir}/middleware.js`,
+		`${serverDir}/instrumentation.js`,
+		`${serverDir}/chunks/[turbopack]_runtime.js`,
+		`${serverDir}/chunks/[externals]__1k9zbry._.js`,
+		`${serverDir}/chunks/[root-of-the-server]__0ckz_qj._.js`,
+		`${serverDir}/chunks/app_instrumentation_0mntc31.js`,
+		`${serverDir}/chunks/shared_0a1b2c3._.js`,
+		`${serverDir}/chunks/async_proxy_chunk._.js`,
+	];
+	const middlewareTrace = [
+		"../../node_modules/next/dist/server/foo.js",
+		"./chunks/[externals]__1k9zbry._.js",
+		"./chunks/[root-of-the-server]__0ckz_qj._.js",
+		"./chunks/[turbopack]_runtime.js",
+		"./chunks/shared_0a1b2c3._.js",
+	];
+	const instrumentationTrace = [
+		"../../node_modules/next/dist/server/foo.js",
+		"./chunks/[turbopack]_runtime.js",
+		"./chunks/app_instrumentation_0mntc31.js",
+		"./chunks/shared_0a1b2c3._.js",
+	];
+
+	test("removes the files only traced for the instrumentation hook", () => {
+		expect(excludeInstrumentationOnlyFiles(files, serverDir, middlewareTrace, instrumentationTrace)).toEqual([
+			`${serverDir}/middleware.js`,
+			`${serverDir}/chunks/[turbopack]_runtime.js`,
+			`${serverDir}/chunks/[externals]__1k9zbry._.js`,
+			`${serverDir}/chunks/[root-of-the-server]__0ckz_qj._.js`,
+			// Traced for both: kept.
+			`${serverDir}/chunks/shared_0a1b2c3._.js`,
+			// Not traced for the middleware (e.g. an `await import()`): kept.
+			`${serverDir}/chunks/async_proxy_chunk._.js`,
+		]);
+	});
+
+	test("always keeps the middleware and the runtime", () => {
+		const result = excludeInstrumentationOnlyFiles(
+			files,
+			serverDir,
+			[],
+			["./middleware.js", "./chunks/[turbopack]_runtime.js"]
+		);
+		expect(result).toContain(`${serverDir}/middleware.js`);
+		expect(result).toContain(`${serverDir}/chunks/[turbopack]_runtime.js`);
+		expect(result).not.toContain(`${serverDir}/instrumentation.js`);
+	});
+
+	test("resolves `..` entries back into the server dir", () => {
+		const result = excludeInstrumentationOnlyFiles(files, serverDir, middlewareTrace, [
+			"../server/chunks/app_instrumentation_0mntc31.js",
+		]);
+		expect(result).not.toContain(`${serverDir}/chunks/app_instrumentation_0mntc31.js`);
+		expect(result).toHaveLength(files.length - 2);
+	});
+
+	test("handles Windows-style separators in the traces", () => {
+		const result = excludeInstrumentationOnlyFiles(
+			files,
+			serverDir,
+			[".\\chunks\\shared_0a1b2c3._.js"],
+			[".\\chunks\\app_instrumentation_0mntc31.js", ".\\chunks\\shared_0a1b2c3._.js"]
+		);
+		expect(result).not.toContain(`${serverDir}/chunks/app_instrumentation_0mntc31.js`);
+		expect(result).toContain(`${serverDir}/chunks/shared_0a1b2c3._.js`);
+	});
+
+	test("keeps all the files when the instrumentation trace is missing", () => {
+		expect(excludeInstrumentationOnlyFiles(files, serverDir, middlewareTrace, undefined)).toEqual(files);
+	});
+
+	test("keeps all the files when the middleware trace is missing", () => {
+		expect(excludeInstrumentationOnlyFiles(files, serverDir, undefined, instrumentationTrace)).toEqual(files);
+	});
+});
+
+describe("readNftTrace", () => {
+	const tracePath = "/app/.next/server/middleware.js.nft.json";
+
+	afterEach(() => {
+		mockFs.restore();
+		vi.restoreAllMocks();
+	});
+
+	test("returns the traced files", () => {
+		mockFs({ [tracePath]: JSON.stringify({ version: 1, files: ["./chunks/a.js", 1, "./chunks/b.js"] }) });
+		expect(readNftTrace(tracePath)).toEqual(["./chunks/a.js", "./chunks/b.js"]);
+	});
+
+	test("returns undefined without a warning when the trace is missing", () => {
+		mockFs({});
+		const warn = vi.spyOn(logger, "warn").mockImplementation(() => {});
+		expect(readNftTrace(tracePath)).toBeUndefined();
+		expect(warn).not.toHaveBeenCalled();
+	});
+
+	test.each([
+		["invalid JSON", "{"],
+		["non-array `files`", JSON.stringify({ files: "./chunks/a.js" })],
+	])("returns undefined and warns on %s", (_, contents) => {
+		mockFs({ [tracePath]: contents });
+		const warn = vi.spyOn(logger, "warn").mockImplementation(() => {});
+		expect(readNftTrace(tracePath)).toBeUndefined();
+		expect(warn).toHaveBeenCalledOnce();
 	});
 });
