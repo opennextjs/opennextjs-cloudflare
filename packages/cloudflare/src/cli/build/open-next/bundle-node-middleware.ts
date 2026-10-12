@@ -19,8 +19,9 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { builtinModules, isBuiltin } from "node:module";
+import { builtinModules, createRequire, isBuiltin } from "node:module";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { type BuildOptions, getBundlerRuntime, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import logger from "@opennextjs/aws/logger.js";
@@ -33,11 +34,105 @@ import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import { build, type Plugin } from "esbuild";
 import { glob } from "glob";
 
+import { getOpenNextConfig } from "../../../api/config.js";
 import { normalizePath } from "../../utils/normalize-path.js";
 import { patchWebpackRuntime } from "../patches/ast/webpack-runtime.js";
 import { patchInstrumentation } from "../patches/plugins/instrumentation.js";
 import { patchTurbopackRuntimeCode, patchTurbopackWasmChunkCode } from "../patches/plugins/turbopack.js";
 import { setWranglerExternal } from "../patches/plugins/wrangler-external.js";
+
+/**
+ * Reads the files listed in a trace emitted by Next.js (e.g. `.next/server/middleware.js.nft.json`).
+ *
+ * @param tracePath Path of the `.nft.json` trace.
+ * @returns The traced files, relative to the directory of the trace, or `undefined` when the trace
+ *          is missing or can not be parsed.
+ */
+export function readNftTrace(tracePath: string): string[] | undefined {
+	if (!existsSync(tracePath)) {
+		return undefined;
+	}
+	try {
+		const trace = JSON.parse(readFileSync(tracePath, "utf-8")) as { files?: unknown };
+		if (!Array.isArray(trace.files)) {
+			throw new Error("`files` is not an array");
+		}
+		return trace.files.filter((file): file is string => typeof file === "string");
+	} catch (e) {
+		logger.warn(`Could not read the trace ${tracePath}, all the chunks are bundled in the middleware: ${e}`);
+		return undefined;
+	}
+}
+
+/**
+ * Removes the files only used by the instrumentation hook from the `.next/server` output.
+ *
+ * `copyTracedFiles` copies the chunks of other entries (e.g. `instrumentation.js`) next to the
+ * middleware ones. Inlining them would bundle code the middleware never loads - and fail the build
+ * when that code imports a package that is not traced for the middleware (see #1401).
+ *
+ * Only the files traced for the instrumentation hook and not for the middleware are candidates for
+ * removal, so a chunk missing from both traces is still inlined. Nothing is removed when either
+ * trace is missing. The middleware and the Turbopack runtime are always kept.
+ *
+ * A candidate chunk is kept when a kept file references it: Turbopack loads the chunks by their
+ * path relative to `.next` (e.g. `"server/chunks/foo.js"`), so a chunk loaded by an `await import()`
+ * is kept even if the middleware trace were to miss it. The references are followed transitively.
+ *
+ * @param files Absolute paths of the files in `.next/server`.
+ * @param dotNextServerDir The `.next/server` directory, the traces are relative to it.
+ * @param middlewareTrace The files traced for the middleware.
+ * @param instrumentationTrace The files traced for the instrumentation hook.
+ * @param readFile Returns the content of a file from `files`.
+ * @returns The files to inline.
+ */
+export function excludeInstrumentationOnlyFiles(
+	files: string[],
+	dotNextServerDir: string,
+	middlewareTrace: string[] | undefined,
+	instrumentationTrace: string[] | undefined,
+	readFile: (file: string) => string
+): string[] {
+	if (middlewareTrace === undefined || instrumentationTrace === undefined) {
+		return files;
+	}
+	const resolve = (file: string) => normalizePath(path.resolve(dotNextServerDir, normalizePath(file)));
+	const traced = new Set([...middlewareTrace, "middleware.js", "chunks/[turbopack]_runtime.js"].map(resolve));
+	const instrumentationOnly = new Set(
+		[...instrumentationTrace, "instrumentation.js"].map(resolve).filter((file) => !traced.has(file))
+	);
+
+	// Candidate files mapped to the path the Turbopack runtime loads them with.
+	// Only the chunks can be loaded by the runtime: `instrumentation.js` (the entry) is never kept.
+	const candidates = new Map<string, string | undefined>();
+	const kept: string[] = [];
+	for (const file of files) {
+		if (instrumentationOnly.has(normalizePath(path.resolve(file)))) {
+			const chunkPath = normalizePath(
+				path.posix.join("server", normalizePath(path.relative(dotNextServerDir, file)))
+			);
+			candidates.set(file, chunkPath.startsWith("server/chunks/") ? chunkPath : undefined);
+		} else {
+			kept.push(file);
+		}
+	}
+
+	const toScan = [...kept];
+	for (let file = toScan.pop(); file !== undefined && candidates.size > 0; file = toScan.pop()) {
+		if (!file.endsWith(".js")) {
+			continue;
+		}
+		const code = readFile(file);
+		for (const [candidate, chunkPath] of candidates) {
+			if (chunkPath !== undefined && code.includes(chunkPath)) {
+				candidates.delete(candidate);
+				toScan.push(candidate);
+			}
+		}
+	}
+
+	return files.filter((file) => !candidates.has(file));
+}
 
 /**
  * Inlines the chunks of the middleware compiled by Next.js.
@@ -61,9 +156,15 @@ async function inlineMiddlewareChunks(options: BuildOptions, dotNextServerDir: s
 
 	// The Turbopack runtime resolves the chunks relative to the `.next` directory.
 	// `.wasm` chunks are needed too: they are inlined as static imports by `loadWasmChunk`.
-	const tracedFiles = await glob(path.join(dotNextServerDir, "**/*.{js,wasm}"), {
-		windowsPathsNoEscape: true,
-	});
+	// The output also holds the chunks of the instrumentation hook, which the middleware never loads.
+	const appServerDir = path.join(options.appBuildOutputPath, ".next/server");
+	const tracedFiles = excludeInstrumentationOnlyFiles(
+		await glob(path.join(dotNextServerDir, "**/*.{js,wasm}"), { windowsPathsNoEscape: true }),
+		dotNextServerDir,
+		readNftTrace(path.join(appServerDir, "middleware.js.nft.json")),
+		readNftTrace(path.join(appServerDir, "instrumentation.js.nft.json")),
+		(file) => readFileSync(file, "utf-8")
+	);
 
 	writeFileSync(
 		runtimePath,
@@ -103,6 +204,32 @@ export function setCompiledMiddlewarePlugin(compiledMiddlewarePath: string): Plu
 			}));
 		},
 	};
+}
+
+/**
+ * Returns the path of a shim from `templates/shims` in the package dist.
+ *
+ * `cloudflare-templates` is only copied to the output dir by `bundleServer`, after the middleware
+ * bundle is built, so the shims are taken from the package dist.
+ *
+ * @param shim Name of the shim.
+ */
+function getShimPath(shim: "empty" | "fetch" | "throw"): string {
+	return path.join(path.dirname(fileURLToPath(import.meta.url)), `../../templates/shims/${shim}.js`);
+}
+
+/**
+ * Resolves `specifier` from `fromFile`, falling back to `specifier` when it can not be resolved.
+ *
+ * @param fromFile The file to resolve from.
+ * @param specifier The module to resolve.
+ */
+function resolveFrom(fromFile: string, specifier: string): string {
+	try {
+		return createRequire(fromFile).resolve(specifier);
+	} catch {
+		return specifier;
+	}
 }
 
 /**
@@ -187,23 +314,33 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 	const hasOpentelemetry = existsSync(
 		path.join(options.appBuildOutputPath, "node_modules", "@opentelemetry", "api")
 	);
+	// esbuild resolves an alias from the working directory, not from the importer. Resolve the
+	// compiled copy from the traced middleware so that it is not bundled twice: once from the app's
+	// `node_modules` (via the alias) and once from the traced files (via direct imports).
+	const compiledOpentelemetryApi = resolveFrom(compiledMiddleware, "next/dist/compiled/@opentelemetry/api");
 
 	const updater = new ContentUpdater(options);
+	const outfile = path.join(middlewareDir, "handler.mjs");
 
-	await build({
+	const result = await build({
 		entryPoints: [path.join(options.openNextDistDir, "adapters", "middleware.js")],
-		outfile: path.join(middlewareDir, "handler.mjs"),
+		outfile,
 		allowOverwrite: true,
+		metafile: true,
 		bundle: true,
 		format: "esm",
 		target: "es2022",
-		platform: "neutral",
+		// Resolve the packages as the server bundle does, see `bundle-server.ts`.
+		// Next.js traces the files with the default `nft` conditions (`node`, `require`, `import` and
+		// `default`): the `node` platform selects the same files. The conditions are always set - should
+		// it be to an empty array - to disable the `module` condition, which selects untraced files.
+		// See https://github.com/opennextjs/opennextjs-cloudflare/issues/1401
+		platform: "node",
 		minify: options.minify,
 		sourcemap: options.debug ? "inline" : false,
 		sourcesContent: false,
 		treeShaking: true,
-		conditions: ["module"],
-		mainFields: ["module", "main"],
+		conditions: getOpenNextConfig(options).cloudflare?.useWorkerdCondition === false ? [] : ["workerd"],
 		external: ["node:*", "./open-next.config.mjs"],
 		define: {
 			// The base of the middleware compiled by Next.js is runtime agnostic. "edge" selects its
@@ -214,8 +351,17 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 			"process.env.NODE_ENV": '"production"',
 		},
 		alias: {
+			// Same size optimizations as the server bundle, see `bundle-server.ts`.
+			// Workers have `fetch` so the `node-fetch` polyfill is not needed
+			"next/dist/compiled/node-fetch": getShimPath("fetch"),
+			// Workers have builtin Web Sockets
+			"next/dist/compiled/ws": getShimPath("empty"),
+			// The toolbox optimizer pulls several MB of dependencies (`caniuse-lite`, `terser`, `acorn`, ...)
+			"next/dist/compiled/@ampproject/toolbox-optimizer": getShimPath("throw"),
+			// The edge runtime sandbox is used by `next start` to run edge functions, not by the middleware
+			"next/dist/compiled/edge-runtime": getShimPath("empty"),
 			// See `hasOpentelemetry` above.
-			...(hasOpentelemetry ? {} : { "@opentelemetry/api": "next/dist/compiled/@opentelemetry/api" }),
+			...(hasOpentelemetry ? {} : { "@opentelemetry/api": compiledOpentelemetryApi }),
 		},
 		plugins: [
 			openNextResolvePlugin({
@@ -297,4 +443,6 @@ globalThis.nextVersion = "${options.nextVersion}";
 `,
 		},
 	});
+
+	writeFileSync(`${outfile}.meta.json`, JSON.stringify(result.metafile, null, 2));
 }
