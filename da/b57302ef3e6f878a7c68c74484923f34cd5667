@@ -1,0 +1,19 @@
+examples/e2e/app-router/app/search-query/client-search-params.tsx
+  s_ec0113f3dfbac1::t_86664848f336b8 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "dab57302ef3e6f878a7c68c74484923f34cd5667",
+  "prompts": {},
+  "sessions": {
+    "s_ec0113f3dfbac1": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ed0f177c4ffekP1JSn31dXQW6I",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
