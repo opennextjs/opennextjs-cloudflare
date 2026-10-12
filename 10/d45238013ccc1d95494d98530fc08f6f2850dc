@@ -1,0 +1,19 @@
+examples/e2e/app-router/app/og/opengraph-image.tsx
+  s_5169d8ca254613::t_b5ea99e4b4af63 3-4,6-7,11-15,17-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "10d45238013ccc1d95494d98530fc08f6f2850dc",
+  "prompts": {},
+  "sessions": {
+    "s_5169d8ca254613": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ed0c36102ffeP9QJjUU6v2fM1Z",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
