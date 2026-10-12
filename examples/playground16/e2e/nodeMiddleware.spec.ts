@@ -18,6 +18,18 @@ test.describe("Node Middleware", () => {
 		expect(json).toEqual({ name: "World" });
 	});
 
+	test("Node middleware should render an OG image using the fallback font", async ({ request }) => {
+		const response = await request.get("/middleware-og");
+		expect(response.status()).toBe(200);
+		expect(response.headers()["content-type"]).toBe("image/png");
+
+		// Consume the stream: rendering errors can occur after the response headers are sent.
+		const png = await response.body();
+		expect(png.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+		expect(png.readUInt32BE(16)).toBe(400);
+		expect(png.readUInt32BE(20)).toBe(100);
+	});
+
 	test("Node middleware should redirect", async ({ page }) => {
 		await page.goto("/redirect");
 		await page.waitForURL("/");

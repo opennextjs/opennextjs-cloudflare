@@ -2,9 +2,24 @@
 // See https://github.com/opennextjs/opennextjs-cloudflare/issues/617
 
 import crypto from "node:crypto";
+import { ImageResponse } from "next/og";
 import { type NextRequest, NextResponse } from "next/server";
+import { createElement } from "react";
 
+/**
+ * Routes requests through the Node.js proxy test cases.
+ *
+ * @param request The incoming Next.js request.
+ * @returns A response or a continuation carrying test headers.
+ */
 export default function proxy(request: NextRequest) {
+	// Keep OG usage in the proxy only so e2e tests can detect leakage into the server bundle.
+	if (request.nextUrl.pathname === "/middleware-og") {
+		return new ImageResponse(createElement("div", { style: { fontSize: 32 } }, "Middleware OG"), {
+			width: 400,
+			height: 100,
+		});
+	}
 	if (request.nextUrl.pathname === "/api/hello") {
 		return NextResponse.json({
 			name: "World",
