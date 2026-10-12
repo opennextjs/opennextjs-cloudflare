@@ -69,9 +69,18 @@ const countedSetImmediatePromise = ((value, options) => {
 // defines the hook on the global function, workerd does not.
 Object.defineProperty(countedSetImmediate, promisify.custom, { value: countedSetImmediatePromise });
 
-// Next.js and React capture `setImmediate` while they load. This module loads first, so every
-// reference they keep is counted.
+// Next.js and React capture `setImmediate` while they load. This module loads before the server, so
+// every reference they take from the global function is counted.
 globalThis.setImmediate = countedSetImmediate as unknown as typeof setImmediate;
+
+// Next.js also keeps the original in a registry that the first copy of `fast-set-immediate` to load
+// fills. The Node.js middleware bundle has a copy and loads before the server, so the registry can
+// already hold the native function, and the server would then send every immediate to it.
+const NEXT_ORIGINALS = Symbol.for("next.fast-set-immediate.originals");
+const nextOriginals = (globalThis as Record<symbol, { setImmediate: unknown } | undefined>)[NEXT_ORIGINALS];
+if (nextOriginals) {
+	nextOriginals.setImmediate = countedSetImmediate;
+}
 
 /** A render whose immediates reschedule themselves forever must fail, not hang the request. */
 const MAX_TASKS_PER_STAGE = 1000;
