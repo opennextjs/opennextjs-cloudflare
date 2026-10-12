@@ -3,8 +3,6 @@ import { createHash } from "node:crypto";
 import { error } from "@opennextjs/aws/adapters/logger.js";
 import type { CacheEntryType, CacheValue } from "@opennextjs/aws/types/overrides.js";
 
-import { getCloudflareContext } from "../cloudflare-context.js";
-
 export type IncrementalCacheEntry<CacheType extends CacheEntryType> = {
 	value: CacheValue<CacheType>;
 	lastModified: number;
@@ -39,22 +37,15 @@ export function isPurgeCacheEnabled(): boolean {
 	return cdnInvalidation !== undefined && cdnInvalidation !== "dummy";
 }
 
-export async function purgeCacheByTags(tags: string[]) {
-	const { env } = getCloudflareContext();
-	// We have a durable object for purging cache
-	// We should use it
-	if (env.NEXT_CACHE_DO_PURGE) {
-		const durableObject = env.NEXT_CACHE_DO_PURGE;
-		const id = durableObject.idFromName("cache-purge");
-		const obj = durableObject.get(id);
-		await obj.purgeCacheByTags(tags);
-	} else {
-		// We don't have a durable object for purging cache
-		// We should use the API directly
-		await internalPurgeCacheByTags(env, tags);
-	}
-}
-
+/**
+ * Purges Cloudflare cache entries associated with the provided tags.
+ *
+ * This calls the Cloudflare cache purge API directly and reports failures as status values.
+ *
+ * @param env Cloudflare environment containing the zone ID and API token.
+ * @param tags Cache tags to purge.
+ * @returns The purge outcome: success, missing credentials, rate limiting, or failure.
+ */
 export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[]) {
 	if (!env.CACHE_PURGE_ZONE_ID || !env.CACHE_PURGE_API_TOKEN) {
 		// THIS IS A NO-OP
