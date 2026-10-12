@@ -1,41 +1,23 @@
 import { ImageResponse } from "next/og";
 
+import { ogImage } from "../../../../common/og-image";
+
 // Image metadata
-export const alt = "OpenNext";
-export const size = {
-	width: 1200,
-	height: 630,
-};
+export const alt = ogImage.text;
+export const size = ogImage.size;
 
 export const contentType = "image/png";
 
-// Image generation
+/**
+ * Renders the shared OpenNext fixture as a metadata image.
+ *
+ * @returns The PNG response using the default fallback font.
+ */
 export default async function Image() {
-	return new ImageResponse(
-		(
-			// ImageResponse JSX element
-			<div
-				style={{
-					fontSize: 128,
-					background: "white",
-					width: "100%",
-					height: "100%",
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "center",
-				}}
-			>
-				OpenNext
-			</div>
-		),
-		// ImageResponse options
-		{
-			// For convenience, we can re-use the exported opengraph-image
-			// size config to also set the ImageResponse's width and height.
-			...size,
-			headers: {
-				"cache-control": "public, immutable, no-transform, max-age=31536000",
-			},
-		}
-	);
+	return new ImageResponse(<div style={ogImage.style}>{ogImage.text}</div>, {
+		...size,
+		headers: {
+			"cache-control": "public, immutable, no-transform, max-age=31536000",
+		},
+	});
 }

@@ -6,6 +6,8 @@ import { ImageResponse } from "next/og";
 import { type NextRequest, NextResponse } from "next/server";
 import { createElement } from "react";
 
+import { ogImage } from "../common/og-image";
+
 /**
  * Routes requests through the Node.js proxy test cases.
  *
@@ -15,10 +17,7 @@ import { createElement } from "react";
 export default function proxy(request: NextRequest) {
 	// Keep OG usage in the proxy only so e2e tests can detect leakage into the server bundle.
 	if (request.nextUrl.pathname === "/middleware-og") {
-		return new ImageResponse(createElement("div", { style: { fontSize: 32 } }, "Middleware OG"), {
-			width: 400,
-			height: 100,
-		});
+		return new ImageResponse(createElement("div", { style: ogImage.style }, ogImage.text), ogImage.size);
 	}
 	if (request.nextUrl.pathname === "/api/hello") {
 		return NextResponse.json({
