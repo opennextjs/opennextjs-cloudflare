@@ -1,0 +1,19 @@
+packages/cloudflare/src/cli/build/patches/ast/patch-vercel-og-library.spec.ts
+  s_5169d8ca254613::t_5d13db304e07c6 1,6,18-31,41-49,60,63,87-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c45df314afd0c514e2daff9a1df803ab77794fb9",
+  "prompts": {},
+  "sessions": {
+    "s_5169d8ca254613": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ed0c36102ffeP9QJjUU6v2fM1Z",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
