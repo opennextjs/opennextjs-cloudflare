@@ -1,0 +1,21 @@
+examples/playground16/e2e/vercel-og.cloudflare.spec.ts
+  s_5169d8ca254613::t_6bdb594555dc6a 1-38
+packages/cloudflare/src/cli/build/patches/ast/patch-vercel-og-library.spec.ts
+  s_5169d8ca254613::t_36690290046062 1,10-16,25-29,37-40,62-64,66-67,77,80,88,94-99,108-110,117-216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d3c77a0de29409608459daaaef08e3b074bf92b5",
+  "prompts": {},
+  "sessions": {
+    "s_5169d8ca254613": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ed0c36102ffeP9QJjUU6v2fM1Z",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
