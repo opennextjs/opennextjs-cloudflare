@@ -35,6 +35,7 @@ import { build, type Plugin } from "esbuild";
 import { glob } from "glob";
 
 import { normalizePath } from "../../utils/normalize-path.js";
+import { patchVercelOgLibrary } from "../patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "../patches/ast/webpack-runtime.js";
 import { patchInstrumentation } from "../patches/plugins/instrumentation.js";
 import { patchTurbopackRuntimeCode, patchTurbopackWasmChunkCode } from "../patches/plugins/turbopack.js";
@@ -152,32 +153,12 @@ export function nodeBuiltinsPlugin(): Plugin {
 }
 
 /**
- * Whether the middleware uses `@vercel/og`, from the files Next.js traced for the middleware.
- *
- * This is the same signal `patchVercelOgLibrary` uses for the server, but only the middleware
- * trace is checked: a server route using OG should not pull it into middleware that does not.
- * With Turbopack the OG entry is externalized and traced. The resulting `index.edge.js` alias
- * controls the edge import injected by the Turbopack runtime patch; it does not rewrite
- * webpack's `index.node.js` imports or prepare the library's fonts and WASM for Workers.
- *
- * Falls back to `true` (keep `@vercel/og`) when the trace is missing or unreadable.
+ * Bundles the traced Node.js middleware for Workers.
  *
  * @param options Build options.
- * @returns Whether OG is traced by the middleware, or its usage cannot be determined.
+ * @returns Resolves when the middleware handler has been written.
+ * @throws When the compiled middleware is missing or preparing or bundling it fails.
  */
-export function middlewareUsesVercelOg(options: BuildOptions): boolean {
-	try {
-		// Both `middleware.ts/js` and `proxy.ts/js` emit `middleware.js` and its `.nft.json` trace.
-		// Webpack's proxy output is renamed by Next.js; Turbopack emits this name directly.
-		const trace = JSON.parse(
-			readFileSync(path.join(options.appBuildOutputPath, ".next/server/middleware.js.nft.json"), "utf-8")
-		) as { files?: string[] };
-		return (trace.files ?? []).some((file) => file.endsWith("@vercel/og/index.node.js"));
-	} catch {
-		return true;
-	}
-}
-
 export async function bundleNodeMiddleware(options: BuildOptions): Promise<void> {
 	const { config, outputDir } = options;
 
@@ -216,7 +197,13 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 		path.join(options.appBuildOutputPath, "node_modules", "@opentelemetry", "api")
 	);
 
-	const usesOg = middlewareUsesVercelOg(options);
+	// Both `middleware.ts/js` and `proxy.ts/js` emit `middleware.js` and its `.nft.json` trace.
+	// Webpack's proxy output is renamed by Next.js; Turbopack emits this name directly.
+	// Only this trace is checked: a server route using OG should not pull it into middleware.
+	const usesOg = patchVercelOgLibrary(options, {
+		outputDir: middlewareDir,
+		traceFiles: [path.join(options.appBuildOutputPath, ".next/server/middleware.js.nft.json")],
+	});
 	// `cloudflare-templates` is only copied to the output dir by `bundleServer`, after this
 	// bundle is built, so the shim is taken from the package dist.
 	const throwShimPath = path.join(

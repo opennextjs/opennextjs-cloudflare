@@ -1,17 +1,13 @@
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import mockFs from "mock-fs";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { patchVercelOgLibrary } from "./patch-vercel-og-library.js";
 
 const nodeModulesVercelOgDir = "node_modules/.pnpm/next@14.2.11/node_modules/next/dist/compiled/@vercel/og";
-const nextServerOgNftPath = "examples/api/.next/server/app/og/route.js.nft.json";
-const openNextFunctionDir = "examples/api/.open-next/server-functions/default/examples/api";
-const openNextOgRoutePath = path.join(openNextFunctionDir, ".next/server/app/og/route.js");
-const openNextVercelOgDir = path.join(openNextFunctionDir, "node_modules/next/dist/compiled/@vercel/og");
 
 const buildOpts = {
 	appBuildOutputPath: "examples/api",
@@ -19,8 +15,20 @@ const buildOpts = {
 	outputDir: "examples/api/.open-next",
 } as BuildOptions;
 
-describe("patchVercelOgLibrary", () => {
-	beforeAll(() => {
+describe.each([
+	{ outputDir: "server-functions/default", entry: "app/og/route.js" },
+	{ outputDir: "middleware", entry: "middleware.js" },
+])("patchVercelOgLibrary ($outputDir)", ({ outputDir, entry }) => {
+	const nextServerOgNftPath = path.join(buildOpts.appBuildOutputPath, ".next/server", `${entry}.nft.json`);
+	const bundle = {
+		outputDir: path.join(buildOpts.outputDir, outputDir),
+		traceFiles: [nextServerOgNftPath],
+	};
+	const openNextFunctionDir = path.join(bundle.outputDir, "examples/api");
+	const openNextOgRoutePath = path.join(openNextFunctionDir, ".next/server", entry);
+	const openNextVercelOgDir = path.join(openNextFunctionDir, "node_modules/next/dist/compiled/@vercel/og");
+
+	beforeEach(() => {
 		mockFs();
 
 		mkdirSync(nodeModulesVercelOgDir, { recursive: true });
@@ -30,7 +38,15 @@ describe("patchVercelOgLibrary", () => {
 
 		writeFileSync(
 			nextServerOgNftPath,
-			JSON.stringify({ version: 1, files: [`../../../../../../${nodeModulesVercelOgDir}/index.node.js`] })
+			JSON.stringify({
+				version: 1,
+				files: [
+					path.relative(
+						path.dirname(nextServerOgNftPath),
+						path.join(nodeModulesVercelOgDir, "index.node.js")
+					),
+				],
+			})
 		);
 		writeFileSync(
 			path.join(nodeModulesVercelOgDir, "index.edge.js"),
@@ -41,10 +57,10 @@ describe("patchVercelOgLibrary", () => {
 		writeFileSync(path.join(openNextVercelOgDir, "noto-sans-v27-latin-regular.ttf"), "");
 	});
 
-	afterAll(() => mockFs.restore());
+	afterEach(() => mockFs.restore());
 
 	it("should patch the open-next files correctly", () => {
-		patchVercelOgLibrary(buildOpts);
+		expect(patchVercelOgLibrary(buildOpts, bundle)).toBe(true);
 
 		expect(readdirSync(openNextVercelOgDir)).toMatchInlineSnapshot(`
       [
@@ -67,5 +83,18 @@ describe("patchVercelOgLibrary", () => {
 		expect(readFileSync(openNextOgRoutePath, { encoding: "utf-8" })).toMatchInlineSnapshot(
 			`"e.exports=import("next/dist/compiled/@vercel/og/index.edge.js")"`
 		);
+	});
+
+	it("returns false when the trace does not include @vercel/og", () => {
+		writeFileSync(
+			nextServerOgNftPath,
+			JSON.stringify({ files: ["../../node_modules/next/dist/server/foo.js"] })
+		);
+		expect(patchVercelOgLibrary(buildOpts, bundle)).toBe(false);
+	});
+
+	it("keeps @vercel/og when the trace is missing", () => {
+		unlinkSync(nextServerOgNftPath);
+		expect(patchVercelOgLibrary(buildOpts, bundle)).toBe(true);
 	});
 });

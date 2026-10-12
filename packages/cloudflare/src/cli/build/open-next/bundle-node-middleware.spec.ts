@@ -1,12 +1,10 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
-import type { BuildOptions as OpenNextBuildOptions } from "@opennextjs/aws/build/helper.js";
 import { build, type BuildOptions } from "esbuild";
-import mockFs from "mock-fs";
-import { afterEach, describe, expect, test } from "vitest";
+import { describe, expect, test } from "vitest";
 
-import { middlewareUsesVercelOg, nodeBuiltinsPlugin } from "./bundle-node-middleware.js";
+import { nodeBuiltinsPlugin } from "./bundle-node-middleware.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -158,33 +156,5 @@ describe("nodeBuiltinsPlugin", () => {
 		`);
 
 		expect(uuid).toMatch(/^[0-9a-f-]{36}$/);
-	});
-});
-
-describe("middlewareUsesVercelOg", () => {
-	const options = { appBuildOutputPath: "/app" } as OpenNextBuildOptions;
-	const tracePath = "/app/.next/server/middleware.js.nft.json";
-
-	afterEach(() => {
-		mockFs.restore();
-	});
-
-	test("is true when the trace includes @vercel/og", () => {
-		mockFs({
-			[tracePath]: JSON.stringify({
-				files: ["../../node_modules/next/dist/compiled/@vercel/og/index.node.js"],
-			}),
-		});
-		expect(middlewareUsesVercelOg(options)).toBe(true);
-	});
-
-	test("is false when the trace does not include @vercel/og", () => {
-		mockFs({ [tracePath]: JSON.stringify({ files: ["../../node_modules/next/dist/server/foo.js"] }) });
-		expect(middlewareUsesVercelOg(options)).toBe(false);
-	});
-
-	test("is true when the trace is missing", () => {
-		mockFs({});
-		expect(middlewareUsesVercelOg(options)).toBe(true);
 	});
 });
