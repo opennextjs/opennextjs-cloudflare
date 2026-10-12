@@ -1,9 +1,6 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 
-/**
- * The symptoms that a stage boundary in the wrong place has on Workers. `parity.test.ts` compares
- * whole responses with Node.js; these tests name what a user sees.
- */
+/** What a user sees when a stage boundary is in the wrong place. */
 
 const RUNTIME_PREFETCH = { rsc: "1", "next-router-prefetch": "2" };
 const SEGMENT_PREFETCH = { rsc: "1", "next-router-prefetch": "1", "next-router-segment-prefetch": "/_tree" };
@@ -21,7 +18,6 @@ test.describe("Cache Components staged rendering", () => {
 	test("a runtime prefetch contains the shell and the request content", async ({ request }) => {
 		const body = await runtimePrefetch(request, "/runtime-prefetch/one", "xyz");
 
-		// `~` marks a response with content that is left to the navigation.
 		expect(body.startsWith("~")).toBe(true);
 		expect(body).toContain("Runtime shell");
 		expect(body).toContain('"Runtime session: ","xyz"');
@@ -32,7 +28,6 @@ test.describe("Cache Components staged rendering", () => {
 	test("a shell that awaits many times is not cut off", async ({ request }) => {
 		const body = await runtimePrefetch(request, "/deep-shell/one", "abc");
 
-		// The leaf is the last content of the shell.
 		expect(body).toContain("deep-leaf");
 		expect(body).toContain('"Deep session: ","abc"');
 	});

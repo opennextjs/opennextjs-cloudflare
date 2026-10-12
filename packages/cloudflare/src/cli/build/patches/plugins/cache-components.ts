@@ -1,12 +1,6 @@
 /**
- * Next.js renders a Cache Components page as a sequence of event loop tasks, one per stage, and
- * between two tasks it runs the immediates that React scheduled so each stage is flushed before the
- * next one starts. It finds the end of a task with `process.nextTick`, which workerd implements as
- * `queueMicrotask`: the stage boundary lands too early and the response loses content.
- *
- * Replace the staged runner with the workerd implementation in `templates/cache-components-scheduler.ts`.
- *
- * See https://github.com/cloudflare/workerd/issues/7687
+ * Replaces the staged runner of Next.js with the workerd implementation in
+ * `templates/cache-components-scheduler.ts`, which explains why.
  */
 import path from "node:path";
 
@@ -24,18 +18,12 @@ type CacheComponentsNextConfig = NextConfig & {
 	};
 };
 
-/**
- * Bare specifier required by the patched runner. The plugin resolves it to the copied
- * `cache-components-scheduler` template, so the generated code carries no build machine paths.
- */
+/** Resolved by the plugin to the copied template, so the generated code carries no build machine paths. */
 export const cacheComponentsSchedulerModule = "__opennext_cache_components_scheduler";
 
 /**
- * Whether the staged runner must be replaced.
- *
  * The runner ships in every Next.js bundle, so only apps that enable Cache Components get the patch
- * and its build errors. Next.js 16.2 introduced `runInSequentialTasks`; earlier versions stage their
- * renders with different functions that this patch does not cover.
+ * and its build errors. Next.js before 16.2 stages its renders with functions that are not covered.
  */
 export function needsCacheComponentsScheduler(buildOpts: BuildOptions, nextConfig: NextConfig): boolean {
 	const config: CacheComponentsNextConfig = nextConfig;
@@ -102,9 +90,6 @@ export function patchCacheComponents(
 /**
  * Replaces the body of `runInSequentialTasks` with a call to the workerd implementation.
  *
- * @param code The code of a file that calls `DANGEROUSLY_runPendingImmediatesAfterCurrentTask`.
- * @param filePath The path of the file, for the error message.
- * @returns The patched code.
  * @throws When the file does not contain exactly one runner, as the app would then render incomplete responses.
  */
 export function patchRunInSequentialTasks(code: string, filePath: string): string {

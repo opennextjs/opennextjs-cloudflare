@@ -7,8 +7,8 @@ import { Suspense } from "react";
 type PageProps = { params: Promise<{ slug: string }> };
 
 /**
- * The shell is larger than one stream chunk, so a render that stops early returns a body that is cut
- * in the middle. The request content has a random value, which Next.js rejects in a prerender.
+ * The shell is larger than one stream chunk, so a render that stops early returns a cut body. The
+ * request content has a random value, which Next.js rejects in a prerender.
  */
 export const unstable_instant = {
 	prefetch: "runtime",

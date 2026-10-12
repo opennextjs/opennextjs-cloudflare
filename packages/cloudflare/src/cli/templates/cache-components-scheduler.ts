@@ -1,16 +1,12 @@
 /**
  * Cache Components staged rendering for workerd.
  *
- * Next.js runs each render stage in its own event loop task. Between two stages it runs the
- * immediates that React scheduled, so React flushes a stage before the next one unblocks more
- * content. Next.js finds the end of a task with `process.nextTick`, which workerd implements as
- * `queueMicrotask`: the callback runs before the render has scheduled its work, and the stage
- * boundary lands too early.
+ * Next.js runs each render stage in its own task and finds the end of a task with `process.nextTick`.
+ * workerd implements `process.nextTick` as `queueMicrotask`, so the stage boundary lands before
+ * React has scheduled its work.
  *
- * Immediates run in the order in which they were scheduled, and the runtime drains the microtasks
- * between two of them. An immediate is then an exact "everything scheduled before me has run" signal.
- * A stage has settled when such an immediate runs and the request has scheduled no other immediate
- * in the meantime.
+ * Immediates run in scheduling order, with the microtasks drained between them. A stage has settled
+ * when an immediate runs and the request scheduled no other immediate in the meantime.
  *
  * See https://github.com/cloudflare/workerd/issues/7687
  */
@@ -30,11 +26,8 @@ const nativeSetImmediatePromise = setImmediatePromise;
 
 const REQUEST_CONTEXT = Symbol.for("__cloudflare-context__");
 
-/**
- * Next.js awaits the RSC payload before it stages a render, so React resumes work from promises that
- * were created outside the staged run. The request is the narrowest owner that sees all of that work
- * and still keeps one request from waiting on another.
- */
+// Scoped to the request: React resumes work from promises created before the staged run, and one
+// request must not wait on another.
 const scopes = new WeakMap<object, RequestScope>();
 const scopeOutsideRequest: RequestScope = { scheduledImmediates: 0, lastRender: Promise.resolve() };
 
@@ -52,9 +45,8 @@ function currentScope(): RequestScope {
 	return scope;
 }
 
-// Only the scheduling is counted. To count the immediates that are still pending, every way to cancel
-// one would have to be seen, and `Symbol.dispose` and the `clearImmediate` of `node:timers` do not go
-// through the global `clearImmediate`.
+// Counts scheduling, not pending immediates: `Symbol.dispose` and the `clearImmediate` of
+// `node:timers` cancel an immediate without the global `clearImmediate`.
 function countedSetImmediate(callback: (...args: unknown[]) => void, ...args: unknown[]) {
 	currentScope().scheduledImmediates++;
 	return nativeSetImmediate(callback, ...args);
@@ -69,8 +61,7 @@ const countedSetImmediatePromise = ((value, options) => {
 // defines the hook on the global function, workerd does not.
 Object.defineProperty(countedSetImmediate, promisify.custom, { value: countedSetImmediatePromise });
 
-// Next.js and React capture `setImmediate` while they load. This module loads before the server, so
-// every reference they take from the global function is counted.
+// Next.js and React capture the global `setImmediate` while they load, after this module.
 globalThis.setImmediate = countedSetImmediate as unknown as typeof setImmediate;
 
 // Next.js also keeps the original in a registry that the first copy of `fast-set-immediate` to load
@@ -145,8 +136,7 @@ export function runInSequentialTasks<T>(first: () => T, ...rest: Array<() => voi
 			});
 		};
 
-		// Next.js runs one group of stage timers at a time, so the staged renders of a request do not
-		// interleave. Renders of other requests are independent.
+		// Next.js runs one group of stage timers at a time, so the renders of a request must not interleave.
 		void previousRender.then(() => nativeSetImmediate(() => runStage(0)));
 	});
 }

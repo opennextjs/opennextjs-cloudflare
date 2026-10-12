@@ -20,10 +20,7 @@ afterAll(() => {
 	globalThis.setImmediate = nativeSetImmediate;
 });
 
-/**
- * Stands for a React render. A stage opens a gate, the component resumes `awaits` microtasks later,
- * then schedules its work, and the work schedules its flush. Both must run before the next stage.
- */
+/** Stands for a React render: each stage unblocks work that resumes `awaits` microtasks later. */
 function runGatedRender(stageCount: number, awaits: number, log: string[]) {
 	const gates = Array.from({ length: stageCount }, () => Promise.withResolvers<void>());
 
@@ -66,8 +63,7 @@ describe("runInSequentialTasks", () => {
 		expect(log).toEqual(["first", "second", "third"]);
 	});
 
-	// The regression. On workerd the flush of a stage ran after the next stage, so a runtime prefetch
-	// stopped before it collected content that was already rendered.
+	// The regression: on workerd the flush of a stage ran after the next stage.
 	it.each([0, 1, 12])(
 		"runs the work and the flush of a stage before the next stage, %i awaits in",
 		async (awaits) => {
@@ -89,8 +85,7 @@ describe("runInSequentialTasks", () => {
 		}
 	);
 
-	// Next.js awaits the RSC payload before it stages the render, so React resumes from promises that
-	// were created outside the staged run.
+	// Next.js awaits the RSC payload before it stages the render.
 	it("waits for work that resumes from a promise created before the render", async () => {
 		const log: string[] = [];
 
@@ -110,8 +105,7 @@ describe("runInSequentialTasks", () => {
 		expect(log).toEqual(["stage 0", "flush", "stage 1"]);
 	});
 
-	// Next.js reads this hook to build its `node:timers/promises` `setImmediate`. workerd does not
-	// define it on the global function.
+	// Next.js builds its `node:timers/promises` `setImmediate` from this hook.
 	it("waits for an immediate scheduled through the promise API", async () => {
 		const log: string[] = [];
 		const setImmediatePromise = (
@@ -131,8 +125,7 @@ describe("runInSequentialTasks", () => {
 		expect(log).toEqual(["flush", "stage 1"]);
 	});
 
-	// Only the first way goes through the global `clearImmediate`. A stage that waits for an immediate
-	// that was cancelled never ends, and the request cannot render again.
+	// Only the first way goes through the global `clearImmediate`.
 	it.each([
 		["the global `clearImmediate`", (immediate: NodeJS.Immediate) => clearImmediate(immediate)],
 		["`clearImmediate` from `node:timers`", (immediate: NodeJS.Immediate) => nativeClearImmediate(immediate)],
@@ -193,8 +186,7 @@ describe("runInSequentialTasks", () => {
 		}
 	});
 
-	// Next.js 16.4 installs a `setImmediate` that schedules a sentinel immediate on every call, to find
-	// when a render is idle. The stage hops must not go through it, or the sentinel never ends.
+	// Next.js 16.4 schedules a sentinel immediate on every call. The stage hops must not go through it.
 	it("settles when a `setImmediate` installed later schedules an immediate on every call", async () => {
 		const log: string[] = [];
 		let sentinel: NodeJS.Immediate | null = null;
@@ -254,7 +246,6 @@ describe("runInSequentialTasks", () => {
 		expect(log).toEqual(["first", "next render"]);
 	});
 
-	// A hung request has no error. A render that cannot settle must fail with one.
 	it("rejects when the immediates of the request never end", async () => {
 		let active = true;
 		const keepScheduling = () => {

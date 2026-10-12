@@ -6,11 +6,7 @@ type PageProps = {
 	params: Promise<{ slug: string }>;
 };
 
-/**
- * A runtime prefetch renders the cached shell and the request content in stages, then stops the
- * render. Content that React has not flushed when a stage ends is dropped, so this route shows a
- * stage boundary that lands too early.
- */
+/** A runtime prefetch drops the content that React has not flushed when a stage ends. */
 export const unstable_instant = {
 	prefetch: "runtime",
 	samples: [{ params: { slug: "sample" }, headers: [["x-session", "sample"]] }],

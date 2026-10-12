@@ -10,10 +10,7 @@ export const unstable_instant = {
 	unstable_disableBuildValidation: true,
 };
 
-/**
- * Each level awaits many times before it renders. React then schedules its work long after the
- * stage started, which is where a stage boundary that lands too early loses content.
- */
+/** Each level awaits many times, so React schedules its work long after the stage started. */
 async function Level({ depth }: { depth: number }) {
 	for (let i = 0; i < 12; i++) await Promise.resolve();
 	const label = `level ${depth}`;

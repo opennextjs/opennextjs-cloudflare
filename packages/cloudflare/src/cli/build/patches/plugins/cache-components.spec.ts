@@ -64,7 +64,6 @@ type PluginHarness = {
 	resolve: (specifier: string) => { path: string } | undefined;
 };
 
-/** Captures the esbuild callbacks that the plugin registers. */
 function setupPlugin(plugin: ReturnType<typeof patchCacheComponents>): PluginHarness {
 	const resolvers: Array<[RegExp, (args: { path: string }) => { path: string }]> = [];
 	let onEnd: PluginHarness["onEnd"] = () => {};
@@ -220,7 +219,6 @@ describe("patchCacheComponents", () => {
 		expect(() => setupPlugin(plugin).onEnd({ errors: [] })).not.toThrow();
 	});
 
-	// The generated `require` must resolve to the scheduler of the adapter, not to a missing package.
 	test("resolves the scheduler module to the copied template", () => {
 		const plugin = patchCacheComponents(
 			{ updateContent: vi.fn() } as unknown as ContentUpdater,

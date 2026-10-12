@@ -6,11 +6,9 @@ import { expect, test, type APIRequestContext } from "@playwright/test";
 import { getAppPort } from "../../../common/apps";
 
 /**
- * Compares the worker with Node.js (`next start`) serving the same build, byte for byte.
- *
- * Next.js renders a Cache Components page in stages and decides what a response contains from the
- * stage in which the content is ready. A response that differs from Node.js is then a stage boundary
- * in the wrong place: content is lost, or content that must stay dynamic is included.
+ * Compares the worker with Node.js (`next start`) serving the same build. Next.js decides what a
+ * response contains from the stage in which the content is ready, so a difference is a stage boundary
+ * in the wrong place.
  */
 
 const NODE_PORT = getAppPort("experimental", { isWorker: false });
@@ -59,12 +57,10 @@ type RequestKind = keyof typeof REQUESTS;
 
 const ALL_KINDS = Object.keys(REQUESTS) as RequestKind[];
 
-// A route with `use cache` content in its shell differs from Node.js for reasons that are not the
-// stage boundaries:
-// - Next.js cannot read the postponed state of the route on workerd, because `node:zlib` rejects
-//   the `maxOutputLength` that it uses. The document and the route prefetch are then not resumed.
-// - A navigation reads the cached content while it renders. The worker reads it from R2 and Node.js
-//   from memory, so the rows arrive in a different order.
+// A route with `use cache` content in its shell differs from Node.js for other reasons:
+// - `node:zlib` on workerd rejects the `maxOutputLength` that Next.js uses to read the postponed
+//   state, so the document and the route prefetch are not resumed.
+// - A navigation reads the cached content from R2, not from memory, so the rows arrive in another order.
 const WITH_CACHED_SHELL: RequestKind[] = ["segment prefetch", "runtime prefetch"];
 
 const ROUTES: Array<{ path: string; kinds: RequestKind[] }> = [
@@ -84,10 +80,8 @@ async function fetchFrom(request: APIRequestContext, url: string, kind: RequestK
 const tokenize = (text: string) => text.split(/([^A-Za-z0-9_-]+)/);
 
 /**
- * Describes the first difference between the worker and Node.js, if any.
- *
- * A token is ignored when two Node.js responses disagree on it. The comparison then needs no list of
- * the values that Next.js and React generate on every render.
+ * Describes the first difference between the worker and Node.js, if any. A token on which two Node.js
+ * responses disagree changes on every render and is ignored.
  */
 function describeDifference(node: Fetched, nodeAgain: Fetched, worker: Fetched): string | undefined {
 	if (worker.status !== node.status) {
