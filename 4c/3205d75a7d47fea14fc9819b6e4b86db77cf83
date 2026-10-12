@@ -1,0 +1,21 @@
+packages/cloudflare/package.json
+  s_269c057e4c2ead::t_d741253b0a36cc 57
+pnpm-lock.yaml
+  s_269c057e4c2ead::t_bcfde50a5d619b 1082-1083,3335-3337,11803,19817
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4c3205d75a7d47fea14fc9819b6e4b86db77cf83",
+  "prompts": {},
+  "sessions": {
+    "s_269c057e4c2ead": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ecfe902c7ffecUCG8Cx2cLy3eP",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
