@@ -1,14 +1,9 @@
-import { error } from "@opennextjs/aws/adapters/logger.js";
 import type { CDNPath } from "@opennextjs/aws/types/overrides.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
 import { internalPurgeCacheByTags } from "../internal.js";
 import purgeCache from "./index.js";
-
-vi.mock("@opennextjs/aws/adapters/logger.js", () => ({
-	error: vi.fn(),
-}));
 
 vi.mock("../../cloudflare-context.js", () => ({
 	getCloudflareContext: vi.fn(),
@@ -24,6 +19,7 @@ describe("purgeCache", () => {
 
 	beforeEach(() => {
 		vi.mocked(getCloudflareContext).mockReturnValue({ env } as ReturnType<typeof getCloudflareContext>);
+		vi.mocked(internalPurgeCacheByTags).mockResolvedValue("purge-success");
 	});
 
 	it("invalidates tags directly", async () => {
@@ -40,6 +36,17 @@ describe("purgeCache", () => {
 		);
 		expect(idFromName).not.toHaveBeenCalled();
 	});
+
+	it.each(["missing-credentials", "rate-limit-exceeded", "purge-failed"] as const)(
+		"rejects direct invalidation when the purge returns %s",
+		async (result) => {
+			vi.mocked(internalPurgeCacheByTags).mockResolvedValueOnce(result);
+
+			await expect(purgeCache({ type: "direct" }).invalidateTags?.(["tag-1"])).rejects.toThrow(
+				`Cloudflare cache purge failed: ${result}`
+			);
+		}
+	);
 
 	it("converts paths to tags before direct invalidation", async () => {
 		const paths: CDNPath[] = [
@@ -66,10 +73,9 @@ describe("purgeCache", () => {
 		expect(purgeCacheByTags).toHaveBeenCalledWith(["tag-1"]);
 	});
 
-	it("skips Durable Object invalidation when the binding is missing", async () => {
+	it("falls back to direct invalidation when the Durable Object binding is missing", async () => {
 		await purgeCache({ type: "durableObject" }).invalidateTags?.(["tag-1"]);
 
-		expect(error).toHaveBeenCalledWith("Purge cache: NEXT_CACHE_DO_PURGE not found. Skipping cache purge.");
-		expect(internalPurgeCacheByTags).not.toHaveBeenCalled();
+		expect(internalPurgeCacheByTags).toHaveBeenCalledWith(env, ["tag-1"]);
 	});
 });
