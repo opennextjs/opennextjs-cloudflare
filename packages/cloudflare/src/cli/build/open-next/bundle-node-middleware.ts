@@ -154,15 +154,21 @@ export function nodeBuiltinsPlugin(): Plugin {
 /**
  * Whether the middleware uses `@vercel/og`, from the files Next.js traced for the middleware.
  *
- * This is the same signal `patchVercelOgLibrary` uses for the server. With Turbopack the og entry
- * is externalized and traced. With webpack the import targets `index.node.js`, which is not
- * traced and which the `index.edge.js` alias in `bundleNodeMiddleware` does not touch, so a
- * `false` there is harmless.
+ * This is the same signal `patchVercelOgLibrary` uses for the server, but only the middleware
+ * trace is checked: a server route using OG should not pull it into middleware that does not.
+ * With Turbopack the OG entry is externalized and traced. The resulting `index.edge.js` alias
+ * controls the edge import injected by the Turbopack runtime patch; it does not rewrite
+ * webpack's `index.node.js` imports or prepare the library's fonts and WASM for Workers.
  *
  * Falls back to `true` (keep `@vercel/og`) when the trace is missing or unreadable.
+ *
+ * @param options Build options.
+ * @returns Whether OG is traced by the middleware, or its usage cannot be determined.
  */
 export function middlewareUsesVercelOg(options: BuildOptions): boolean {
 	try {
+		// Both `middleware.ts/js` and `proxy.ts/js` emit `middleware.js` and its `.nft.json` trace.
+		// Webpack's proxy output is renamed by Next.js; Turbopack emits this name directly.
 		const trace = JSON.parse(
 			readFileSync(path.join(options.appBuildOutputPath, ".next/server/middleware.js.nft.json"), "utf-8")
 		) as { files?: string[] };

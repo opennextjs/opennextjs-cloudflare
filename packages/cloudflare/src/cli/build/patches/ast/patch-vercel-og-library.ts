@@ -11,10 +11,15 @@ import { patchVercelOgFallbackFont, patchVercelOgImport } from "./vercel-og.js";
 type TraceInfo = { version: number; files: string[] };
 
 /**
- * Patches the usage of @vercel/og to be compatible with Cloudflare Workers.
+ * Patches the default server function's usage of @vercel/og for Cloudflare Workers.
+ *
+ * All server traces are scanned, including the middleware trace, but only files in
+ * `server-functions/default` are patched. The separate middleware bundle does not receive
+ * these edge-entry, font, and WASM adjustments.
  *
  * @param buildOpts Build options.
  * @returns Whether the @vercel/og library is used.
+ * @throws When a trace cannot be parsed or a required file cannot be read, copied, or patched.
  */
 export function patchVercelOgLibrary(buildOpts: BuildOptions): boolean {
 	const { appBuildOutputPath, outputDir } = buildOpts;
