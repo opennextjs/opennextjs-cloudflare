@@ -1,0 +1,21 @@
+.changeset/bump-opennextjs-aws-4-1-10.md
+  s_2a608207c90b81::t_048a518651ba67 1-7
+packages/cloudflare/package.json
+  s_2a608207c90b81::t_98686002a233c7 57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "86b65cd824b678851a76d246f1a74418e3b271c1",
+  "prompts": {},
+  "sessions": {
+    "s_2a608207c90b81": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_eca590f4bffeQrY0NEsfZEHFr6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
