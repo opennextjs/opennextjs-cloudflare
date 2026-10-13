@@ -1079,8 +1079,8 @@ importers:
         specifier: 'catalog:'
         version: 2.33.0
       '@opennextjs/aws':
-        specifier: 4.1.9
-        version: 4.1.9(next@15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@22.12.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))
+        specifier: 4.1.10
+        version: 4.1.10(next@15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@22.12.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))
       ci-info:
         specifier: ^4.2.0
         version: 4.2.0
@@ -3332,8 +3332,8 @@ packages:
   '@octokit/types@13.10.0':
     resolution: {integrity: sha512-ifLaO34EbbPj0Xgro4G5lP5asESjwHracYJvVaPIyXMuiuXLlhic3S47cBdTb+jfODkTE5YtGCLt3Ay3+J97sA==}
 
-  '@opennextjs/aws@4.1.9':
-    resolution: {integrity: sha512-FUG9mpB9lrFDgwh2zpl9nRHvQtRwYgoc3kdk1r79OgTBhROlW1J7gfchSLu93sAJlohnO6mDVaKgwLg2+AyPFw==}
+  '@opennextjs/aws@4.1.10':
+    resolution: {integrity: sha512-5/86E8ZPH/Va9KY0UPa7J245vceZvT2YH8MZzJj0poX9ELFF6h5/sqYik1MI1K16wAGbQdgiNJ332McRDwPfFA==}
     hasBin: true
     peerDependencies:
       next: '>=15.5.27 <16 || >=16.3.8'
@@ -5171,10 +5171,6 @@ packages:
   cookie@0.7.1:
     resolution: {integrity: sha512-6DnInpx7SJ2AK3+CTUE/ZM0vWTUboZCegxhC2xiIydHR9jNuTAASBrfEpHhiGOZw/nX51bHt6YQl8jsGo4y/0w==}
     engines: {node: '>= 0.6'}
-
-  cookie@1.0.2:
-    resolution: {integrity: sha512-9Kr/j4O16ISv8zBBhJoi4bXOYNTkFLOqSL3UDB0njXxCXNezjeyVrJyGOWtgfs/q2km1gwBcfH8q1yEGoMYunA==}
-    engines: {node: '>=18'}
 
   cookie@1.1.1:
     resolution: {integrity: sha512-ei8Aos7ja0weRpFzJnEA9UHJ/7XQmqglbRwnf2ATjcB9Wq874VKH9kfjjirM6UhU2/E5fFYadylyhFldcqSidQ==}
@@ -11498,7 +11494,7 @@ snapshots:
 
   '@isaacs/fs-minipass@4.0.1':
     dependencies:
-      minipass: 7.1.2
+      minipass: 7.1.3
 
   '@jridgewell/gen-mapping@0.3.5':
     dependencies:
@@ -11803,7 +11799,7 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 24.2.0
 
-  '@opennextjs/aws@4.1.9(next@15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@22.12.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))':
+  '@opennextjs/aws@4.1.10(next@15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@22.12.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))':
     dependencies:
       '@ast-grep/napi': 0.45.3
       '@aws-sdk/client-cloudfront': 3.984.0
@@ -14231,8 +14227,6 @@ snapshots:
   cookie-signature@1.2.2: {}
 
   cookie@0.7.1: {}
-
-  cookie@1.0.2: {}
 
   cookie@1.1.1: {}
 
@@ -17261,7 +17255,7 @@ snapshots:
 
   minizlib@3.0.1:
     dependencies:
-      minipass: 7.1.2
+      minipass: 7.1.3
       rimraf: 5.0.10
 
   mkdirp-classic@0.5.3: {}
@@ -19121,7 +19115,7 @@ snapshots:
     dependencies:
       '@isaacs/fs-minipass': 4.0.1
       chownr: 3.0.0
-      minipass: 7.1.2
+      minipass: 7.1.3
       minizlib: 3.0.1
       mkdirp: 3.0.1
       yallist: 5.0.0
@@ -19819,7 +19813,7 @@ snapshots:
       '@poppinss/colors': 4.1.5
       '@poppinss/dumper': 0.6.4
       '@speed-highlight/core': 1.2.7
-      cookie: 1.0.2
+      cookie: 1.1.1
       youch-core: 0.3.3
 
   zeptomatch@2.1.0:
