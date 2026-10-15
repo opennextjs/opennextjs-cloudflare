@@ -54,7 +54,7 @@
 	"dependencies": {
 		"@ast-grep/napi": "^0.45.3",
 		"@dotenvx/dotenvx": "catalog:",
-		"@opennextjs/aws": "4.1.10",
+		"@opennextjs/aws": "4.1.11",
 		"ci-info": "^4.2.0",
 		"cloudflare": "^4.4.1",
 		"comment-json": "^4.5.1",
@@ -89,7 +89,7 @@
 		"vitest": "catalog:"
 	},
 	"peerDependencies": {
-		"next": ">=15.5.27 <16 || >=16.3.8",
+		"next": ">=15.5.28 <16 || >=16.4.1",
 		"rclone.js": "^0.6.6",
 		"wrangler": "catalog:"
 	},
