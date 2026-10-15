@@ -1,6 +1,8 @@
+import { applyRule, parseCode, patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import { expect, test } from "vitest";
 
 import { computePatchDiff } from "../../utils/test-patch.js";
+import { createComposableCacheHandlersRule } from "./next-server.js";
 import { forceTrustHostHeader, getIncrementalCacheRule } from "./route-module.js";
 
 const code = `class n9 {
@@ -379,6 +381,47 @@ test("patch the createSnapshot function", () => {
 		         }
 		"
 	`);
+});
+
+test("replaces the minified composable cache body without changing its signature", async () => {
+	const routeModule = `class RouteModule{async loadCustomCacheHandlers(e,t){{let{cacheMaxMemorySize:r,cacheHandlers:n}=t;if(!n)return;if(!initializeCacheHandlers(r))return;for(let[e,r]of Object.entries(n))setCacheHandler(e,r)}}}`;
+	const rule = createComposableCacheHandlersRule("composable-cache.cjs");
+	const { edits } = applyRule(rule, parseCode(routeModule));
+	expect(edits).toHaveLength(1);
+	expect(
+		applyRule(rule, parseCode(routeModule.replace("loadCustomCacheHandlers", "loadOtherHandlers"))).edits
+	).toHaveLength(0);
+
+	const patched = patchCode(routeModule, rule);
+	expect(patched).toContain("async loadCustomCacheHandlers(e,t)");
+	expect(patched).not.toContain("cacheMaxMemorySize");
+	expect(patched).not.toContain("initializeCacheHandlers");
+	expect(patched).not.toContain("Object.entries");
+
+	const mapSymbol = Symbol.for("@next/cache-handlers-map");
+	const setSymbol = Symbol.for("@next/cache-handlers-set");
+	const handler = {};
+	try {
+		const PatchedRouteModule = new Function("require", `${patched}; return RouteModule;`)(() => ({
+			default: handler,
+		})) as new () => {
+			loadCustomCacheHandlers(request: unknown, config: unknown): Promise<void>;
+		};
+
+		expect(PatchedRouteModule.prototype.loadCustomCacheHandlers).toHaveLength(2);
+		await new PatchedRouteModule().loadCustomCacheHandlers({}, {});
+
+		expect(Reflect.get(globalThis, mapSymbol)).toEqual(
+			new Map([
+				["default", handler],
+				["remote", handler],
+			])
+		);
+		expect(Reflect.get(globalThis, setSymbol)).toEqual(new Set([handler]));
+	} finally {
+		Reflect.deleteProperty(globalThis, mapSymbol);
+		Reflect.deleteProperty(globalThis, setSymbol);
+	}
 });
 
 test("force trustHostHeader to true", () => {

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
+import { applyRule, parseCode, patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { CodePatcher } from "@opennextjs/aws/build/patch/codePatcher.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
@@ -51,6 +51,70 @@ fix: |-
   async function loadWebAssembly(chunkPath, _edgeModule, imports) {
     const mod = await loadWasmChunk(chunkPath);
     const { exports } = await WebAssembly.instantiate(mod, imports);
+    return exports;
+  }
+`;
+
+/**
+ * Replace the `compileModule` helper that Next.js 16.3 emits in the chunks.
+ *
+ * Next.js 16.3 moved the wasm loading out of `[turbopack]_runtime.js`: it is now emitted on
+ * demand in the chunks as `[turbopack-wasm]/node/loadWasm.ts`, which reads the `.wasm` file from
+ * the filesystem and compiles it with `WebAssembly.compileStreaming`. Neither is supported by
+ * workerd so the helper is rewritten to use the generated `loadWasmChunk`.
+ *
+ * The emitted code is minified, so the rule matches on the shape of the helper rather than on its
+ * name: an async function taking the chunk path as its only parameter and returning the result of
+ * `WebAssembly.compileStreaming(...)`.
+ *
+ * See https://github.com/opennextjs/opennextjs-cloudflare/issues/1342
+ */
+export const replaceCompileModuleRule = `
+rule:
+  all:
+    - pattern:
+        context: async function $NAME($PATH) { $$$BODY }
+        selector: function_declaration
+    - has:
+        field: body
+        has:
+          kind: return_statement
+          has:
+            pattern: WebAssembly.compileStreaming($$$)
+            stopBy: end
+fix: |-
+  async function $NAME($PATH) {
+    return loadWasmChunk($PATH);
+  }
+`;
+
+/**
+ * Replace the `instantiate` helper that Next.js 16.3 emits in the chunks.
+ *
+ * The counterpart of {@link replaceCompileModuleRule} for the helper instantiating the module:
+ * `WebAssembly.instantiateStreaming` is not supported by workerd either, so the chunk is loaded
+ * with the generated `loadWasmChunk` and instantiated with the synchronous `WebAssembly.instantiate`.
+ *
+ * The rule matches an async function taking the chunk path and the imports as parameters, and
+ * declaring a variable from the result of `WebAssembly.instantiateStreaming(...)`.
+ */
+export const replaceInstantiateModuleRule = `
+rule:
+  all:
+    - pattern:
+        context: async function $NAME($PATH, $IMPORTS) { $$$BODY }
+        selector: function_declaration
+    - has:
+        field: body
+        has:
+          kind: lexical_declaration
+          has:
+            pattern: WebAssembly.instantiateStreaming($$$)
+            stopBy: end
+fix: |-
+  async function $NAME($PATH, $IMPORTS) {
+    const module = await loadWasmChunk($PATH);
+    const { exports } = await WebAssembly.instantiate(module, $IMPORTS);
     return exports;
   }
 `;
@@ -253,6 +317,72 @@ function discoverExternalSubpaths(mappings: Map<string, string>, tracedFiles: st
 	return subpaths;
 }
 
+/**
+ * Inline the dynamic chunk requires of the Turbopack runtime.
+ *
+ * The runtime resolves the chunks it needs at runtime, which workerd does not support.
+ * The chunks are inlined so that they are statically bundled.
+ *
+ * @param code The code of the Turbopack runtime.
+ * @param filePath Path to the Turbopack runtime, in the OpenNext output.
+ * @param tracedFiles The files traced by Next.js, copied next to the runtime.
+ * @returns The patched code.
+ */
+export function patchTurbopackRuntimeCode({
+	code,
+	filePath,
+	tracedFiles,
+}: {
+	code: string;
+	filePath: string;
+	tracedFiles: string[];
+}): string {
+	tracedFiles = tracedFiles.map(normalizePath);
+	filePath = normalizePath(filePath);
+
+	const mappings = discoverExternalModuleMappings(filePath);
+	const externalImportRule = buildExternalImportRule(mappings, tracedFiles, code);
+	let patched = patchCode(code, externalImportRule);
+	patched = patchCode(patched, inlineChunksRule);
+	patched = patchCode(patched, replaceLoadWebAssemblyModuleRule);
+	patched = patchCode(patched, replaceLoadWebAssemblyRule);
+
+	return `${patched}
+${inlineChunksFn(tracedFiles)}\n${loadWasmChunkFn(tracedFiles)}`;
+}
+
+/**
+ * Replace the wasm helpers that Next.js 16.3 emits in the Turbopack chunks.
+ *
+ * Until Next.js 16.2 the wasm loaders lived in `[turbopack]_runtime.js` and were patched by
+ * {@link patchTurbopackRuntimeCode}. Next.js 16.3 emits them on demand in the chunks instead, so
+ * the chunks need to be patched too.
+ *
+ * @param code The code of the Turbopack chunk.
+ * @param tracedFiles The files traced by Next.js.
+ * @returns The patched code, or `code` unchanged when the chunk has no wasm helper.
+ */
+export function patchTurbopackWasmChunkCode({
+	code,
+	tracedFiles,
+}: {
+	code: string;
+	tracedFiles: string[];
+}): string {
+	const root = parseCode(code);
+	// The 2 rules can not match the same function: they differ by the arity of the helper.
+	const edits = [
+		...applyRule(replaceCompileModuleRule, root).edits,
+		...applyRule(replaceInstantiateModuleRule, root).edits,
+	];
+
+	if (edits.length === 0) {
+		return code;
+	}
+
+	return `${root.commitEdits(edits)}\n${loadWasmChunkFn(tracedFiles.map(normalizePath))}`;
+}
+
 export const patchTurbopackRuntime: CodePatcher = {
 	name: "inline-turbopack-chunks",
 	patches: [
@@ -262,20 +392,19 @@ export const patchTurbopackRuntime: CodePatcher = {
 				escape: false,
 			}),
 			contentFilter: /loadRuntimeChunkPath/,
-			patchCode: async ({ code, tracedFiles, filePath }) => {
-				tracedFiles = tracedFiles.map(normalizePath);
-				filePath = normalizePath(filePath);
-
-				const mappings = discoverExternalModuleMappings(filePath);
-				const externalImportRule = buildExternalImportRule(mappings, tracedFiles, code);
-				let patched = patchCode(code, externalImportRule);
-				patched = patchCode(patched, inlineChunksRule);
-				patched = patchCode(patched, replaceLoadWebAssemblyModuleRule);
-				patched = patchCode(patched, replaceLoadWebAssemblyRule);
-
-				return `${patched}
-${inlineChunksFn(tracedFiles)}\n${loadWasmChunkFn(tracedFiles)}`;
-			},
+			patchCode: async ({ code, tracedFiles, filePath }) =>
+				patchTurbopackRuntimeCode({ code, filePath, tracedFiles }),
+		},
+		{
+			// Next.js 16.3.0 moved the wasm loaders out of the Turbopack runtime and started
+			// emitting them on demand in the chunks that need them. Earlier versions are handled
+			// by the runtime patch above.
+			versions: ">=16.3.0",
+			pathFilter: getCrossPlatformPathRegex(String.raw`/\.next/server/chunks/.+\.js$`, {
+				escape: false,
+			}),
+			contentFilter: /WebAssembly\.(compileStreaming|instantiateStreaming)/,
+			patchCode: async ({ code, tracedFiles }) => patchTurbopackWasmChunkCode({ code, tracedFiles }),
 		},
 	],
 };

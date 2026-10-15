@@ -149,6 +149,18 @@ describe("transformPackageJson", () => {
 		expect(hasBuildCondition).toBe(false);
 	});
 
+	test("exports as a string", () => {
+		const json = {
+			name: "test",
+			exports: "./index.js",
+		};
+
+		const { transformed, hasBuildCondition } = transformPackageJson(json);
+
+		expect(transformed).toEqual(json);
+		expect(hasBuildCondition).toBe(false);
+	});
+
 	test("exports only with nested workerd condition", () => {
 		const json = {
 			name: "test",

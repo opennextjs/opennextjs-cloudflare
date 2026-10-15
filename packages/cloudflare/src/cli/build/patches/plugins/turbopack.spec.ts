@@ -4,6 +4,9 @@ import { describe, expect, test } from "vitest";
 import {
 	loadWasmChunkFn,
 	patchTurbopackRuntime,
+	patchTurbopackWasmChunkCode,
+	replaceCompileModuleRule,
+	replaceInstantiateModuleRule,
 	replaceLoadWebAssemblyModuleRule,
 	replaceLoadWebAssemblyRule,
 } from "./turbopack.js";
@@ -66,6 +69,86 @@ function loadWebAssembly(chunkPath, _edgeModule, imports) {
 			}
 			"
 		`);
+	});
+});
+
+describe("replaceCompileModuleRule", () => {
+	test("rewrites the `compileModule` helper emitted by Next 16.3", () => {
+		const code = `
+async function compileModule(chunkPath) {
+    const response = readWebAssemblyAsResponse(chunkPath);
+    return await WebAssembly.compileStreaming(response);
+}
+`;
+		expect(patchCode(code, replaceCompileModuleRule)).toMatchInlineSnapshot(`
+			"async function compileModule(chunkPath) {
+			  return loadWasmChunk(chunkPath);
+			}
+			"
+		`);
+	});
+
+	// Verbatim emission of `[turbopack-wasm]/node/loadWasm.ts` in a Next 16.3.3 chunk.
+	test("rewrites the minified `compileModule` helper", () => {
+		const code = `module.exports=[22734,(a,b,c)=>{b.exports=a.x("fs",()=>require("fs"))},88947,(a,b,c)=>{b.exports=a.x("stream",()=>require("stream"))},6876,a=>{"use strict";async function b(b){let c=function(b){let{createReadStream:c}=a.r(22734),{Readable:d}=a.r(88947),e=c(function(b){let{resolve:c}=a.r(14747);return c(a.w,b)}(b));return new Response(d.toWeb(e),{headers:{"content-type":"application/wasm"}})}(b);return await WebAssembly.compileStreaming(c)}a.s(["compileModule",0,b])},66545,function(a){a.q("server/chunks/ssr/query_compiler_bg.wasm")}];`;
+
+		const patched = patchCode(code, replaceCompileModuleRule);
+
+		expect(patched).not.toContain("WebAssembly.compileStreaming");
+		expect(patched).toContain("async function b(b) {\n  return loadWasmChunk(b);\n}");
+		// The chunk path registration is left untouched.
+		expect(patched).toContain('a.q("server/chunks/ssr/query_compiler_bg.wasm")');
+	});
+});
+
+describe("replaceInstantiateModuleRule", () => {
+	test("rewrites the `instantiate` helper emitted by Next 16.3", () => {
+		const code = `
+async function instantiate(chunkPath, imports) {
+    const response = readWebAssemblyAsResponse(chunkPath);
+    const { instance } = await WebAssembly.instantiateStreaming(response, imports);
+    return instance.exports;
+}
+`;
+		expect(patchCode(code, replaceInstantiateModuleRule)).toMatchInlineSnapshot(`
+			"async function instantiate(chunkPath, imports) {
+			  const module = await loadWasmChunk(chunkPath);
+			  const { exports } = await WebAssembly.instantiate(module, imports);
+			  return exports;
+			}
+			"
+		`);
+	});
+});
+
+describe("patchTurbopackWasmChunkCode", () => {
+	const tracedFiles = [
+		"/abs/proj/.next/server/chunks/ssr/query_compiler_bg.wasm",
+		"/abs/proj/.next/server/chunks/ssr/chunk.js",
+	];
+
+	test("appends `loadWasmChunk` when a wasm helper was rewritten", () => {
+		const code = `
+async function compileModule(chunkPath) {
+    const response = readWebAssemblyAsResponse(chunkPath);
+    return await WebAssembly.compileStreaming(response);
+}
+`;
+		const patched = patchTurbopackWasmChunkCode({ code, tracedFiles });
+
+		expect(patched).toContain("return loadWasmChunk(chunkPath);");
+		expect(patched).toContain(
+			'case "server/chunks/ssr/query_compiler_bg.wasm": return (await import("/abs/proj/.next/server/chunks/ssr/query_compiler_bg.wasm")).default;'
+		);
+	});
+
+	test("leaves the chunk untouched when no wasm helper matches", () => {
+		// `WebAssembly.compileStreaming` is only referenced behind a feature detection,
+		// as libraries shipping their own wasm loader do.
+		const code = `
+const compile = typeof WebAssembly.compileStreaming === "function" ? WebAssembly.compileStreaming : compileFallback;
+`;
+		expect(patchTurbopackWasmChunkCode({ code, tracedFiles })).toBe(code);
 	});
 });
 

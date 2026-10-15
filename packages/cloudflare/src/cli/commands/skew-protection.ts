@@ -71,6 +71,8 @@ export async function getDeploymentMapping(
 	if (!deploymentId) {
 		logger.error("Deployment ID should be set in the Next config when skew protection is enabled");
 		process.exit(1);
+		// helps TS narrow the type of deploymentId to string
+		return;
 	}
 
 	if (!envVars.CF_WORKER_NAME) {

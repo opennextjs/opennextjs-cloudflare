@@ -8,8 +8,25 @@ import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
 import { normalizePath } from "../../../utils/normalize-path.js";
 
-export function patchInstrumentation(updater: ContentUpdater, buildOpts: BuildOptions): Plugin {
-	const builtInstrumentationPath = getBuiltInstrumentationPath(buildOpts);
+/**
+ * Replaces the dynamic loading of the instrumentation hook, which workerd does not support.
+ *
+ * Next.js loads `.next/server/instrumentation.js` with a `require()` call built from a path
+ * computed at runtime. The loaders are rewritten to either statically `require()` the file that
+ * the Next.js build emitted, or to resolve to `null` when the app has no instrumentation hook.
+ *
+ * @param updater The content updater applying the patches.
+ * @param buildOpts The open-next build options.
+ * @param options.loadInstrumentation When `false`, the loaders always resolve to `null` so that the
+ * instrumentation hook is never registered by this bundle. Defaults to `true`.
+ * @returns An esbuild plugin.
+ */
+export function patchInstrumentation(
+	updater: ContentUpdater,
+	buildOpts: BuildOptions,
+	{ loadInstrumentation = true }: { loadInstrumentation?: boolean } = {}
+): Plugin {
+	const builtInstrumentationPath = loadInstrumentation ? getBuiltInstrumentationPath(buildOpts) : null;
 
 	updater.updateContent("patch-instrumentation-next15-4", [
 		{
