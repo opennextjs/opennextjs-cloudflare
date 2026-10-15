@@ -9,6 +9,7 @@ import { describe, expect, test, vi } from "vitest";
 import { computePatchDiff } from "../../utils/test-patch.js";
 import {
 	cacheComponentsSchedulerModule,
+	isCacheComponentsEnabled,
 	needsCacheComponentsScheduler,
 	patchCacheComponents,
 	patchRunInSequentialTasks,
@@ -161,14 +162,25 @@ describe("runInSequentialTasks patch", () => {
 	});
 });
 
+describe("isCacheComponentsEnabled", () => {
+	test.each([
+		["15.4", { experimental: { dynamicIO: true } }, true],
+		["15.4", { experimental: { dynamicIO: false } }, false],
+		["15.5", { experimental: { cacheComponents: true } }, true],
+		["15.5", { experimental: { cacheComponents: false } }, false],
+		["16.4", { cacheComponents: true, experimental: { cacheComponents: true } }, true],
+		["16.4", { cacheComponents: false, experimental: {} }, false],
+	] as const)("reads the Next.js %s config %j: %s", (_, nextConfig, expected) => {
+		expect(isCacheComponentsEnabled(nextConfig as NextConfig)).toBe(expected);
+	});
+});
+
 describe("patchCacheComponents", () => {
 	test.each([
 		[{ cacheComponents: true }, "16.2.0", true],
 		[{ cacheComponents: true }, "16.4.0", true],
-		[{ experimental: { cacheComponents: true } }, "16.2.0", true],
-		[{ experimental: { dynamicIO: true } }, "16.2.0", true],
 		[{ cacheComponents: true }, "16.1.6", false],
-		[{ experimental: { dynamicIO: true } }, "15.5.27", false],
+		[{ experimental: { cacheComponents: true } }, "15.5.28", false],
 		[{ experimental: { ppr: true } }, "16.4.0", false],
 		[{}, "16.4.0", false],
 	] as const)("needs the scheduler for %j on Next.js %s: %s", (nextConfig, nextVersion, expected) => {

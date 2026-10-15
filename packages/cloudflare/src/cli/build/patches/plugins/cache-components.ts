@@ -16,12 +16,20 @@ type CacheComponentsNextConfig = NextConfig & {
 
 export const cacheComponentsSchedulerModule = "__opennext_cache_components_scheduler";
 
+/**
+ * The flag is `experimental.dynamicIO` in Next.js 15.4, `experimental.cacheComponents` in 15.5 and
+ * `cacheComponents` from 16.0.
+ */
+export function isCacheComponentsEnabled(nextConfig: NextConfig): boolean {
+	const config: CacheComponentsNextConfig = nextConfig;
+	return Boolean(
+		config.cacheComponents ?? config.experimental?.cacheComponents ?? config.experimental?.dynamicIO
+	);
+}
+
 /** Next.js before 16.2 stages its renders with functions that are not covered. */
 export function needsCacheComponentsScheduler(buildOpts: BuildOptions, nextConfig: NextConfig): boolean {
-	const config: CacheComponentsNextConfig = nextConfig;
-	const enabled =
-		config.cacheComponents ?? config.experimental?.cacheComponents ?? config.experimental?.dynamicIO;
-	return Boolean(enabled) && !compareSemver(buildOpts.nextVersion, "<", "16.2.0");
+	return isCacheComponentsEnabled(nextConfig) && !compareSemver(buildOpts.nextVersion, "<", "16.2.0");
 }
 
 const runnerContentFilter = /DANGEROUSLY_runPendingImmediatesAfterCurrentTask/;

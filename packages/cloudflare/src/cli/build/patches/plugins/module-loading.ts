@@ -7,8 +7,10 @@
  */
 import { applyRule, parseCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { CodePatcher } from "@opennextjs/aws/build/patch/codePatcher.js";
-import logger from "@opennextjs/aws/logger.js";
+import type { NextConfig } from "@opennextjs/aws/types/next-types.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
+
+import { isCacheComponentsEnabled } from "./cache-components.js";
 
 export const moduleLoadingSignalRule = `
 rule:
@@ -32,31 +34,34 @@ fix: |-
   }
 `;
 
-export function patchModuleLoadingSignalCode(code: string, filePath: string): string {
-	const root = parseCode(code);
-	const { edits } = applyRule(moduleLoadingSignalRule, root);
+export function patchModuleLoadingSignal(nextConfig: NextConfig): CodePatcher {
+	const cacheComponents = isCacheComponentsEnabled(nextConfig);
 
-	if (edits.length === 0) {
-		logger.warn(
-			`The module loading signal of Next.js was not scoped to the request in ${filePath}. With Cache Components, requests that overlap can hang on Workers. Please report this to @opennextjs/cloudflare with your Next.js version.`
-		);
-		return code;
-	}
-
-	return root.commitEdits(edits);
+	return {
+		name: "patch-module-loading-signal",
+		patches: [
+			{
+				versions: ">=15.4.0",
+				pathFilter: getCrossPlatformPathRegex(
+					String.raw`/server/app-render/module-loading/track-module-loading\.instance\.js$`,
+					{ escape: false }
+				),
+				contentFilter: /getModuleLoadingSignal/,
+				patchCode: async ({ code, filePath, buildOptions }) => {
+					const root = parseCode(code);
+					const { edits } = applyRule(moduleLoadingSignalRule, root);
+					if (edits.length !== 1) {
+						// Next.js tracks module loading only with Cache Components, so a miss is harmless without it.
+						if (!cacheComponents) {
+							return code;
+						}
+						throw new Error(
+							`Expected one \`getModuleLoadingSignal\` in ${filePath} of Next.js ${buildOptions.nextVersion} but found ${edits.length}. With Cache Components, requests that overlap would hang on Workers. Please report this to @opennextjs/cloudflare.`
+						);
+					}
+					return root.commitEdits(edits);
+				},
+			},
+		],
+	};
 }
-
-export const patchModuleLoadingSignal: CodePatcher = {
-	name: "patch-module-loading-signal",
-	patches: [
-		{
-			versions: ">=15.4.0",
-			pathFilter: getCrossPlatformPathRegex(
-				String.raw`/server/app-render/module-loading/track-module-loading\.instance\.js$`,
-				{ escape: false }
-			),
-			contentFilter: /getModuleLoadingSignal/,
-			patchCode: async ({ code, filePath }) => patchModuleLoadingSignalCode(code, filePath),
-		},
-	],
-};
