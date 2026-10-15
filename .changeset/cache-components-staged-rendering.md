@@ -14,4 +14,4 @@ With `cacheComponents: true` on Next.js 16.2 and later, a response could lose co
 
 Next.js finds the end of each render stage with `process.nextTick`, which runs earlier on workerd than on Node.js. The adapter now replaces the staged runner of Next.js with an implementation for workerd. The fix also applies to apps with a Node.js middleware (`proxy.ts`).
 
-If a later Next.js version changes the runner, the build fails with `Cache Components is enabled but runInSequentialTasks was not found`. The app would otherwise render incomplete responses.
+If a later Next.js version changes the runner, the build fails with ``Cache Components is enabled but `runInSequentialTasks` was not found in Next.js``. The app would otherwise render incomplete responses.

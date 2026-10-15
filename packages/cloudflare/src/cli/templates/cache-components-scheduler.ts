@@ -69,8 +69,6 @@ if (nextOriginals) {
 	nextOriginals.setImmediate = countedSetImmediate;
 }
 
-const MAX_TASKS_PER_STAGE = 1000;
-
 /** Drop-in for `runInSequentialTasks` from Next.js: each callback runs in its own settled task. */
 export function runInSequentialTasks<T>(first: () => T, ...rest: Array<() => void>): Promise<T> {
 	const scope = currentScope();
@@ -87,19 +85,13 @@ export function runInSequentialTasks<T>(first: () => T, ...rest: Array<() => voi
 			reject(error);
 		};
 
-		const afterImmediates = (next: () => void, tasks = 0) => {
+		const afterImmediates = (next: () => void) => {
 			const scheduled = scope.scheduledImmediates;
 			nativeSetImmediate(() => {
 				if (scope.scheduledImmediates === scheduled) {
 					next();
-				} else if (tasks < MAX_TASKS_PER_STAGE) {
-					afterImmediates(next, tasks + 1);
 				} else {
-					fail(
-						new Error(
-							`Cache Components render did not settle: the request still schedules immediates after ${MAX_TASKS_PER_STAGE} tasks.`
-						)
-					);
+					afterImmediates(next);
 				}
 			});
 		};

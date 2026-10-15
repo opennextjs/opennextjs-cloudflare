@@ -238,23 +238,34 @@ describe("runInSequentialTasks", () => {
 		expect(log).toEqual(["first", "next render"]);
 	});
 
-	it("rejects when the immediates of the request never end", async () => {
-		let active = true;
-		const keepScheduling = () => {
-			if (active) setImmediate(keepScheduling);
-		};
+	it("rejects with the error of the promise that the first stage returned when a later stage rejects it", async () => {
+		const render = Promise.withResolvers<string>();
 
-		try {
-			await expect(
-				inRequest(() =>
-					runInSequentialTasks(
-						() => keepScheduling(),
-						() => {}
-					)
+		await expect(
+			inRequest(() =>
+				runInSequentialTasks(
+					() => render.promise,
+					() => render.reject(new Error("render aborted"))
 				)
-			).rejects.toThrow(/did not settle: the request still schedules immediates after 1000 tasks/);
-		} finally {
-			active = false;
-		}
+			)
+		).rejects.toThrow("render aborted");
+	});
+
+	it("runs the next stage after a stage that yields to the immediates 3000 times", async () => {
+		const log: string[] = [];
+
+		await inRequest(() =>
+			runInSequentialTasks(
+				() => {
+					void (async () => {
+						for (let i = 0; i < 3000; i++) await new Promise((resolve) => setImmediate(resolve));
+						log.push("yielded 3000 times");
+					})();
+				},
+				() => log.push("stage 1")
+			)
+		);
+
+		expect(log).toEqual(["yielded 3000 times", "stage 1"]);
 	});
 });
