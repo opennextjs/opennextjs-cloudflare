@@ -1,6 +1,4 @@
 /**
- * Cache Components staged rendering for workerd.
- *
  * Next.js runs each render stage in its own task and finds the end of a task with `process.nextTick`.
  * workerd implements `process.nextTick` as `queueMicrotask`, so the stage boundary lands before
  * React has scheduled its work.
@@ -14,7 +12,6 @@
 import { setImmediate as setImmediatePromise } from "node:timers/promises";
 import { promisify } from "node:util";
 
-/** How many immediates a request has scheduled, and the end of its last staged render. */
 type RequestScope = { scheduledImmediates: number; lastRender: Promise<void> };
 
 type PromisifiedSetImmediate = typeof setImmediatePromise;
@@ -61,7 +58,6 @@ const countedSetImmediatePromise = ((value, options) => {
 // defines the hook on the global function, workerd does not.
 Object.defineProperty(countedSetImmediate, promisify.custom, { value: countedSetImmediatePromise });
 
-// Next.js and React capture the global `setImmediate` while they load, after this module.
 globalThis.setImmediate = countedSetImmediate as unknown as typeof setImmediate;
 
 // Next.js also keeps the original in a registry that the first copy of `fast-set-immediate` to load
@@ -73,7 +69,6 @@ if (nextOriginals) {
 	nextOriginals.setImmediate = countedSetImmediate;
 }
 
-/** A render whose immediates reschedule themselves forever must fail, not hang the request. */
 const MAX_TASKS_PER_STAGE = 1000;
 
 /** Drop-in for `runInSequentialTasks` from Next.js: each callback runs in its own settled task. */
@@ -92,9 +87,7 @@ export function runInSequentialTasks<T>(first: () => T, ...rest: Array<() => voi
 			reject(error);
 		};
 
-		/** Calls `next` in the first task before which the request scheduled no new immediate. */
 		const afterImmediates = (next: () => void, tasks = 0) => {
-			// Read before the hop is queued: the hop runs after every immediate counted up to here.
 			const scheduled = scope.scheduledImmediates;
 			nativeSetImmediate(() => {
 				if (scope.scheduledImmediates === scheduled) {

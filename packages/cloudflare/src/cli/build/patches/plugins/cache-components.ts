@@ -1,7 +1,3 @@
-/**
- * Replaces the staged runner of Next.js with the workerd implementation in
- * `templates/cache-components-scheduler.ts`, which explains why.
- */
 import path from "node:path";
 
 import { type BuildOptions, compareSemver } from "@opennextjs/aws/build/helper.js";
@@ -18,22 +14,16 @@ type CacheComponentsNextConfig = NextConfig & {
 	};
 };
 
-/** Resolved by the plugin to the copied template, so the generated code carries no build machine paths. */
 export const cacheComponentsSchedulerModule = "__opennext_cache_components_scheduler";
 
-/**
- * The runner ships in every Next.js bundle, so only apps that enable Cache Components get the patch
- * and its build errors. Next.js before 16.2 stages its renders with functions that are not covered.
- */
+/** Next.js before 16.2 stages its renders with functions that are not covered. */
 export function needsCacheComponentsScheduler(buildOpts: BuildOptions, nextConfig: NextConfig): boolean {
 	const config: CacheComponentsNextConfig = nextConfig;
-	// The flag moved from `experimental.dynamicIO` to `experimental.cacheComponents` to a top level option.
 	const enabled =
 		config.cacheComponents ?? config.experimental?.cacheComponents ?? config.experimental?.dynamicIO;
 	return Boolean(enabled) && !compareSemver(buildOpts.nextVersion, "<", "16.2.0");
 }
 
-// The runner is the only caller of this function, so its name identifies the files to patch.
 const runnerContentFilter = /DANGEROUSLY_runPendingImmediatesAfterCurrentTask/;
 
 /**
@@ -54,7 +44,6 @@ export function patchCacheComponents(
 		return { name: "patch-cache-components", setup() {} };
 	}
 
-	// `ContentUpdater` skips a callback whose filters match no file, which would ship the original runner.
 	let patchedFiles = 0;
 
 	updater.updateContent("cache-components-scheduler", [
@@ -76,7 +65,6 @@ export function patchCacheComponents(
 			}));
 
 			build.onEnd((result) => {
-				// Another plugin already failed the build, so do not bury its error under ours.
 				if (result.errors.length === 0 && patchedFiles === 0) {
 					throw new Error(
 						`Cache Components is enabled but \`runInSequentialTasks\` was not found in Next.js ${buildOpts.nextVersion}. The app would render incomplete responses on Workers. Please report this to @opennextjs/cloudflare.`
@@ -87,11 +75,6 @@ export function patchCacheComponents(
 	};
 }
 
-/**
- * Replaces the body of `runInSequentialTasks` with a call to the workerd implementation.
- *
- * @throws When the file does not contain exactly one runner, as the app would then render incomplete responses.
- */
 export function patchRunInSequentialTasks(code: string, filePath: string): string {
 	const root = parseCode(code);
 	const { edits } = applyRule(runInSequentialTasksRule, root);
@@ -106,9 +89,8 @@ export function patchRunInSequentialTasks(code: string, filePath: string): strin
 }
 
 /**
- * Matches the innermost function declaration that calls both immediate helpers. The minifier renames
- * the function and inlines its timer group, but both callees are properties of an external module and
- * keep their names.
+ * The minifier renames the function and inlines its timer group, but both callees are properties of
+ * an external module and keep their names.
  */
 export const runInSequentialTasksRule = `
 rule:

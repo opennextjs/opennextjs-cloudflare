@@ -1,11 +1,8 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 
-/** What a user sees when a stage boundary is in the wrong place. */
-
 const RUNTIME_PREFETCH = { rsc: "1", "next-router-prefetch": "2" };
 const SEGMENT_PREFETCH = { rsc: "1", "next-router-prefetch": "1", "next-router-segment-prefetch": "/_tree" };
 
-/** A runtime prefetch that leaves content to the navigation starts with `~`. */
 async function runtimePrefetch(request: APIRequestContext, path: string, session: string) {
 	const response = await request.get(path, { headers: { ...RUNTIME_PREFETCH, "x-session": session } });
 
@@ -18,10 +15,10 @@ test.describe("Cache Components staged rendering", () => {
 	test("a runtime prefetch contains the shell and the request content", async ({ request }) => {
 		const body = await runtimePrefetch(request, "/runtime-prefetch/one", "xyz");
 
+		// A runtime prefetch that leaves content to the navigation starts with `~`.
 		expect(body.startsWith("~")).toBe(true);
 		expect(body).toContain("Runtime shell");
 		expect(body).toContain('"Runtime session: ","xyz"');
-		// Uncached I/O is left to the navigation.
 		expect(body).not.toContain("Runtime dynamic");
 	});
 

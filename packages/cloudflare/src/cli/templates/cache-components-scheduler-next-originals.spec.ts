@@ -10,14 +10,11 @@ afterAll(() => {
 	globalThis.setImmediate = nativeSetImmediate;
 });
 
-// The Node.js middleware bundle loads before the server and its copy of `fast-set-immediate` records
-// the native function. The server then sends every immediate to that record, not to the global function.
 it("counts the immediates when Next.js recorded the native `setImmediate` before the scheduler loaded", async () => {
 	globals[NEXT_ORIGINALS] = { setImmediate: nativeSetImmediate };
 
 	const { runInSequentialTasks } = await import("./cache-components-scheduler.js");
 
-	// Stands for the server copy, which loads after the scheduler.
 	const original = globals[NEXT_ORIGINALS].setImmediate;
 	globalThis.setImmediate = ((callback: () => void) => original(callback)) as typeof setImmediate;
 

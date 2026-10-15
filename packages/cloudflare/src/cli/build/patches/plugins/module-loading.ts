@@ -36,8 +36,6 @@ export function patchModuleLoadingSignalCode(code: string, filePath: string): st
 	const root = parseCode(code);
 	const { edits } = applyRule(moduleLoadingSignalRule, root);
 
-	// Next.js uses the signal only with Cache Components. This patcher cannot see the Next.js config,
-	// so a throw would also fail the build of apps that do not need the patch.
 	if (edits.length === 0) {
 		logger.warn(
 			`The module loading signal of Next.js was not scoped to the request in ${filePath}. With Cache Components, requests that overlap can hang on Workers. Please report this to @opennextjs/cloudflare with your Next.js version.`

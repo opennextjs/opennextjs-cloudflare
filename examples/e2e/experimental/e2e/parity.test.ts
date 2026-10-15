@@ -5,12 +5,6 @@ import { expect, test, type APIRequestContext } from "@playwright/test";
 
 import { getAppPort } from "../../../common/apps";
 
-/**
- * Compares the worker with Node.js (`next start`) serving the same build. Next.js decides what a
- * response contains from the stage in which the content is ready, so a difference is a stage boundary
- * in the wrong place.
- */
-
 const NODE_PORT = getAppPort("experimental", { isWorker: false });
 const NODE_URL = `http://localhost:${NODE_PORT}`;
 
@@ -19,7 +13,6 @@ test.describe.configure({ mode: "default" });
 
 let nodeServer: ChildProcess;
 
-// The Playwright web server builds the app, so `next start` can only run after it.
 test.beforeAll(async () => {
 	nodeServer = spawn(
 		process.execPath,
@@ -37,7 +30,6 @@ test.beforeAll(async () => {
 			{ timeout: 60_000 }
 		)
 		.toBe(true);
-	// The port answers but the server exited: another process owns the port, maybe with another build.
 	expect(nodeServer.exitCode).toBeNull();
 });
 
@@ -57,10 +49,9 @@ type RequestKind = keyof typeof REQUESTS;
 
 const ALL_KINDS = Object.keys(REQUESTS) as RequestKind[];
 
-// A route with `use cache` content in its shell differs from Node.js for other reasons:
-// - `node:zlib` on workerd rejects the `maxOutputLength` that Next.js uses to read the postponed
-//   state, so the document and the route prefetch are not resumed.
-// - A navigation reads the cached content from R2, not from memory, so the rows arrive in another order.
+// A route with `use cache` content in its shell differs from Node.js because `node:zlib` on workerd
+// rejects the `maxOutputLength` that Next.js uses to read the postponed state, so the document and the
+// route prefetch are not resumed.
 const WITH_CACHED_SHELL: RequestKind[] = ["segment prefetch", "runtime prefetch"];
 
 const ROUTES: Array<{ path: string; kinds: RequestKind[] }> = [
@@ -79,10 +70,6 @@ async function fetchFrom(request: APIRequestContext, url: string, kind: RequestK
 
 const tokenize = (text: string) => text.split(/([^A-Za-z0-9_-]+)/);
 
-/**
- * Describes the first difference between the worker and Node.js, if any. A token on which two Node.js
- * responses disagree changes on every render and is ignored.
- */
 function describeDifference(node: Fetched, nodeAgain: Fetched, worker: Fetched): string | undefined {
 	if (worker.status !== node.status) {
 		return `status ${worker.status} instead of ${node.status}`;
@@ -109,7 +96,6 @@ test.describe("Cache Components responses match Node.js", () => {
 	for (const { path, kinds } of ROUTES) {
 		for (const kind of kinds) {
 			test(`${kind} of ${path}`, async ({ request, baseURL }) => {
-				// Both servers fill their caches on the first request.
 				await Promise.all([
 					fetchFrom(request, NODE_URL + path, kind),
 					fetchFrom(request, baseURL + path, kind),

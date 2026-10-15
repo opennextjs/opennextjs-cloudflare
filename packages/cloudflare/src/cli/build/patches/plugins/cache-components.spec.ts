@@ -16,7 +16,6 @@ import {
 	runnerFileFilter,
 } from "./cache-components.js";
 
-// `next/dist/server/app-render/app-render-render-utils.js` from Next.js 16.3, without the comments.
 const runner = `function noop() {}
 function runInSequentialTasks(first, ...rest) {
     return new Promise((resolve, reject)=>{
@@ -45,7 +44,6 @@ function runInSequentialTasks(first, ...rest) {
     });
 }`;
 
-// Next.js 16.1 staged its renders with two functions that have another signature.
 const next161Runners = `function scheduleInSequentialTasks(render, followup) {
     (0, _fastsetimmediateexternal.DANGEROUSLY_runPendingImmediatesAfterCurrentTask)();
     (0, _fastsetimmediateexternal.expectNoPendingImmediates)();
@@ -122,7 +120,6 @@ describe("runInSequentialTasks patch", () => {
 			`);
 	});
 
-	// The minifier renames the runner and inlines its timer group.
 	test.each(["next-16.2.12-app-page-turbo.runtime.prod.txt", "next-16.4.0-app-page.runtime.prod.txt"])(
 		"replaces the minified runner of %s",
 		(fixture) => {
@@ -137,7 +134,6 @@ describe("runInSequentialTasks patch", () => {
 		}
 	);
 
-	// The original runner would stay in the bundle, and the app would render incomplete responses.
 	test.each([
 		["no runner", "function other() { return 1; }", /found 0/],
 		["the runners of Next.js 16.1", next161Runners, /found 2/],
@@ -158,7 +154,6 @@ describe("runInSequentialTasks patch", () => {
 		expect(runnerFileFilter.test(filePath)).toBe(true);
 	});
 
-	// This module defines the functions that the runner calls, so it passes the content filter.
 	test("does not target the module that defines the immediate helpers", () => {
 		expect(
 			runnerFileFilter.test("/next/dist/server/node-environment-extensions/fast-set-immediate.external.js")
@@ -172,7 +167,6 @@ describe("patchCacheComponents", () => {
 		[{ cacheComponents: true }, "16.4.0", true],
 		[{ experimental: { cacheComponents: true } }, "16.2.0", true],
 		[{ experimental: { dynamicIO: true } }, "16.2.0", true],
-		// Next.js 16.1 has no `runInSequentialTasks`.
 		[{ cacheComponents: true }, "16.1.6", false],
 		[{ experimental: { dynamicIO: true } }, "15.5.27", false],
 		[{ experimental: { ppr: true } }, "16.4.0", false],
@@ -181,8 +175,6 @@ describe("patchCacheComponents", () => {
 		expect(needsCacheComponentsScheduler(buildOptsFor(nextVersion), nextConfig as NextConfig)).toBe(expected);
 	});
 
-	// The runner ships in every Next.js bundle. An app without Cache Components must not get a build
-	// error when Next.js changes it.
 	test("registers nothing when the app does not use Cache Components", () => {
 		const updater = { updateContent: vi.fn() } as unknown as ContentUpdater;
 		const plugin = patchCacheComponents(updater, buildOptsFor("16.4.0"), {} as NextConfig);
@@ -199,7 +191,6 @@ describe("patchCacheComponents", () => {
 		const { onEnd } = setupPlugin(plugin);
 
 		expect(() => onEnd({ errors: [] })).toThrow(/`runInSequentialTasks` was not found in Next.js 16.4.0/);
-		// A build that already failed keeps its own error.
 		expect(() => onEnd({ errors: [{ text: "something else broke" }] })).not.toThrow();
 	});
 

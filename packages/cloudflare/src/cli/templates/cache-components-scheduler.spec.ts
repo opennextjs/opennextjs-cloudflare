@@ -6,7 +6,6 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { runInSequentialTasks } from "./cache-components-scheduler.js";
 
-/** Mirrors `init.ts`: the request context is an ALS store that a global symbol exposes. */
 const requestContextStorage = new AsyncLocalStorage<object>();
 Object.defineProperty(globalThis, Symbol.for("__cloudflare-context__"), {
 	get: () => requestContextStorage.getStore(),
@@ -14,13 +13,11 @@ Object.defineProperty(globalThis, Symbol.for("__cloudflare-context__"), {
 });
 const inRequest = <T>(run: () => T): T => requestContextStorage.run({}, run);
 
-// The scheduler replaced the global function when it was imported.
 const countedSetImmediate = globalThis.setImmediate;
 afterAll(() => {
 	globalThis.setImmediate = nativeSetImmediate;
 });
 
-/** Stands for a React render: each stage unblocks work that resumes `awaits` microtasks later. */
 function runGatedRender(stageCount: number, awaits: number, log: string[]) {
 	const gates = Array.from({ length: stageCount }, () => Promise.withResolvers<void>());
 
@@ -63,7 +60,6 @@ describe("runInSequentialTasks", () => {
 		expect(log).toEqual(["first", "second", "third"]);
 	});
 
-	// The regression: on workerd the flush of a stage ran after the next stage.
 	it.each([0, 1, 12])(
 		"runs the work and the flush of a stage before the next stage, %i awaits in",
 		async (awaits) => {
@@ -105,7 +101,6 @@ describe("runInSequentialTasks", () => {
 		expect(log).toEqual(["stage 0", "flush", "stage 1"]);
 	});
 
-	// Next.js builds its `node:timers/promises` `setImmediate` from this hook.
 	it("waits for an immediate scheduled through the promise API", async () => {
 		const log: string[] = [];
 		const setImmediatePromise = (
@@ -115,7 +110,6 @@ describe("runInSequentialTasks", () => {
 		await inRequest(() =>
 			runInSequentialTasks(
 				() => {
-					// React schedules its work from a microtask, after the stage returns.
 					void Promise.resolve().then(() => setImmediatePromise("flush").then((value) => log.push(value)));
 				},
 				() => log.push("stage 1")
@@ -125,7 +119,6 @@ describe("runInSequentialTasks", () => {
 		expect(log).toEqual(["flush", "stage 1"]);
 	});
 
-	// Only the first way goes through the global `clearImmediate`.
 	it.each([
 		["the global `clearImmediate`", (immediate: NodeJS.Immediate) => clearImmediate(immediate)],
 		["`clearImmediate` from `node:timers`", (immediate: NodeJS.Immediate) => nativeClearImmediate(immediate)],
@@ -186,7 +179,6 @@ describe("runInSequentialTasks", () => {
 		}
 	});
 
-	// Next.js 16.4 schedules a sentinel immediate on every call. The stage hops must not go through it.
 	it("settles when a `setImmediate` installed later schedules an immediate on every call", async () => {
 		const log: string[] = [];
 		let sentinel: NodeJS.Immediate | null = null;

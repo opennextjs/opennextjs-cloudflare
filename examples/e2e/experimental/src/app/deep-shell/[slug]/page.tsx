@@ -10,7 +10,6 @@ export const unstable_instant = {
 	unstable_disableBuildValidation: true,
 };
 
-/** Each level awaits many times, so React schedules its work long after the stage started. */
 async function Level({ depth }: { depth: number }) {
 	for (let i = 0; i < 12; i++) await Promise.resolve();
 	const label = `level ${depth}`;
@@ -27,14 +26,12 @@ async function Level({ depth }: { depth: number }) {
 async function DeepSession() {
 	for (let i = 0; i < 8; i++) await Promise.resolve();
 	const requestHeaders = await headers();
-	// The promise API of `setImmediate` must stay inside the stage, as the callback API does.
 	await setImmediate();
 	for (let i = 0; i < 8; i++) await Promise.resolve();
 
 	return <p data-testid="deep-session">Deep session: {requestHeaders.get("x-session") ?? "none"}</p>;
 }
 
-/** Stands for uncached I/O: a runtime prefetch must not contain it. */
 async function DeepDynamic({ params }: PageProps) {
 	const [{ slug }] = await Promise.all([params, headers()]);
 	await setTimeout(200);

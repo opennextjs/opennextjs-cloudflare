@@ -40,7 +40,6 @@ test("scope the module-loading signal to the OpenNext request", () => {
 	`);
 });
 
-// Next.js 16.4 passes `null` to the constructor.
 test("scope the module-loading signal of Next.js 16.4.1", () => {
 	const code = readFileSync(
 		new URL("./fixtures/module-loading/next-16.4.1-track-module-loading.instance.txt", import.meta.url),

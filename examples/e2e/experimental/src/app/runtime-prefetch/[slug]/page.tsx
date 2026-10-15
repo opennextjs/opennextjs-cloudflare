@@ -6,11 +6,9 @@ type PageProps = {
 	params: Promise<{ slug: string }>;
 };
 
-/** A runtime prefetch drops the content that React has not flushed when a stage ends. */
 export const unstable_instant = {
 	prefetch: "runtime",
 	samples: [{ params: { slug: "sample" }, headers: [["x-session", "sample"]] }],
-	// Build time validation renders the page in a worker, which is not what this fixture exercises.
 	unstable_disableBuildValidation: true,
 };
 
@@ -31,7 +29,6 @@ async function RuntimeSession() {
 	return <p data-testid="runtime-session">Runtime session: {requestHeaders.get("x-session") ?? "none"}</p>;
 }
 
-/** Stands for uncached I/O: a runtime prefetch must not contain it. */
 async function RuntimeDynamic({ params }: PageProps) {
 	const [{ slug }] = await Promise.all([params, headers()]);
 	await setTimeout(200);
