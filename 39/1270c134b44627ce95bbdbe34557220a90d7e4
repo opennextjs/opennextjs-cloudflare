@@ -1,0 +1,19 @@
+packages/cloudflare/src/cli/build/bundle-server.ts
+  s_8a7e70f21ece18::t_d2dba28ba4a839 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "391270c134b44627ce95bbdbe34557220a90d7e4",
+  "prompts": {},
+  "sessions": {
+    "s_8a7e70f21ece18": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ec1de8236ffeJdta6kw0jvFxSf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
