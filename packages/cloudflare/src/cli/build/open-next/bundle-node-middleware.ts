@@ -21,6 +21,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { builtinModules, isBuiltin } from "node:module";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { type BuildOptions, getBundlerRuntime, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import logger from "@opennextjs/aws/logger.js";
@@ -34,6 +35,7 @@ import { build, type Plugin } from "esbuild";
 import { glob } from "glob";
 
 import { normalizePath } from "../../utils/normalize-path.js";
+import { patchVercelOgLibrary } from "../patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "../patches/ast/webpack-runtime.js";
 import { patchInstrumentation } from "../patches/plugins/instrumentation.js";
 import { patchTurbopackRuntimeCode, patchTurbopackWasmChunkCode } from "../patches/plugins/turbopack.js";
@@ -150,6 +152,13 @@ export function nodeBuiltinsPlugin(): Plugin {
 	};
 }
 
+/**
+ * Bundles the traced Node.js middleware for Workers.
+ *
+ * @param options Build options.
+ * @returns Resolves when the middleware handler has been written.
+ * @throws When the compiled middleware is missing or preparing or bundling it fails.
+ */
 export async function bundleNodeMiddleware(options: BuildOptions): Promise<void> {
 	const { config, outputDir } = options;
 
@@ -188,6 +197,20 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 		path.join(options.appBuildOutputPath, "node_modules", "@opentelemetry", "api")
 	);
 
+	// Both `middleware.ts/js` and `proxy.ts/js` emit `middleware.js` and its `.nft.json` trace.
+	// Webpack's proxy output is renamed by Next.js; Turbopack emits this name directly.
+	// Only this trace is checked: a server route using OG should not pull it into middleware.
+	const usesOg = patchVercelOgLibrary(options, {
+		outputDir: middlewareDir,
+		traceFiles: [path.join(options.appBuildOutputPath, ".next/server/middleware.js.nft.json")],
+	});
+	// `cloudflare-templates` is only copied to the output dir by `bundleServer`, after this
+	// bundle is built, so the shim is taken from the package dist.
+	const throwShimPath = path.join(
+		path.dirname(fileURLToPath(import.meta.url)),
+		"../../templates/shims/throw.js"
+	);
+
 	const updater = new ContentUpdater(options);
 
 	await build({
@@ -216,6 +239,11 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 		alias: {
 			// See `hasOpentelemetry` above.
 			...(hasOpentelemetry ? {} : { "@opentelemetry/api": "next/dist/compiled/@opentelemetry/api" }),
+			// When @vercel/og is not used, alias the edge entry to a throwing shim so the
+			// `import("next/dist/compiled/@vercel/og/index.edge.js")` that the Turbopack runtime
+			// patch emits does not drag the library (~800 KiB) and its `resvg.wasm` into the bundle.
+			// Same as the server bundle, see `bundle-server.ts`.
+			...(usesOg ? {} : { "next/dist/compiled/@vercel/og/index.edge.js": throwShimPath }),
 		},
 		plugins: [
 			openNextResolvePlugin({

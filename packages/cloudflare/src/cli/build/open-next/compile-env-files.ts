@@ -11,10 +11,8 @@ import { extractProjectEnvVars } from "../../utils/extract-project-env-vars.js";
 export function compileEnvFiles(buildOpts: BuildOptions) {
 	const envDir = path.join(buildOpts.outputDir, "cloudflare");
 	fs.mkdirSync(envDir, { recursive: true });
-	["production", "development", "test"].forEach((mode) =>
-		fs.appendFileSync(
-			path.join(envDir, `next-env.mjs`),
-			`export const ${mode} = ${JSON.stringify(extractProjectEnvVars(mode, buildOpts))};\n`
-		)
-	);
+	const content = ["production", "development", "test"]
+		.map((mode) => `export const ${mode} = ${JSON.stringify(extractProjectEnvVars(mode, buildOpts))};\n`)
+		.join("");
+	fs.writeFileSync(path.join(envDir, `next-env.mjs`), content);
 }

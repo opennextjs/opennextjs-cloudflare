@@ -26,54 +26,75 @@ test.describe("Composable Cache", () => {
 		expect(fullyCachedText).toEqual(initialFullyCachedText);
 	});
 
-	test("revalidateTag should work for fullyCached component", async ({ page, request }) => {
-		await page.goto("/use-cache/ssr");
-		const fullyCachedElt = page.getByTestId("fully-cached-with-tag");
-		await expect(fullyCachedElt).toBeVisible();
+	test("cache components render across concurrent requests", async ({ request }) => {
+		const id = Date.now();
+		const responses = await Promise.all(
+			[
+				"/use-cache/ssr",
+				"/use-cache/isr",
+				"/use-cache/fetch",
+				`/use-cache/on-demand/concurrent-${id}`,
+				"/ppr",
+			].map((path) => request.get(path))
+		);
 
-		const initialFullyCachedText = await fullyCachedElt.textContent();
-
-		const resp = await request.get("/api/revalidate");
-		expect(resp.status()).toEqual(200);
-		expect(await resp.text()).toEqual("DONE");
-
-		await page.reload();
-		await expect(fullyCachedElt).toBeVisible();
-		const newFullyCachedText = await fullyCachedElt.textContent();
-		expect(newFullyCachedText).not.toEqual(initialFullyCachedText);
+		for (const response of responses) {
+			expect(response.status()).toBe(200);
+			expect(await response.text()).not.toBe("");
+		}
 	});
 
-	test("revalidateTag should invalidate an on-demand use cache page", async ({ page, request }) => {
-		test.setTimeout(90000);
-		const path = `/use-cache/on-demand/${Date.now()}`;
+	// Both tests invalidate the same hard-coded cache tag, so they must not overlap.
+	test.describe.serial("tag revalidation", () => {
+		test("revalidateTag should work for fullyCached component", async ({ page, request }) => {
+			await page.goto("/use-cache/ssr");
+			const fullyCachedElt = page.getByTestId("fully-cached-with-tag");
+			await expect(fullyCachedElt).toBeVisible();
 
-		const initialResponse = await page.goto(path);
-		expect(initialResponse?.status()).toEqual(200);
-		const taggedComponent = page.getByTestId("fully-cached-with-tag");
-		await expect(taggedComponent).toBeVisible();
-		const initialText = await taggedComponent.textContent();
+			const initialFullyCachedText = await fullyCachedElt.textContent();
 
-		// Next.js 16.2 PPR responses expose neither cache header used by the newer upstream test.
-		// Repeated stable reads establish that the tagged component has reached its cached state.
-		for (let attempt = 0; attempt < 3; attempt++) {
-			await page.waitForTimeout(1000);
+			const resp = await request.get("/api/revalidate");
+			expect(resp.status()).toEqual(200);
+			expect(await resp.text()).toEqual("DONE");
+
+			await page.reload();
+			await expect(fullyCachedElt).toBeVisible();
+			const newFullyCachedText = await fullyCachedElt.textContent();
+			expect(newFullyCachedText).not.toEqual(initialFullyCachedText);
+		});
+
+		test("revalidateTag should invalidate an on-demand use cache page", async ({ page, request }) => {
+			test.setTimeout(90000);
+			const path = `/use-cache/on-demand/${Date.now()}`;
+
+			const initialResponse = await page.goto(path);
+			expect(initialResponse?.status()).toEqual(200);
+			const taggedComponent = page.getByTestId("fully-cached-with-tag");
+			await expect(taggedComponent).toBeVisible();
+			const initialText = await taggedComponent.textContent();
+
+			// Next.js 16.2 PPR responses expose neither cache header used by the newer upstream test.
+			// Repeated stable reads establish that the tagged component has reached its cached state.
+			for (let attempt = 0; attempt < 3; attempt++) {
+				await page.waitForTimeout(1000);
+				await page.goto(path);
+				await expect(taggedComponent).toHaveText(initialText ?? "");
+			}
+
+			const response = await request.get("/api/revalidate");
+			expect(response.status()).toEqual(200);
+			expect(await response.text()).toEqual("DONE");
+
 			await page.goto(path);
-			await expect(taggedComponent).toHaveText(initialText ?? "");
-		}
+			let refreshedText = await taggedComponent.textContent();
+			for (let attempt = 0; attempt < 10 && refreshedText === initialText; attempt++) {
+				await page.waitForTimeout(1000);
+				await page.goto(path);
+				refreshedText = await taggedComponent.textContent();
+			}
 
-		const response = await request.get("/api/revalidate");
-		expect(response.status()).toEqual(200);
-		expect(await response.text()).toEqual("DONE");
-
-		await page.goto(path);
-		let refreshedText = await taggedComponent.textContent();
-		for (let attempt = 0; attempt < 10 && refreshedText === initialText; attempt++) {
-			await page.waitForTimeout(1000);
-			await page.goto(path);
-			refreshedText = await taggedComponent.textContent();
-		}
-
-		expect(refreshedText).not.toEqual(initialText);
+			expect(refreshedText).not.toEqual(initialText);
+		});
 	});
 
 	test("cached component should work in isr", async ({ page }) => {

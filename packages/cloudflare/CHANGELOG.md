@@ -1,5 +1,58 @@
 # @opennextjs/cloudflare
 
+## 1.20.12
+
+### Patch Changes
+
+- [#1453](https://github.com/opennextjs/opennextjs-cloudflare/pull/1453) [`5d8c5bc`](https://github.com/opennextjs/opennextjs-cloudflare/commit/5d8c5bc2e1d6d48dbff6d9de7cb8ffa9c7454ca6) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.11
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.11>
+
+  - Add support for Next.js 16.4
+  - Bump Next.js dependencies following [the Next.js security update on Oct 14](https://nextjs.org/blog/nextjs-security-update-october-14-2026)
+
+- [#1356](https://github.com/opennextjs/opennextjs-cloudflare/pull/1356) [`f993c8c`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f993c8c0ff9090fd1a6b38e223ecb1eb3c968a64) Thanks [@chargome](https://github.com/chargome)! - fix(patches): include `preview-props.json` in loadManifest build-time inlining
+
+## 1.20.11
+
+### Patch Changes
+
+- [#1451](https://github.com/opennextjs/opennextjs-cloudflare/pull/1451) [`a6893b8`](https://github.com/opennextjs/opennextjs-cloudflare/commit/a6893b87671f1e0a401aca2da7b0ea9275c2b0e0) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.10
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.10>
+
+- [#1437](https://github.com/opennextjs/opennextjs-cloudflare/pull/1437) [`6be5daf`](https://github.com/opennextjs/opennextjs-cloudflare/commit/6be5daff509792e5c624b30ea291f4b18990c79b) Thanks [@mathurshubham](https://github.com/mathurshubham)! - fix: do not bundle `@vercel/og` into the Node.js middleware when it is not used
+
+## 1.20.10
+
+### Patch Changes
+
+- [#1426](https://github.com/opennextjs/opennextjs-cloudflare/pull/1426) [`66b4a2d`](https://github.com/opennextjs/opennextjs-cloudflare/commit/66b4a2d9f77853f89daf51e07864c55dee76db17) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.9
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.9>
+
+- [#1419](https://github.com/opennextjs/opennextjs-cloudflare/pull/1419) [`8327c21`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8327c2113d452f62020d42c247a4d95024c6d788) Thanks [@Adnan-Husayn](https://github.com/Adnan-Husayn)! - fix: set the image `Content-Type` from the format produced by the Images binding
+
+  The Images binding can fall back to another format than the requested one, i.e. from AVIF to WebP for large images. `/_next/image` responses were labelled with the requested format, so the `Content-Type` could disagree with the image bytes.
+
+- [#1420](https://github.com/opennextjs/opennextjs-cloudflare/pull/1420) [`afea1a0`](https://github.com/opennextjs/opennextjs-cloudflare/commit/afea1a0c02c4fd7b2a725452f57d87d28d98ac9b) Thanks [@cpruijsen](https://github.com/cpruijsen)! - fix: skip route directories matching the loadManifest globs
+
+  `opennextjs-cloudflare build` no longer fails with `EISDIR` or an unresolved import when an App Router route directory matches an internal manifest glob. Only manifest files are now inlined.
+
+- [#1423](https://github.com/opennextjs/opennextjs-cloudflare/pull/1423) [`a515128`](https://github.com/opennextjs/opennextjs-cloudflare/commit/a5151286fa5f906e3752b4ca78c00a48927af708) Thanks [@Adnan-Husayn](https://github.com/Adnan-Husayn)! - fix: do not log `Failed to copy` for packages whose `exports` is a string
+
+## 1.20.9
+
+### Patch Changes
+
+- [#1416](https://github.com/opennextjs/opennextjs-cloudflare/pull/1416) [`63cbece`](https://github.com/opennextjs/opennextjs-cloudflare/commit/63cbece5b9ef8209eb6f92998fb6f848e3cf620c) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.8
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.8>
+
+- [#1416](https://github.com/opennextjs/opennextjs-cloudflare/pull/1416) [`63cbece`](https://github.com/opennextjs/opennextjs-cloudflare/commit/63cbece5b9ef8209eb6f92998fb6f848e3cf620c) Thanks [@vicb](https://github.com/vicb)! - fix: isolate module-loading cache signals between requests
+
+  Prevent Next.js 15.4 and newer Cache Components from failing under concurrent traffic with `Cannot perform I/O on behalf of a different request` when module-loading timers cross Cloudflare Worker request contexts.
+
 ## 1.20.8
 
 ### Patch Changes

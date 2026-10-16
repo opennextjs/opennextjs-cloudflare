@@ -35,8 +35,9 @@ export async function expectSegmentPrefetchSettles(page: Page): Promise<void> {
 	expect(response.headers()["x-opennext-cache"]).toEqual("HIT");
 	expect(response.headers()["x-nextjs-postponed"]).toEqual("2");
 
-	await response.finished();
-	// Observe the completed prefetch for retries. Global networkidle is unsuitable:
+	// Chromium can abort a speculative response after consuming the segment, so waiting
+	// for response.finished() is not a reliable indication that prefetching settled.
+	// Observe the prefetch for retries instead. Global networkidle is unsuitable:
 	// other links prefetch dynamic routes whose response streams can stay open.
 	// The regression continuously re-requested this tree while the tab was idle.
 	await page.waitForTimeout(1000);
