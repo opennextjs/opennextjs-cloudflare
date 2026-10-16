@@ -39,8 +39,16 @@ async function getLoadManifestRule(buildOpts: BuildOptions) {
 	const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts));
 	const dotNextDir = join(baseDir, ".next");
 
+	// Manifests to inline:
+	// - `*-manifest.json`
+	// - `required-server-files.json`
+	// - `prefetch-hints.json` (Next 16.2+)
+	// - `server/preview-props.json` (Next 16.4+)
 	const manifests = await glob(
-		join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints}.json"),
+		[
+			join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints}.json"),
+			join(dotNextDir, "server/preview-props.json"),
+		],
 		{
 			windowsPathsNoEscape: true,
 			nodir: true,
