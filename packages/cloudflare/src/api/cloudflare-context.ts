@@ -1,7 +1,5 @@
 import type { Context, RunningCodeOptions } from "node:vm";
 
-import type { GetPlatformProxyOptions } from "wrangler";
-
 import type { BucketCachePurge } from "./durable-objects/bucket-cache-purge.js";
 import type { DOQueueHandler } from "./durable-objects/queue.js";
 import type { DOShardedTagCache } from "./durable-objects/sharded-tag-cache.js";
@@ -242,6 +240,36 @@ async function getCloudflareContextAsync<
 
 	throw new Error(initOpenNextCloudflareForDevErrorMsg);
 }
+
+/**
+ * Options accepted by `getPlatformProxy` from `wrangler`.
+ *
+ * This mirrors the `GetPlatformProxyOptions` type exported by `wrangler` (same field names and types), but is declared
+ * locally: importing it from `wrangler` leaked wrangler's and miniflare's declaration files into the published `.d.ts`,
+ * which do not type-check on their own and broke consumers using `skipLibCheck: false`.
+ * See https://github.com/opennextjs/opennextjs-cloudflare/issues/1408
+ */
+type GetPlatformProxyOptions = {
+	/** The name of the environment to use */
+	environment?: string;
+	/**
+	 * The path to the config file to use. If not specified, wrangler searches from the current directory
+	 * up the filesystem for a Wrangler configuration file.
+	 */
+	configPath?: string;
+	/**
+	 * Paths to `.env` files to load environment variables from, relative to the project directory.
+	 * If `undefined`, wrangler's default `.env` file lookup is used.
+	 */
+	envFiles?: string[];
+	/**
+	 * Indicates if and where to persist the bindings data. If `true` or not present, wrangler's default location
+	 * (`.wrangler/state/v3`) is used. If `false`, no data is persisted on the filesystem.
+	 */
+	persist?: boolean | { path: string };
+	/** Whether remote bindings should be enabled or not (defaults to `true`) */
+	remoteBindings?: boolean;
+};
 
 /**
  * Performs some initial setup to integrate as best as possible the local Next.js dev server (run via `next dev`)
