@@ -26,7 +26,7 @@ export function inlineLoadManifest(updater: ContentUpdater, buildOpts: BuildOpti
 			contentFilter: /function loadManifest\(/,
 			callback: async ({ contents }) => {
 				contents = await patchCode(contents, await getLoadManifestRule(buildOpts));
-				contents = patchCode(contents, inlineManifestReadRule);
+				contents = inlineManifestReads(contents);
 				contents = await patchCode(contents, await getEvalManifestRule(buildOpts));
 				return contents;
 			},
@@ -34,9 +34,27 @@ export function inlineLoadManifest(updater: ContentUpdater, buildOpts: BuildOpti
 	]);
 }
 
-// Keep Next's cache, deep freeze, skipParse and clearManifestCache behavior. Only
-// replace the filesystem read; replacing the whole loader recreates large manifests
-// on every request, even when the caller asks Next to cache them.
+export function inlineManifestReads(contents: string): string {
+	contents = patchCode(contents, inlineManifestReadRule);
+	const root = parse(Lang.JavaScript, contents).root();
+	if (applyRule(remainingManifestReadRule, root).matches.length > 0) {
+		throw new Error("Failed to inline the manifest reads in Next.js loadManifest");
+	}
+	return contents;
+}
+
+const remainingManifestReadRule: RuleConfig = {
+	rule: {
+		regex: "^readFileSync$",
+		any: [{ kind: "identifier" }, { kind: "property_identifier" }],
+		inside: {
+			kind: "function_declaration",
+			has: { field: "name", regex: "^loadManifest$" },
+			stopBy: "end",
+		},
+	},
+};
+
 const inlineManifestReadRule: RuleConfig = {
 	rule: {
 		pattern: "(0, $FS.readFileSync)($PATH, $ENCODING)",

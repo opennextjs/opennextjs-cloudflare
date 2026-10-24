@@ -8,7 +8,7 @@ import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
-import { inlineLoadManifest } from "./load-manifest.js";
+import { inlineLoadManifest, inlineManifestReads } from "./load-manifest.js";
 
 const require = createRequire(import.meta.url);
 const manifest = { version: 4, routes: { "/product": { initialRevalidateSeconds: 60 } } };
@@ -116,5 +116,16 @@ describe.each(["15.5.28", "16.4.1"])("inlined loadManifest (Next %s)", (version)
 
 	test("has no filesystem reads left in the generated loader", () => {
 		expect(patched).not.toContain("readFileSync");
+	});
+});
+
+describe("inlineManifestReads", () => {
+	test("fails the build when a read in loadManifest has a shape the rule does not match", () => {
+		const reshaped = `
+function loadManifest(path, shouldCache = true, cache = sharedCache) {
+    const manifest = _fs.readFileSync(path, { encoding: 'utf8' });
+    return manifest;
+}`;
+		expect(() => inlineManifestReads(reshaped)).toThrow("Failed to inline the manifest reads");
 	});
 });
