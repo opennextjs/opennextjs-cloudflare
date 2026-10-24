@@ -26,12 +26,29 @@ export function inlineLoadManifest(updater: ContentUpdater, buildOpts: BuildOpti
 			contentFilter: /function loadManifest\(/,
 			callback: async ({ contents }) => {
 				contents = await patchCode(contents, await getLoadManifestRule(buildOpts));
+				contents = patchCode(contents, inlineManifestReadRule);
 				contents = await patchCode(contents, await getEvalManifestRule(buildOpts));
 				return contents;
 			},
 		},
 	]);
 }
+
+// Keep Next's cache, deep freeze, skipParse and clearManifestCache behavior. Only
+// replace the filesystem read; replacing the whole loader recreates large manifests
+// on every request, even when the caller asks Next to cache them.
+const inlineManifestReadRule: RuleConfig = {
+	rule: {
+		pattern: "(0, $FS.readFileSync)($PATH, $ENCODING)",
+		inside: {
+			kind: "function_declaration",
+			has: { field: "name", regex: "^loadManifest$" },
+			stopBy: "end",
+		},
+	},
+	constraints: { ENCODING: { kind: "string", regex: "utf8" } },
+	fix: "readInlinedManifest($PATH)",
+};
 
 async function getLoadManifestRule(buildOpts: BuildOptions) {
 	const { outputDir } = buildOpts;
@@ -60,7 +77,7 @@ async function getLoadManifestRule(buildOpts: BuildOptions) {
 			manifests.map(
 				async (manifest) => `
 if ($PATH.endsWith("${normalizePath("/" + relative(dotNextDir, manifest))}")) {
-  return ${await readFile(manifest, "utf-8")};
+  return ${JSON.stringify(await readFile(manifest, "utf-8"))};
 }`
 			)
 		)
@@ -70,11 +87,14 @@ if ($PATH.endsWith("${normalizePath("/" + relative(dotNextDir, manifest))}")) {
 		rule: {
 			pattern: `
 function loadManifest($PATH, $$$ARGS) {
-  $$$_
+  $$$BODY
 }`,
 		},
 		fix: `
 function loadManifest($PATH, $$$ARGS) {
+  $$$BODY
+}
+function readInlinedManifest($PATH) {
   $PATH = $PATH.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
   if ($PATH.endsWith(".next/BUILD_ID")) {
     return process.env.NEXT_BUILD_ID;
@@ -94,7 +114,7 @@ function loadManifest($PATH, $$$ARGS) {
         p.endsWith("dynamic-css-manifest") ||
         p.endsWith("fallback-build-manifest") ||
         p.endsWith("prefetch-hints")) {
-      return {};
+      return "{}";
     }
   }
   throw new Error(\`Unexpected loadManifest(\${$PATH}) call!\`);
