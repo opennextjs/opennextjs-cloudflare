@@ -23,35 +23,25 @@ export function inlineLoadManifest(updater: ContentUpdater, buildOpts: BuildOpti
 			filter: getCrossPlatformPathRegex(String.raw`/next/dist/server/load-manifest(\.external)?\.js$`, {
 				escape: false,
 			}),
-			contentFilter: /function loadManifest\(/,
-			callback: async ({ contents }) => {
+			contentFilter: /readFileSync/,
+			callback: async ({ contents, path }) => {
 				contents = await patchCode(contents, await getLoadManifestRule(buildOpts));
-				contents = inlineManifestReads(contents);
+				contents = patchCode(contents, inlineManifestReadRule);
 				contents = await patchCode(contents, await getEvalManifestRule(buildOpts));
+				const root = parse(Lang.JavaScript, contents).root();
+				if (applyRule(remainingFileReadRule, root).matches.length > 0) {
+					throw new Error(`Failed to inline the manifest reads in ${path}`);
+				}
 				return contents;
 			},
 		},
 	]);
 }
 
-export function inlineManifestReads(contents: string): string {
-	contents = patchCode(contents, inlineManifestReadRule);
-	const root = parse(Lang.JavaScript, contents).root();
-	if (applyRule(remainingManifestReadRule, root).matches.length > 0) {
-		throw new Error("Failed to inline the manifest reads in Next.js loadManifest");
-	}
-	return contents;
-}
-
-const remainingManifestReadRule: RuleConfig = {
+const remainingFileReadRule: RuleConfig = {
 	rule: {
 		regex: "^readFileSync$",
 		any: [{ kind: "identifier" }, { kind: "property_identifier" }],
-		inside: {
-			kind: "function_declaration",
-			has: { field: "name", regex: "^loadManifest$" },
-			stopBy: "end",
-		},
 	},
 };
 

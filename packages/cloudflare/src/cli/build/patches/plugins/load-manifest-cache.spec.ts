@@ -1,14 +1,15 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { runInNewContext } from "node:vm";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
+import { build } from "esbuild";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
-import { inlineLoadManifest, inlineManifestReads } from "./load-manifest.js";
+import { inlineLoadManifest } from "./load-manifest.js";
 
 const require = createRequire(import.meta.url);
 const manifest = { version: 4, routes: { "/product": { initialRevalidateSeconds: 60 } } };
@@ -26,34 +27,50 @@ type Loader = {
 	clearManifestCache: (path: string, cache?: Map<string, unknown>) => boolean;
 };
 
+function createManifestPatcher(version: string) {
+	const outputDir = mkdtempSync(join(tmpdir(), "opennext-manifest-"));
+	const dotNextDir = join(outputDir, "server-functions/default/.next");
+	mkdirSync(dotNextDir, { recursive: true });
+	writeFileSync(join(dotNextDir, "prerender-manifest.json"), manifestText);
+
+	const buildOpts = {
+		outputDir,
+		appBuildOutputPath: "/app",
+		monorepoRoot: "/app",
+		nextVersion: version,
+	} as BuildOptions;
+	const updater = new ContentUpdater(buildOpts);
+	inlineLoadManifest(updater, buildOpts);
+	const loaderPath = join(outputDir, "node_modules/next/dist/server/load-manifest.external.js");
+	mkdirSync(dirname(loaderPath), { recursive: true });
+	return {
+		patch: async (contents: string) => {
+			writeFileSync(loaderPath, contents);
+			const result = await build({
+				entryPoints: [loaderPath],
+				write: false,
+				logLevel: "silent",
+				plugins: [updater.plugin],
+			});
+			return result.outputFiles[0]!.text;
+		},
+		cleanup: () => rmSync(outputDir, { recursive: true, force: true }),
+	};
+}
+
 describe.each(["15.5.28", "16.4.1"])("inlined loadManifest (Next %s)", (version) => {
-	let outputDir: string;
+	const patcher = createManifestPatcher(version);
 	let patched: string;
 
 	beforeAll(async () => {
-		outputDir = mkdtempSync(join(tmpdir(), "opennext-manifest-"));
-		const dotNextDir = join(outputDir, "server-functions/default/.next");
-		mkdirSync(dotNextDir, { recursive: true });
-		writeFileSync(join(dotNextDir, "prerender-manifest.json"), manifestText);
-
-		const buildOpts = {
-			outputDir,
-			appBuildOutputPath: "/app",
-			monorepoRoot: "/app",
-			nextVersion: version,
-		} as BuildOptions;
-		const updater = new ContentUpdater(buildOpts);
-		inlineLoadManifest(updater, buildOpts);
-		const update = updater.updaters.get("inline-load-manifest")?.[0];
-		if (!update) throw new Error("Manifest updater was not registered");
 		const contents = readFileSync(
 			new URL(`./fixtures/load-manifest/next-${version}.txt`, import.meta.url),
 			"utf8"
 		);
-		patched = (await update.callback({ contents, path: "load-manifest.external.js" })) ?? contents;
+		patched = await patcher.patch(contents);
 	});
 
-	afterAll(() => rmSync(outputDir, { recursive: true, force: true }));
+	afterAll(() => patcher.cleanup());
 
 	function load(): Loader {
 		return runInNewContext(`${patched}; ({ loadManifest, clearManifestCache })`, {
@@ -119,13 +136,22 @@ describe.each(["15.5.28", "16.4.1"])("inlined loadManifest (Next %s)", (version)
 	});
 });
 
-describe("inlineManifestReads", () => {
-	test("fails the build when a read in loadManifest has a shape the rule does not match", () => {
-		const reshaped = `
-function loadManifest(path, shouldCache = true, cache = sharedCache) {
-    const manifest = _fs.readFileSync(path, { encoding: 'utf8' });
-    return manifest;
-}`;
-		expect(() => inlineManifestReads(reshaped)).toThrow("Failed to inline the manifest reads");
+describe("manifest read guard", () => {
+	const patcher = createManifestPatcher("16.4.1");
+	afterAll(() => patcher.cleanup());
+
+	test.each([
+		[
+			"a read call with another shape",
+			`function loadManifest(path, shouldCache = true, cache = sharedCache) {
+    return _fs.readFileSync(path, { encoding: 'utf8' });
+}`,
+		],
+		[
+			"a loader that is not a function declaration",
+			`const loadManifest = (path) => (0, _fs.readFileSync)(path, 'utf8');`,
+		],
+	])("fails the build for %s", async (_, contents) => {
+		await expect(patcher.patch(contents)).rejects.toThrow("Failed to inline the manifest reads");
 	});
 });
