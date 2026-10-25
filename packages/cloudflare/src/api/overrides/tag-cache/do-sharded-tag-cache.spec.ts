@@ -377,6 +377,7 @@ describe("DOShardedTagCache", () => {
 			};
 			vi.useFakeTimers();
 			vi.setSystemTime(1000);
+			vi.spyOn(performance, "now").mockReturnValue(1000 - performance.timeOrigin);
 		});
 		afterEach(() => {
 			vi.useRealTimers();

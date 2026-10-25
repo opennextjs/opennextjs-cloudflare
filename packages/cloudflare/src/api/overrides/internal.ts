@@ -16,6 +16,16 @@ export const debugCache = (name: string, ...args: unknown[]) => {
 	}
 };
 
+/**
+ * Wall-clock time in milliseconds, safe during Cache Components prerender on Workers.
+ * `Date.now()` is tied to the last I/O and aborts prerender; Next.js uses performance-based time instead.
+ *
+ * @see https://developers.cloudflare.com/workers/reference/security-model/
+ */
+export function workerNowMs(): number {
+	return Math.round(performance.timeOrigin + performance.now());
+}
+
 export const FALLBACK_BUILD_ID = "no-build-id";
 
 export const DEFAULT_PREFIX = "incremental-cache";
