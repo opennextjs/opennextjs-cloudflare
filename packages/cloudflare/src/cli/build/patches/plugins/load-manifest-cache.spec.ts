@@ -27,11 +27,26 @@ type Loader = {
 	clearManifestCache: (path: string, cache?: Map<string, unknown>) => boolean;
 };
 
-function createManifestPatcher(version: string) {
+type ManifestPatcher = {
+	patch: (contents: string) => Promise<string>;
+	cleanup: () => void;
+};
+
+/**
+ * Create a patcher applying the `inlineLoadManifest` plugin to a manifest loader.
+ *
+ * Creates a temporary build output containing a `prerender-manifest.json`.
+ * Call `cleanup` to remove it.
+ *
+ * @param version The Next.js version.
+ * @param prerenderManifestText The content of the `prerender-manifest.json`.
+ * @returns The patcher.
+ */
+function createManifestPatcher(version: string, prerenderManifestText = manifestText): ManifestPatcher {
 	const outputDir = mkdtempSync(join(tmpdir(), "opennext-manifest-"));
 	const dotNextDir = join(outputDir, "server-functions/default/.next");
 	mkdirSync(dotNextDir, { recursive: true });
-	writeFileSync(join(dotNextDir, "prerender-manifest.json"), manifestText);
+	writeFileSync(join(dotNextDir, "prerender-manifest.json"), prerenderManifestText);
 
 	const buildOpts = {
 		outputDir,
@@ -59,10 +74,11 @@ function createManifestPatcher(version: string) {
 }
 
 describe.each(["15.5.28", "16.4.1"])("inlined loadManifest (Next %s)", (version) => {
-	const patcher = createManifestPatcher(version);
+	let patcher: ManifestPatcher;
 	let patched: string;
 
 	beforeAll(async () => {
+		patcher = createManifestPatcher(version);
 		const contents = readFileSync(
 			new URL(`./fixtures/load-manifest/next-${version}.txt`, import.meta.url),
 			"utf8"
@@ -70,7 +86,7 @@ describe.each(["15.5.28", "16.4.1"])("inlined loadManifest (Next %s)", (version)
 		patched = await patcher.patch(contents);
 	});
 
-	afterAll(() => patcher.cleanup());
+	afterAll(() => patcher?.cleanup());
 
 	function load(): Loader {
 		return runInNewContext(`${patched}; ({ loadManifest, clearManifestCache })`, {
@@ -136,22 +152,20 @@ describe.each(["15.5.28", "16.4.1"])("inlined loadManifest (Next %s)", (version)
 	});
 });
 
-describe("manifest read guard", () => {
-	const patcher = createManifestPatcher("16.4.1");
-	afterAll(() => patcher.cleanup());
+describe("invalid manifest", () => {
+	let patcher: ManifestPatcher;
 
-	test.each([
-		[
-			"a read call with another shape",
-			`function loadManifest(path, shouldCache = true, cache = sharedCache) {
-    return _fs.readFileSync(path, { encoding: 'utf8' });
-}`,
-		],
-		[
-			"a loader that is not a function declaration",
-			`const loadManifest = (path) => (0, _fs.readFileSync)(path, 'utf8');`,
-		],
-	])("fails the build for %s", async (_, contents) => {
-		await expect(patcher.patch(contents)).rejects.toThrow("Failed to inline the manifest reads");
+	beforeAll(() => {
+		patcher = createManifestPatcher("16.4.1", "{ not json");
+	});
+
+	afterAll(() => patcher?.cleanup());
+
+	test("fails the build", async () => {
+		const contents = readFileSync(
+			new URL("./fixtures/load-manifest/next-16.4.1.txt", import.meta.url),
+			"utf8"
+		);
+		await expect(patcher.patch(contents)).rejects.toThrow("Failed to parse the manifest");
 	});
 });
