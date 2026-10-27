@@ -2,6 +2,6 @@
 "@opennextjs/cloudflare": patch
 ---
 
-fix: reuse cached manifests across requests
+fix: reuse cached manifests to reduce CPU and memory usage
 
-Apps with large prerender manifests could spend substantial CPU time creating and collecting a new manifest object on every request. Preserve Next.js's manifest cache and deep freeze behavior when inlining manifest files, so repeated cached loads reuse the same object. Explicitly uncached loads still return fresh objects.
+The inlined manifests were re-created on every load, so apps with large manifests (e.g. the prerender manifest) spent CPU time building and garbage collecting the same objects and kept multiple copies in memory.
