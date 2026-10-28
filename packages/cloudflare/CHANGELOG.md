@@ -1,5 +1,23 @@
 # @opennextjs/cloudflare
 
+## 1.20.14
+
+### Patch Changes
+
+- [#1470](https://github.com/opennextjs/opennextjs-cloudflare/pull/1470) [`7460f53`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7460f539b0557fde92ce127772a3e6b4411a60ae) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.13
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.13>
+
+  - Export the code patch test utilities as `@opennextjs/aws/build/patch/testUtils.js`
+
+- [#1466](https://github.com/opennextjs/opennextjs-cloudflare/pull/1466) [`3e50371`](https://github.com/opennextjs/opennextjs-cloudflare/commit/3e503712ad32fb0aba169bb46c3b4c6d42d37482) Thanks [@NathanDrake2406](https://github.com/NathanDrake2406)! - fix: reuse cached manifests to reduce CPU and memory usage
+
+  The inlined manifests were re-created on every load, so apps with large manifests (e.g. the prerender manifest) spent CPU time building and garbage collecting the same objects and kept multiple copies in memory.
+
+- [#1470](https://github.com/opennextjs/opennextjs-cloudflare/pull/1470) [`7460f53`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7460f539b0557fde92ce127772a3e6b4411a60ae) Thanks [@vicb](https://github.com/vicb)! - fix: scope the module-loading signal to the request on Next 16
+
+  Starting with Next.js 16, the module-loading patch silently stopped matching the changed `CacheSignal` constructor. Concurrent requests could then fail with `Cannot perform I/O on behalf of a different request` and return truncated responses. Scope the signal to each request again so concurrent renders complete.
+
 ## 1.20.13
 
 ### Patch Changes
