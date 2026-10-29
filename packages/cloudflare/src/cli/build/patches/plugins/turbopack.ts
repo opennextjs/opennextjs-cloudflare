@@ -137,16 +137,8 @@ fix: |-
  * @returns The module specifier, or `undefined` when the target is not inside a `node_modules` folder.
  */
 export function packageNameFromSymlinkTarget(target: string): string | undefined {
-	const segments = normalizePath(target)
-		.split("/")
-		.filter((segment) => segment !== "");
-	const nodeModulesIndex = segments.lastIndexOf("node_modules");
-	if (nodeModulesIndex === -1 || nodeModulesIndex === segments.length - 1) {
-		return undefined;
-	}
-	// Symlinks are created per package so the remainder is expected to be `name` or `@scope/name`.
-	// Anything longer is kept as-is.
-	return segments.slice(nodeModulesIndex + 1).join("/");
+	// The greedy prefix matches up to the last `node_modules/`.
+	return normalizePath(target).match(/^(?:.*\/)?node_modules\/(.+?)\/?$/)?.[1];
 }
 
 /**
@@ -210,7 +202,8 @@ function discoverExternalModuleMappings(filePath: string): Map<string, string> {
 
 /**
  * Build a dynamic inlineExternalImportRule that includes cases for all discovered
- * Turbopack external module hashes, mapping them back to their real package names.
+ * Turbopack external module hashes, mapping them to the specifiers to import
+ * (see {@link discoverExternalModuleMappings}).
  *
  * We use a switch for exact matches (including bare + subpath cases) and a fallback
  * for the default case. Since switch/case can only match exact strings, we enumerate
@@ -321,7 +314,8 @@ function discoverBareExternalImports(tracedFiles: string[], runtimeCode: string)
 
 /**
  * Scan traced chunk files for external module subpath imports.
- * E.g. find "shiki-43d062b67f27bbdc/wasm" in chunk code and map it to "shiki/wasm".
+ * E.g. find "shiki-43d062b67f27bbdc/wasm" in chunk code and map it to the subpath of the mapped
+ * specifier: "shiki-43d062b67f27bbdc/wasm" for a live link, "shiki/wasm" for a dangling one.
  *
  * Only scans files with "[externals]" in the name since those are the chunks that
  * contain externalImport calls.
