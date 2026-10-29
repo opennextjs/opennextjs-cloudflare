@@ -164,6 +164,8 @@ export function nodeBuiltinsPlugin(): Plugin {
  * CommonJS build (`build/src`) while the `module` condition used for this bundle points to its
  * ESM build (`build/esm`), which is then missing from the middleware output.
  * See https://github.com/opennextjs/opennextjs-cloudflare/issues/1400
+ *
+ * @returns The esbuild plugin.
  */
 export function opentelemetryFallbackPlugin(): Plugin {
 	const name = "opentelemetry-fallback";
