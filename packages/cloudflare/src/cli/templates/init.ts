@@ -129,12 +129,6 @@ function populateProcessEnv(url: URL, env: CloudflareEnv) {
 		},
 	});
 
-	/* We need to set this environment variable to make redirects work properly in preview mode.
-	 * Next sets this in standalone mode during `startServer`. Without this the protocol would always be `https` here:
-	 * https://github.com/vercel/next.js/blob/6b1e48080e896e0d44a05fe009cb79d2d3f91774/packages/next/src/server/app-render/action-handler.ts#L307-L316
-	 */
-	process.env.__NEXT_PRIVATE_ORIGIN = url.origin;
-
 	// `__DEPLOYMENT_ID__` is a string (passed via ESBuild).
 	if (__DEPLOYMENT_ID__) {
 		process.env.DEPLOYMENT_ID = __DEPLOYMENT_ID__;

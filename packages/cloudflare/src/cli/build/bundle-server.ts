@@ -7,6 +7,7 @@ import * as buildHelper from "@opennextjs/aws/build/helper.js";
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
 import { build, type Plugin } from "esbuild";
+import { globSync } from "glob";
 
 import { getOpenNextConfig } from "../../api/config.js";
 import type { ProjectOptions } from "../project-options.js";
@@ -49,6 +50,11 @@ const optionalDependencies = [
 
 /**
  * Bundle the Open Next server.
+ *
+ * @param buildOpts Build options.
+ * @param projectOpts Cloudflare project options.
+ * @returns Resolves when the server bundle and Worker entry point have been written.
+ * @throws When preparing or bundling the server fails.
  */
 export async function bundleServer(buildOpts: BuildOptions, projectOpts: ProjectOptions): Promise<void> {
 	copyPackageCliFiles(packageDistDir, buildOpts);
@@ -63,9 +69,18 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 	console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
 
 	await patchWebpackRuntime(path.join(dotNextPath, "server"));
-	const useOg = patchVercelOgLibrary(buildOpts);
 
 	const outputPath = path.join(outputDir, "server-functions", "default");
+	const useOg = patchVercelOgLibrary(buildOpts, {
+		outputDir: outputPath,
+		traceFiles: globSync("**/*.nft.json", {
+			cwd: path.join(buildOpts.appBuildOutputPath, ".next/server"),
+			absolute: true,
+			windowsPathsNoEscape: true,
+			// External middleware has its own bundle and must not enable OG in the server bundle.
+			ignore: buildOpts.config.middleware?.external ? "middleware.js.nft.json" : [],
+		}),
+	});
 	const packagePath = getPackagePath(buildOpts);
 	const openNextServer = path.join(outputPath, packagePath, `index.mjs`);
 	const openNextServerBundle = path.join(outputPath, packagePath, `handler.mjs`);

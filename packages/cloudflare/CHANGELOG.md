@@ -1,5 +1,62 @@
 # @opennextjs/cloudflare
 
+## 1.20.14
+
+### Patch Changes
+
+- [#1470](https://github.com/opennextjs/opennextjs-cloudflare/pull/1470) [`7460f53`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7460f539b0557fde92ce127772a3e6b4411a60ae) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.13
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.13>
+
+  - Export the code patch test utilities as `@opennextjs/aws/build/patch/testUtils.js`
+
+- [#1466](https://github.com/opennextjs/opennextjs-cloudflare/pull/1466) [`3e50371`](https://github.com/opennextjs/opennextjs-cloudflare/commit/3e503712ad32fb0aba169bb46c3b4c6d42d37482) Thanks [@NathanDrake2406](https://github.com/NathanDrake2406)! - fix: reuse cached manifests to reduce CPU and memory usage
+
+  The inlined manifests were re-created on every load, so apps with large manifests (e.g. the prerender manifest) spent CPU time building and garbage collecting the same objects and kept multiple copies in memory.
+
+- [#1470](https://github.com/opennextjs/opennextjs-cloudflare/pull/1470) [`7460f53`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7460f539b0557fde92ce127772a3e6b4411a60ae) Thanks [@vicb](https://github.com/vicb)! - fix: scope the module-loading signal to the request on Next 16
+
+  Starting with Next.js 16, the module-loading patch silently stopped matching the changed `CacheSignal` constructor. Concurrent requests could then fail with `Cannot perform I/O on behalf of a different request` and return truncated responses. Scope the signal to each request again so concurrent renders complete.
+
+## 1.20.13
+
+### Patch Changes
+
+- [#1460](https://github.com/opennextjs/opennextjs-cloudflare/pull/1460) [`8e60ded`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8e60deda4b4c729b98bd1379763a4a6d2c443f5b) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.12
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.12>
+
+  - Fix Next.js 15 builds failing with "Next.js version 15.x.x is not supported by the Next.js team" now that Next.js 15 is 2 years old. A major version stays supported until the second next major (Next.js 17) is released.
+
+- [#1414](https://github.com/opennextjs/opennextjs-cloudflare/pull/1414) [`15f4c9e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/15f4c9e5c1c5080eb87d0634be636aeede23febd) Thanks [@allangreatsoftwares](https://github.com/allangreatsoftwares)! - fix: render server action redirects for the host of the request
+
+- [#1439](https://github.com/opennextjs/opennextjs-cloudflare/pull/1439) [`1ebbc55`](https://github.com/opennextjs/opennextjs-cloudflare/commit/1ebbc55ffe05d7bbe4a76d3f515c2d26f115ca52) Thanks [@mathurshubham](https://github.com/mathurshubham)! - fix: inline named webpack chunks (`webpackChunkName`) in the server runtime
+
+  Apps built with webpack returned a 500 with `Error: Unknown chunk N` when the server code loaded a chunk named with `/* webpackChunkName: "..." */`, i.e. from a `next/dynamic` or `import()` in the app or in a dependency. Named chunks are now bundled into the Worker and load correctly.
+
+## 1.20.12
+
+### Patch Changes
+
+- [#1453](https://github.com/opennextjs/opennextjs-cloudflare/pull/1453) [`5d8c5bc`](https://github.com/opennextjs/opennextjs-cloudflare/commit/5d8c5bc2e1d6d48dbff6d9de7cb8ffa9c7454ca6) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.11
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.11>
+
+  - Add support for Next.js 16.4
+  - Bump Next.js dependencies following [the Next.js security update on Oct 14](https://nextjs.org/blog/nextjs-security-update-october-14-2026)
+
+- [#1356](https://github.com/opennextjs/opennextjs-cloudflare/pull/1356) [`f993c8c`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f993c8c0ff9090fd1a6b38e223ecb1eb3c968a64) Thanks [@chargome](https://github.com/chargome)! - fix(patches): include `preview-props.json` in loadManifest build-time inlining
+
+## 1.20.11
+
+### Patch Changes
+
+- [#1451](https://github.com/opennextjs/opennextjs-cloudflare/pull/1451) [`a6893b8`](https://github.com/opennextjs/opennextjs-cloudflare/commit/a6893b87671f1e0a401aca2da7b0ea9275c2b0e0) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.10
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.10>
+
+- [#1437](https://github.com/opennextjs/opennextjs-cloudflare/pull/1437) [`6be5daf`](https://github.com/opennextjs/opennextjs-cloudflare/commit/6be5daff509792e5c624b30ea291f4b18990c79b) Thanks [@mathurshubham](https://github.com/mathurshubham)! - fix: do not bundle `@vercel/og` into the Node.js middleware when it is not used
+
 ## 1.20.10
 
 ### Patch Changes
