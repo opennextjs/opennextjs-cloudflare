@@ -38,15 +38,21 @@ jobs:
             build: build:worker
             e2e: e2e
             browsers: chromium
+          # Examples testing on multiple browsers, which are slow to install
+          - name: webpack (create-next-app, middleware)
+            filter: --filter create-next-app --filter middleware
+            build: build:worker
+            e2e: e2e
+            browsers: ""
           - name: webpack (others)
             filter: >-
               --filter "./examples/**"
               --filter "!app-router" --filter "!app-pages-router" --filter "!pages-router" --filter "!experimental"
               --filter "!./examples/overrides/*" --filter "!./examples/bugs/*"
+              --filter "!create-next-app" --filter "!middleware"
             build: build:worker
             e2e: e2e
-            # `create-next-app` and `middleware` test on multiple browsers
-            browsers: ""
+            browsers: chromium
           - name: turbopack
             filter: --filter "./examples/**"
             build: build:worker-turbopack
@@ -77,8 +83,11 @@ jobs:
         run: pnpm ${{ matrix.filter }} run ${{ matrix.e2e }}
 
       - uses: actions/upload-artifact@v7
-        if: always()
+        if: failure()
         with:
           name: playwright-report-${{ strategy.job-index }}
-          path: examples/**/playwright-report
+          # Avoid `**`, which walks every example's `node_modules`
+          path: |
+            examples/*/playwright-report
+            examples/*/*/playwright-report
           retention-days: 1
