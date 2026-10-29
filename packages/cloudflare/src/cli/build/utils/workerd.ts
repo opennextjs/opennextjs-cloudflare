@@ -90,7 +90,8 @@ export function transformPackageJson(json: PackageJson) {
  * (see `copyUntracedDependencies`).
  *
  * Only package roots inside `node_modules` are considered: the trace also lists the app's own
- * `package.json` and nested `package.json` type markers. Workspace packages are not supported.
+ * `package.json` and nested `package.json` type markers. Packages generated in a dot folder
+ * (`.prisma/client`) are package roots too. Workspace packages are not supported.
  *
  * @param options Build options, `appPath` is only used to log relative paths
  * @param nodePackages Map of the traced package directories to their copy in the output directory
@@ -99,8 +100,9 @@ export async function copyWorkerdPackages(
 	options: Pick<BuildOptions, "appPath">,
 	nodePackages: Map<string, string>
 ) {
-	// The root folder of a (possibly scoped) package inside a `node_modules` folder, on posix and Windows.
-	const packageRootRegex = /[\\/]node_modules[\\/](?:@[^\\/]+[\\/])?[^\\/]+$/;
+	// The root folder of a package inside a `node_modules` folder, on posix and Windows. The package can be
+	// scoped (`@scope/name`) or generated in a dot folder, i.e. `.prisma/client` for the Prisma client.
+	const packageRootRegex = /[\\/]node_modules[\\/](?:[@.][^\\/]+[\\/])?[^\\/]+$/;
 
 	for (const [src, dst] of nodePackages.entries()) {
 		if (!packageRootRegex.test(src)) {
