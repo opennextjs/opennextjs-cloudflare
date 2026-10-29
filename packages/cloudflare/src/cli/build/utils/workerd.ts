@@ -111,8 +111,6 @@ export async function copyWorkerdPackages(
 	// The root folder of a (possibly scoped) package inside a `node_modules` folder, on posix and Windows.
 	const packageRootRegex = /[\\/]node_modules[\\/](?:@[^\\/]+[\\/])?[^\\/]+$/;
 
-	const ctx: CopyContext = { options, nodePackages, copiedDependencies: new Set() };
-
 	for (const [src, dst] of nodePackages.entries()) {
 		if (!packageRootRegex.test(src)) {
 			continue;
@@ -125,20 +123,12 @@ export async function copyWorkerdPackages(
 					`Copying package using a workerd condition: ${path.relative(options.appPath, src)} -> ${path.relative(options.appPath, dst)}`
 				);
 				await copyPackage(src, dst, transformed);
-				await copyUntracedDependencies(pkgJson, src, dst, ctx);
+				await copyUntracedDependencies(options, pkgJson, src, dst);
 			}
 		} catch (e) {
 			logger.error(`Failed to copy ${src}:`, e instanceof Error ? e.message : e);
 		}
 	}
-}
-
-interface CopyContext {
-	options: Pick<BuildOptions, "appPath">;
-	/** The traced packages (installed directory to output directory) */
-	nodePackages: Map<string, string>;
-	/** The installed directories of the untraced dependencies that have been copied */
-	copiedDependencies: Set<string>;
 }
 
 async function readPackageJson(dir: string): Promise<PackageJson> {
@@ -165,14 +155,20 @@ async function copyPackage(src: string, dst: string, transformed: PackageJson) {
  * copied to the location mirroring its installed location in the output, together with the symlink
  * pnpm uses to expose it to the package. Its own untraced dependencies are copied the same way.
  *
- * The dependencies that Next.js traced are left as they are.
+ * A dependency already present in the output is left as is (only its symlink is created): it is
+ * either traced by Next.js or has already been copied, which also stops dependency cycles.
  *
+ * @param options Build options, `appPath` is only used to log relative paths
  * @param pkgJson `package.json` of the package
  * @param src Installed directory of the package
  * @param dst Output directory of the package
- * @param ctx Copy context
  */
-async function copyUntracedDependencies(pkgJson: PackageJson, src: string, dst: string, ctx: CopyContext) {
+async function copyUntracedDependencies(
+	options: Pick<BuildOptions, "appPath">,
+	pkgJson: PackageJson,
+	src: string,
+	dst: string
+) {
 	const { srcRoot, dstRoot } = getRoots(src, dst);
 	// The installed tree might be reached through a symlink (i.e. `/var` -> `/private/var` on macOS)
 	const srcRootReal = await fs.realpath(srcRoot);
@@ -185,27 +181,13 @@ async function copyUntracedDependencies(pkgJson: PackageJson, src: string, dst: 
 			continue;
 		}
 		const realPath = await fs.realpath(linkPath);
-		if (ctx.nodePackages.has(realPath) || ctx.copiedDependencies.has(realPath)) {
-			continue;
-		}
 		if (!isInside(realPath, srcRootReal) || !isInside(linkPath, srcRoot)) {
 			logger.debug(`Not copying ${name}, it is installed outside of ${srcRoot}`);
 			continue;
 		}
-		ctx.copiedDependencies.add(realPath);
-
-		const depDst = path.join(dstRoot, path.relative(srcRootReal, realPath));
-		if (existsSync(depDst)) {
-			continue;
-		}
-		logger.debug(
-			`Copying dependency of a workerd build: ${path.relative(ctx.options.appPath, realPath)} -> ${path.relative(ctx.options.appPath, depDst)}`
-		);
-		const depJson = await readPackageJson(realPath);
-		await copyPackage(realPath, depDst, transformPackageJson(depJson).transformed);
-
 		if ((await fs.lstat(linkPath)).isSymbolicLink()) {
-			// pnpm exposes the dependency to the package through a symlink, recreate it in the output
+			// pnpm exposes the dependency to the package through a symlink, recreate it in the output.
+			// This is needed even when the dependency is traced, as it might only be traced for another package.
 			const linkDst = path.join(dstRoot, path.relative(srcRoot, linkPath));
 			await fs.mkdir(path.dirname(linkDst), { recursive: true });
 			await fs.symlink(await fs.readlink(linkPath), linkDst).catch((e: NodeJS.ErrnoException) => {
@@ -215,7 +197,16 @@ async function copyUntracedDependencies(pkgJson: PackageJson, src: string, dst: 
 			});
 		}
 
-		await copyUntracedDependencies(depJson, realPath, depDst, ctx);
+		const depDst = path.join(dstRoot, path.relative(srcRootReal, realPath));
+		if (existsSync(depDst)) {
+			continue;
+		}
+		logger.debug(
+			`Copying dependency of a workerd build: ${path.relative(options.appPath, realPath)} -> ${path.relative(options.appPath, depDst)}`
+		);
+		const depJson = await readPackageJson(realPath);
+		await copyPackage(realPath, depDst, transformPackageJson(depJson).transformed);
+		await copyUntracedDependencies(options, depJson, realPath, depDst);
 	}
 }
 

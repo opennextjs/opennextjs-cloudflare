@@ -369,36 +369,15 @@ describe("copyWorkerdPackages", () => {
 		expect(errorSpy).not.toHaveBeenCalled();
 	});
 
-	test("leaves a traced package without a workerd condition untouched", async () => {
-		const packageJson = {
-			name: "pg",
-			exports: {
-				".": {
-					import: "./esm/index.mjs",
-					require: "./lib/index.js",
-				},
-			},
-		};
+	test.each([
+		[
+			"without a workerd condition",
+			{ name: "pkg", exports: { ".": { import: "./index.mjs", require: "./index.js" } } },
+		],
+		["whose exports is a string", { name: "pkg", exports: "./index.js" }],
+	])("leaves a traced package %s untouched", async (_, packageJson) => {
 		const { src, dst } = createPackage(
-			"pg",
-			packageJson,
-			{ "lib/untraced.js": "module.exports = {};" },
-			{ "lib/index.js": "module.exports = {};" }
-		);
-
-		await copyWorkerdPackages({ appPath }, new Map([[src, dst]]));
-
-		expect(fs.existsSync(path.join(dst, "lib/untraced.js"))).toBe(false);
-		expect(fs.readFileSync(path.join(dst, "package.json"), "utf8")).toBe(
-			JSON.stringify(packageJson, null, 2)
-		);
-		expect(errorSpy).not.toHaveBeenCalled();
-	});
-
-	test("skips a package whose exports is a string without logging an error", async () => {
-		const packageJson = { name: "string-exports", exports: "./index.js" };
-		const { src, dst } = createPackage(
-			"string-exports",
+			"pkg",
 			packageJson,
 			{ "untraced.js": "module.exports = {};" },
 			{ "index.js": "module.exports = {};" }
@@ -542,7 +521,8 @@ describe("copyWorkerdPackages", () => {
 		expect(errorSpy).not.toHaveBeenCalled();
 	});
 
-	test("leaves the traced dependencies of a workerd build untouched", async () => {
+	// The dependency can be traced for another package while the link from the workerd package is not.
+	test("links the traced dependencies of a workerd build without copying them", async () => {
 		const { src, dst } = createPackage(
 			"socket-adapter",
 			{
@@ -551,7 +531,7 @@ describe("copyWorkerdPackages", () => {
 				dependencies: { "traced-dep": "1.0.0" },
 			},
 			{ "workerd.js": "export { connect } from 'traced-dep';" },
-			{ "node.js": "export { connect } from 'traced-dep';" },
+			{ "node.js": "export const connect = () => {};" },
 			"1.0.0"
 		);
 		const dep = createPackage(
@@ -575,6 +555,100 @@ describe("copyWorkerdPackages", () => {
 		expect(fs.existsSync(path.join(dst, "workerd.js"))).toBe(true);
 		expect(fs.existsSync(path.join(dep.dst, "index.js"))).toBe(true);
 		expect(fs.existsSync(path.join(dep.dst, "untraced.js"))).toBe(false);
+		expect(fs.realpathSync(path.join(path.dirname(dst), "traced-dep"))).toBe(fs.realpathSync(dep.dst));
 		expect(errorSpy).not.toHaveBeenCalled();
+	});
+
+	test("copies the untraced dependencies of a workerd build in the hoisted layout", async () => {
+		const { src, dst } = createPackage(
+			"socket-adapter",
+			{
+				name: "socket-adapter",
+				exports: { workerd: "./workerd.js", default: "./node.js" },
+				dependencies: { "worker-transport": "1.0.0" },
+			},
+			{ "workerd.js": "export { connect } from 'worker-transport';" },
+			{ "node.js": "export const connect = () => {};" }
+		);
+		const transport = path.join(appPath, "node_modules/worker-transport");
+		fs.mkdirSync(transport, { recursive: true });
+		fs.writeFileSync(path.join(transport, "package.json"), '{ "name": "worker-transport" }');
+		fs.writeFileSync(path.join(transport, "index.js"), "export const connect = () => {};");
+
+		await copyWorkerdPackages({ appPath }, new Map([[src, dst]]));
+
+		const transportDst = path.join(path.dirname(dst), "worker-transport");
+		expect(fs.lstatSync(transportDst).isDirectory()).toBe(true);
+		expect(fs.readFileSync(path.join(transportDst, "index.js"), "utf8")).toBe(
+			"export const connect = () => {};"
+		);
+		expect(errorSpy).not.toHaveBeenCalled();
+	});
+
+	test("copies untraced dependencies depending on each other", async () => {
+		const { src, dst } = createPackage(
+			"socket-adapter",
+			{
+				name: "socket-adapter",
+				exports: { workerd: "./workerd.js", default: "./node.js" },
+				dependencies: { "dep-a": "1.0.0" },
+			},
+			{ "workerd.js": "export * from 'dep-a';" },
+			{ "node.js": "export const connect = () => {};" },
+			"1.0.0"
+		);
+		const depA = installDependency(
+			src,
+			"dep-a",
+			"1.0.0",
+			{ name: "dep-a", dependencies: { "dep-b": "1.0.0" } },
+			{ "index.js": "export * from 'dep-b';" }
+		);
+		const depB = installDependency(
+			depA,
+			"dep-b",
+			"1.0.0",
+			{ name: "dep-b", dependencies: { "dep-a": "1.0.0" } },
+			{ "index.js": "export * from 'dep-a';" }
+		);
+		const linkToA = path.join(path.dirname(depB), "dep-a");
+		fs.symlinkSync(path.relative(path.dirname(linkToA), depA), linkToA);
+
+		await copyWorkerdPackages({ appPath }, new Map([[src, dst]]));
+
+		const dstStore = path.join(appPath, ".open-next/server-functions/default/node_modules/.pnpm");
+		expect(fs.existsSync(path.join(dstStore, "dep-a@1.0.0/node_modules/dep-a/index.js"))).toBe(true);
+		expect(fs.existsSync(path.join(dstStore, "dep-b@1.0.0/node_modules/dep-b/index.js"))).toBe(true);
+		expect(fs.realpathSync(path.join(dstStore, "dep-b@1.0.0/node_modules/dep-a"))).toBe(
+			fs.realpathSync(path.join(dstStore, "dep-a@1.0.0/node_modules/dep-a"))
+		);
+		expect(errorSpy).not.toHaveBeenCalled();
+	});
+
+	test("does not copy a dependency installed outside of the app", async () => {
+		const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), "copy-workerd-packages-outside-"));
+		try {
+			const { src, dst } = createPackage(
+				"socket-adapter",
+				{
+					name: "socket-adapter",
+					exports: { workerd: "./workerd.js", default: "./node.js" },
+					dependencies: { "global-dep": "1.0.0" },
+				},
+				{ "workerd.js": "export * from 'global-dep';" },
+				{ "node.js": "export const connect = () => {};" },
+				"1.0.0"
+			);
+			fs.writeFileSync(path.join(outsideDir, "package.json"), '{ "name": "global-dep" }');
+			fs.symlinkSync(outsideDir, path.join(path.dirname(src), "global-dep"));
+
+			await copyWorkerdPackages({ appPath }, new Map([[src, dst]]));
+
+			expect(fs.existsSync(path.join(dst, "workerd.js"))).toBe(true);
+			expect(fs.existsSync(path.join(path.dirname(dst), "global-dep"))).toBe(false);
+			expect(errorSpy).not.toHaveBeenCalled();
+		} finally {
+			fs.rmSync(outsideDir, { recursive: true, force: true });
+		}
 	});
 });
