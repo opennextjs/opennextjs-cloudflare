@@ -81,25 +81,16 @@ export function transformPackageJson(json: PackageJson) {
 /**
  * Copies the `workerd` build of the traced packages into the output directory.
  *
- * Next.js does not bundle every package: the packages it leaves external are traced with
- * `@vercel/nft`, which resolves imports with the Node.js conditions. The files only reachable
- * through a `workerd` export or import condition are therefore missing from the traced copy.
+ * Next.js traces the packages it does not bundle (`serverExternalPackages`, its built-in list such as
+ * `pg`, their dependencies such as `pg-cloudflare`, ...) with the Node.js conditions, so the files
+ * only reachable through a `workerd` condition are missing from the output.
  *
- * The traced packages are the ones Next.js does not bundle: the packages listed in the user's
- * `serverExternalPackages`, the ones in the Next.js built-in list (e.g. `pg`, `@prisma/client`),
- * their transitive dependencies (e.g. `pg-cloudflare`, pulled in by `pg`), and the dependencies of
- * the Next.js server itself. The user's `serverExternalPackages` is not enough to find the packages
- * with a `workerd` build, so all of them are checked. The ones declaring a `workerd` condition are
- * copied in full with a `package.json` that only keeps that condition, so that the server bundle
- * resolves their `workerd` build.
+ * Every traced package declaring a `workerd` condition is copied in full, with a `package.json`
+ * keeping only that condition, along with the dependencies only its `workerd` build uses
+ * (see `copyUntracedDependencies`).
  *
- * The `workerd` build of a package can depend on packages that its Node.js build does not use. Next.js
- * never traces those, so they are copied along, see `copyUntracedDependencies`.
- *
- * Only the root folder of packages installed in a `node_modules` folder is considered: the trace
- * also lists the `package.json` of the app itself (copying the app into its own output would not end
- * well), nested `package.json` files used as module type markers, and workspace packages living
- * outside of `node_modules` (not supported).
+ * Only package roots inside `node_modules` are considered: the trace also lists the app's own
+ * `package.json` and nested `package.json` type markers. Workspace packages are not supported.
  *
  * @param options Build options, `appPath` is only used to log relative paths
  * @param nodePackages Map of the traced package directories to their copy in the output directory
@@ -146,17 +137,9 @@ async function copyPackage(src: string, dst: string, transformed: PackageJson) {
 /**
  * Copies the dependencies of a `workerd` build that Next.js did not trace.
  *
- * The Node.js build and the `workerd` build of a package can import different dependencies. Next.js
- * only traces the former, so a dependency used only by the `workerd` build is missing from the output
- * and the server bundle would fail to resolve it.
- *
- * The dependencies are resolved from the installed package by walking up the `node_modules` folders
- * as Node.js does, which supports both the hoisted and the pnpm layouts. An untraced dependency is
- * copied to the location mirroring its installed location in the output, together with the symlink
- * pnpm uses to expose it to the package. Its own untraced dependencies are copied the same way.
- *
- * A dependency already present in the output is left as is (only its symlink is created): it is
- * either traced by Next.js or has already been copied, which also stops dependency cycles.
+ * Dependencies are resolved as Node.js does (hoisted and pnpm layouts) and copied, recursively, to
+ * the mirrored location in the output. A dependency already in the output (traced, or already
+ * copied, which also stops cycles) is not copied again.
  *
  * @param options Build options, `appPath` is only used to log relative paths
  * @param pkgJson `package.json` of the package
@@ -186,8 +169,7 @@ async function copyUntracedDependencies(
 			continue;
 		}
 		if ((await fs.lstat(linkPath)).isSymbolicLink()) {
-			// pnpm exposes the dependency to the package through a symlink, recreate it in the output.
-			// This is needed even when the dependency is traced, as it might only be traced for another package.
+			// Recreate the pnpm symlink, even when the dependency is in the output (it might be traced for another package)
 			const linkDst = path.join(dstRoot, path.relative(srcRoot, linkPath));
 			await fs.mkdir(path.dirname(linkDst), { recursive: true });
 			await fs.symlink(await fs.readlink(linkPath), linkDst).catch((e: NodeJS.ErrnoException) => {
