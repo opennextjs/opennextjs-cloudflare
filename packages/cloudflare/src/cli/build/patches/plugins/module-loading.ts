@@ -9,6 +9,15 @@ import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { CodePatcher } from "@opennextjs/aws/build/patch/codePatcher.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
+/**
+ * ast-grep rule replacing the body of `getModuleLoadingSignal()` to scope the signal to the request.
+ *
+ * Inside a request, the signal is created lazily and stored as `moduleLoadingSignal` on the OpenNext request
+ * store (`globalThis.__openNextAls`). Outside a request, the original module-level variable is used.
+ *
+ * The constructor arguments are forwarded as-is: Next.js 15 calls `new CacheSignal()` while Next.js 16 calls
+ * `new CacheSignal(null)`.
+ */
 export const moduleLoadingSignalRule = `
 rule:
   kind: statement_block
@@ -19,15 +28,15 @@ rule:
       field: name
       regex: ^getModuleLoadingSignal$
   has:
-    pattern: $SIGNAL = new $CACHE_SIGNAL.CacheSignal()
+    pattern: $SIGNAL = new $CACHE_SIGNAL.CacheSignal($$$ARGS)
     stopBy: end
 fix: |-
   {
     const requestStore = globalThis.__openNextAls?.getStore();
     if (requestStore) {
-      return requestStore.moduleLoadingSignal ??= new $CACHE_SIGNAL.CacheSignal();
+      return requestStore.moduleLoadingSignal ??= new $CACHE_SIGNAL.CacheSignal($$$ARGS);
     }
-    return $SIGNAL ??= new $CACHE_SIGNAL.CacheSignal();
+    return $SIGNAL ??= new $CACHE_SIGNAL.CacheSignal($$$ARGS);
   }
 `;
 
