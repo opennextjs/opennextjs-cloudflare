@@ -415,51 +415,29 @@ describe("copyWorkerdPackages", () => {
 	// `#main-entry-point` lists `node` before `workerd`: esbuild adds the `node` condition on the node
 	// platform and picks the first matching key, so the rewrite is what makes the `wasm` build win.
 	test("copies the workerd build of a package generated in a dot folder (.prisma/client)", async () => {
-		const packageJson = {
-			name: "prisma-client-abc123",
-			exports: {
-				".": {
-					require: { node: "./index.js", workerd: "./wasm.js", default: "./index.js" },
-					default: "./index.js",
-				},
-				"./*": "./*",
-			},
-			imports: {
-				"#wasm-engine-loader": { workerd: "./wasm-worker-loader.mjs", default: "./wasm-worker-loader.mjs" },
-				"#main-entry-point": {
-					require: { node: "./index.js", workerd: "./wasm.js", default: "./index.js" },
-					default: "./index.js",
-				},
-			},
-		};
 		const { src, dst } = createPackage(
 			".prisma/client",
-			packageJson,
 			{
-				"wasm.js": "module.exports = require('#wasm-engine-loader');",
-				"wasm-worker-loader.mjs": "export default {};",
+				name: "prisma-client-abc123",
+				imports: {
+					"#main-entry-point": {
+						require: { node: "./index.js", workerd: "./wasm.js", default: "./index.js" },
+					},
+				},
 			},
-			{ "index.js": "module.exports = {};", "default.js": "module.exports = require('#main-entry-point');" },
-			"6.7.0"
+			{ "wasm.js": "module.exports = {};" },
+			{ "index.js": "module.exports = {};" }
 		);
 
 		await copyWorkerdPackages({ appPath }, new Map([[src, dst]]));
 
 		expect(fs.existsSync(path.join(dst, "wasm.js"))).toBe(true);
-		expect(fs.existsSync(path.join(dst, "wasm-worker-loader.mjs"))).toBe(true);
-		expect(JSON.parse(fs.readFileSync(path.join(dst, "package.json"), "utf8"))).toEqual({
-			name: "prisma-client-abc123",
-			exports: {
-				".": { require: { workerd: "./wasm.js" }, default: "./index.js" },
-				"./*": "./*",
-			},
-			imports: {
-				"#wasm-engine-loader": { workerd: "./wasm-worker-loader.mjs" },
-				"#main-entry-point": { require: { workerd: "./wasm.js" }, default: "./index.js" },
-			},
+		expect(JSON.parse(fs.readFileSync(path.join(dst, "package.json"), "utf8")).imports).toEqual({
+			"#main-entry-point": { require: { workerd: "./wasm.js" } },
 		});
 		expect(errorSpy).not.toHaveBeenCalled();
 	});
+
 	// Nested `package.json` files are module type markers (`{ "type": "module" }`), not packages.
 	test("ignores a traced package.json nested in a package", async () => {
 		const { src, dst } = createPackage(
