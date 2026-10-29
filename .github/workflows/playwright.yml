@@ -54,7 +54,8 @@ jobs:
             browsers: chromium
           - name: dev
             filter: --filter "./examples/**"
-            build: ""
+            # No worker build, but the Prisma examples need their client generated and database seeded
+            build: prepare:db
             e2e: e2e:dev
             browsers: chromium
     steps:
@@ -69,8 +70,7 @@ jobs:
         with:
           browsers: ${{ matrix.browsers }}
 
-      - name: Build workers
-        if: matrix.build != ''
+      - name: Build
         run: pnpm ${{ matrix.filter }} run ${{ matrix.build }}
 
       - name: Run playwright tests
