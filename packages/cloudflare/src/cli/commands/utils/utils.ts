@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import url from "node:url";
@@ -121,7 +121,8 @@ export async function retrieveCompiledConfig() {
 		process.exit(1);
 	}
 
-	const { config: sourceConfig } = await compileConfig(sourceConfigPath);
+	const { config: sourceConfig, buildDir: tempDir } = await compileConfig(sourceConfigPath);
+	rmSync(tempDir, { recursive: true, force: true });
 
 	// Only use the source config to locate the build output, then load the config compiled by the
 	// build so that the commands use the same config as the build.

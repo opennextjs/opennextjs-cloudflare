@@ -183,6 +183,7 @@ describe("retrieveCompiledConfig", () => {
 	const defaultBuildDir = path.join(appDir, ".open-next/.build");
 	const customBuildDir = path.join(appDir, "custom/.open-next/.build");
 	const sourceConfigPath = path.join(appDir, "open-next.config.ts");
+	const tempDir = path.join(appDir, "tmp");
 
 	function writeCompiledConfig(buildDir: string, config: object) {
 		fs.mkdirSync(buildDir, { recursive: true });
@@ -205,9 +206,10 @@ describe("retrieveCompiledConfig", () => {
 					buildDir: path.join(appDir, config.buildOutputPath ?? ".", ".open-next/.build"),
 				}) as BuildOptions
 		);
+		fs.mkdirSync(tempDir, { recursive: true });
 		mockCompileOpenNextConfig.mockResolvedValue({
 			config: { default: {}, buildOutputPath: "custom" },
-			buildDir: "/build",
+			buildDir: tempDir,
 		});
 		exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
 			throw new Error("process.exit");
@@ -238,6 +240,7 @@ describe("retrieveCompiledConfig", () => {
 		});
 		// The config compiled by the build is used, not the one recompiled from source.
 		expect(result.config).toEqual({ default: {}, buildOutputPath: "custom", fromBuild: "custom" });
+		expect(fs.existsSync(tempDir)).toBe(false);
 	});
 
 	it("should report a missing build when there is no source config either", async () => {
