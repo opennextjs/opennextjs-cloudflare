@@ -192,7 +192,9 @@ function getWranglerArgs(
 	return [
 		...(args.configPath ? ["--config", args.configPath] : []),
 		...(args.config ? ["--config", args.config] : []),
-		...(args.env ? ["--env", args.env] : []),
+		// Note: an empty `--env` targets the top-level environment.
+		//       It is passed as a single argument as wrangler is spawned in a shell, which would drop a standalone empty argument.
+		...(args.env === "" ? ['--env=""'] : args.env ? ["--env", args.env] : []),
 		...(args.remote ? ["--remote"] : []),
 		// Note: the `args` array contains unrecognised flags.
 		...(args.args?.map((a) => `${a}`) ?? []),
