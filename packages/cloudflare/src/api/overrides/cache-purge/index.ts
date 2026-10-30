@@ -1,3 +1,4 @@
+import { warn } from "@opennextjs/aws/adapters/logger.js";
 import type { CDNInvalidationHandler } from "@opennextjs/aws/types/overrides.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
@@ -28,10 +29,15 @@ async function purgeTagsDirectly(env: CloudflareEnv, tags: string[]): Promise<vo
 /**
  * Creates a Cloudflare CDN invalidation handler.
  *
+ * In Durable Object mode, a missing `NEXT_CACHE_DO_PURGE` binding falls back to direct
+ * invalidation and logs a warning once per handler.
+ *
  * @param options Selects direct API or Durable Object invalidation.
  * @returns The Cloudflare CDN invalidation handler.
  */
 export const purgeCache = ({ type = "direct" }: PurgeOptions) => {
+	let hasWarnedMissingBinding = false;
+
 	/**
 	 * Invalidates cache entries associated with the provided tags.
 	 *
@@ -46,6 +52,12 @@ export const purgeCache = ({ type = "direct" }: PurgeOptions) => {
 		} else {
 			const durableObject = env.NEXT_CACHE_DO_PURGE;
 			if (!durableObject) {
+				if (!hasWarnedMissingBinding) {
+					hasWarnedMissingBinding = true;
+					warn(
+						"Purge cache: NEXT_CACHE_DO_PURGE not found. Falling back to direct purges, which are not buffered and may be rate limited."
+					);
+				}
 				await purgeTagsDirectly(env, tags);
 			} else {
 				const id = durableObject.idFromName("cache-purge");

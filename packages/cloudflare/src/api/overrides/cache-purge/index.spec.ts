@@ -1,9 +1,14 @@
+import { warn } from "@opennextjs/aws/adapters/logger.js";
 import type { CDNPath } from "@opennextjs/aws/types/overrides.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
 import { requestPurgeCacheByTags } from "../internal.js";
 import purgeCache from "./index.js";
+
+vi.mock("@opennextjs/aws/adapters/logger.js", () => ({
+	warn: vi.fn(),
+}));
 
 vi.mock("../../cloudflare-context.js", () => ({
 	getCloudflareContext: vi.fn(),
@@ -18,6 +23,7 @@ describe("purgeCache", () => {
 	const env = {} as CloudflareEnv;
 
 	beforeEach(() => {
+		vi.mocked(warn).mockClear();
 		vi.mocked(getCloudflareContext).mockReturnValue({ env } as ReturnType<typeof getCloudflareContext>);
 		vi.mocked(requestPurgeCacheByTags).mockResolvedValue({ status: "purge-success" });
 	});
@@ -77,5 +83,22 @@ describe("purgeCache", () => {
 		await purgeCache({ type: "durableObject" }).invalidateTags?.(["tag-1"]);
 
 		expect(requestPurgeCacheByTags).toHaveBeenCalledWith(env, ["tag-1"]);
+	});
+
+	it("warns once when the Durable Object binding is missing", async () => {
+		const handler = purgeCache({ type: "durableObject" });
+
+		await handler.invalidateTags?.(["tag-1"]);
+		await handler.invalidateTags?.(["tag-2"]);
+
+		expect(warn).toHaveBeenCalledOnce();
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining("NEXT_CACHE_DO_PURGE not found"));
+		expect(requestPurgeCacheByTags).toHaveBeenCalledTimes(2);
+	});
+
+	it("does not warn about the Durable Object binding in direct mode", async () => {
+		await purgeCache({ type: "direct" }).invalidateTags?.(["tag-1"]);
+
+		expect(warn).not.toHaveBeenCalled();
 	});
 });
