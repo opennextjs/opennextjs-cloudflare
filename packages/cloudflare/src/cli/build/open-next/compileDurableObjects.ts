@@ -1,7 +1,12 @@
 import { createRequire } from "node:module";
 import path from "node:path";
 
-import { loadBuildId, loadConfig, loadPrerenderManifest } from "@opennextjs/aws/adapters/config/util.js";
+import {
+	getOpenNextBuildId,
+	loadBuildId,
+	loadConfig,
+	loadPrerenderManifest,
+} from "@opennextjs/aws/adapters/config/util.js";
 import { type BuildOptions, esbuildSync } from "@opennextjs/aws/build/helper.js";
 
 export function compileDurableObjects(buildOpts: BuildOptions) {
@@ -29,7 +34,7 @@ export function compileDurableObjects(buildOpts: BuildOptions) {
 			external: ["cloudflare:workers"],
 			define: {
 				"process.env.__NEXT_PREVIEW_MODE_ID": `"${previewModeId}"`,
-				"process.env.__OPEN_NEXT_BUILD_ID": JSON.stringify(nextConfig.deploymentId ?? BUILD_ID),
+				"process.env.__OPEN_NEXT_BUILD_ID": JSON.stringify(getOpenNextBuildId(nextConfig, BUILD_ID)),
 			},
 		},
 		buildOpts

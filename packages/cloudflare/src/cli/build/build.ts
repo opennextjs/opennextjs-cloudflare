@@ -13,7 +13,6 @@ import type { ProjectOptions } from "../project-options.js";
 import { ensureNextjsVersionSupported } from "../utils/nextjs-support.js";
 import { bundleServer } from "./bundle-server.js";
 import { bundleNodeMiddleware } from "./open-next/bundle-node-middleware.js";
-import { compileCacheAssetsManifestSqlFile } from "./open-next/compile-cache-assets-manifest.js";
 import { compileEnvFiles } from "./open-next/compile-env-files.js";
 import { compileImages } from "./open-next/compile-images.js";
 import { compileInit } from "./open-next/compile-init.js";
@@ -110,11 +109,7 @@ export async function build(
 	createStaticAssets(options, { useBasePath: true });
 
 	if (config.dangerous?.disableIncrementalCache !== true) {
-		const { useTagCache, metaFiles } = createCacheAssets(options);
-
-		if (useTagCache) {
-			compileCacheAssetsManifestSqlFile(options, metaFiles);
-		}
+		createCacheAssets(options);
 	}
 
 	await createServerBundle(options);
