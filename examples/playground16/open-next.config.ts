@@ -9,6 +9,8 @@ export default {
 		queue: doQueue,
 		tagCache: d1NextTagCache,
 	}),
+	// Exercise a custom build output path: Next.js emits to `.cache/.next` (see `distDir`) and OpenNext to `.cache/.open-next`.
+	buildOutputPath: ".cache",
 	cloudflare: {
 		skewProtection: {
 			enabled: false,
