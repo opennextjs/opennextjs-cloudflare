@@ -198,7 +198,6 @@ describe("retrieveCompiledConfig", () => {
 	beforeEach(() => {
 		fs.rmSync(path.join(appDir, ".open-next"), { recursive: true, force: true });
 		fs.rmSync(path.join(appDir, "custom"), { recursive: true, force: true });
-		fs.writeFileSync(sourceConfigPath, "export default { default: {} };");
 		mockExistsSync.mockImplementation(fs.existsSync);
 		vi.mocked(normalizeOptions).mockImplementation(
 			(config) =>
@@ -235,9 +234,7 @@ describe("retrieveCompiledConfig", () => {
 
 		const result = await retrieveCompiledConfig();
 
-		expect(mockCompileOpenNextConfig).toHaveBeenCalledWith(sourceConfigPath, {
-			compileEdge: true,
-		});
+		expect(mockCompileOpenNextConfig).toHaveBeenCalledWith(sourceConfigPath);
 		// The config compiled by the build is used, not the one recompiled from source.
 		expect(result.config).toEqual({ default: {}, buildOutputPath: "custom", fromBuild: "custom" });
 		expect(fs.existsSync(tempDir)).toBe(false);
@@ -252,8 +249,7 @@ describe("retrieveCompiledConfig", () => {
 			"Could not find compiled Open Next config, did you run the build command?"
 		);
 		expect(exitSpy).toHaveBeenCalledWith(1);
-		expect(askConfirmation).not.toHaveBeenCalled();
-		expect(createOpenNextConfigFile).not.toHaveBeenCalled();
+		expect(mockCompileOpenNextConfig).not.toHaveBeenCalled();
 	});
 
 	it("should report a missing build when the source config exists but the app was never built", async () => {

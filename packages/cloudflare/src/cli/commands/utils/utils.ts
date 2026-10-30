@@ -89,54 +89,34 @@ export async function compileConfig(configPath: string | undefined) {
 	return { config, buildDir };
 }
 
-const MISSING_BUILD_ERROR = "Could not find compiled Open Next config, did you run the build command?";
-
 /**
- * Retrieve a compiled OpenNext config, and ensure it is for Cloudflare.
+ * Retrieve the OpenNext config compiled by the build, and ensure it is for Cloudflare.
+ *
+ * The compiled config is looked up in the default build output first. When it is not there, the
+ * source config is compiled to resolve a custom `buildOutputPath`.
+ *
+ * Exits the process when the compiled config can not be found, i.e. the app was not built.
  *
  * @returns OpenNext config.
  */
 export async function retrieveCompiledConfig() {
-	const compiledConfigPath = path.join(nextAppDir, ".open-next/.build/open-next.config.edge.mjs");
+	let configPath = path.join(nextAppDir, ".open-next/.build/open-next.config.edge.mjs");
 
-	if (existsSync(compiledConfigPath)) {
-		const config = await import(url.pathToFileURL(compiledConfigPath).href).then((mod) => mod.default);
-		ensureCloudflareConfig(config);
-
-		return { config };
+	if (!existsSync(configPath)) {
+		const sourceConfigPath = findOpenNextConfig(nextAppDir);
+		if (sourceConfigPath) {
+			const { config, buildDir } = await compileOpenNextConfig(sourceConfigPath);
+			rmSync(buildDir, { recursive: true, force: true });
+			configPath = path.join(getNormalizedOptions(config).buildDir, "open-next.config.edge.mjs");
+		}
 	}
 
-	// The path above does not follow a custom `buildOutputPath`, and that value cannot be resolved
-	// here -- it lives in the very config we are trying to load. Recompile from the source config
-	// to find out where the build output actually is; `compileOpenNextConfig` emits to a temp dir,
-	// so nothing lands in the project.
-	//
-	// `findOpenNextConfig` is checked first so that a missing source config never reaches
-	// `compileConfig`, which would offer to create one -- these commands must not write to the
-	// project, and "no config at all" means the app was never built.
-	const sourceConfigPath = findOpenNextConfig(nextAppDir);
-
-	if (!sourceConfigPath) {
-		logger.error(MISSING_BUILD_ERROR);
+	if (!existsSync(configPath)) {
+		logger.error("Could not find compiled Open Next config, did you run the build command?");
 		process.exit(1);
 	}
 
-	const { config: sourceConfig, buildDir: tempDir } = await compileConfig(sourceConfigPath);
-	rmSync(tempDir, { recursive: true, force: true });
-
-	// Only use the source config to locate the build output, then load the config compiled by the
-	// build so that the commands use the same config as the build.
-	const buildOutputConfigPath = path.join(
-		getNormalizedOptions(sourceConfig).buildDir,
-		"open-next.config.edge.mjs"
-	);
-
-	if (!existsSync(buildOutputConfigPath)) {
-		logger.error(MISSING_BUILD_ERROR);
-		process.exit(1);
-	}
-
-	const config = await import(url.pathToFileURL(buildOutputConfigPath).href).then((mod) => mod.default);
+	const config = await import(url.pathToFileURL(configPath).href).then((mod) => mod.default);
 	ensureCloudflareConfig(config);
 
 	return { config };
