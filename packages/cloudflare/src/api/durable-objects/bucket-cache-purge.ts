@@ -37,9 +37,12 @@ export class BucketCachePurge extends DurableObject<CloudflareEnv> {
 			);
 		}
 		const nextAlarm = await this.ctx.storage.getAlarm();
-		if (!nextAlarm) {
-			// Set an alarm to trigger the cache purge
-			this.ctx.storage.setAlarm(Date.now() + this.bufferTimeInSeconds * 1000);
+		// A past alarm is either about to fire, waiting for a retry, or a stale leftover once the
+		// alarm handler has exhausted its retries. In the last case no alarm would ever be scheduled
+		// again and every later purge would stay queued forever (#929), so the alarm is re-armed.
+		// Re-arming is safe: `alarm()` drains whatever tags remain.
+		if (nextAlarm === null || nextAlarm <= Date.now()) {
+			await this.ctx.storage.setAlarm(Date.now() + this.bufferTimeInSeconds * 1000);
 		}
 	}
 
