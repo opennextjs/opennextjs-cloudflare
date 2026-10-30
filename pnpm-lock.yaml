@@ -1122,8 +1122,8 @@ importers:
         specifier: 'catalog:'
         version: 2.33.0
       '@opennextjs/aws':
-        specifier: https://pkg.pr.new/@opennextjs/aws@1208
-        version: https://pkg.pr.new/@opennextjs/aws@1208(diff@9.0.0)(next@15.5.28(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@22.12.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
+        specifier: 4.1.14
+        version: 4.1.14(diff@9.0.0)(next@15.5.28(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@22.12.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
       ci-info:
         specifier: ^4.2.0
         version: 4.2.0
@@ -3217,9 +3217,8 @@ packages:
   '@octokit/types@13.10.0':
     resolution: {integrity: sha512-ifLaO34EbbPj0Xgro4G5lP5asESjwHracYJvVaPIyXMuiuXLlhic3S47cBdTb+jfODkTE5YtGCLt3Ay3+J97sA==}
 
-  '@opennextjs/aws@https://pkg.pr.new/@opennextjs/aws@1208':
-    resolution: {integrity: sha512-G59s3bsza+zGHwJcjDx09WAL9RkSUdhCTE8hEtWEdEwln5WdWjjHqgoItP3FTw4oqfw+pldxJxzIP5HeMuIVfw==, tarball: https://pkg.pr.new/@opennextjs/aws@1208}
-    version: 4.1.13
+  '@opennextjs/aws@4.1.14':
+    resolution: {integrity: sha512-jV+rxEi5dNxnQbKBftWuIppVvemMrbfaUj0tXINJMEzX7crk1pkmsMwudgk2kgyak1T03/GSMSEpE8nzOKrkDA==}
     hasBin: true
     peerDependencies:
       diff: ^9.0.0
@@ -11498,7 +11497,7 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 24.2.0
 
-  '@opennextjs/aws@https://pkg.pr.new/@opennextjs/aws@1208(diff@9.0.0)(next@15.5.28(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@22.12.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))':
+  '@opennextjs/aws@4.1.14(diff@9.0.0)(next@15.5.28(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@22.12.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))':
     dependencies:
       '@ast-grep/napi': 0.45.3
       '@aws-sdk/client-cloudfront': 3.984.0
