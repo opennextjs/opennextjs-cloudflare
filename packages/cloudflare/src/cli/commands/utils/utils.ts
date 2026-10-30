@@ -11,7 +11,6 @@ import { unstable_readConfig } from "wrangler";
 import type yargs from "yargs";
 
 import type { OpenNextConfig } from "../../../api/config.js";
-import { getOutputWorkerPath } from "../../build/bundle-server.js";
 import { ensureCloudflareConfig } from "../../build/utils/ensure-cf-config.js";
 import { askConfirmation } from "../../utils/ask-confirmation.js";
 import {
@@ -122,16 +121,24 @@ export async function retrieveCompiledConfig() {
 		process.exit(1);
 	}
 
-	const { config, buildDir } = await compileConfig(sourceConfigPath);
+	const { config: sourceConfig } = await compileConfig(sourceConfigPath);
 
-	// A source config on its own does not mean the app was built, so check for the worker the
-	// build emits. Without this, forgetting to build would surface as an obscure failure later.
-	if (!existsSync(getOutputWorkerPath(getNormalizedOptions(config)))) {
+	// Only use the source config to locate the build output, then load the config compiled by the
+	// build so that the commands use the same config as the build.
+	const buildOutputConfigPath = path.join(
+		getNormalizedOptions(sourceConfig).buildDir,
+		"open-next.config.edge.mjs"
+	);
+
+	if (!existsSync(buildOutputConfigPath)) {
 		logger.error(MISSING_BUILD_ERROR);
 		process.exit(1);
 	}
 
-	return { config, buildDir };
+	const config = await import(url.pathToFileURL(buildOutputConfigPath).href).then((mod) => mod.default);
+	ensureCloudflareConfig(config);
+
+	return { config };
 }
 
 /**
