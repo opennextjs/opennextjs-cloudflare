@@ -2,7 +2,7 @@ import { error } from "@opennextjs/aws/adapters/logger.js";
 import type { NextModeTagCache, NextModeTagCacheWriteInput } from "@opennextjs/aws/types/overrides.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
-import { debugCache, FALLBACK_BUILD_ID, isPurgeCacheEnabled, purgeCacheByTags } from "../internal.js";
+import { debugCache, FALLBACK_BUILD_ID } from "../internal.js";
 
 export const NAME = "kv-next-mode-tag-cache";
 
@@ -160,12 +160,9 @@ export class KVNextModeTagCache implements NextModeTagCache {
 			})
 		);
 
-		const tagStrings = tags.map((t) => (typeof t === "string" ? t : t.tag));
-		debugCache("KVNextModeTagCache", `writeTags tags=${tagStrings} time=${nowMs}`);
-
-		// TODO: See https://github.com/opennextjs/opennextjs-aws/issues/986
-		if (isPurgeCacheEnabled()) {
-			await purgeCacheByTags(tagStrings);
+		if (process.env.NEXT_PRIVATE_DEBUG_CACHE) {
+			const tagStrings = tags.map((t) => (typeof t === "string" ? t : t.tag));
+			debugCache("KVNextModeTagCache", `writeTags tags=${tagStrings} time=${nowMs}`);
 		}
 	}
 
