@@ -1,6 +1,9 @@
+import { resolve } from "node:path";
+
 import logger from "@opennextjs/aws/logger.js";
 import type yargs from "yargs";
 
+import { WRANGLER_CONFIG_PATH_ENV_VAR } from "../../api/cloudflare-context.js";
 import { build as buildImpl } from "../build/build.js";
 import { askConfirmation } from "../utils/ask-confirmation.js";
 import { createWranglerConfigFile, findWranglerConfig } from "../utils/create-wrangler-config.js";
@@ -63,6 +66,11 @@ export async function buildCommand(
 	}
 
 	const wranglerConfig = await readWranglerConfig(args);
+
+	// Forward a custom wrangler config to the `next build` SSG workers, which read it via `getCloudflareContext`
+	if (args.wranglerConfigPath) {
+		process.env[WRANGLER_CONFIG_PATH_ENV_VAR] = resolve(args.wranglerConfigPath);
+	}
 
 	await buildImpl(options, config, projectOpts, wranglerConfig, args.dangerouslyUseUnsupportedNextVersion);
 }
