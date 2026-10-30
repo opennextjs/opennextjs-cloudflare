@@ -12,6 +12,15 @@ import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
 import { isCacheComponentsEnabled } from "./cache-components.js";
 
+/**
+ * ast-grep rule replacing the body of `getModuleLoadingSignal()` to scope the signal to the request.
+ *
+ * Inside a request, the signal is created lazily and stored as `moduleLoadingSignal` on the OpenNext request
+ * store (`globalThis.__openNextAls`). Outside a request, the original module-level variable is used.
+ *
+ * The constructor arguments are forwarded as-is: Next.js 15 calls `new CacheSignal()` while Next.js 16 calls
+ * `new CacheSignal(null)`.
+ */
 export const moduleLoadingSignalRule = `
 rule:
   kind: statement_block

@@ -2,11 +2,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
+import { computePatchDiff } from "@opennextjs/aws/build/patch/testUtils.js";
 import type { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
 import type { NextConfig } from "@opennextjs/aws/types/next-types.js";
 import { describe, expect, test, vi } from "vitest";
 
-import { computePatchDiff } from "../../utils/test-patch.js";
 import {
 	cacheComponentsSchedulerModule,
 	isCacheComponentsEnabled,

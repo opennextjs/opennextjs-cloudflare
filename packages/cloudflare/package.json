@@ -1,7 +1,7 @@
 {
 	"name": "@opennextjs/cloudflare",
 	"description": "Cloudflare builder for next apps",
-	"version": "1.20.12",
+	"version": "1.20.14",
 	"type": "module",
 	"scripts": {
 		"clean": "rimraf dist",
@@ -54,7 +54,7 @@
 	"dependencies": {
 		"@ast-grep/napi": "^0.45.3",
 		"@dotenvx/dotenvx": "catalog:",
-		"@opennextjs/aws": "4.1.11",
+		"@opennextjs/aws": "4.1.13",
 		"ci-info": "^4.2.0",
 		"cloudflare": "^4.4.1",
 		"comment-json": "^4.5.1",
@@ -72,7 +72,7 @@
 		"@types/picomatch": "^4.0.0",
 		"@types/rclone.js": "^0.6.1",
 		"@types/yargs": "catalog:",
-		"diff": "^8.0.2",
+		"diff": "^9.0.0",
 		"esbuild": "catalog:",
 		"eslint": "catalog:",
 		"eslint-plugin-import": "catalog:",

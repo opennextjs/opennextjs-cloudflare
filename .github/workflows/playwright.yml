@@ -5,10 +5,65 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NEXT_TELEMETRY_DISABLED: 1
+
 jobs:
   test:
+    name: ${{ matrix.name }}
     timeout-minutes: 30
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Examples are always selected within `./examples/**` so that the root package (whose `e2e` scripts recurse)
+        # is never selected. The "webpack (others)" shard catches every example not explicitly listed in another shard.
+        include:
+          - name: webpack (app-router)
+            filter: --filter app-router
+            build: build:worker
+            e2e: e2e
+            browsers: chromium
+          - name: webpack (app-pages-router, pages-router, experimental)
+            filter: --filter app-pages-router --filter pages-router --filter experimental
+            build: build:worker
+            e2e: e2e
+            browsers: chromium
+          - name: webpack (overrides, bugs)
+            filter: --filter "./examples/overrides/*" --filter "./examples/bugs/*"
+            build: build:worker
+            e2e: e2e
+            browsers: chromium
+          # Examples testing on multiple browsers, which are slow to install
+          - name: webpack (create-next-app, middleware)
+            filter: --filter create-next-app --filter middleware
+            build: build:worker
+            e2e: e2e
+            browsers: ""
+          - name: webpack (others)
+            filter: >-
+              --filter "./examples/**"
+              --filter "!app-router" --filter "!app-pages-router" --filter "!pages-router" --filter "!experimental"
+              --filter "!./examples/overrides/*" --filter "!./examples/bugs/*"
+              --filter "!create-next-app" --filter "!middleware"
+            build: build:worker
+            e2e: e2e
+            browsers: chromium
+          - name: turbopack
+            filter: --filter "./examples/**"
+            build: build:worker-turbopack
+            e2e: e2e-turbopack
+            browsers: chromium
+          - name: dev
+            filter: --filter "./examples/**"
+            # No worker build, but the Prisma examples need their client generated and database seeded
+            build: prepare:db
+            e2e: e2e:dev
+            browsers: chromium
     steps:
       - name: Check out code
         uses: actions/checkout@v6
@@ -18,25 +73,21 @@ jobs:
 
       - name: Install Playwright
         uses: ./.github/actions/setup-playwright
+        with:
+          browsers: ${{ matrix.browsers }}
 
-      - name: Build workers (webpack)
-        run: pnpm -r build:worker
+      - name: Build
+        run: pnpm ${{ matrix.filter }} run ${{ matrix.build }}
 
-      - name: Run playwright tests (webpack)
-        run: pnpm e2e
-
-      - name: Build workers (turbopack)
-        run: pnpm -r build:worker-turbopack
-
-      - name: Run playwright tests (turbopack)
-        run: pnpm e2e-turbopack
-
-      - name: Run playwright dev tests
-        run: pnpm e2e:dev
+      - name: Run playwright tests
+        run: pnpm ${{ matrix.filter }} run ${{ matrix.e2e }}
 
       - uses: actions/upload-artifact@v7
-        if: always()
+        if: failure()
         with:
-          name: playwright-report
-          path: ./**/playwright-report
+          name: playwright-report-${{ strategy.job-index }}
+          # Avoid `**`, which walks every example's `node_modules`
+          path: |
+            examples/*/playwright-report
+            examples/*/*/playwright-report
           retention-days: 1

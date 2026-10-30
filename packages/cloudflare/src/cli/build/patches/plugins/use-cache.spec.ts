@@ -1,6 +1,6 @@
+import { computePatchDiff } from "@opennextjs/aws/build/patch/testUtils.js";
 import { expect, test } from "vitest";
 
-import { computePatchDiff } from "../../utils/test-patch.js";
 import { rule } from "./use-cache.js";
 
 const code = `"use strict";
