@@ -4,7 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { loadMiddlewareManifest } from "@opennextjs/aws/adapters/config/util.js";
+import { loadConfig, loadMiddlewareManifest } from "@opennextjs/aws/adapters/config/util.js";
 import { bundleNextServer } from "@opennextjs/aws/build/bundleNextServer.js";
 import { compileCache } from "@opennextjs/aws/build/compileCache.js";
 import { copyTracedFiles } from "@opennextjs/aws/build/copyTracedFiles.js";
@@ -210,7 +210,7 @@ async function generateBundle(
 		awsPatches.patchBackgroundRevalidation,
 		awsPatches.patchNodeEnvironment,
 		// Cloudflare specific patches
-		patchModuleLoadingSignal,
+		patchModuleLoadingSignal(loadConfig(path.join(appBuildOutputPath, ".next"))),
 		patchResRevalidate,
 		patchUseCacheIO,
 		patchTurbopackRuntime,
