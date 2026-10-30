@@ -25,8 +25,9 @@ export function patchVercelOgLibrary(
 	buildOpts: BuildOptions,
 	bundle: { outputDir: string; traceFiles: string[] }
 ): boolean {
-	const { appBuildOutputPath } = buildOpts;
+	const { appBuildOutputPath, appPath, monorepoRoot } = buildOpts;
 	const packagePath = path.join(bundle.outputDir, getPackagePath(buildOpts));
+	const appPackagePath = path.join(bundle.outputDir, path.relative(monorepoRoot, appPath));
 
 	let useOg = false;
 
@@ -47,7 +48,10 @@ export function patchVercelOgLibrary(
 		// and there is an `index.edge.js` colocated file that we need to copy and patch.
 		useOg = true;
 
-		const outputDir = getOutputDir({ outputDir: bundle.outputDir, packagePath });
+		const outputDir = getOutputDir({
+			outputDir: bundle.outputDir,
+			packagePaths: [appPackagePath, packagePath],
+		});
 		const outputEdgePath = path.join(outputDir, "index.edge.js");
 
 		// Ensure the edge version is available in the OpenNext node_modules.
@@ -102,15 +106,20 @@ export function patchVercelOgLibrary(
 /**
  * Locates the bundle's copy of the OG package, including monorepo layouts.
  *
- * @param opts The bundle root and its application package directory.
+ * The app `node_modules` can be either in `appPath` or `buildOutputPath`, which differ when a
+ * custom `buildOutputPath` is set.
+ *
+ * @param opts The bundle root and the application package directories.
  * @returns The application-local OG directory, or the bundle-root OG directory.
  */
-function getOutputDir(opts: { outputDir: string; packagePath: string }): string {
+function getOutputDir(opts: { outputDir: string; packagePaths: string[] }): string {
 	const vercelOgNodeModulePath = "node_modules/next/dist/compiled/@vercel/og";
 
-	const packageOutputPath = path.join(opts.packagePath, vercelOgNodeModulePath);
-	if (existsSync(packageOutputPath)) {
-		return packageOutputPath;
+	for (const packagePath of opts.packagePaths) {
+		const packageOutputPath = path.join(packagePath, vercelOgNodeModulePath);
+		if (existsSync(packageOutputPath)) {
+			return packageOutputPath;
+		}
 	}
 
 	return path.join(opts.outputDir, vercelOgNodeModulePath);

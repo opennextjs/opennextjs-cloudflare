@@ -17,6 +17,7 @@ const edgeImport = `e.exports=import("next/dist/compiled/@vercel/og/index.edge.j
 
 const buildOpts = {
 	appBuildOutputPath: "examples/api",
+	appPath: "examples/api",
 	monorepoRoot: "",
 	outputDir: "examples/api/.open-next",
 } as BuildOptions;
@@ -213,5 +214,33 @@ describe("independent server and middleware OG usage", () => {
 				bundle.usesOg ? edgeImport : "export const unused = true;"
 			);
 		}
+	});
+});
+
+describe("custom buildOutputPath", () => {
+	afterEach(() => mockFs.restore());
+
+	it("finds @vercel/og in the app node_modules when .next is in buildOutputPath", () => {
+		const customBuildOpts = { ...buildOpts, appBuildOutputPath: "examples/api/custom" } as BuildOptions;
+		const tracePath = path.join(customBuildOpts.appBuildOutputPath, ".next/server/middleware.js.nft.json");
+		const bundleRoot = path.join(buildOpts.outputDir, "middleware");
+		const entryPath = path.join(bundleRoot, "examples/api/custom/.next/server/middleware.js");
+		// `node_modules` is next to the app, not in `buildOutputPath`.
+		const libraryDir = path.join(bundleRoot, "examples/api/node_modules/next/dist/compiled/@vercel/og");
+		mockFs({
+			[nodeModulesVercelOgDir]: { "index.edge.js": edgeCode, [fontName]: font },
+			[tracePath]: JSON.stringify({
+				files: [path.relative(path.dirname(tracePath), path.join(nodeModulesVercelOgDir, "index.node.js"))],
+			}),
+			[entryPath]: nodeImport,
+			[libraryDir]: { [fontName]: font },
+		});
+
+		expect(patchVercelOgLibrary(customBuildOpts, { outputDir: bundleRoot, traceFiles: [tracePath] })).toBe(
+			true
+		);
+		expect(readFileSync(path.join(libraryDir, "index.edge.js"), "utf-8")).toContain("getFallbackFont");
+		expect(readFileSync(path.join(libraryDir, `${fontName}.bin`))).toEqual(font);
+		expect(readFileSync(entryPath, "utf-8")).toBe(edgeImport);
 	});
 });
