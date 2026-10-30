@@ -24,6 +24,7 @@
 			"types": "./dist/api/index.d.ts",
 			"default": "./dist/api/index.js"
 		},
+		"./package.json": "./package.json",
 		"./*": {
 			"import": "./dist/api/*.js",
 			"types": "./dist/api/*.d.ts",
