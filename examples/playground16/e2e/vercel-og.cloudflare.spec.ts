@@ -4,7 +4,8 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 
 // Worker-only: Next dev does not build these artifacts. Both webpack and Turbopack run this spec.
-const outputDir = path.join(__dirname, "../.open-next");
+// playground16 sets `buildOutputPath: ".cache"`.
+const outputDir = path.join(__dirname, "../.cache/.open-next");
 
 test("the proxy imports OG assets from its own prepared output", () => {
 	const middlewareDir = path.join(outputDir, "middleware");

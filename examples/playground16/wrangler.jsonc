@@ -1,11 +1,11 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"main": ".open-next/worker.js",
+	"main": ".cache/.open-next/worker.js",
 	"name": "playground16",
 	"compatibility_date": "2026-08-01",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public", "enable_request_signal"],
 	"assets": {
-		"directory": ".open-next/assets",
+		"directory": ".cache/.open-next/assets",
 		"binding": "ASSETS"
 	},
 	"r2_buckets": [
