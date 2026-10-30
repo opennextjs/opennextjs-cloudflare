@@ -3,6 +3,16 @@ import { getAppPort, getInspectorPort, type AppName } from "./apps";
 
 declare const process: typeof nodeProcess;
 
+/**
+ * Configures an example's Playwright suite and development server.
+ *
+ * Exposes `isWorker` in test metadata for runtime-specific assertions.
+ *
+ * @param app The example application.
+ * @param options The runtime, bundler, and test execution options.
+ * @returns The Playwright configuration.
+ * @throws When the application has no assigned test port.
+ */
 export function configurePlaywright(
 	app: AppName,
 	{
@@ -58,6 +68,9 @@ export function configurePlaywright(
 	 */
 	return defineConfig({
 		testDir: "./",
+		// OG tests use this to select the expected PNG hash: Workers use resvg WASM,
+		// while Next dev uses Sharp, which renders slightly different pixels.
+		metadata: { isWorker },
 		/* ignore runtime specific tests */
 		testIgnore: isWorker ? "*next.spec.ts" : "*cloudflare.spec.ts",
 		/* Run tests in files in parallel */

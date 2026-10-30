@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
+import { applyRule, parseCode, patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { CodePatcher } from "@opennextjs/aws/build/patch/codePatcher.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
@@ -56,6 +56,92 @@ fix: |-
 `;
 
 /**
+ * Replace the `compileModule` helper that Next.js 16.3 emits in the chunks.
+ *
+ * Next.js 16.3 moved the wasm loading out of `[turbopack]_runtime.js`: it is now emitted on
+ * demand in the chunks as `[turbopack-wasm]/node/loadWasm.ts`, which reads the `.wasm` file from
+ * the filesystem and compiles it with `WebAssembly.compileStreaming`. Neither is supported by
+ * workerd so the helper is rewritten to use the generated `loadWasmChunk`.
+ *
+ * The emitted code is minified, so the rule matches on the shape of the helper rather than on its
+ * name: an async function taking the chunk path as its only parameter and returning the result of
+ * `WebAssembly.compileStreaming(...)`.
+ *
+ * See https://github.com/opennextjs/opennextjs-cloudflare/issues/1342
+ */
+export const replaceCompileModuleRule = `
+rule:
+  all:
+    - pattern:
+        context: async function $NAME($PATH) { $$$BODY }
+        selector: function_declaration
+    - has:
+        field: body
+        has:
+          kind: return_statement
+          has:
+            pattern: WebAssembly.compileStreaming($$$)
+            stopBy: end
+fix: |-
+  async function $NAME($PATH) {
+    return loadWasmChunk($PATH);
+  }
+`;
+
+/**
+ * Replace the `instantiate` helper that Next.js 16.3 emits in the chunks.
+ *
+ * The counterpart of {@link replaceCompileModuleRule} for the helper instantiating the module:
+ * `WebAssembly.instantiateStreaming` is not supported by workerd either, so the chunk is loaded
+ * with the generated `loadWasmChunk` and instantiated with the synchronous `WebAssembly.instantiate`.
+ *
+ * The rule matches an async function taking the chunk path and the imports as parameters, and
+ * declaring a variable from the result of `WebAssembly.instantiateStreaming(...)`.
+ */
+export const replaceInstantiateModuleRule = `
+rule:
+  all:
+    - pattern:
+        context: async function $NAME($PATH, $IMPORTS) { $$$BODY }
+        selector: function_declaration
+    - has:
+        field: body
+        has:
+          kind: lexical_declaration
+          has:
+            pattern: WebAssembly.instantiateStreaming($$$)
+            stopBy: end
+fix: |-
+  async function $NAME($PATH, $IMPORTS) {
+    const module = await loadWasmChunk($PATH);
+    const { exports } = await WebAssembly.instantiate(module, $IMPORTS);
+    return exports;
+  }
+`;
+
+/**
+ * Extract the module specifier from the target of a dangling Turbopack external symlink.
+ *
+ * Live links are imported by their hashed id (see {@link discoverExternalModuleMappings}). This is
+ * the fallback for links whose target does not exist in `.open-next`: the specifier is taken from the
+ * part of the path after the **last** `node_modules` segment, so that esbuild has a chance to resolve
+ * it from the application tree:
+ * - npm/yarn: `../../node_modules/shiki` -> `shiki`
+ * - pnpm: `../../../../node_modules/.pnpm/pg@8.23.1/node_modules/pg` -> `pg`
+ * - pnpm, scoped: `.../node_modules/.pnpm/@scope+name@1.0.0/node_modules/@scope/name` -> `@scope/name`
+ *
+ * Both `/` and `\` separators are accepted (`readlink` returns the latter on Windows), as well as
+ * absolute targets and a trailing separator.
+ *
+ * @param target The target of the symlink, as returned by `readlink`.
+ * @returns The module specifier, or `undefined` when the target is not inside a `node_modules` folder.
+ */
+export function packageNameFromSymlinkTarget(target: string): string | undefined {
+	// The greedy prefix matches up to the last `node_modules/`.
+	return normalizePath(target).match(/^(?:.*\/)?node_modules\/(.+?)\/?$/)?.[1];
+}
+
+/**
  * Discover Turbopack external module mappings by reading symlinks in .next/node_modules/.
  *
  * Turbopack externalizes packages listed in serverExternalPackages and creates hashed
@@ -65,11 +151,22 @@ fix: |-
  * statically analyze those hashed names. This function discovers the mappings so we can
  * generate explicit switch cases for the bundler.
  *
+ * Live links are mapped to their hashed id: the link is copied verbatim into `.open-next` and
+ * resolves there, so esbuild follows it and applies the package `exports` (with the `workerd`
+ * condition) to the exact version Turbopack linked - which is also what Node.js does at runtime.
+ * A bare package name would only resolve for direct dependencies of the app (pnpm keeps
+ * transitive packages in `node_modules/.pnpm/<pkg>@<version>/node_modules/<pkg>`), and a path
+ * into `.pnpm` would bypass `exports` altogether (#1409).
+ *
+ * Dangling links are mapped to the package name extracted from their target, see
+ * {@link packageNameFromSymlinkTarget}.
+ *
  * @param filePath Absolute path to the Turbopack runtime file being patched
  *                 (e.g. `/abs/path/to/.open-next/server-functions/default/.../.next/server/chunks/ssr/[turbopack]_runtime.js`).
  *                 This must be the actual file in `.open-next/` (not `buildOptions.appBuildOutputPath`)
  *                 because the `.next/node_modules/` symlinks are in the traced copy, not the original.
- * @returns A map from hashed identifiers to real package names (e.g. "shiki-43d062b67f27bbdc" -> "shiki").
+ * @returns A map from hashed identifiers to the specifiers to import
+ *          (e.g. "shiki-43d062b67f27bbdc" -> "shiki-43d062b67f27bbdc").
  */
 function discoverExternalModuleMappings(filePath: string): Map<string, string> {
 	// filePath is like: .../.next/server/chunks/ssr/[turbopack]_runtime.js
@@ -87,11 +184,12 @@ function discoverExternalModuleMappings(filePath: string): Map<string, string> {
 		try {
 			if (entry.isSymbolicLink()) {
 				const entryPath = path.join(nodeModulesDir, entry.name);
-				const target = fs.readlinkSync(entryPath);
-				// target is like "../../node_modules/shiki" — extract package name
-				const match = target.match(/node_modules\/(.+)$/);
-				if (match?.[1]) {
-					mappings.set(entry.name, match[1]);
+				// `existsSync` follows the link: it is `false` when the link is dangling.
+				const specifier = fs.existsSync(entryPath)
+					? entry.name
+					: packageNameFromSymlinkTarget(fs.readlinkSync(entryPath));
+				if (specifier) {
+					mappings.set(entry.name, specifier);
 				}
 			}
 		} catch {
@@ -104,7 +202,8 @@ function discoverExternalModuleMappings(filePath: string): Map<string, string> {
 
 /**
  * Build a dynamic inlineExternalImportRule that includes cases for all discovered
- * Turbopack external module hashes, mapping them back to their real package names.
+ * Turbopack external module hashes, mapping them to the specifiers to import
+ * (see {@link discoverExternalModuleMappings}).
  *
  * We use a switch for exact matches (including bare + subpath cases) and a fallback
  * for the default case. Since switch/case can only match exact strings, we enumerate
@@ -215,7 +314,8 @@ function discoverBareExternalImports(tracedFiles: string[], runtimeCode: string)
 
 /**
  * Scan traced chunk files for external module subpath imports.
- * E.g. find "shiki-43d062b67f27bbdc/wasm" in chunk code and map it to "shiki/wasm".
+ * E.g. find "shiki-43d062b67f27bbdc/wasm" in chunk code and map it to the subpath of the mapped
+ * specifier: "shiki-43d062b67f27bbdc/wasm" for a live link, "shiki/wasm" for a dangling one.
  *
  * Only scans files with "[externals]" in the name since those are the chunks that
  * contain externalImport calls.
@@ -253,6 +353,72 @@ function discoverExternalSubpaths(mappings: Map<string, string>, tracedFiles: st
 	return subpaths;
 }
 
+/**
+ * Inline the dynamic chunk requires of the Turbopack runtime.
+ *
+ * The runtime resolves the chunks it needs at runtime, which workerd does not support.
+ * The chunks are inlined so that they are statically bundled.
+ *
+ * @param code The code of the Turbopack runtime.
+ * @param filePath Path to the Turbopack runtime, in the OpenNext output.
+ * @param tracedFiles The files traced by Next.js, copied next to the runtime.
+ * @returns The patched code.
+ */
+export function patchTurbopackRuntimeCode({
+	code,
+	filePath,
+	tracedFiles,
+}: {
+	code: string;
+	filePath: string;
+	tracedFiles: string[];
+}): string {
+	tracedFiles = tracedFiles.map(normalizePath);
+	filePath = normalizePath(filePath);
+
+	const mappings = discoverExternalModuleMappings(filePath);
+	const externalImportRule = buildExternalImportRule(mappings, tracedFiles, code);
+	let patched = patchCode(code, externalImportRule);
+	patched = patchCode(patched, inlineChunksRule);
+	patched = patchCode(patched, replaceLoadWebAssemblyModuleRule);
+	patched = patchCode(patched, replaceLoadWebAssemblyRule);
+
+	return `${patched}
+${inlineChunksFn(tracedFiles)}\n${loadWasmChunkFn(tracedFiles)}`;
+}
+
+/**
+ * Replace the wasm helpers that Next.js 16.3 emits in the Turbopack chunks.
+ *
+ * Until Next.js 16.2 the wasm loaders lived in `[turbopack]_runtime.js` and were patched by
+ * {@link patchTurbopackRuntimeCode}. Next.js 16.3 emits them on demand in the chunks instead, so
+ * the chunks need to be patched too.
+ *
+ * @param code The code of the Turbopack chunk.
+ * @param tracedFiles The files traced by Next.js.
+ * @returns The patched code, or `code` unchanged when the chunk has no wasm helper.
+ */
+export function patchTurbopackWasmChunkCode({
+	code,
+	tracedFiles,
+}: {
+	code: string;
+	tracedFiles: string[];
+}): string {
+	const root = parseCode(code);
+	// The 2 rules can not match the same function: they differ by the arity of the helper.
+	const edits = [
+		...applyRule(replaceCompileModuleRule, root).edits,
+		...applyRule(replaceInstantiateModuleRule, root).edits,
+	];
+
+	if (edits.length === 0) {
+		return code;
+	}
+
+	return `${root.commitEdits(edits)}\n${loadWasmChunkFn(tracedFiles.map(normalizePath))}`;
+}
+
 export const patchTurbopackRuntime: CodePatcher = {
 	name: "inline-turbopack-chunks",
 	patches: [
@@ -262,20 +428,19 @@ export const patchTurbopackRuntime: CodePatcher = {
 				escape: false,
 			}),
 			contentFilter: /loadRuntimeChunkPath/,
-			patchCode: async ({ code, tracedFiles, filePath }) => {
-				tracedFiles = tracedFiles.map(normalizePath);
-				filePath = normalizePath(filePath);
-
-				const mappings = discoverExternalModuleMappings(filePath);
-				const externalImportRule = buildExternalImportRule(mappings, tracedFiles, code);
-				let patched = patchCode(code, externalImportRule);
-				patched = patchCode(patched, inlineChunksRule);
-				patched = patchCode(patched, replaceLoadWebAssemblyModuleRule);
-				patched = patchCode(patched, replaceLoadWebAssemblyRule);
-
-				return `${patched}
-${inlineChunksFn(tracedFiles)}\n${loadWasmChunkFn(tracedFiles)}`;
-			},
+			patchCode: async ({ code, tracedFiles, filePath }) =>
+				patchTurbopackRuntimeCode({ code, filePath, tracedFiles }),
+		},
+		{
+			// Next.js 16.3.0 moved the wasm loaders out of the Turbopack runtime and started
+			// emitting them on demand in the chunks that need them. Earlier versions are handled
+			// by the runtime patch above.
+			versions: ">=16.3.0",
+			pathFilter: getCrossPlatformPathRegex(String.raw`/\.next/server/chunks/.+\.js$`, {
+				escape: false,
+			}),
+			contentFilter: /WebAssembly\.(compileStreaming|instantiateStreaming)/,
+			patchCode: async ({ code, tracedFiles }) => patchTurbopackWasmChunkCode({ code, tracedFiles }),
 		},
 	],
 };

@@ -18,7 +18,7 @@
 	},
 	"dependencies": {
 		"@opennextjs/cloudflare": "workspace:*",
-		"@prisma/adapter-d1": "^7.8.0",
+		"@prisma/adapter-d1": "^7.10.0",
 		"@prisma/client": "^7.8.0",
 		"next": "catalog:e2e",
 		"react": "catalog:e2e",

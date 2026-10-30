@@ -1,5 +1,216 @@
 # @opennextjs/cloudflare
 
+## 1.20.14
+
+### Patch Changes
+
+- [#1470](https://github.com/opennextjs/opennextjs-cloudflare/pull/1470) [`7460f53`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7460f539b0557fde92ce127772a3e6b4411a60ae) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.13
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.13>
+
+  - Export the code patch test utilities as `@opennextjs/aws/build/patch/testUtils.js`
+
+- [#1466](https://github.com/opennextjs/opennextjs-cloudflare/pull/1466) [`3e50371`](https://github.com/opennextjs/opennextjs-cloudflare/commit/3e503712ad32fb0aba169bb46c3b4c6d42d37482) Thanks [@NathanDrake2406](https://github.com/NathanDrake2406)! - fix: reuse cached manifests to reduce CPU and memory usage
+
+  The inlined manifests were re-created on every load, so apps with large manifests (e.g. the prerender manifest) spent CPU time building and garbage collecting the same objects and kept multiple copies in memory.
+
+- [#1470](https://github.com/opennextjs/opennextjs-cloudflare/pull/1470) [`7460f53`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7460f539b0557fde92ce127772a3e6b4411a60ae) Thanks [@vicb](https://github.com/vicb)! - fix: scope the module-loading signal to the request on Next 16
+
+  Starting with Next.js 16, the module-loading patch silently stopped matching the changed `CacheSignal` constructor. Concurrent requests could then fail with `Cannot perform I/O on behalf of a different request` and return truncated responses. Scope the signal to each request again so concurrent renders complete.
+
+## 1.20.13
+
+### Patch Changes
+
+- [#1460](https://github.com/opennextjs/opennextjs-cloudflare/pull/1460) [`8e60ded`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8e60deda4b4c729b98bd1379763a4a6d2c443f5b) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.12
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.12>
+
+  - Fix Next.js 15 builds failing with "Next.js version 15.x.x is not supported by the Next.js team" now that Next.js 15 is 2 years old. A major version stays supported until the second next major (Next.js 17) is released.
+
+- [#1414](https://github.com/opennextjs/opennextjs-cloudflare/pull/1414) [`15f4c9e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/15f4c9e5c1c5080eb87d0634be636aeede23febd) Thanks [@allangreatsoftwares](https://github.com/allangreatsoftwares)! - fix: render server action redirects for the host of the request
+
+- [#1439](https://github.com/opennextjs/opennextjs-cloudflare/pull/1439) [`1ebbc55`](https://github.com/opennextjs/opennextjs-cloudflare/commit/1ebbc55ffe05d7bbe4a76d3f515c2d26f115ca52) Thanks [@mathurshubham](https://github.com/mathurshubham)! - fix: inline named webpack chunks (`webpackChunkName`) in the server runtime
+
+  Apps built with webpack returned a 500 with `Error: Unknown chunk N` when the server code loaded a chunk named with `/* webpackChunkName: "..." */`, i.e. from a `next/dynamic` or `import()` in the app or in a dependency. Named chunks are now bundled into the Worker and load correctly.
+
+## 1.20.12
+
+### Patch Changes
+
+- [#1453](https://github.com/opennextjs/opennextjs-cloudflare/pull/1453) [`5d8c5bc`](https://github.com/opennextjs/opennextjs-cloudflare/commit/5d8c5bc2e1d6d48dbff6d9de7cb8ffa9c7454ca6) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.11
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.11>
+
+  - Add support for Next.js 16.4
+  - Bump Next.js dependencies following [the Next.js security update on Oct 14](https://nextjs.org/blog/nextjs-security-update-october-14-2026)
+
+- [#1356](https://github.com/opennextjs/opennextjs-cloudflare/pull/1356) [`f993c8c`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f993c8c0ff9090fd1a6b38e223ecb1eb3c968a64) Thanks [@chargome](https://github.com/chargome)! - fix(patches): include `preview-props.json` in loadManifest build-time inlining
+
+## 1.20.11
+
+### Patch Changes
+
+- [#1451](https://github.com/opennextjs/opennextjs-cloudflare/pull/1451) [`a6893b8`](https://github.com/opennextjs/opennextjs-cloudflare/commit/a6893b87671f1e0a401aca2da7b0ea9275c2b0e0) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.10
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.10>
+
+- [#1437](https://github.com/opennextjs/opennextjs-cloudflare/pull/1437) [`6be5daf`](https://github.com/opennextjs/opennextjs-cloudflare/commit/6be5daff509792e5c624b30ea291f4b18990c79b) Thanks [@mathurshubham](https://github.com/mathurshubham)! - fix: do not bundle `@vercel/og` into the Node.js middleware when it is not used
+
+## 1.20.10
+
+### Patch Changes
+
+- [#1426](https://github.com/opennextjs/opennextjs-cloudflare/pull/1426) [`66b4a2d`](https://github.com/opennextjs/opennextjs-cloudflare/commit/66b4a2d9f77853f89daf51e07864c55dee76db17) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.9
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.9>
+
+- [#1419](https://github.com/opennextjs/opennextjs-cloudflare/pull/1419) [`8327c21`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8327c2113d452f62020d42c247a4d95024c6d788) Thanks [@Adnan-Husayn](https://github.com/Adnan-Husayn)! - fix: set the image `Content-Type` from the format produced by the Images binding
+
+  The Images binding can fall back to another format than the requested one, i.e. from AVIF to WebP for large images. `/_next/image` responses were labelled with the requested format, so the `Content-Type` could disagree with the image bytes.
+
+- [#1420](https://github.com/opennextjs/opennextjs-cloudflare/pull/1420) [`afea1a0`](https://github.com/opennextjs/opennextjs-cloudflare/commit/afea1a0c02c4fd7b2a725452f57d87d28d98ac9b) Thanks [@cpruijsen](https://github.com/cpruijsen)! - fix: skip route directories matching the loadManifest globs
+
+  `opennextjs-cloudflare build` no longer fails with `EISDIR` or an unresolved import when an App Router route directory matches an internal manifest glob. Only manifest files are now inlined.
+
+- [#1423](https://github.com/opennextjs/opennextjs-cloudflare/pull/1423) [`a515128`](https://github.com/opennextjs/opennextjs-cloudflare/commit/a5151286fa5f906e3752b4ca78c00a48927af708) Thanks [@Adnan-Husayn](https://github.com/Adnan-Husayn)! - fix: do not log `Failed to copy` for packages whose `exports` is a string
+
+## 1.20.9
+
+### Patch Changes
+
+- [#1416](https://github.com/opennextjs/opennextjs-cloudflare/pull/1416) [`63cbece`](https://github.com/opennextjs/opennextjs-cloudflare/commit/63cbece5b9ef8209eb6f92998fb6f848e3cf620c) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.8
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.8>
+
+- [#1416](https://github.com/opennextjs/opennextjs-cloudflare/pull/1416) [`63cbece`](https://github.com/opennextjs/opennextjs-cloudflare/commit/63cbece5b9ef8209eb6f92998fb6f848e3cf620c) Thanks [@vicb](https://github.com/vicb)! - fix: isolate module-loading cache signals between requests
+
+  Prevent Next.js 15.4 and newer Cache Components from failing under concurrent traffic with `Cannot perform I/O on behalf of a different request` when module-loading timers cross Cloudflare Worker request contexts.
+
+## 1.20.8
+
+### Patch Changes
+
+- [#1411](https://github.com/opennextjs/opennextjs-cloudflare/pull/1411) [`1551d6f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/1551d6f998d462523246f024cf75ca53d12e54cf) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.7
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.7>
+
+- [#1411](https://github.com/opennextjs/opennextjs-cloudflare/pull/1411) [`31009e1`](https://github.com/opennextjs/opennextjs-cloudflare/commit/31009e13ad3b5a496fec4c9883771a0fd7ae5e6a) Thanks [@vicb](https://github.com/vicb)! - chore: require Next.js 15.5.27 or 16.3.8
+
+  Raise the supported Next.js version floor to 15.5.27 and 16.3.8 to include the latest security fixes.
+
+## 1.20.7
+
+### Patch Changes
+
+- [#1403](https://github.com/opennextjs/opennextjs-cloudflare/pull/1403) [`dc3c0ab`](https://github.com/opennextjs/opennextjs-cloudflare/commit/dc3c0aba8551b66008834cb4c23c22d171393bb4) Thanks [@aa-sikkkk](https://github.com/aa-sikkkk)! - fix: replace the whole `loadCustomCacheHandlers` body so Next.js 16.3 chunks don't throw `ReferenceError`
+
+  Next.js 16.3 rewrote `loadCustomCacheHandlers`: the declaration that binds `cacheHandlers` now also binds
+  `cacheMaxMemorySize`, and the native method body consumes both. The composable cache patch replaced only that
+  declaration, so on the minified runtime chunks (`dist/compiled/next-server/*.runtime.prod.js`) the surviving
+  native code referenced bindings that were no longer declared. Every request to the Worker then failed with
+  `ReferenceError: <minified identifier> is not defined` inside `loadCustomCacheHandlers` (site-wide 500s on
+  Next.js 16.3.x), while builds stayed green because the unminified `next-server.js` short-circuits on
+  `if (!cacheHandlers) return` before the orphaned binding is read.
+
+  The patch now replaces the whole method body while preserving its signature and wires the composable cache
+  registry to the static `require()` as before, so no native reference to a dropped binding can survive. The
+  rule still matches pre-16.3 chunks, so older Next.js versions are unaffected.
+
+- [#1399](https://github.com/opennextjs/opennextjs-cloudflare/pull/1399) [`2b3e3a1`](https://github.com/opennextjs/opennextjs-cloudflare/commit/2b3e3a153030bef91b38f8f14f1ce68b5827581b) Thanks [@JT1974](https://github.com/JT1974)! - fix: throw `MODULE_NOT_FOUND` from the stub of a missing optional dependency
+
+  With React 18, every Pages Router page rendered by the Worker failed with `TypeError: Cannot read properties of undefined (reading 'contexts')`, caused by `Error: Missing optional dependency "react-dom/server.edge"`. React 18 has no `react-dom/server.edge`, and Next.js falls back to `react-dom/server.browser` only when the error carries the `MODULE_NOT_FOUND` code. The stub now sets that code, so the fallback works again.
+
+- [#1406](https://github.com/opennextjs/opennextjs-cloudflare/pull/1406) [`8ea9eb9`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8ea9eb973b6d71743e4b37ab2fdf5d98fe4d0ddb) Thanks [@mgarbacz](https://github.com/mgarbacz)! - fix: only rename esbuild's `__require` helper, not `__require` properties
+
+  Restoring esbuild's `__require` helper to a bare `require` was a text replacement over the
+  whole bundle, so it also rewrote unrelated `__require` members. `@rollup/plugin-commonjs`
+  emits `exports.__require` lazy-init wrappers, whose declarations the replacement never
+  matched — leaving the two halves disagreeing and throwing
+  `TypeError: __webpack_require__(...).require is not a function` when such a package was
+  imported during SSR. Packages built that way (for example `smartystreets-javascript-sdk`)
+  500'd every route. The rename now skips property accesses.
+
+- [#1404](https://github.com/opennextjs/opennextjs-cloudflare/pull/1404) [`ca4415b`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ca4415b3c7dbe2745498cf31810d447224a0eb85) Thanks [@vicb](https://github.com/vicb)! - chore: require Next.js 15.5.26 or 16.3.6
+
+  Raise the supported Next.js version floor to 15.5.26 and 16.3.6. Next.js 16.2.0 through 16.3.5 are affected
+  by the critical `next/og` remote code execution vulnerability CVE-2026-94545.
+
+- [#1404](https://github.com/opennextjs/opennextjs-cloudflare/pull/1404) [`ca4415b`](https://github.com/opennextjs/opennextjs-cloudflare/commit/ca4415b3c7dbe2745498cf31810d447224a0eb85) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.6
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.6>
+
+## 1.20.6
+
+### Patch Changes
+
+- [#1378](https://github.com/opennextjs/opennextjs-cloudflare/pull/1378) [`7a990e7`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7a990e7cdb9d770a5f4d71fbb32bc105ac944ff5) Thanks [@vicb](https://github.com/vicb)! - Bump Next to 16.3.4 and `@opennextjs/aws` to 4.1.4
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.4>
+
+## 1.20.5
+
+### Patch Changes
+
+- [#1374](https://github.com/opennextjs/opennextjs-cloudflare/pull/1374) [`64a69ec`](https://github.com/opennextjs/opennextjs-cloudflare/commit/64a69ec8eed7685bb448be7be97bbff0971e88b1) Thanks [@conico974](https://github.com/conico974)! - chore: bump `@opennextjs/aws` to 4.1.3
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.3>
+
+## 1.20.4
+
+### Patch Changes
+
+- [#1365](https://github.com/opennextjs/opennextjs-cloudflare/pull/1365) [`bf52109`](https://github.com/opennextjs/opennextjs-cloudflare/commit/bf52109c18122ec7a52d805c6f4b1e01ca3bce02) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.2
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.2>
+
+## 1.20.3
+
+### Patch Changes
+
+- [#1361](https://github.com/opennextjs/opennextjs-cloudflare/pull/1361) [`8c31fbc`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8c31fbcd197d30b940354233cbff091264be7a58) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.1
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.1>
+
+- [#1359](https://github.com/opennextjs/opennextjs-cloudflare/pull/1359) [`65e4487`](https://github.com/opennextjs/opennextjs-cloudflare/commit/65e44874d881f8ed6e0324c90e0ba43744c3b26c) Thanks [@vicb](https://github.com/vicb)! - chore: bump the Next.js peer dependency to 15.5.24 / 16.3.3
+
+- [#1359](https://github.com/opennextjs/opennextjs-cloudflare/pull/1359) [`65e4487`](https://github.com/opennextjs/opennextjs-cloudflare/commit/65e44874d881f8ed6e0324c90e0ba43744c3b26c) Thanks [@vicb](https://github.com/vicb)! - fix: patch the Turbopack wasm helpers that Next.js 16.3 emits in the chunks
+
+  Until Next.js 16.2 the Turbopack wasm loaders were named `loadWebAssembly` and
+  `loadWebAssemblyModule` functions living in `[turbopack]_runtime.js`, which the adapter rewrote to
+  resolve the chunk through a static `import()`. Next.js 16.3 emits them on demand in the chunks
+  instead (`[turbopack-wasm]/node/loadWasm.ts`), so the existing patch silently stopped matching and
+  `WebAssembly.compileStreaming` - which workerd does not implement - survived into the Worker.
+
+  Every wasm backed import then threw `TypeError: WebAssembly.compileStreaming is not a function` at
+  runtime, most visibly breaking Prisma with the `workerd` client runtime.
+
+  The chunks emitted by Turbopack are now patched as well, for both the server and the Node.js
+  middleware bundles.
+
+- [#1309](https://github.com/opennextjs/opennextjs-cloudflare/pull/1309) [`56dfacc`](https://github.com/opennextjs/opennextjs-cloudflare/commit/56dfacc1cdeb6422eb59b23dcc80dc844e5f2529) Thanks [@ScienHAC](https://github.com/ScienHAC)! - feature: support Node.js middleware (`proxy.ts`)
+
+  Next.js 16 replaces `middleware.ts` with `proxy.ts` which always runs on the Node.js runtime.
+
+  The Node.js middleware is now bundled into a Workers compatible `middleware/handler.mjs`:
+  the OpenNext config manifests are inlined at build time (as for the edge middleware) and the
+  middleware compiled by Next.js is statically bundled instead of being loaded from the
+  filesystem at runtime (workerd can not access the filesystem nor load modules at runtime).
+
+  The support is experimental and requires the `nodejs_compat` compatibility flag.
+
+- [#1359](https://github.com/opennextjs/opennextjs-cloudflare/pull/1359) [`65e4487`](https://github.com/opennextjs/opennextjs-cloudflare/commit/65e44874d881f8ed6e0324c90e0ba43744c3b26c) Thanks [@vicb](https://github.com/vicb)! - fix: do not load the instrumentation hook from the Node.js middleware bundle
+
+  Next.js 16.3 registers the instrumentation hook from the middleware itself when the middleware
+  does not run on the edge runtime, by dynamically requiring `.next/server/instrumentation.js`.
+  workerd does not support dynamic requires so every request handled by the Node.js middleware
+  (`proxy.ts`) failed with `Dynamic require of ".next/server/instrumentation.js" is not supported`.
+
+  The guard Next.js uses (`process.env.NEXT_RUNTIME !== "edge"`) is inlined by Next.js when it
+  compiles the middleware, so it can not be eliminated when the middleware is re-bundled. The loader
+  is stubbed out instead, which matches the edge runtime behaviour: the server function - which
+  shares the isolate - keeps registering the hook.
+
 ## 1.20.2
 
 ### Patch Changes
@@ -206,7 +417,7 @@
   Builds, Docker, CI) the Enquirer prompt can't read stdin, so the build hangs or
   fails with a truncated prompt and a cryptic exit code — the user sees
   `? Missing required open-next.config.ts file, do you want to create one? (Y/n)`
-  and then ` ELIFECYCLE  Command failed with exit code 13`, with no hint at what
+  and then `ELIFECYCLE  Command failed with exit code 13`, with no hint at what
   to do next.
 
   Now, in non-interactive environments, both prompts throw an actionable error

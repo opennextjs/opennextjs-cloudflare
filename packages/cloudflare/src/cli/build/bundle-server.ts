@@ -3,10 +3,11 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import * as buildHelper from "@opennextjs/aws/build/helper.js";
+import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
 import { build, type Plugin } from "esbuild";
+import { globSync } from "glob";
 
 import { getOpenNextConfig } from "../../api/config.js";
 import type { ProjectOptions } from "../project-options.js";
@@ -49,6 +50,11 @@ const optionalDependencies = [
 
 /**
  * Bundle the Open Next server.
+ *
+ * @param buildOpts Build options.
+ * @param projectOpts Cloudflare project options.
+ * @returns Resolves when the server bundle and Worker entry point have been written.
+ * @throws When preparing or bundling the server fails.
  */
 export async function bundleServer(buildOpts: BuildOptions, projectOpts: ProjectOptions): Promise<void> {
 	copyPackageCliFiles(packageDistDir, buildOpts);
@@ -62,10 +68,19 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 
 	console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
 
-	await patchWebpackRuntime(buildOpts);
-	const useOg = patchVercelOgLibrary(buildOpts);
+	await patchWebpackRuntime(path.join(dotNextPath, "server"));
 
 	const outputPath = path.join(outputDir, "server-functions", "default");
+	const useOg = patchVercelOgLibrary(buildOpts, {
+		outputDir: outputPath,
+		traceFiles: globSync("**/*.nft.json", {
+			cwd: path.join(buildOpts.appBuildOutputPath, ".next/server"),
+			absolute: true,
+			windowsPathsNoEscape: true,
+			// External middleware has its own bundle and must not enable OG in the server bundle.
+			ignore: buildOpts.config.middleware?.external ? "middleware.js.nft.json" : [],
+		}),
+	});
 	const packagePath = getPackagePath(buildOpts);
 	const openNextServer = path.join(outputPath, packagePath, `index.mjs`);
 	const openNextServerBundle = path.join(outputPath, packagePath, `handler.mjs`);
@@ -192,12 +207,28 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 }
 
 /**
+ * Restores esbuild's `__require` helper to a bare `require`.
+ *
+ * esbuild rewrites `require(...)` calls to its own `__require(...)` helper, which throws
+ * "Dynamic require of ... is not supported" at runtime. Workers provide a real `require`
+ * via `nodejs_compat`, so the helper is renamed back.
+ *
+ * Only identifiers are renamed. `@rollup/plugin-commonjs` publishes `exports.__require`
+ * lazy-init wrappers, so a name preceded by `.`, `#`, `$` or a word character belongs to
+ * bundled code and is left alone.
+ */
+export function patchRequireHelper(code: string): string {
+	return code
+		.replace(/(?<![.#$\w])__require\d?\(/g, "require(")
+		.replace(/(?<![.#$\w])__require\d?\./g, "require.");
+}
+
+/**
  * This function apply updates to the bundled code.
  */
 export async function updateWorkerBundledCode(workerOutputFile: string): Promise<void> {
 	const code = await readFile(workerOutputFile, "utf8");
-	const patchedCode = code.replace(/__require\d?\(/g, "require(").replace(/__require\d?\./g, "require.");
-	await writeFile(workerOutputFile, patchedCode);
+	await writeFile(workerOutputFile, patchRequireHelper(code));
 }
 
 /**
