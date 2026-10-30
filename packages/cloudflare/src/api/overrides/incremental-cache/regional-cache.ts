@@ -8,7 +8,13 @@ import {
 import { compareSemver } from "@opennextjs/aws/utils/semver.js";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
-import { debugCache, FALLBACK_BUILD_ID, IncrementalCacheEntry, isPurgeCacheEnabled } from "../internal.js";
+import {
+	debugCache,
+	FALLBACK_BUILD_ID,
+	IncrementalCacheEntry,
+	isPurgeCacheEnabled,
+	workerNowMs,
+} from "../internal.js";
 
 const ONE_MINUTE_IN_SECONDS = 60;
 const THIRTY_MINUTES_IN_SECONDS = ONE_MINUTE_IN_SECONDS * 30;
@@ -189,9 +195,7 @@ class RegionalCache implements IncrementalCache {
 				cacheType,
 				entry: {
 					value,
-					// Note: `Date.now()` returns the time of the last IO rather than the actual time.
-					//       See https://developers.cloudflare.com/workers/reference/security-model/
-					lastModified: Date.now(),
+					lastModified: workerNowMs(),
 				},
 			});
 		} catch (e) {

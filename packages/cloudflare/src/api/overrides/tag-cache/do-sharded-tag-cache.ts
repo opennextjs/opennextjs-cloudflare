@@ -7,7 +7,7 @@ import { getCloudflareContext } from "../../cloudflare-context.js";
 import type { OpenNextConfig } from "../../config.js";
 import type { TagData } from "../../durable-objects/sharded-tag-cache.js";
 import { DOShardedTagCache } from "../../durable-objects/sharded-tag-cache.js";
-import { debugCache, isPurgeCacheEnabled, purgeCacheByTags } from "../internal.js";
+import { debugCache, isPurgeCacheEnabled, purgeCacheByTags, workerNowMs } from "../internal.js";
 
 type NormalizedTagInput = { tag: string; stale?: number; expire?: number | null };
 type CachedTagValue = { tag: string } & TagData;
@@ -156,7 +156,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 	 * This function checks if the tags have been revalidated
 	 * It is never supposed to throw and in case of error, it will return false
 	 * @param tags
-	 * @param lastModified default to `Date.now()`
+	 * @param lastModified defaults to the current wall-clock time (performance-based; safe during prerender)
 	 * @returns
 	 */
 	public async hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean> {
@@ -165,7 +165,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 			return false;
 		}
 		try {
-			const now = Date.now();
+			const now = workerNowMs();
 			const tagData = await this.#resolveTagData(tags);
 			const result = [...tagData.values()].some((data) => {
 				if (data == null) return false;
@@ -187,7 +187,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 			return false;
 		}
 		try {
-			const now = Date.now();
+			const now = workerNowMs();
 			const tagData = await this.#resolveTagData(tags);
 			const result = [...tagData.values()].some((data) => {
 				if (data == null) return false;
@@ -219,7 +219,7 @@ class ShardedDOTagCache implements NextModeTagCache {
 		const { isDisabled } = this.getConfig();
 		if (isDisabled) return;
 
-		const nowMs = Date.now();
+		const nowMs = workerNowMs();
 
 		const normalized: NormalizedTagInput[] = tags.map((tag) =>
 			typeof tag === "string"
