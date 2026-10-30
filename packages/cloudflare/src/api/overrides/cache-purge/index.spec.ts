@@ -2,7 +2,7 @@ import type { CDNPath } from "@opennextjs/aws/types/overrides.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
-import { internalPurgeCacheByTags } from "../internal.js";
+import { requestPurgeCacheByTags } from "../internal.js";
 import purgeCache from "./index.js";
 
 vi.mock("../../cloudflare-context.js", () => ({
@@ -11,7 +11,7 @@ vi.mock("../../cloudflare-context.js", () => ({
 
 vi.mock("../internal.js", () => ({
 	debugCache: vi.fn(),
-	internalPurgeCacheByTags: vi.fn(),
+	requestPurgeCacheByTags: vi.fn(),
 }));
 
 describe("purgeCache", () => {
@@ -19,7 +19,7 @@ describe("purgeCache", () => {
 
 	beforeEach(() => {
 		vi.mocked(getCloudflareContext).mockReturnValue({ env } as ReturnType<typeof getCloudflareContext>);
-		vi.mocked(internalPurgeCacheByTags).mockResolvedValue("purge-success");
+		vi.mocked(requestPurgeCacheByTags).mockResolvedValue({ status: "purge-success" });
 	});
 
 	it("invalidates tags directly", async () => {
@@ -30,7 +30,7 @@ describe("purgeCache", () => {
 
 		await purgeCache({ type: "direct" }).invalidateTags?.(["tag-1", "tag-2"]);
 
-		expect(internalPurgeCacheByTags).toHaveBeenCalledWith(
+		expect(requestPurgeCacheByTags).toHaveBeenCalledWith(
 			expect.objectContaining({ NEXT_CACHE_DO_PURGE: expect.anything() }),
 			["tag-1", "tag-2"]
 		);
@@ -40,10 +40,10 @@ describe("purgeCache", () => {
 	it.each(["missing-credentials", "rate-limit-exceeded", "purge-failed"] as const)(
 		"rejects direct invalidation when the purge returns %s",
 		async (result) => {
-			vi.mocked(internalPurgeCacheByTags).mockResolvedValueOnce(result);
+			vi.mocked(requestPurgeCacheByTags).mockResolvedValueOnce({ status: result, message: "details" });
 
 			await expect(purgeCache({ type: "direct" }).invalidateTags?.(["tag-1"])).rejects.toThrow(
-				`Cloudflare cache purge failed: ${result}`
+				`Cloudflare cache purge failed: ${result} - details`
 			);
 		}
 	);
@@ -55,7 +55,7 @@ describe("purgeCache", () => {
 		];
 		await purgeCache({ type: "direct" }).invalidatePaths(paths);
 
-		expect(internalPurgeCacheByTags).toHaveBeenCalledWith(env, ["_N_T_/first", "_N_T_/second"]);
+		expect(requestPurgeCacheByTags).toHaveBeenCalledWith(env, ["_N_T_/first", "_N_T_/second"]);
 	});
 
 	it("invalidates tags through the Durable Object", async () => {
@@ -76,6 +76,6 @@ describe("purgeCache", () => {
 	it("falls back to direct invalidation when the Durable Object binding is missing", async () => {
 		await purgeCache({ type: "durableObject" }).invalidateTags?.(["tag-1"]);
 
-		expect(internalPurgeCacheByTags).toHaveBeenCalledWith(env, ["tag-1"]);
+		expect(requestPurgeCacheByTags).toHaveBeenCalledWith(env, ["tag-1"]);
 	});
 });

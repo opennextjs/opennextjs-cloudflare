@@ -37,20 +37,33 @@ export function isPurgeCacheEnabled(): boolean {
 	return cdnInvalidation !== undefined && cdnInvalidation !== "dummy";
 }
 
+/** Outcome of a Cloudflare cache purge API request. */
+export type PurgeCacheStatus =
+	| "purge-success"
+	| "missing-credentials"
+	| "rate-limit-exceeded"
+	| "purge-failed";
+
+/** Outcome of a Cloudflare cache purge API request with a failure description. */
+export type PurgeCacheResult =
+	| { status: "purge-success" }
+	| { status: Exclude<PurgeCacheStatus, "purge-success">; message: string };
+
 /**
- * Purges Cloudflare cache entries associated with the provided tags.
+ * Requests a Cloudflare cache purge for the provided tags without logging failures.
  *
- * This calls the Cloudflare cache purge API directly and reports failures as status values.
+ * Callers are responsible for reporting failures, either by logging or by rejecting.
  *
  * @param env Cloudflare environment containing the zone ID and API token.
  * @param tags Cache tags to purge.
- * @returns The purge outcome: success, missing credentials, rate limiting, or failure.
+ * @returns The purge status and, on failure, a description of the error.
  */
-export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[]) {
+export async function requestPurgeCacheByTags(env: CloudflareEnv, tags: string[]): Promise<PurgeCacheResult> {
 	if (!env.CACHE_PURGE_ZONE_ID || !env.CACHE_PURGE_API_TOKEN) {
-		// THIS IS A NO-OP
-		error("No cache zone ID or API token provided. Skipping cache purge.");
-		return "missing-credentials";
+		return {
+			status: "missing-credentials",
+			message: "No cache zone ID or API token provided. Skipping cache purge.",
+		};
 	}
 
 	let response: Response | undefined;
@@ -69,26 +82,24 @@ export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[
 			}
 		);
 		if (response.status === 429) {
-			// Rate limit exceeded
-			error("purgeCacheByTags: Rate limit exceeded. Skipping cache purge.");
-			return "rate-limit-exceeded";
+			return { status: "rate-limit-exceeded", message: "purgeCacheByTags: Rate limit exceeded." };
 		}
 		const bodyResponse = (await response.json()) as {
 			success: boolean;
 			errors: Array<{ code: number; message: string }>;
 		};
 		if (!bodyResponse.success) {
-			error(
-				"purgeCacheByTags: Cache purge failed. Errors:",
-				bodyResponse.errors.map((error) => `${error.code}: ${error.message}`)
-			);
-			return "purge-failed";
+			return {
+				status: "purge-failed",
+				message: `purgeCacheByTags: Cache purge failed. Errors: ${bodyResponse.errors
+					.map((error) => `${error.code}: ${error.message}`)
+					.join(", ")}`,
+			};
 		}
 		debugCache("purgeCacheByTags", "Cache purged successfully for tags:", tags);
-		return "purge-success";
-	} catch (error) {
-		console.error("Error purging cache by tags:", error);
-		return "purge-failed";
+		return { status: "purge-success" };
+	} catch (e) {
+		return { status: "purge-failed", message: `Error purging cache by tags: ${e}` };
 	} finally {
 		// Cancel the stream when it has not been consumed
 		try {
@@ -97,4 +108,24 @@ export async function internalPurgeCacheByTags(env: CloudflareEnv, tags: string[
 			// Ignore errors when the stream was actually consumed
 		}
 	}
+}
+
+/**
+ * Purges Cloudflare cache entries associated with the provided tags.
+ *
+ * This calls the Cloudflare cache purge API directly, logs failures, and reports the outcome as a status value.
+ *
+ * @param env Cloudflare environment containing the zone ID and API token.
+ * @param tags Cache tags to purge.
+ * @returns The purge outcome: success, missing credentials, rate limiting, or failure.
+ */
+export async function internalPurgeCacheByTags(
+	env: CloudflareEnv,
+	tags: string[]
+): Promise<PurgeCacheStatus> {
+	const result = await requestPurgeCacheByTags(env, tags);
+	if (result.status !== "purge-success") {
+		error(result.message);
+	}
+	return result.status;
 }
