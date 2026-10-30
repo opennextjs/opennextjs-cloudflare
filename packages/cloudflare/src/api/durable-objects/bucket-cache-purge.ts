@@ -158,7 +158,7 @@ export abstract class BucketCachePurgeBase<Batch, Result> extends DurableObject<
 			const result = await this.executePurge(batch);
 			const settlement = await this.settleBatch(batch, result);
 			if (settlement === "retry") {
-				throw new Error("Rate limit exceeded");
+				throw new Error("Cache purge retry requested");
 			}
 		}
 	}

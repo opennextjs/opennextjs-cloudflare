@@ -146,7 +146,7 @@ describe("BucketCachePurge", () => {
 			const cache = createCachePurge(RateLimitedBucketCachePurge);
 			setTagBatches(cache, [["tag1"]]);
 
-			await expect(cache.alarm()).rejects.toThrow("Rate limit exceeded");
+			await expect(cache.alarm()).rejects.toThrow("Cache purge retry requested");
 			// @ts-expect-error - testing private method
 			expect(cache.ctx.storage.sql.exec).not.toHaveBeenCalledWith(
 				expect.stringContaining("DELETE FROM cache_purge"),
