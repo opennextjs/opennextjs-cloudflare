@@ -1,5 +1,48 @@
 # @opennextjs/cloudflare
 
+## 1.20.16
+
+### Patch Changes
+
+- [#1477](https://github.com/opennextjs/opennextjs-cloudflare/pull/1477) [`6fa9898`](https://github.com/opennextjs/opennextjs-cloudflare/commit/6fa9898272f1d2bd96e08d855a0782e6c0d49b99) Thanks [@vicb](https://github.com/vicb)! - fix: serve public files like Next.js when `run_worker_first` is enabled
+
+  Public files are now only served at their exact path when `run_worker_first` is enabled, like Next.js.
+
+  The build now checks the `assets` configuration when `run_worker_first` is enabled. If the build fails with "When `run_worker_first` is enabled, the `assets` section of the wrangler configuration must be...", update the `assets` section of your wrangler configuration:
+
+  ```jsonc
+  {
+  	"assets": {
+  		"directory": ".open-next/assets",
+  		"binding": "ASSETS",
+  		"run_worker_first": true,
+  		// Serve public files at their exact path only, like Next.js
+  		"html_handling": "none",
+  		// "404-page" is also allowed
+  		"not_found_handling": "none",
+  	},
+  }
+  ```
+
+  With this configuration, `public/about.html` is served at `/about.html` but not at `/about`.
+
+- [#1476](https://github.com/opennextjs/opennextjs-cloudflare/pull/1476) [`750d1b7`](https://github.com/opennextjs/opennextjs-cloudflare/commit/750d1b73a261524d9f49376e26e4ba0996b438c1) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.15
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.15>
+
+- [#1477](https://github.com/opennextjs/opennextjs-cloudflare/pull/1477) [`dbeff84`](https://github.com/opennextjs/opennextjs-cloudflare/commit/dbeff84f072363da2b04c56e25355cfe2b53d546) Thanks [@vicb](https://github.com/vicb)! - fix: false-positive AVIF/HEIC image type detection
+
+  The AVIF and HEIC detection now validates the size of the ISOBMFF `ftyp` box.
+
+- [#1474](https://github.com/opennextjs/opennextjs-cloudflare/pull/1474) [`5c429e7`](https://github.com/opennextjs/opennextjs-cloudflare/commit/5c429e793e268ca34f099075e6e8108441502ecf) Thanks [@vicb](https://github.com/vicb)! - chore: require Next.js 15.5.29 or 16.4.5
+
+  Raise the supported Next.js version floor to 15.5.29 and 16.4.5 to include the fixes from
+  [the Next.js security release on Nov 3](https://nextjs.org/blog/november-2026-security-release).
+
+- [#1477](https://github.com/opennextjs/opennextjs-cloudflare/pull/1477) [`0c7e3e6`](https://github.com/opennextjs/opennextjs-cloudflare/commit/0c7e3e6cc17d66c4b68f60f0b634d009eda63858) Thanks [@vicb](https://github.com/vicb)! - fix: encode cache keys in the static assets incremental cache and the regional cache
+
+  Cache keys are now encoded when they are turned into URLs, so that a key can not resolve to the entry of a different key.
+
 ## 1.20.15
 
 ### Patch Changes
