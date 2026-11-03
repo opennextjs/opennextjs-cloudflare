@@ -1122,8 +1122,8 @@ importers:
         specifier: 'catalog:'
         version: 2.33.0
       '@opennextjs/aws':
-        specifier: 4.1.14
-        version: 4.1.14(diff@9.0.0)(next@15.5.29(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@22.12.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
+        specifier: 4.1.15
+        version: 4.1.15(diff@9.0.0)(next@15.5.29(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@22.12.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
       ci-info:
         specifier: ^4.2.0
         version: 4.2.0
@@ -3217,12 +3217,12 @@ packages:
   '@octokit/types@13.10.0':
     resolution: {integrity: sha512-ifLaO34EbbPj0Xgro4G5lP5asESjwHracYJvVaPIyXMuiuXLlhic3S47cBdTb+jfODkTE5YtGCLt3Ay3+J97sA==}
 
-  '@opennextjs/aws@4.1.14':
-    resolution: {integrity: sha512-jV+rxEi5dNxnQbKBftWuIppVvemMrbfaUj0tXINJMEzX7crk1pkmsMwudgk2kgyak1T03/GSMSEpE8nzOKrkDA==}
+  '@opennextjs/aws@4.1.15':
+    resolution: {integrity: sha512-ulv7rFEAeieD0d/zDMnw4IFPU+zY/atVUhn7ezgFqIurLB5oBYeHCUGlcGk3Pg7uMPeI03SNRjHW1+xL9EwMPw==}
     hasBin: true
     peerDependencies:
       diff: ^9.0.0
-      next: '>=15.5.28 <16 || >=16.4.1'
+      next: '>=15.5.29 <16 || >=16.4.5'
     peerDependenciesMeta:
       diff:
         optional: true
@@ -3850,6 +3850,7 @@ packages:
   '@smithy/smithy-client@4.12.12':
     resolution: {integrity: sha512-daO7SJn4eM6ArbmrEs+/BTbH7af8AEbSL3OMQdcRvvn8tuUcR5rU2n6DgxIV53aXMS42uwK8NgKKCh5XgqYOPQ==}
     engines: {node: '>=18.0.0'}
+    deprecated: Deprecated due to a bug in custom logger data redaction. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/types@4.19.0':
     resolution: {integrity: sha512-r7jh49VJxGerfAcTQA6gXcKc+98zOp/tqRwzYjgOE+iSQsP6cEU1hq2QzbuipmP68QtYdY9wKEhiCQZIzHgZ4Q==}
@@ -11497,7 +11498,7 @@ snapshots:
     dependencies:
       '@octokit/openapi-types': 24.2.0
 
-  '@opennextjs/aws@4.1.14(diff@9.0.0)(next@15.5.29(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@22.12.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))':
+  '@opennextjs/aws@4.1.15(diff@9.0.0)(next@15.5.29(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@22.12.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))':
     dependencies:
       '@ast-grep/napi': 0.45.3
       '@aws-sdk/client-cloudfront': 3.984.0
