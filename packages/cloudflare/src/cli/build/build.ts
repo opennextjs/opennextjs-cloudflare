@@ -19,6 +19,7 @@ import { compileInit } from "./open-next/compile-init.js";
 import { compileSkewProtection } from "./open-next/compile-skew-protection.js";
 import { compileDurableObjects } from "./open-next/compileDurableObjects.js";
 import { createServerBundle } from "./open-next/createServerBundle.js";
+import { ensureAssetsConfig } from "./utils/ensure-assets-config.js";
 import { useNodeMiddleware } from "./utils/middleware.js";
 import { getVersion } from "./utils/version.js";
 
@@ -68,6 +69,7 @@ export async function build(
 			}
 		}
 	}
+	ensureAssetsConfig(wranglerConfig.assets);
 
 	// Clean the output directory before building the Next app.
 	buildHelper.initOutputDir(options);
