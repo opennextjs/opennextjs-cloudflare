@@ -176,6 +176,27 @@ export async function handleImageRequest(
 }
 
 /**
+ * Returns whether a request should be served by the development /cdn-cgi/image/ handler.
+ *
+ * In production, the edge serves /cdn-cgi/image/ but requests sent through service bindings bypass the edge
+ * and still reach the worker. This is the case of the revalidation requests sent through `WORKER_SELF_REFERENCE`
+ * by `res.revalidate()` and the revalidation queues.
+ *
+ * Those requests carry the `x-prerender-revalidate` header and must never be served:
+ * `res.revalidate("/cdn-cgi/image/<options>/<url>")` would otherwise make the worker fetch an arbitrary URL.
+ *
+ * Note: the check uses the parsed request URL, the one the worker routes on, so the path is normalized
+ * (i.e. `/cdn-cgi\image/` and `/a/../cdn-cgi/image/` both match).
+ *
+ * @param requestURL The parsed request URL.
+ * @param requestHeaders The request headers.
+ * @returns Whether the request should be served by `handleCdnCgiImageRequest`.
+ */
+export function isCdnCgiImageRequest(requestURL: URL, requestHeaders: Headers): boolean {
+	return requestURL.pathname.startsWith("/cdn-cgi/image/") && !requestHeaders.has("x-prerender-revalidate");
+}
+
+/**
  * Handles requests to /cdn-cgi/image/ in development.
  *
  * Extracts the image URL, fetches the image, and checks the content type against
