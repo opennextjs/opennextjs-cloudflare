@@ -6,6 +6,7 @@ import {
 	detectImageContentType,
 	handleCdnCgiImageRequest,
 	handleImageRequest,
+	isCdnCgiImageRequest,
 	matchLocalPattern,
 	matchRemotePattern as mRP,
 	parseCdnCgiImageRequest,
@@ -431,6 +432,73 @@ describe("matchLocalPattern", () => {
 		expect(mLP(p, "/path/to/file?q=1")).toBe(true);
 		expect(mLP(p, "/path/to/file?q=1&a=two")).toBe(true);
 		expect(mLP(p, "/path/to/file.txt?q=1&a=two")).toBe(true);
+	});
+});
+
+describe("isCdnCgiImageRequest", () => {
+	/**
+	 * Calls `isCdnCgiImageRequest` the same way the worker does.
+	 *
+	 * @param url The request URL.
+	 * @param headers The request headers.
+	 * @returns Whether the request is served by the /cdn-cgi/image/ handler.
+	 */
+	function isServed(url: string, headers?: HeadersInit): boolean {
+		const request = new Request(url, { headers });
+		return isCdnCgiImageRequest(new URL(request.url), request.headers);
+	}
+
+	it.each([
+		"https://example.com/cdn-cgi/image/width=640/image.png",
+		"http://localhost:8787/cdn-cgi/image/width=640,quality=75/https://images.example.com/image.png",
+	])("serves %s", (url) => {
+		expect(isServed(url)).toBe(true);
+	});
+
+	it.each([
+		"https://example.com/",
+		"https://example.com/_next/image?url=%2Fimage.png&w=640&q=75",
+		"https://example.com/cdn-cgi/imagex/width=640/image.png",
+		"https://example.com/page/cdn-cgi/image/width=640/image.png",
+	])("does not serve %s", (url) => {
+		expect(isServed(url)).toBe(false);
+	});
+
+	describe("revalidation requests sent through WORKER_SELF_REFERENCE", () => {
+		const attackURL = "https://example.com/cdn-cgi/image/w=100/https://evil.example.com/secret";
+
+		it("does not serve `res.revalidate()` requests", () => {
+			// Headers sent by Next for `res.revalidate()` (`revalidateHeaders`)
+			expect(isServed(attackURL, { "x-prerender-revalidate": "preview-mode-id" })).toBe(false);
+			expect(
+				isServed(attackURL, {
+					"x-prerender-revalidate": "preview-mode-id",
+					"x-prerender-revalidate-if-generated": "1",
+					cookie: "a=b",
+				})
+			).toBe(false);
+		});
+
+		it("does not serve queue revalidation requests", () => {
+			// Headers sent by the DO queue and the memory queue
+			expect(isServed(attackURL, { "x-prerender-revalidate": "preview-mode-id", "x-isr": "1" })).toBe(false);
+		});
+
+		it("does not serve revalidation requests regardless of the header value or case", () => {
+			expect(isServed(attackURL, { "x-prerender-revalidate": "" })).toBe(false);
+			expect(isServed(attackURL, { "X-Prerender-Revalidate": "preview-mode-id" })).toBe(false);
+		});
+
+		it.each([
+			"https://example.com/cdn-cgi\\image/w=100/https://evil.example.com/secret",
+			"https://example.com/page/../cdn-cgi/image/w=100/https://evil.example.com/secret",
+			"https://example.com/./cdn-cgi/image/w=100/https://evil.example.com/secret",
+		])("does not serve normalized paths: %s", (url) => {
+			// The URL is normalized to `/cdn-cgi/image/...` as when the worker routes the request
+			expect(new URL(url).pathname.startsWith("/cdn-cgi/image/")).toBe(true);
+			expect(isServed(url)).toBe(true);
+			expect(isServed(url, { "x-prerender-revalidate": "preview-mode-id" })).toBe(false);
+		});
 	});
 });
 
