@@ -119,21 +119,16 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 		this.service = env.WORKER_SELF_REFERENCE;
 		this.sql = ctx.storage.sql;
 
-		this.maxRevalidations = env.NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION
-			? parseInt(env.NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION)
-			: DEFAULT_MAX_REVALIDATION;
-
-		this.revalidationTimeout = env.NEXT_CACHE_DO_QUEUE_REVALIDATION_TIMEOUT_MS
-			? parseInt(env.NEXT_CACHE_DO_QUEUE_REVALIDATION_TIMEOUT_MS)
-			: DEFAULT_REVALIDATION_TIMEOUT_MS;
-
-		this.revalidationRetryInterval = env.NEXT_CACHE_DO_QUEUE_RETRY_INTERVAL_MS
-			? parseInt(env.NEXT_CACHE_DO_QUEUE_RETRY_INTERVAL_MS)
-			: DEFAULT_RETRY_INTERVAL_MS;
-
-		this.maxRetries = env.NEXT_CACHE_DO_QUEUE_MAX_RETRIES
-			? parseInt(env.NEXT_CACHE_DO_QUEUE_MAX_RETRIES)
-			: DEFAULT_MAX_RETRIES;
+		this.maxRevalidations = parseIntEnv(env.NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION, DEFAULT_MAX_REVALIDATION);
+		this.revalidationTimeout = parseIntEnv(
+			env.NEXT_CACHE_DO_QUEUE_REVALIDATION_TIMEOUT_MS,
+			DEFAULT_REVALIDATION_TIMEOUT_MS
+		);
+		this.revalidationRetryInterval = parseIntEnv(
+			env.NEXT_CACHE_DO_QUEUE_RETRY_INTERVAL_MS,
+			DEFAULT_RETRY_INTERVAL_MS
+		);
+		this.maxRetries = parseIntEnv(env.NEXT_CACHE_DO_QUEUE_MAX_RETRIES, DEFAULT_MAX_RETRIES);
 
 		this.disableSQLite = env.NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE === "true";
 
@@ -223,13 +218,11 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	async executeRevalidation(msg: QueueMessage) {
 		let response: Response | undefined;
 		try {
-			debug(`Revalidating ${msg.MessageBody.host}${msg.MessageBody.url}`);
-			const {
-				MessageBody: { host, url },
-			} = msg;
-			const protocol = host.includes("localhost") ? "http" : "https";
+			const routeKey = getRouteKey(msg);
+			debug(`Revalidating ${routeKey}`);
+			const protocol = msg.MessageBody.host.includes("localhost") ? "http" : "https";
 
-			response = await this.service.fetch(`${protocol}://${host}${url}`, {
+			response = await this.service.fetch(`${protocol}://${routeKey}`, {
 				method: "HEAD",
 				headers: {
 					// This is defined during build
@@ -243,21 +236,21 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 			if (response.status === 200 && response.headers.get("x-nextjs-cache") !== "REVALIDATED") {
 				this.routeInFailedState.delete(msg.MessageDeduplicationId);
 				throw new FatalError(
-					`The revalidation for ${host}${url} cannot be done. This error should never happen.`
+					`The revalidation for ${routeKey} cannot be done. This error should never happen.`
 				);
 			} else if (response.status === 404) {
 				// The page is not found, we should not revalidate it
 				// We remove the route from the failed state because it might be expected (i.e. a route that was deleted)
 				this.routeInFailedState.delete(msg.MessageDeduplicationId);
 				throw new IgnorableError(
-					`The revalidation for ${host}${url} cannot be done because the page is not found. It's either expected or an error in user code itself`
+					`The revalidation for ${routeKey} cannot be done because the page is not found. It's either expected or an error in user code itself`
 				);
 			} else if (response.status === 500) {
 				// A server error occurred, we should retry
 
 				await this.addToFailedState(msg);
 
-				throw new IgnorableError(`Something went wrong while revalidating ${host}${url}`);
+				throw new IgnorableError(`Something went wrong while revalidating ${routeKey}`);
 			} else if (response.status !== 200) {
 				// TODO: check if we need to handle cloudflare specific status codes/errors
 				// An unknown error occurred, most likely from something in user code like missing auth in the middleware
@@ -265,7 +258,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 				// We probably want to retry in this case as well
 				await this.addToFailedState(msg);
 
-				throw new RecoverableError(`An unknown error occurred while revalidating ${host}${url}`);
+				throw new RecoverableError(`An unknown error occurred while revalidating ${routeKey}`);
 			}
 			// Everything went well, we can update the sync table
 			// We use unixepoch here,it also works with Date.now()/1000, but not with Date.now() alone.
@@ -274,7 +267,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 				this.sql.exec(
 					"INSERT OR REPLACE INTO sync (id, lastSuccess, buildId) VALUES (?, unixepoch(), ?)",
 					// We cannot use the deduplication id because it's not unique per route - every time a route is revalidated, the deduplication id is different.
-					`${host}${url}`,
+					routeKey,
 					process.env.__OPEN_NEXT_BUILD_ID
 				);
 			}
@@ -318,7 +311,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 		);
 		const allEventsToRetry = nextEventToRetry ? [nextEventToRetry, ...expiredEvents] : expiredEvents;
 		for (const event of allEventsToRetry) {
-			debug(`Retrying revalidation for ${event.msg.MessageBody.host}${event.msg.MessageBody.url}`);
+			debug(`Retrying revalidation for ${getRouteKey(event.msg)}`);
 			await this.executeRevalidation(event.msg);
 		}
 	}
@@ -338,7 +331,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 * @throws When the SQL write or setting the alarm fails.
 	 */
 	async addToFailedState(msg: QueueMessage) {
-		debug(`Adding ${msg.MessageBody.host}${msg.MessageBody.url} to the failed state`);
+		debug(`Adding ${getRouteKey(msg)} to the failed state`);
 		const existingFailedState = this.routeInFailedState.get(msg.MessageDeduplicationId);
 
 		let updatedFailedState: FailedState;
@@ -346,7 +339,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 		if (existingFailedState) {
 			if (existingFailedState.retryCount >= this.maxRetries) {
 				error(
-					`The revalidation for ${msg.MessageBody.host}${msg.MessageBody.url} has failed after ${this.maxRetries} retries. It will not be tried again, but subsequent ISR requests will retry.`
+					`The revalidation for ${getRouteKey(msg)} has failed after ${this.maxRetries} retries. It will not be tried again, but subsequent ISR requests will retry.`
 				);
 				this.routeInFailedState.delete(msg.MessageDeduplicationId);
 				return;
@@ -451,7 +444,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 				this.sql
 					.exec(
 						"SELECT 1 FROM sync WHERE id = ? AND lastSuccess > ? LIMIT 1",
-						`${msg.MessageBody.host}${msg.MessageBody.url}`,
+						getRouteKey(msg),
 						Math.round(msg.MessageBody.lastModified / 1000)
 					)
 					.toArray().length > 0
@@ -460,4 +453,25 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 			return false;
 		}
 	}
+}
+
+/**
+ * Parses an integer environment variable.
+ *
+ * @param value Value of the environment variable.
+ * @param defaultValue Value returned when the variable is not set or empty.
+ * @returns The parsed integer, or `defaultValue` when the variable is not set or empty.
+ */
+function parseIntEnv(value: string | undefined, defaultValue: number): number {
+	return value ? parseInt(value, 10) : defaultValue;
+}
+
+/**
+ * Returns the key of the route revalidated by a message.
+ *
+ * @param msg Message of the route.
+ * @returns The host followed by the url of the route, e.g. `example.com/page`.
+ */
+function getRouteKey(msg: QueueMessage): string {
+	return `${msg.MessageBody.host}${msg.MessageBody.url}`;
 }
