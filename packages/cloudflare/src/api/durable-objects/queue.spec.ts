@@ -528,6 +528,7 @@ describe("DOQueueHandler", () => {
 			await queue.alarm();
 			expect(queue.routeInFailedState.size).toBe(0);
 			expect(queue.service.fetch).toHaveBeenCalledTimes(2);
+			expect(getStorage(queue).setAlarm).not.toHaveBeenCalled();
 		});
 
 		it("should execute revalidations for the next event to retry", async () => {
@@ -563,6 +564,43 @@ describe("DOQueueHandler", () => {
 			await queue.alarm();
 			expect(queue.routeInFailedState.size).toBe(0);
 			expect(queue.service.fetch).toHaveBeenCalledTimes(2);
+		});
+
+		it("should set an alarm for the events that were not retried", async () => {
+			const queue = await createDurableObjectQueue({ fetchDuration: 10 });
+			const nextAlarmMs = Date.now() + 2000;
+			queue.routeInFailedState.set("id", {
+				msg: createMessage("id"),
+				retryCount: 0,
+				nextAlarmMs: Date.now() - 1000,
+			});
+			queue.routeInFailedState.set("id2", {
+				msg: createMessage("id2"),
+				retryCount: 0,
+				nextAlarmMs: Date.now() + 500,
+			});
+			queue.routeInFailedState.set("id3", { msg: createMessage("id3"), retryCount: 0, nextAlarmMs });
+			await queue.alarm();
+			expect(queue.service.fetch).toHaveBeenCalledTimes(2);
+			expect([...queue.routeInFailedState.keys()]).toEqual(["id3"]);
+			expect(getStorage(queue).setAlarm).toHaveBeenCalledWith(nextAlarmMs);
+		});
+
+		it("should not set a second alarm when a retry fails again and sets one", async () => {
+			const queue = await createDurableObjectQueue({ fetchDuration: 10, statusCode: 500 });
+			const storage = getStorage(queue);
+			vi.mocked(storage.setAlarm).mockImplementation(async (scheduledTime) => {
+				vi.mocked(storage.getAlarm).mockResolvedValue(Number(scheduledTime));
+			});
+			queue.routeInFailedState.set("id", {
+				msg: createMessage("id"),
+				retryCount: 1,
+				nextAlarmMs: Date.now() - 1000,
+			});
+			await queue.alarm();
+			expect(storage.setAlarm).toHaveBeenCalledExactlyOnceWith(
+				Date.now() + 4 * queue.revalidationRetryInterval
+			);
 		});
 	});
 

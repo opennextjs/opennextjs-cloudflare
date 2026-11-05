@@ -195,25 +195,34 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 *
 	 * Retries, one after the other, every failed revalidation that is due, plus the earliest one that is
 	 * not due yet. A retry that fails again is added back to the failed state, which sets a new alarm.
+	 * An alarm is then set for the failed revalidations that were not retried.
 	 *
-	 * @returns A promise that resolves when all the retries are done.
-	 * @throws When a retry rejects (see `executeRevalidation`).
+	 * @returns A promise that resolves when all the retries are done and the next alarm is set.
+	 * @throws When a retry rejects (see `executeRevalidation`), or when setting the alarm fails.
 	 */
 	override async alarm() {
 		const currentDateTime = Date.now();
-		// The earliest event that is not due yet
-		const nextEventToRetry = Array.from(this.routeInFailedState.values())
-			.filter(({ nextAlarmMs }) => nextAlarmMs > currentDateTime)
-			.sort(({ nextAlarmMs: a }, { nextAlarmMs: b }) => a - b)[0];
 		// The events that are due
-		const expiredEvents = Array.from(this.routeInFailedState.values()).filter(
-			({ nextAlarmMs }) => nextAlarmMs <= currentDateTime
-		);
-		const allEventsToRetry = nextEventToRetry ? [nextEventToRetry, ...expiredEvents] : expiredEvents;
-		for (const event of allEventsToRetry) {
+		const expiredEvents: FailedState[] = [];
+		// The earliest event that is not due yet
+		let nextEventToRetry: FailedState | undefined;
+		for (const event of this.routeInFailedState.values()) {
+			if (event.nextAlarmMs <= currentDateTime) {
+				expiredEvents.push(event);
+			} else if (!nextEventToRetry || event.nextAlarmMs < nextEventToRetry.nextAlarmMs) {
+				nextEventToRetry = event;
+			}
+		}
+		if (nextEventToRetry) {
+			debug(`Retrying revalidation for ${getRouteKey(nextEventToRetry.msg)}`);
+			await this.executeRevalidation(nextEventToRetry.msg);
+		}
+		for (const event of expiredEvents) {
 			debug(`Retrying revalidation for ${getRouteKey(event.msg)}`);
 			await this.executeRevalidation(event.msg);
 		}
+		// Without an alarm, the remaining events would stay in the failed state and `revalidate` would skip them
+		await this.addAlarm();
 	}
 
 	/**
