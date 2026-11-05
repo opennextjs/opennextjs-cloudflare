@@ -549,7 +549,7 @@ describe("copyWorkerdPackages", () => {
 	});
 
 	// The dependency can be traced for another package while the link from the workerd package is not.
-	test("links the traced dependencies of a workerd build without copying them", async () => {
+	test("links the traced dependencies of a workerd build", async () => {
 		const { src, dst } = createPackage(
 			"socket-adapter",
 			{
@@ -581,8 +581,46 @@ describe("copyWorkerdPackages", () => {
 
 		expect(fs.existsSync(path.join(dst, "workerd.js"))).toBe(true);
 		expect(fs.existsSync(path.join(dep.dst, "index.js"))).toBe(true);
-		expect(fs.existsSync(path.join(dep.dst, "untraced.js"))).toBe(false);
+		expect(fs.existsSync(path.join(dep.dst, "untraced.js"))).toBe(true);
 		expect(fs.realpathSync(path.join(path.dirname(dst), "traced-dep"))).toBe(fs.realpathSync(dep.dst));
+		expect(errorSpy).not.toHaveBeenCalled();
+	});
+
+	// Matches @sentry/vercel-edge depending on @sentry/server-utils, partially traced for @sentry/node.
+	// https://github.com/opennextjs/opennextjs-cloudflare/issues/1478
+	test("completes a dependency of a workerd build that is only partially traced", async () => {
+		const { src, dst } = createPackage(
+			"edge-sdk",
+			{
+				name: "edge-sdk",
+				exports: { workerd: "./workerd.js", default: "./node.js" },
+				dependencies: { "server-utils": "1.0.0" },
+			},
+			{ "workerd.js": "export * from 'server-utils/edge';" },
+			{ "node.js": "export * from 'server-utils';" },
+			"1.0.0"
+		);
+		const utils = createPackage(
+			"server-utils",
+			{ name: "server-utils", exports: { ".": "./index.js", "./edge": "./edge.js" } },
+			{ "edge.js": "export const edge = true;" },
+			{ "index.js": "export const node = true;" },
+			"1.0.0"
+		);
+		const link = path.join(path.dirname(src), "server-utils");
+		fs.symlinkSync(path.relative(path.dirname(link), utils.src), link);
+		fs.writeFileSync(path.join(utils.dst, "index.js"), "// traced");
+
+		await copyWorkerdPackages(
+			{ appPath },
+			new Map([
+				[src, dst],
+				[utils.src, utils.dst],
+			])
+		);
+
+		expect(fs.readFileSync(path.join(utils.dst, "edge.js"), "utf8")).toBe("export const edge = true;");
+		expect(fs.readFileSync(path.join(utils.dst, "index.js"), "utf8")).toBe("// traced");
 		expect(errorSpy).not.toHaveBeenCalled();
 	});
 
