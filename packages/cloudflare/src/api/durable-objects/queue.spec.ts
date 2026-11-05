@@ -94,6 +94,8 @@ const createSqlStorage = () => {
  * @param options.statusCode Status of the mocked revalidation response.
  * @param options.headers Headers of the mocked revalidation response.
  * @param options.disableSQLite Whether to set `NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE`.
+ * @param options.sql SQL storage to use, pass the same one to simulate a restart of the Durable Object.
+ * @param options.env Additional environment variables.
  * @returns The initialized queue.
  */
 const createDurableObjectQueue = async ({
@@ -101,11 +103,15 @@ const createDurableObjectQueue = async ({
 	statusCode,
 	headers,
 	disableSQLite,
+	sql = createSqlStorage(),
+	env,
 }: {
 	fetchDuration: number;
 	statusCode?: number;
 	headers?: Headers;
 	disableSQLite?: boolean;
+	sql?: ReturnType<typeof createSqlStorage>;
+	env?: Partial<CloudflareEnv>;
 }) => {
 	let initialization: Promise<unknown> = Promise.resolve();
 	const mockState = {
@@ -117,7 +123,7 @@ const createDurableObjectQueue = async ({
 		storage: {
 			setAlarm: vi.fn(),
 			getAlarm: vi.fn(),
-			sql: createSqlStorage(),
+			sql,
 		},
 	};
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -141,9 +147,19 @@ const createDurableObjectQueue = async ({
 			connect: vi.fn(),
 		},
 		NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE: disableSQLite ? "true" : undefined,
+		...env,
 	});
 	await initialization;
 	return queue;
+};
+
+const getStorage = (queue: DOQueueHandler): DurableObjectStorage => {
+	// @ts-expect-error - ctx is a protected field
+	return queue.ctx.storage;
+};
+
+const mockFetchResponseOnce = (queue: DOQueueHandler, response: Response) => {
+	vi.mocked(queue.service.fetch).mockResolvedValueOnce(response);
 };
 
 const createMessage = (dedupId: string, lastModified = Date.now()) => ({
@@ -165,6 +181,73 @@ describe("DOQueueHandler", () => {
 	afterEach(() => {
 		vi.useRealTimers();
 		vi.unstubAllEnvs();
+	});
+
+	describe("constructor", () => {
+		it.each([
+			{
+				name: "defaults",
+				env: {},
+				expected: {
+					maxRevalidations: 5,
+					revalidationTimeout: 10_000,
+					revalidationRetryInterval: 2_000,
+					maxRetries: 6,
+				},
+			},
+			{
+				name: "env overrides",
+				env: {
+					NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION: "10",
+					NEXT_CACHE_DO_QUEUE_REVALIDATION_TIMEOUT_MS: "20000",
+					NEXT_CACHE_DO_QUEUE_RETRY_INTERVAL_MS: "3000",
+					NEXT_CACHE_DO_QUEUE_MAX_RETRIES: "3",
+				},
+				expected: {
+					maxRevalidations: 10,
+					revalidationTimeout: 20_000,
+					revalidationRetryInterval: 3_000,
+					maxRetries: 3,
+				},
+			},
+		])("should configure the queue with the $name", async ({ env, expected }) => {
+			const queue = await createDurableObjectQueue({ fetchDuration: 10, env });
+			expect(queue).toMatchObject(expected);
+		});
+	});
+
+	describe("state restoration", () => {
+		it("should restore the failed state and the alarm after a restart", async () => {
+			const sql = createSqlStorage();
+			const queue = await createDurableObjectQueue({ fetchDuration: 10, statusCode: 500, sql });
+			await queue.revalidate(createMessage("id"));
+			await queue.ongoingRevalidations.get("id");
+			const failedState = queue.routeInFailedState.get("id");
+
+			const restartedQueue = await createDurableObjectQueue({ fetchDuration: 10, sql });
+
+			expect(restartedQueue.routeInFailedState.get("id")).toEqual(failedState);
+			expect(getStorage(restartedQueue).setAlarm).toHaveBeenCalledWith(failedState?.nextAlarmMs);
+		});
+
+		it("should drop the state of other builds after a restart", async () => {
+			const sql = createSqlStorage();
+			const queue = await createDurableObjectQueue({ fetchDuration: 10, sql });
+			mockFetchResponseOnce(queue, new Response(null, { status: 500 }));
+			await queue.revalidate(createMessage("failed"));
+			await queue.ongoingRevalidations.get("failed");
+			await queue.revalidate(createMessage("synced"));
+			await queue.ongoingRevalidations.get("synced");
+
+			vi.stubEnv("__OPEN_NEXT_BUILD_ID", "new-build-id");
+			const restartedQueue = await createDurableObjectQueue({ fetchDuration: 10, sql });
+
+			expect(restartedQueue.routeInFailedState.size).toBe(0);
+			expect(getStorage(restartedQueue).setAlarm).not.toHaveBeenCalled();
+			// Without the sync row of the previous build, an older message is not skipped
+			await restartedQueue.revalidate(createMessage("old", Date.now() - 1000));
+			expect(restartedQueue.service.fetch).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe("successful revalidation", () => {
@@ -195,6 +278,35 @@ describe("DOQueueHandler", () => {
 			await queue.revalidate(createMessage("id"));
 			expect(queue.ongoingRevalidations.size).toBe(1);
 			expect(queue.ongoingRevalidations.has("id")).toBe(true);
+			expect(queue.service.fetch).toHaveBeenCalledTimes(1);
+		});
+
+		it("should skip messages older than the last successful revalidation", async () => {
+			const queue = await createDurableObjectQueue({ fetchDuration: 10 });
+			await queue.revalidate(createMessage("id"));
+			await queue.ongoingRevalidations.get("id");
+
+			await queue.revalidate(createMessage("older", Date.now() - 1000));
+			expect(queue.ongoingRevalidations.has("older")).toBe(false);
+			expect(queue.service.fetch).toHaveBeenCalledTimes(1);
+
+			await queue.revalidate(createMessage("newer", Date.now() + 1000));
+			await queue.ongoingRevalidations.get("newer");
+			expect(queue.service.fetch).toHaveBeenCalledTimes(2);
+		});
+
+		it("should cancel the response body", async () => {
+			const queue = await createDurableObjectQueue({ fetchDuration: 10 });
+			const cancel = vi.fn();
+			mockFetchResponseOnce(
+				queue,
+				new Response(new ReadableStream({ cancel }), {
+					headers: { "x-nextjs-cache": "REVALIDATED" },
+				})
+			);
+			await queue.revalidate(createMessage("id"));
+			await queue.ongoingRevalidations.get("id");
+			expect(cancel).toHaveBeenCalled();
 		});
 
 		it("should block concurrency", async () => {
@@ -252,10 +364,10 @@ describe("DOQueueHandler", () => {
 			expect(queue.service.fetch).toHaveBeenCalledTimes(2);
 		});
 
-		it("should put it in failed state if revalidation fails with 500", async () => {
+		it.each([500, 403])("should put it in failed state if revalidation fails with %i", async (statusCode) => {
 			const queue = await createDurableObjectQueue({
 				fetchDuration: 10,
-				statusCode: 500,
+				statusCode,
 			});
 			await queue.revalidate(createMessage("id"));
 
@@ -294,11 +406,6 @@ describe("DOQueueHandler", () => {
 	});
 
 	describe("addAlarm", () => {
-		const getStorage = (queue: DOQueueHandler): DurableObjectStorage => {
-			// @ts-expect-error - ctx is a protected field
-			return queue.ctx.storage;
-		};
-
 		it("should not add an alarm if there are no failed states", async () => {
 			const queue = await createDurableObjectQueue({ fetchDuration: 10 });
 			await queue.addAlarm();
@@ -338,27 +445,25 @@ describe("DOQueueHandler", () => {
 	});
 
 	describe("addToFailedState", () => {
-		it("should add a failed state", async () => {
+		it("should add a failed state and set the alarm", async () => {
 			const queue = await createDurableObjectQueue({ fetchDuration: 10 });
 			await queue.addToFailedState(createMessage("id"));
 			expect(queue.routeInFailedState.size).toBe(1);
-			expect(queue.routeInFailedState.has("id")).toBe(true);
-			expect(queue.routeInFailedState.get("id")?.retryCount).toBe(1);
+			expect(queue.routeInFailedState.get("id")).toMatchObject({
+				retryCount: 1,
+				nextAlarmMs: Date.now() + 2_000,
+			});
+			expect(getStorage(queue).setAlarm).toHaveBeenCalledWith(Date.now() + 2_000);
 		});
 
-		it("should add a failed state with the correct nextAlarm", async () => {
-			const queue = await createDurableObjectQueue({ fetchDuration: 10 });
-			await queue.addToFailedState(createMessage("id"));
-			expect(queue.routeInFailedState.get("id")?.nextAlarmMs).toBeGreaterThan(Date.now());
-			expect(queue.routeInFailedState.get("id")?.retryCount).toBe(1);
-		});
-
-		it("should add a failed state with the correct nextAlarm for a retry", async () => {
+		it("should back off exponentially on retries", async () => {
 			const queue = await createDurableObjectQueue({ fetchDuration: 10 });
 			await queue.addToFailedState(createMessage("id"));
 			await queue.addToFailedState(createMessage("id"));
-			expect(queue.routeInFailedState.get("id")?.nextAlarmMs).toBeGreaterThan(Date.now());
-			expect(queue.routeInFailedState.get("id")?.retryCount).toBe(2);
+			expect(queue.routeInFailedState.get("id")).toMatchObject({
+				retryCount: 2,
+				nextAlarmMs: Date.now() + 4 * queue.revalidationRetryInterval,
+			});
 		});
 
 		it("should not add a failed state once the max number of retries is reached", async () => {
