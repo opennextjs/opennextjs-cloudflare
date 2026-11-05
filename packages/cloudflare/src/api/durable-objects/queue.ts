@@ -195,9 +195,10 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 *
 	 * Retries, one after the other, every failed revalidation that is due, plus the earliest one that is
 	 * not due yet. A retry that fails again is added back to the failed state, which sets a new alarm.
+	 * An alarm is then set for the failed revalidations that were not retried.
 	 *
-	 * @returns A promise that resolves when all the retries are done.
-	 * @throws When a retry rejects (see `executeRevalidation`).
+	 * @returns A promise that resolves when all the retries are done and the next alarm is set.
+	 * @throws When a retry rejects (see `executeRevalidation`), or when setting the alarm fails.
 	 */
 	override async alarm() {
 		const currentDateTime = Date.now();
@@ -214,8 +215,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 			debug(`Retrying revalidation for ${getRouteKey(event.msg)}`);
 			await this.executeRevalidation(event.msg);
 		}
-		// The events that were not retried in this run still need an alarm,
-		// otherwise they stay in the failed state and their revalidations are skipped
+		// Without an alarm, the remaining events would stay in the failed state and `revalidate` would skip them
 		await this.addAlarm();
 	}
 
