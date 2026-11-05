@@ -202,16 +202,22 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 */
 	override async alarm() {
 		const currentDateTime = Date.now();
-		// The earliest event that is not due yet
-		const nextEventToRetry = Array.from(this.routeInFailedState.values())
-			.filter(({ nextAlarmMs }) => nextAlarmMs > currentDateTime)
-			.sort(({ nextAlarmMs: a }, { nextAlarmMs: b }) => a - b)[0];
 		// The events that are due
-		const expiredEvents = Array.from(this.routeInFailedState.values()).filter(
-			({ nextAlarmMs }) => nextAlarmMs <= currentDateTime
-		);
-		const allEventsToRetry = nextEventToRetry ? [nextEventToRetry, ...expiredEvents] : expiredEvents;
-		for (const event of allEventsToRetry) {
+		const expiredEvents: FailedState[] = [];
+		// The earliest event that is not due yet
+		let nextEventToRetry: FailedState | undefined;
+		for (const event of this.routeInFailedState.values()) {
+			if (event.nextAlarmMs <= currentDateTime) {
+				expiredEvents.push(event);
+			} else if (!nextEventToRetry || event.nextAlarmMs < nextEventToRetry.nextAlarmMs) {
+				nextEventToRetry = event;
+			}
+		}
+		if (nextEventToRetry) {
+			debug(`Retrying revalidation for ${getRouteKey(nextEventToRetry.msg)}`);
+			await this.executeRevalidation(nextEventToRetry.msg);
+		}
+		for (const event of expiredEvents) {
 			debug(`Retrying revalidation for ${getRouteKey(event.msg)}`);
 			await this.executeRevalidation(event.msg);
 		}
