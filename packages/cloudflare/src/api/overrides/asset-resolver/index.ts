@@ -11,6 +11,9 @@ import { getCloudflareContext } from "../../cloudflare-context.js";
  * When it is `true`, assets are served from the routing layer. It should be used when assets
  * should be behind the middleware or when skew protection is enabled.
  *
+ * Like Next.js, public files are only served at their exact path. This is ensured by the `html_handling`
+ * and `not_found_handling` assets config which are checked at build time (see `ensureAssetsConfig`).
+ *
  * See https://developers.cloudflare.com/workers/static-assets/binding/#run_worker_first
  */
 const resolver: AssetResolver = {
@@ -33,6 +36,9 @@ const resolver: AssetResolver = {
 		const response = await ASSETS.fetch(url, {
 			headers,
 			method,
+			// Redirects (e.g. to the canonical encoding of the path or from `_redirects`) are returned to the client
+			// so that the middleware runs for the target.
+			redirect: "manual",
 		});
 
 		if (response.status === 404) {
