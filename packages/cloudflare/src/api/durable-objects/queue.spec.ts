@@ -1,3 +1,4 @@
+import type { QueueMessage } from "@opennextjs/aws/types/overrides.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DOQueueHandler } from "./queue.js";
@@ -10,6 +11,34 @@ vi.mock("cloudflare:workers", () => ({
 		) {}
 	},
 }));
+
+/**
+ * Exposes the protected members of `DOQueueHandler` used by the tests.
+ */
+class TestDOQueueHandler extends DOQueueHandler {
+	public declare ongoingRevalidations: Map<string, Promise<void>>;
+	public declare sql: SqlStorage;
+	public declare routeInFailedState: Map<
+		string,
+		{ msg: QueueMessage; retryCount: number; nextAlarmMs: number }
+	>;
+	public declare service: NonNullable<CloudflareEnv["WORKER_SELF_REFERENCE"]>;
+	public declare readonly maxRevalidations: number;
+	public declare readonly revalidationRetryInterval: number;
+	public declare readonly maxRetries: number;
+
+	public override addToFailedState(msg: QueueMessage) {
+		return super.addToFailedState(msg);
+	}
+
+	public override addAlarm() {
+		return super.addAlarm();
+	}
+
+	public override checkSyncTable(msg: QueueMessage) {
+		return super.checkSyncTable(msg);
+	}
+}
 
 /**
  * Wraps rows in a minimal `SqlStorageCursor`.
@@ -127,7 +156,7 @@ const createDurableObjectQueue = async ({
 		},
 	};
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const queue = new DOQueueHandler(mockState as any, {
+	const queue = new TestDOQueueHandler(mockState as any, {
 		WORKER_SELF_REFERENCE: {
 			fetch: vi.fn().mockImplementation(
 				() =>
@@ -153,12 +182,12 @@ const createDurableObjectQueue = async ({
 	return queue;
 };
 
-const getStorage = (queue: DOQueueHandler): DurableObjectStorage => {
+const getStorage = (queue: TestDOQueueHandler): DurableObjectStorage => {
 	// @ts-expect-error - ctx is a protected field
 	return queue.ctx.storage;
 };
 
-const mockFetchResponseOnce = (queue: DOQueueHandler, response: Response) => {
+const mockFetchResponseOnce = (queue: TestDOQueueHandler, response: Response) => {
 	vi.mocked(queue.service.fetch).mockResolvedValueOnce(response);
 };
 

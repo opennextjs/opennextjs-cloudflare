@@ -51,10 +51,10 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 * It is only kept in memory: revalidations run in `waitUntil`, so the Durable Object is expected to
 	 * stay alive until they end.
 	 */
-	ongoingRevalidations = new Map<string, Promise<void>>();
+	protected ongoingRevalidations = new Map<string, Promise<void>>();
 
 	/** SQLite storage of the Durable Object. */
-	sql: SqlStorage;
+	protected sql: SqlStorage;
 
 	/**
 	 * Failed revalidations waiting to be retried by the alarm, keyed by deduplication id.
@@ -62,10 +62,10 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 * Messages with a deduplication id in this map are skipped by `revalidate`.
 	 * Entries are persisted to the `failed_state` table unless SQLite is disabled.
 	 */
-	routeInFailedState = new Map<string, FailedState>();
+	protected routeInFailedState = new Map<string, FailedState>();
 
 	/** Service binding to the Worker itself, used to send the revalidation requests. */
-	service: NonNullable<CloudflareEnv["WORKER_SELF_REFERENCE"]>;
+	protected service: NonNullable<CloudflareEnv["WORKER_SELF_REFERENCE"]>;
 
 	// Configurable params
 	/**
@@ -73,32 +73,32 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 *
 	 * Set with `NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION`, defaults to {@link DEFAULT_MAX_REVALIDATION}.
 	 */
-	readonly maxRevalidations: number;
+	protected readonly maxRevalidations: number;
 	/**
 	 * Time in milliseconds after which a revalidation request is aborted.
 	 *
 	 * Set with `NEXT_CACHE_DO_QUEUE_REVALIDATION_TIMEOUT_MS`, defaults to {@link DEFAULT_REVALIDATION_TIMEOUT_MS}.
 	 */
-	readonly revalidationTimeout: number;
+	protected readonly revalidationTimeout: number;
 	/**
 	 * Base interval in milliseconds of the exponential backoff between retries.
 	 *
 	 * Set with `NEXT_CACHE_DO_QUEUE_RETRY_INTERVAL_MS`, defaults to {@link DEFAULT_RETRY_INTERVAL_MS}.
 	 */
-	readonly revalidationRetryInterval: number;
+	protected readonly revalidationRetryInterval: number;
 	/**
 	 * Maximum number of retries of a failed revalidation.
 	 *
 	 * Set with `NEXT_CACHE_DO_QUEUE_MAX_RETRIES`, defaults to {@link DEFAULT_MAX_RETRIES}.
 	 */
-	readonly maxRetries: number;
+	protected readonly maxRetries: number;
 	/**
 	 * Whether SQLite is disabled.
 	 *
 	 * Set `NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE` to `"true"` to disable it. Failed revalidations are then lost
 	 * on restart and messages are never skipped based on the last successful revalidation.
 	 */
-	readonly disableSQLite: boolean;
+	protected readonly disableSQLite: boolean;
 
 	/**
 	 * Creates the queue and restores its persisted state.
@@ -191,6 +191,32 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	}
 
 	/**
+	 * Retries the failed revalidations when the alarm fires.
+	 *
+	 * Retries, one after the other, every failed revalidation that is due, plus the earliest one that is
+	 * not due yet. A retry that fails again is added back to the failed state, which sets a new alarm.
+	 *
+	 * @returns A promise that resolves when all the retries are done.
+	 * @throws When a retry rejects (see `executeRevalidation`).
+	 */
+	override async alarm() {
+		const currentDateTime = Date.now();
+		// The earliest event that is not due yet
+		const nextEventToRetry = Array.from(this.routeInFailedState.values())
+			.filter(({ nextAlarmMs }) => nextAlarmMs > currentDateTime)
+			.sort(({ nextAlarmMs: a }, { nextAlarmMs: b }) => a - b)[0];
+		// The events that are due
+		const expiredEvents = Array.from(this.routeInFailedState.values()).filter(
+			({ nextAlarmMs }) => nextAlarmMs <= currentDateTime
+		);
+		const allEventsToRetry = nextEventToRetry ? [nextEventToRetry, ...expiredEvents] : expiredEvents;
+		for (const event of allEventsToRetry) {
+			debug(`Retrying revalidation for ${getRouteKey(event.msg)}`);
+			await this.executeRevalidation(event.msg);
+		}
+	}
+
+	/**
 	 * Revalidates a route, then updates the failed state and the sync table.
 	 *
 	 * Sends a `HEAD` request to the route through the service binding, with the preview mode id inlined
@@ -212,7 +238,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 * @returns A promise that resolves when the revalidation is done.
 	 * @throws When adding the route to the failed state fails after an unexpected error.
 	 */
-	async executeRevalidation(msg: QueueMessage) {
+	protected async executeRevalidation(msg: QueueMessage) {
 		let response: Response | undefined;
 		try {
 			const routeKey = getRouteKey(msg);
@@ -283,32 +309,6 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	}
 
 	/**
-	 * Retries the failed revalidations when the alarm fires.
-	 *
-	 * Retries, one after the other, every failed revalidation that is due, plus the earliest one that is
-	 * not due yet. A retry that fails again is added back to the failed state, which sets a new alarm.
-	 *
-	 * @returns A promise that resolves when all the retries are done.
-	 * @throws When a retry rejects (see `executeRevalidation`).
-	 */
-	override async alarm() {
-		const currentDateTime = Date.now();
-		// The earliest event that is not due yet
-		const nextEventToRetry = Array.from(this.routeInFailedState.values())
-			.filter(({ nextAlarmMs }) => nextAlarmMs > currentDateTime)
-			.sort(({ nextAlarmMs: a }, { nextAlarmMs: b }) => a - b)[0];
-		// The events that are due
-		const expiredEvents = Array.from(this.routeInFailedState.values()).filter(
-			({ nextAlarmMs }) => nextAlarmMs <= currentDateTime
-		);
-		const allEventsToRetry = nextEventToRetry ? [nextEventToRetry, ...expiredEvents] : expiredEvents;
-		for (const event of allEventsToRetry) {
-			debug(`Retrying revalidation for ${getRouteKey(event.msg)}`);
-			await this.executeRevalidation(event.msg);
-		}
-	}
-
-	/**
 	 * Adds a route to the failed state, or updates its entry, and sets an alarm to retry it.
 	 *
 	 * The first retry is scheduled 2 seconds later. The next ones are scheduled
@@ -322,7 +322,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 * @returns A promise that resolves when the failed state is updated and the alarm is set.
 	 * @throws When the SQL write or setting the alarm fails.
 	 */
-	async addToFailedState(msg: QueueMessage) {
+	protected async addToFailedState(msg: QueueMessage) {
 		debug(`Adding ${getRouteKey(msg)} to the failed state`);
 		const existingFailedState = this.routeInFailedState.get(msg.MessageDeduplicationId);
 
@@ -371,7 +371,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 * @returns A promise that resolves when the alarm is set.
 	 * @throws When reading or setting the alarm fails.
 	 */
-	async addAlarm() {
+	protected async addAlarm() {
 		const existingAlarm = await this.ctx.storage.getAlarm({ allowConcurrency: false });
 		if (existingAlarm) return;
 		if (this.routeInFailedState.size === 0) return;
@@ -396,7 +396,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 * @returns A promise that resolves when the state is restored.
 	 * @throws When a SQL statement fails, a row cannot be parsed, or setting the alarm fails.
 	 */
-	async initState() {
+	protected async initState() {
 		if (this.disableSQLite) return;
 		// We store the failed state as a blob, we don't want to do anything with it anyway besides restoring
 		this.sql.exec("CREATE TABLE IF NOT EXISTS failed_state (id TEXT PRIMARY KEY, data TEXT, buildId TEXT)");
@@ -427,7 +427,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 * @returns `true` if the route was revalidated after the message's `lastModified`, `false` otherwise,
 	 *   when SQLite is disabled, or when the query fails.
 	 */
-	checkSyncTable(msg: QueueMessage) {
+	protected checkSyncTable(msg: QueueMessage) {
 		try {
 			if (this.disableSQLite) return false;
 			return (
