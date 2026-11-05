@@ -453,7 +453,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
  * @returns The parsed integer, or `defaultValue` when the variable is not set or empty.
  */
 function parseIntEnv(value: string | undefined, defaultValue: number): number {
-	return value ? parseInt(value, 10) : defaultValue;
+	return value ? parseInt(value) : defaultValue;
 }
 
 /**
