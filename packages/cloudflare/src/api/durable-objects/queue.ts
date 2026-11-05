@@ -44,7 +44,6 @@ interface FailedState {
  * Rows written by other builds are deleted on startup.
  */
 export class DOQueueHandler extends DurableObject<CloudflareEnv> {
-	// TODO: handle incremental cache with only eventual consistency (i.e. KV or R2/D1 with the optional cache layer on top)
 	/**
 	 * Revalidations in progress, keyed by deduplication id.
 	 *
@@ -167,16 +166,14 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 		// The route is already in a failed state, it will be retried later
 		if (this.routeInFailedState.has(msg.MessageDeduplicationId)) return;
 
-		// If the last success is newer than the last modified, it's likely that the regional cache is out of date
-		// We don't need to revalidate in this case
+		// The route was revalidated after the message was sent, the message comes from a stale copy of the cache
 		if (this.checkSyncTable(msg)) return;
 
 		if (this.ongoingRevalidations.size >= this.maxRevalidations) {
 			debug(
 				`The maximum number of revalidations (${this.maxRevalidations}) is reached. Blocking until one of the revalidations finishes.`
 			);
-			// TODO: need more investigation
-			// We don't use `blockConcurrencyWhile` here because it block the whole durable object for 30 seconds
+			// We don't use `blockConcurrencyWhile` here because it blocks the whole durable object for 30 seconds
 			// if we exceed the max revalidations too fast
 			while (this.ongoingRevalidations.size >= this.maxRevalidations) {
 				const ongoingRevalidations = this.ongoingRevalidations.values();
@@ -229,7 +226,6 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 					"x-prerender-revalidate": process.env.__NEXT_PREVIEW_MODE_ID!,
 					"x-isr": "1",
 				},
-				// This one is kind of problematic, it will always show the wall time of the revalidation to `this.revalidationTimeout`
 				signal: AbortSignal.timeout(this.revalidationTimeout),
 			});
 			// Now we need to handle errors from the fetch
@@ -240,7 +236,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 				);
 			} else if (response.status === 404) {
 				// The page is not found, we should not revalidate it
-				// We remove the route from the failed state because it might be expected (i.e. a route that was deleted)
+				// We remove the route from the failed state because it might be expected (e.g. a route that was deleted)
 				this.routeInFailedState.delete(msg.MessageDeduplicationId);
 				throw new IgnorableError(
 					`The revalidation for ${routeKey} cannot be done because the page is not found. It's either expected or an error in user code itself`
@@ -252,17 +248,14 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 
 				throw new IgnorableError(`Something went wrong while revalidating ${routeKey}`);
 			} else if (response.status !== 200) {
-				// TODO: check if we need to handle cloudflare specific status codes/errors
 				// An unknown error occurred, most likely from something in user code like missing auth in the middleware
-
-				// We probably want to retry in this case as well
+				// We retry in this case as well
 				await this.addToFailedState(msg);
 
 				throw new RecoverableError(`An unknown error occurred while revalidating ${routeKey}`);
 			}
 			// Everything went well, we can update the sync table
-			// We use unixepoch here,it also works with Date.now()/1000, but not with Date.now() alone.
-			// TODO: This needs to be investigated
+			// `lastSuccess` is stored in seconds, the unit used by `checkSyncTable` to compare it with `lastModified`
 			if (!this.disableSQLite) {
 				this.sql.exec(
 					"INSERT OR REPLACE INTO sync (id, lastSuccess, buildId) VALUES (?, unixepoch(), ?)",
@@ -274,7 +267,6 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 			// If everything went well, we can remove the route from the failed state
 			this.routeInFailedState.delete(msg.MessageDeduplicationId);
 		} catch (e) {
-			// Do we want to propagate the error to the calling worker?
 			if (!isOpenNextError(e)) {
 				await this.addToFailedState(msg);
 			}
@@ -301,11 +293,11 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 */
 	override async alarm() {
 		const currentDateTime = Date.now();
-		// We fetch the first event that needs to be retried or if the date is expired
+		// The earliest event that is not due yet
 		const nextEventToRetry = Array.from(this.routeInFailedState.values())
 			.filter(({ nextAlarmMs }) => nextAlarmMs > currentDateTime)
 			.sort(({ nextAlarmMs: a }, { nextAlarmMs: b }) => a - b)[0];
-		// We also have to check if there are expired events, if the revalidation takes too long, or if the
+		// The events that are due
 		const expiredEvents = Array.from(this.routeInFailedState.values()).filter(
 			({ nextAlarmMs }) => nextAlarmMs <= currentDateTime
 		);
@@ -367,7 +359,6 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 				process.env.__OPEN_NEXT_BUILD_ID
 			);
 		}
-		// We probably want to do something if routeInFailedState is becoming too big, at least log it
 		await this.addAlarm();
 	}
 
@@ -414,7 +405,6 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 		this.sql.exec("CREATE TABLE IF NOT EXISTS sync (id TEXT PRIMARY KEY, lastSuccess INTEGER, buildId TEXT)");
 
 		// Before doing anything else, we clear the DB for any potential old data
-		// TODO: extract this to a function so that it could be called by the user at another time than init
 		this.sql.exec("DELETE FROM failed_state WHERE buildId != ?", process.env.__OPEN_NEXT_BUILD_ID);
 		this.sql.exec("DELETE FROM sync WHERE buildId != ?", process.env.__OPEN_NEXT_BUILD_ID);
 
