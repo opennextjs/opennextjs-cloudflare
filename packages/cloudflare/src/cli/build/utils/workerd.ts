@@ -103,6 +103,7 @@ export async function copyWorkerdPackages(
 	// The root folder of a package inside a `node_modules` folder, on posix and Windows. The package can be
 	// scoped (`@scope/name`) or generated in a dot folder, i.e. `.prisma/client` for the Prisma client.
 	const packageRootRegex = /[\\/]node_modules[\\/](?:[@.][^\\/]+[\\/])?[^\\/]+$/;
+	const visited = new Set<string>();
 
 	for (const [src, dst] of nodePackages.entries()) {
 		if (!packageRootRegex.test(src)) {
@@ -116,7 +117,7 @@ export async function copyWorkerdPackages(
 					`Copying package using a workerd condition: ${path.relative(options.appPath, src)} -> ${path.relative(options.appPath, dst)}`
 				);
 				await copyPackage(src, dst, transformed);
-				await copyUntracedDependencies(options, pkgJson, src, dst);
+				await copyUntracedDependencies(options, pkgJson, src, dst, visited);
 			}
 		} catch (e) {
 			logger.error(`Failed to copy ${src}:`, e instanceof Error ? e.message : e);
@@ -140,19 +141,22 @@ async function copyPackage(src: string, dst: string, transformed: PackageJson) {
  * Copies the dependencies of a `workerd` build that Next.js did not trace.
  *
  * Dependencies are resolved as Node.js does (hoisted and pnpm layouts) and copied, recursively, to
- * the mirrored location in the output. A dependency already in the output (traced, or already
- * copied, which also stops cycles) is not copied again.
+ * the mirrored location in the output. A dependency already in the output might only be partially
+ * traced (Next.js traces it with the Node.js conditions for another package), so the files it is
+ * missing are added and the traced files are kept.
  *
  * @param options Build options, `appPath` is only used to log relative paths
  * @param pkgJson `package.json` of the package
  * @param src Installed directory of the package
  * @param dst Output directory of the package
+ * @param visited Output directories of the dependencies already handled, which also stops cycles
  */
 async function copyUntracedDependencies(
 	options: Pick<BuildOptions, "appPath">,
 	pkgJson: PackageJson,
 	src: string,
-	dst: string
+	dst: string,
+	visited: Set<string>
 ) {
 	const { srcRoot, dstRoot } = getRoots(src, dst);
 	// The installed tree might be reached through a symlink (i.e. `/var` -> `/private/var` on macOS)
@@ -182,15 +186,23 @@ async function copyUntracedDependencies(
 		}
 
 		const depDst = path.join(dstRoot, path.relative(srcRootReal, realPath));
-		if (existsSync(depDst)) {
+		if (visited.has(depDst)) {
 			continue;
 		}
-		logger.debug(
-			`Copying dependency of a workerd build: ${path.relative(options.appPath, realPath)} -> ${path.relative(options.appPath, depDst)}`
-		);
+		visited.add(depDst);
 		const depJson = await readPackageJson(realPath);
-		await copyPackage(realPath, depDst, transformPackageJson(depJson).transformed);
-		await copyUntracedDependencies(options, depJson, realPath, depDst);
+		if (existsSync(depDst)) {
+			logger.debug(
+				`Adding the untraced files of a dependency of a workerd build: ${path.relative(options.appPath, realPath)} -> ${path.relative(options.appPath, depDst)}`
+			);
+			await fs.cp(realPath, depDst, { recursive: true, force: false });
+		} else {
+			logger.debug(
+				`Copying dependency of a workerd build: ${path.relative(options.appPath, realPath)} -> ${path.relative(options.appPath, depDst)}`
+			);
+			await copyPackage(realPath, depDst, transformPackageJson(depJson).transformed);
+		}
+		await copyUntracedDependencies(options, depJson, realPath, depDst, visited);
 	}
 }
 
