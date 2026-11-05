@@ -79,6 +79,11 @@ const createSqlStorage = () => {
 			return createCursor([]);
 		}
 
+		if (statement === "DELETE FROM failed_state WHERE id = ?") {
+			failedState.delete(bindings[0] as string);
+			return createCursor([]);
+		}
+
 		if (statement === "DELETE FROM sync WHERE buildId != ?") {
 			for (const [id, row] of sync) {
 				if (row.buildId !== bindings[0]) sync.delete(id);
@@ -599,6 +604,65 @@ describe("DOQueueHandler", () => {
 		});
 	});
 
+	describe("failed state cleanup", () => {
+		/**
+		 * Creates a queue whose first revalidation of `id` fails and is persisted to the failed state.
+		 *
+		 * @param options Options passed to `createDurableObjectQueue`, used for the subsequent fetches.
+		 * @returns The queue with `id` in the failed state.
+		 */
+		const createQueueWithFailedState = async (options: Parameters<typeof createDurableObjectQueue>[0]) => {
+			const queue = await createDurableObjectQueue(options);
+			mockFetchResponseOnce(queue, new Response(null, { status: 500 }));
+			await queue.revalidate(createMessage("id"));
+			await queue.ongoingRevalidations.get("id");
+			expect(queue.routeInFailedState.has("id")).toBe(true);
+			return queue;
+		};
+
+		it.each([
+			{ outcome: "succeeds", statusCode: 200, cacheHeader: "REVALIDATED" },
+			{ outcome: "returns a 404", statusCode: 404, cacheHeader: "REVALIDATED" },
+			{ outcome: "returns a 200 that is not revalidated", statusCode: 200, cacheHeader: "MISS" },
+		])(
+			"should not restore the route after a restart when the retry $outcome",
+			async ({ statusCode, cacheHeader }) => {
+				const sql = createSqlStorage();
+				const queue = await createQueueWithFailedState({
+					fetchDuration: 10,
+					statusCode,
+					headers: new Headers([["x-nextjs-cache", cacheHeader]]),
+					sql,
+				});
+
+				await queue.alarm();
+
+				const restartedQueue = await createDurableObjectQueue({ fetchDuration: 10, sql });
+				expect(restartedQueue.routeInFailedState.size).toBe(0);
+			}
+		);
+
+		it("should not restore the route after a restart when the max retries is reached", async () => {
+			const sql = createSqlStorage();
+			const queue = await createQueueWithFailedState({ fetchDuration: 10, sql });
+			queue.routeInFailedState.get("id")!.retryCount = queue.maxRetries;
+
+			await queue.addToFailedState(createMessage("id"));
+
+			const restartedQueue = await createDurableObjectQueue({ fetchDuration: 10, sql });
+			expect(restartedQueue.routeInFailedState.size).toBe(0);
+		});
+
+		it("should not delete a row for a route that was never in the failed state", async () => {
+			const queue = await createDurableObjectQueue({ fetchDuration: 10 });
+
+			await queue.revalidate(createMessage("id"));
+			await queue.ongoingRevalidations.get("id");
+
+			expect(queue.sql.exec).not.toHaveBeenCalledWith("DELETE FROM failed_state WHERE id = ?", "id");
+		});
+	});
+
 	describe("disableSQLite", () => {
 		it("should not initialize the sqlite storage", async () => {
 			const queue = await createDurableObjectQueue({ fetchDuration: 10, disableSQLite: true });
@@ -614,6 +678,18 @@ describe("DOQueueHandler", () => {
 		it("should not read from the sqlite storage on checkSyncTable", async () => {
 			const queue = await createDurableObjectQueue({ fetchDuration: 10, disableSQLite: true });
 			queue.checkSyncTable(createMessage("id"));
+			expect(queue.sql.exec).not.toHaveBeenCalled();
+		});
+
+		it("should not delete from sql when a retry succeeds", async () => {
+			const queue = await createDurableObjectQueue({ fetchDuration: 10, disableSQLite: true });
+			queue.routeInFailedState.set("id", {
+				msg: createMessage("id"),
+				retryCount: 1,
+				nextAlarmMs: Date.now() - 1000,
+			});
+			await queue.alarm();
+			expect(queue.routeInFailedState.size).toBe(0);
 			expect(queue.sql.exec).not.toHaveBeenCalled();
 		});
 

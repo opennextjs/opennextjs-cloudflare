@@ -233,9 +233,9 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 *
 	 * The outcome depends on the response:
 	 * - `200` with `x-nextjs-cache: REVALIDATED`: success, the sync table is updated and the route is
-	 *   removed from `routeInFailedState`;
-	 * - `200` without it: logged as a `FatalError`, the route is removed from `routeInFailedState`;
-	 * - `404`: logged as an `IgnorableError`, the route is removed from `routeInFailedState`;
+	 *   removed from the failed state;
+	 * - `200` without it: logged as a `FatalError`, the route is removed from the failed state;
+	 * - `404`: logged as an `IgnorableError`, the route is removed from the failed state;
 	 * - `500`: logged as an `IgnorableError`, the route is added to the failed state;
 	 * - any other status: logged as a `RecoverableError`, the route is added to the failed state.
 	 *
@@ -265,14 +265,14 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 			});
 			// Now we need to handle errors from the fetch
 			if (response.status === 200 && response.headers.get("x-nextjs-cache") !== "REVALIDATED") {
-				this.routeInFailedState.delete(msg.MessageDeduplicationId);
+				this.removeFromFailedState(msg.MessageDeduplicationId);
 				throw new FatalError(
 					`The revalidation for ${routeKey} cannot be done. This error should never happen.`
 				);
 			} else if (response.status === 404) {
 				// The page is not found, we should not revalidate it
 				// We remove the route from the failed state because it might be expected (e.g. a route that was deleted)
-				this.routeInFailedState.delete(msg.MessageDeduplicationId);
+				this.removeFromFailedState(msg.MessageDeduplicationId);
 				throw new IgnorableError(
 					`The revalidation for ${routeKey} cannot be done because the page is not found. It's either expected or an error in user code itself`
 				);
@@ -300,7 +300,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 				);
 			}
 			// If everything went well, we can remove the route from the failed state
-			this.routeInFailedState.delete(msg.MessageDeduplicationId);
+			this.removeFromFailedState(msg.MessageDeduplicationId);
 		} catch (e) {
 			if (!isOpenNextError(e)) {
 				await this.addToFailedState(msg);
@@ -323,7 +323,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 * The first retry is scheduled 2 seconds later. The next ones are scheduled
 	 * `2 ** (retryCount + 1) * revalidationRetryInterval` later, where `retryCount` is the number of
 	 * previous failures. Once the route has failed `maxRetries` times, an error is logged and the route is
-	 * removed from `routeInFailedState` instead.
+	 * removed from the failed state instead.
 	 *
 	 * The entry is persisted to the `failed_state` table unless SQLite is disabled.
 	 *
@@ -342,7 +342,7 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 				error(
 					`The revalidation for ${getRouteKey(msg)} has failed after ${this.maxRetries} retries. It will not be tried again, but subsequent ISR requests will retry.`
 				);
-				this.routeInFailedState.delete(msg.MessageDeduplicationId);
+				this.removeFromFailedState(msg.MessageDeduplicationId);
 				return;
 			}
 			const nextAlarmMs =
@@ -369,6 +369,21 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 			);
 		}
 		await this.addAlarm();
+	}
+
+	/**
+	 * Removes a route from the failed state.
+	 *
+	 * Also deletes its persisted row so that `initState()` does not restore it. Every persisted row is in
+	 * `routeInFailedState`, so the `DELETE` is skipped when the route is not there.
+	 *
+	 * @param id Deduplication id of the route.
+	 * @throws When the SQL delete fails.
+	 */
+	protected removeFromFailedState(id: string) {
+		if (this.routeInFailedState.delete(id) && !this.disableSQLite) {
+			this.sql.exec("DELETE FROM failed_state WHERE id = ?", id);
+		}
 	}
 
 	/**
