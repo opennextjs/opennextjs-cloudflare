@@ -365,9 +365,8 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	/**
 	 * Removes a route from the failed state.
 	 *
-	 * Deletes both the in-memory entry and its persisted `failed_state` row, so that `initState()` does
-	 * not restore the route on the next start. Every persisted row is also in `routeInFailedState`, so a
-	 * missing entry means there is no row to delete. The row is not deleted when SQLite is disabled.
+	 * Also deletes its persisted row so that `initState()` does not restore it. Every persisted row is in
+	 * `routeInFailedState`, so the `DELETE` is skipped when the route is not there.
 	 *
 	 * @param id Deduplication id of the route.
 	 * @throws When the SQL delete fails.

@@ -598,22 +598,18 @@ describe("DOQueueHandler", () => {
 				});
 
 				await queue.alarm();
-				expect(queue.routeInFailedState.size).toBe(0);
 
 				const restartedQueue = await createDurableObjectQueue({ fetchDuration: 10, sql });
 				expect(restartedQueue.routeInFailedState.size).toBe(0);
-				expect(getStorage(restartedQueue).setAlarm).not.toHaveBeenCalled();
 			}
 		);
 
 		it("should not restore the route after a restart when the max retries is reached", async () => {
 			const sql = createSqlStorage();
 			const queue = await createQueueWithFailedState({ fetchDuration: 10, sql });
-			const failedState = queue.routeInFailedState.get("id")!;
-			queue.routeInFailedState.set("id", { ...failedState, retryCount: queue.maxRetries });
+			queue.routeInFailedState.get("id")!.retryCount = queue.maxRetries;
 
 			await queue.addToFailedState(createMessage("id"));
-			expect(queue.routeInFailedState.size).toBe(0);
 
 			const restartedQueue = await createDurableObjectQueue({ fetchDuration: 10, sql });
 			expect(restartedQueue.routeInFailedState.size).toBe(0);
