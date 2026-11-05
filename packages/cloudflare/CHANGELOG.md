@@ -1,5 +1,21 @@
 # @opennextjs/cloudflare
 
+## 1.20.17
+
+### Patch Changes
+
+- [#1479](https://github.com/opennextjs/opennextjs-cloudflare/pull/1479) [`223f07f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/223f07f46a0620de23c716c633f38621d9282e72) Thanks [@vicb](https://github.com/vicb)! - fix: do not serve `/cdn-cgi/image/` for revalidation requests sent through `WORKER_SELF_REFERENCE`
+
+- [#1427](https://github.com/opennextjs/opennextjs-cloudflare/pull/1427) [`2d4665a`](https://github.com/opennextjs/opennextjs-cloudflare/commit/2d4665a1fc1a57df9fdc095f316241dc21b06769) Thanks [@jkugsiya](https://github.com/jkugsiya)! - fix: stop the Durable Object queue from revalidating routes again after every restart
+
+  Once a revalidation had failed, the Durable Object queue revalidated the route again every time it restarted, even after the retry succeeded or the queue gave up. The number of extra revalidations grew until the next deployment. The queue now forgets a route once it stops retrying it.
+
+- [#1431](https://github.com/opennextjs/opennextjs-cloudflare/pull/1431) [`8d30187`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8d30187ff558424b8a108ba671c53d1c0e7242fb) Thanks [@kremnyi](https://github.com/kremnyi)! - fix: retry all the failed revalidations of the Durable Object queue
+
+  When three or more failed ISR revalidations were waiting to be retried at the same time with the Durable Object queue (`DOQueueHandler`), only some of them were retried. The routes that were not retried stayed marked as failed, so later ISR requests for these routes did not trigger a revalidation either. These pages stayed stale until another revalidation failed or the Durable Object restarted.
+
+  All the failed revalidations are now retried.
+
 ## 1.20.16
 
 ### Patch Changes
