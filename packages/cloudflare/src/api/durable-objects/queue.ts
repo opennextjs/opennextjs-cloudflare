@@ -38,8 +38,8 @@ interface FailedState {
  *
  * Unless `NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE` is set, SQLite stores:
  * - the failed revalidations (`failed_state` table), so they are restored after a restart;
- * - the time of the last successful revalidation of each route (`sync` table), so messages sent from a
- *   stale copy of an eventually consistent incremental cache are skipped.
+ * - the start time of the last successful revalidation of each route (`sync` table), so messages sent
+ *   from a stale copy of an eventually consistent incremental cache are skipped.
  *
  * Rows written by other builds are deleted on startup.
  */
@@ -232,8 +232,8 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 * at build time in `x-prerender-revalidate`. The request is aborted after `revalidationTimeout`.
 	 *
 	 * The outcome depends on the response:
-	 * - `200` with `x-nextjs-cache: REVALIDATED`: success, the sync table is updated and the route is
-	 *   removed from the failed state;
+	 * - `200` with `x-nextjs-cache: REVALIDATED`: success, the start time is stored in the sync table and
+	 *   the route is removed from the failed state;
 	 * - `200` without it: logged as a `FatalError`, the route is removed from the failed state;
 	 * - `404`: logged as an `IgnorableError`, the route is removed from the failed state;
 	 * - `500`: logged as an `IgnorableError`, the route is added to the failed state;
@@ -249,6 +249,10 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 */
 	protected async executeRevalidation(msg: QueueMessage) {
 		let response: Response | undefined;
+		// Stored as `lastSuccess`: the entry written by this revalidation has a later `lastModified`, so it is
+		// not skipped once stale. The end time would be later than that `lastModified`.
+		// `Date.now()` is the time of the last I/O, see https://developers.cloudflare.com/workers/reference/security-model/
+		const revalidationStartSeconds = Math.floor(Date.now() / 1000);
 		try {
 			const routeKey = getRouteKey(msg);
 			debug(`Revalidating ${routeKey}`);
@@ -290,12 +294,12 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 				throw new RecoverableError(`An unknown error occurred while revalidating ${routeKey}`);
 			}
 			// Everything went well, we can update the sync table
-			// `lastSuccess` is stored in seconds, the unit used by `checkSyncTable` to compare it with `lastModified`
 			if (!this.disableSQLite) {
 				this.sql.exec(
-					"INSERT OR REPLACE INTO sync (id, lastSuccess, buildId) VALUES (?, unixepoch(), ?)",
+					"INSERT OR REPLACE INTO sync (id, lastSuccess, buildId) VALUES (?, ?, ?)",
 					// We cannot use the deduplication id because it's not unique per route - every time a route is revalidated, the deduplication id is different.
 					routeKey,
+					revalidationStartSeconds,
 					process.env.__OPEN_NEXT_BUILD_ID
 				);
 			}
@@ -447,13 +451,17 @@ export class DOQueueHandler extends DurableObject<CloudflareEnv> {
 	 * This happens when the message comes from a stale copy of an eventually consistent incremental cache
 	 * (e.g. KV, or a regional cache) read after the revalidation. Times are compared in seconds.
 	 *
+	 * A `lastModified` of `1` (entry stale by tag) or `0` (unknown) is not a time: such messages are never
+	 * skipped.
+	 *
 	 * @param msg Message of the route to check.
 	 * @returns `true` if the route was revalidated after the message's `lastModified`, `false` otherwise,
-	 *   when SQLite is disabled, or when the query fails.
+	 *   when `lastModified` is not a time, when SQLite is disabled, or when the query fails.
 	 */
 	protected checkSyncTable(msg: QueueMessage) {
 		try {
 			if (this.disableSQLite) return false;
+			if (msg.MessageBody.lastModified <= 1) return false;
 			return (
 				this.sql
 					.exec(
