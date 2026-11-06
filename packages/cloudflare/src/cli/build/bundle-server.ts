@@ -97,6 +97,11 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 		minifyWhitespace: projectOpts.minify && !debug,
 		minifyIdentifiers: false,
 		minifySyntax: projectOpts.minify && !debug,
+		// Bundling renames colliding top-level identifiers (`io` -> `io2`), which changes a
+		// function's `.name`. React's resume of a Cache Components prerender compares component
+		// names with the postponed state `next build` wrote, so a renamed component fails the
+		// resume and the page falls back to client rendering.
+		keepNames: true,
 		legalComments: "none",
 		metafile: true,
 		// Next traces files using the default conditions from `nft` (`node`, `require`, `import` and `default`)
