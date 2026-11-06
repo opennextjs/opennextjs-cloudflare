@@ -1,7 +1,9 @@
 /**
- * Inline `loadManifest` and `evalManifest` from `load-manifest.js`
+ * Inline the manifests read by `loadManifest` and `evalManifest` from `load-manifest.js`
  *
  * They rely on `readFileSync` that is not supported by workerd.
+ * - `loadManifest` reads are replaced with `readInlinedManifest`, keeping the Next.js cache logic
+ * - `evalManifest` is replaced with an implementation returning the inlined client reference manifests
  */
 
 import crypto from "node:crypto";
@@ -24,23 +26,83 @@ export function inlineLoadManifest(updater: ContentUpdater, buildOpts: BuildOpti
 				escape: false,
 			}),
 			contentFilter: /function loadManifest\(/,
-			callback: async ({ contents }) => {
-				contents = await patchCode(contents, await getLoadManifestRule(buildOpts));
+			callback: async ({ contents, path }) => {
+				contents = patchCode(contents, inlineManifestReadRule);
 				contents = await patchCode(contents, await getEvalManifestRule(buildOpts));
-				return contents;
+				const root = parse(Lang.JavaScript, contents).root();
+				if (applyRule(remainingFileReadRule, root).matches.length > 0) {
+					throw new Error(`Failed to inline the manifest reads in ${path}`);
+				}
+				return `${contents}\n${await getReadInlinedManifestCode(buildOpts)}`;
 			},
 		},
 	]);
 }
 
-async function getLoadManifestRule(buildOpts: BuildOptions) {
+/**
+ * Match any remaining `readFileSync` reference.
+ *
+ * Used after patching to check that every manifest read has been inlined.
+ * Matches both bare identifiers (`readFileSync`) and property accesses
+ * (`fs.readFileSync`, `(0, _fs.readFileSync)`) because `readFileSync` is not
+ * supported by workerd and would throw at runtime.
+ */
+const remainingFileReadRule: RuleConfig = {
+	rule: {
+		regex: "^readFileSync$",
+		any: [{ kind: "identifier" }, { kind: "property_identifier" }],
+	},
+};
+
+/**
+ * Replace the `readFileSync` calls in `loadManifest` with `readInlinedManifest`.
+ *
+ * Matches the transpiled `(0, fs.readFileSync)(path, encoding)` calls located
+ * anywhere inside the `loadManifest` function and replaces them with
+ * `readInlinedManifest(path)`, which returns the manifest content inlined at
+ * build time (see `getReadInlinedManifestCode`).
+ */
+const inlineManifestReadRule: RuleConfig = {
+	rule: {
+		pattern: "(0, $_FS.readFileSync)($PATH, $_ENCODING)",
+		inside: {
+			kind: "function_declaration",
+			has: { field: "name", regex: "^loadManifest$" },
+			stopBy: "end",
+		},
+	},
+	fix: "readInlinedManifest($PATH)",
+};
+
+/**
+ * Generate the code of the `readInlinedManifest` function.
+ *
+ * The manifests (`*-manifest.json`, `required-server-files.json`, `prefetch-hints.json`
+ * and `server/preview-props.json`) found in the `.next` directory of the build output
+ * are inlined as strings in `readInlinedManifest`, which returns the content matching
+ * the requested path. `.next/BUILD_ID` is resolved from `process.env.NEXT_BUILD_ID`,
+ * known optional manifests resolve to `"{}"`, and any other path throws.
+ *
+ * @param buildOpts The build options.
+ * @returns The code of the `readInlinedManifest` function declaration.
+ * @throws If a manifest can not be read or does not contain valid JSON.
+ */
+async function getReadInlinedManifestCode(buildOpts: BuildOptions): Promise<string> {
 	const { outputDir } = buildOpts;
 
 	const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts));
 	const dotNextDir = join(baseDir, ".next");
 
+	// Manifests to inline:
+	// - `*-manifest.json`
+	// - `required-server-files.json`
+	// - `prefetch-hints.json` (Next 16.2+)
+	// - `server/preview-props.json` (Next 16.4+)
 	const manifests = await glob(
-		join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints}.json"),
+		[
+			join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints}.json"),
+			join(dotNextDir, "server/preview-props.json"),
+		],
 		{
 			windowsPathsNoEscape: true,
 			nodir: true,
@@ -51,50 +113,89 @@ async function getLoadManifestRule(buildOpts: BuildOptions) {
 		await Promise.all(
 			manifests.map(
 				async (manifest) => `
-if ($PATH.endsWith("${normalizePath("/" + relative(dotNextDir, manifest))}")) {
-  return ${await readFile(manifest, "utf-8")};
+if (path.endsWith("${normalizePath("/" + relative(dotNextDir, manifest))}")) {
+  return ${await readManifestAsStringLiteral(manifest)};
 }`
 			)
 		)
 	).join("\n");
 
-	return {
-		rule: {
-			pattern: `
-function loadManifest($PATH, $$$ARGS) {
-  $$$_
-}`,
-		},
-		fix: `
-function loadManifest($PATH, $$$ARGS) {
-  $PATH = $PATH.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
-  if ($PATH.endsWith(".next/BUILD_ID")) {
+	return `
+function readInlinedManifest(path) {
+  path = path.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
+  if (path.endsWith(".next/BUILD_ID")) {
     return process.env.NEXT_BUILD_ID;
-	}
+  }
   ${returnManifests}
   // Known optional manifests \u2014 Next.js loads these with handleMissing: true
   // (see vercel/next.js packages/next/src/server/route-modules/route-module.ts).
-  // Return {} to match Next.js behaviour instead of crashing the worker.
+  // Return an empty manifest (parsed by loadManifest) to match Next.js behaviour
+  // instead of crashing the worker.
   // Note: Some manifest constants in Next.js omit the .json extension
   // (e.g. SUBRESOURCE_INTEGRITY_MANIFEST, DYNAMIC_CSS_MANIFEST), so we
   // strip .json before matching to handle both forms.
   {
-    const p = $PATH.replace(/\\.json$/, "");
+    const p = path.replace(/\\.json$/, "");
     if (p.endsWith("react-loadable-manifest") ||
         p.endsWith("subresource-integrity-manifest") ||
         p.endsWith("server-reference-manifest") ||
         p.endsWith("dynamic-css-manifest") ||
         p.endsWith("fallback-build-manifest") ||
         p.endsWith("prefetch-hints")) {
-      return {};
+      return "{}";
     }
   }
-  throw new Error(\`Unexpected loadManifest(\${$PATH}) call!\`);
-}`,
-	} satisfies RuleConfig;
+  throw new Error(\`Unexpected loadManifest(\${path}) call!\`);
+}`;
 }
 
-async function getEvalManifestRule(buildOpts: BuildOptions) {
+/**
+ * Read a JSON manifest and return its minified content as a JS string literal.
+ *
+ * The manifest is parsed and re-serialized without whitespace to reduce its size,
+ * then serialized again so that it can be inlined in generated code as a string
+ * (`readInlinedManifest` replaces `readFileSync`, so it must return the file content
+ * as text, not the parsed object).
+ *
+ * An invalid manifest fails the build rather than being inlined as-is, which would
+ * only throw at runtime when Next.js parses it.
+ *
+ * @param path Path to the JSON manifest.
+ * @returns The minified manifest content as a quoted and escaped JS string literal.
+ * @throws If the file can not be read.
+ * @throws If the file does not contain valid JSON.
+ */
+async function readManifestAsStringLiteral(path: string): Promise<string> {
+	const manifestText = await readFile(path, "utf-8");
+	let manifestJson: unknown;
+	try {
+		manifestJson = JSON.parse(manifestText);
+	} catch (error) {
+		throw new Error(`Failed to parse the manifest ${path}`, { cause: error });
+	}
+	return JSON.stringify(JSON.stringify(manifestJson, null, 0));
+}
+
+/**
+ * Create a rule that replaces `evalManifest` with inlined client reference manifests.
+ *
+ * `evalManifest` reads and evaluates the `*_client-reference-manifest.js` files at
+ * runtime, which is not supported by workerd. The replacement returns the
+ * `__RSC_MANIFEST` entry for the requested path:
+ * - `page_client-reference-manifest.js` contents are inlined, with large repeated
+ *   values factored out into shared top-level variables to reduce the bundle size
+ *   (see `factorManifestValue` and `factorObjectValues`),
+ * - other manifests are loaded via `require` so they get bundled.
+ *
+ * Paths are matched longest first to avoid suffix collisions. A missing
+ * client reference manifest resolves to an empty `__RSC_MANIFEST` (it is optional
+ * for static metadata routes) and any other path throws.
+ *
+ * @param buildOpts The build options.
+ * @returns The rule replacing `evalManifest` and declaring the factored variables.
+ * @throws If a manifest can not be read.
+ */
+async function getEvalManifestRule(buildOpts: BuildOptions): Promise<RuleConfig> {
 	const { outputDir } = buildOpts;
 
 	const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts), ".next");
@@ -194,7 +295,7 @@ function evalManifest($PATH, $$$ARGS) {
   }
   throw new Error(\`Unexpected evalManifest(\${$PATH}) call!\`);
 }`,
-	} satisfies RuleConfig;
+	};
 }
 
 /**

@@ -58,6 +58,19 @@ describe("maybeGetAssetResult", () => {
 		expect(result).toBeUndefined();
 	});
 
+	test("returns redirects to the client instead of following them", async () => {
+		mockAssetsFetch.mockResolvedValue(
+			new Response(null, { status: 302, headers: { location: "/secret.html" } })
+		);
+
+		const result = await resolver.maybeGetAssetResult(makeEvent("GET", "/to-secret"));
+
+		expect(mockAssetsFetch).toHaveBeenCalledTimes(1);
+		expect(mockAssetsFetch.mock.calls[0][1]).toMatchObject({ redirect: "manual" });
+		expect(result?.statusCode).toBe(302);
+		expect(result?.headers.location).toBe("/secret.html");
+	});
+
 	test("returns undefined for POST requests", async () => {
 		const result = await resolver.maybeGetAssetResult(makeEvent("POST", "/style.css"));
 

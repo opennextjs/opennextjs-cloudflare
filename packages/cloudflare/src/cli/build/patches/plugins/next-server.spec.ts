@@ -1,7 +1,7 @@
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
+import { computePatchDiff } from "@opennextjs/aws/build/patch/testUtils.js";
 import { describe, expect, test } from "vitest";
 
-import { computePatchDiff } from "../../utils/test-patch.js";
 import {
 	attachRequestMetaRule,
 	buildIdRule,

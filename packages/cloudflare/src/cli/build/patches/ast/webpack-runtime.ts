@@ -1,103 +1,109 @@
 /**
- * Inline dynamic requires in the webpack runtime.
+ * Inline the dynamic chunk requires of the webpack runtime.
  *
- * The webpack runtime has dynamic requires that would not be bundled by ESBuild:
+ * The webpack runtime loads chunks with a dynamic require that ESBuild can not bundle:
  *
  *     installChunk(require("./chunks/" + __webpack_require__.u(chunkId)));
  *
- *  This patch unrolls the dynamic require for all the existing chunks:
+ * `__webpack_require__.u` returns `<id>.js`, or `<name>.js` for a named chunk (`webpackChunkName`).
+ * The require is replaced with a switch over the existing chunk files:
  *
- *  For multiple chunks:
- *     switch (chunkId) {
- *       case ID1: installChunk(require("./chunks/ID1"); break;
- *       case ID2: installChunk(require("./chunks/ID2"); break;
- *       // ...
- *       case SELF_ID: installedChunks[chunkId] = 1; break;
- *       default: throw new Error(`Unknown chunk ${chunkId}`);
- *     }
- *
- * For a single chunk:
- *     require("./chunks/CHUNK_ID.js");
+ *     installChunk(((path) => {
+ *       switch (path) {
+ *         case "./chunks/123.js": return require("./chunks/123.js");
+ *         case "./chunks/named.js": return require("./chunks/named.js");
+ *         default: throw new Error(`Unknown chunk ${path}`);
+ *       }
+ *     })("./chunks/" + __webpack_require__.u(chunkId)));
  */
 
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
+import logger from "@opennextjs/aws/logger.js";
 
-// Inline the code when there are multiple chunks
-export function buildMultipleChunksRule(chunks: number[]) {
+/**
+ * Builds the rule inlining the dynamic chunk require.
+ *
+ * @param chunks Chunk files, relative to the chunks folder (i.e. `123.js`, `named-chunk.js`).
+ * @returns The ast-grep rule.
+ */
+export function buildChunkRequireRule(chunks: string[]): string {
+	const cases = chunks.map((chunk) => {
+		// Escape `$` so that ast-grep does not treat it as a metavariable
+		const path = JSON.stringify(`./chunks/${chunk}`).replaceAll("$", "\\x24");
+		return `      case ${path}: return require(${path});`;
+	});
+
 	return `
 rule:
-  pattern: ($CHUNK_ID, $_PROMISES) => { $$$ }
+  pattern: require("./chunks/" + $CHUNK_FILE)
   inside: {pattern: $_.$_.require = $$$_, stopBy: end}
-  all:
-    - has: {pattern: $INSTALL(require("./chunks/" + $$$)), stopBy: end}
-    - has: {pattern: $SELF_ID != $CHUNK_ID, stopBy: end}
-    - has: {pattern: "$INSTALLED_CHUNK[$CHUNK_ID] = 1", stopBy: end}
 fix: |
-  ($CHUNK_ID, _) => {
-    if (!$INSTALLED_CHUNK[$CHUNK_ID]) {
-      switch ($CHUNK_ID) {
-${chunks.map((chunk) => `         case ${chunk}: $INSTALL(require("./chunks/${chunk}.js")); break;`).join("\n")}
-         case $SELF_ID: $INSTALLED_CHUNK[$CHUNK_ID] = 1; break;
-         default: throw new Error(\`Unknown chunk \${$CHUNK_ID}\`);
-      }
+  ((path) => {
+    switch (path) {
+${cases.join("\n")}
+      default: throw new Error(\`Unknown chunk \${path}\`);
     }
-  }`;
+  })("./chunks/" + $CHUNK_FILE)`;
 }
 
-// Inline the code when there is a single chunk.
-// For example when there is a single Pages API route.
-// Note: The chunk does not always exist which explain the need for the try...catch.
-export const singleChunkRule = `
-rule:
-  pattern: ($CHUNK_ID, $_PROMISES) => { $$$ }
-  inside: {pattern: $_.$_.require = $$$_, stopBy: end}
-  all:
-    - has: {pattern: $INSTALL(require("./chunks/" + $$$)), stopBy: end}
-    - has: {pattern: $SELF_ID == $CHUNK_ID, stopBy: end}
-    - has: {pattern: "$INSTALLED_CHUNK[$CHUNK_ID] = 1", stopBy: end}
-fix: |
-  ($CHUNK_ID, _) => {
-    if (!$INSTALLED_CHUNK[$CHUNK_ID]) {
-      try {
-        $INSTALL(require("./chunks/$SELF_ID.js"));
-      } catch {}
-    }
-  }
-`;
+/**
+ * Lists the chunk files.
+ *
+ * Named chunks can be nested (i.e. `webpackChunkName: "dir/name"` is emitted as `chunks/dir/name.js`).
+ *
+ * @param chunksDir Path to the chunks folder.
+ * @returns The `.js` files, relative to the chunks folder and using `/` as the separator.
+ */
+export function listChunks(chunksDir: string): string[] {
+	if (!existsSync(chunksDir)) {
+		return [];
+	}
+
+	return readdirSync(chunksDir, { encoding: "utf-8", recursive: true })
+		.filter((file) => file.endsWith(".js"))
+		.map((file) => file.replaceAll(sep, "/"))
+		.sort();
+}
 
 /**
  * Fixes the webpack-runtime.js and webpack-api-runtime.js files by inlining
  * the webpack dynamic requires.
+ *
+ * @param dotNextServerDir Path to the `.next/server` folder.
  */
 export async function patchWebpackRuntime(dotNextServerDir: string) {
-	// Look for all the chunks.
-	const chunksDir = join(dotNextServerDir, "chunks");
-	const chunks = existsSync(chunksDir)
-		? readdirSync(chunksDir)
-				.filter((chunk) => /^\d+\.js$/.test(chunk))
-				.map((chunk) => {
-					return Number(chunk.replace(/\.js$/, ""));
-				})
-		: [];
+	const runtimes = ["webpack-runtime.js", "webpack-api-runtime.js"]
+		.map((runtime) => join(dotNextServerDir, runtime))
+		.filter((runtime) => existsSync(runtime));
 
-	patchFile(join(dotNextServerDir, "webpack-runtime.js"), chunks);
-	patchFile(join(dotNextServerDir, "webpack-api-runtime.js"), chunks);
+	// Turbopack builds have no webpack runtime
+	if (runtimes.length === 0) {
+		return;
+	}
+
+	const chunks = listChunks(join(dotNextServerDir, "chunks"));
+
+	for (const runtime of runtimes) {
+		patchFile(runtime, chunks);
+	}
 }
 
 /**
- * Inline chunks when the file exists.
+ * Inline the chunks in a webpack runtime file.
  *
  * @param filename Path to the webpack runtime.
- * @param chunks List of chunks in the chunks folder.
+ * @param chunks List of chunk files in the chunks folder.
  */
-function patchFile(filename: string, chunks: number[]) {
-	if (existsSync(filename)) {
-		let code = readFileSync(filename, "utf-8");
-		code = patchCode(code, buildMultipleChunksRule(chunks));
-		code = patchCode(code, singleChunkRule);
-		writeFileSync(filename, code);
+function patchFile(filename: string, chunks: string[]) {
+	const code = patchCode(readFileSync(filename, "utf-8"), buildChunkRequireRule(chunks));
+
+	// The worker would fail to load chunks at runtime
+	if (/require\("\.\/chunks\/"\s*\+/.test(code)) {
+		logger.error(`Failed to inline the dynamic chunk requires in ${filename}`);
 	}
+
+	writeFileSync(filename, code);
 }

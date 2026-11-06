@@ -120,6 +120,15 @@ class RegionalCache implements IncrementalCache {
 		}
 	}
 
+	/**
+	 * Reads a cache entry from the Cache API, or from the store on a miss.
+	 *
+	 * Keys without a Cache API URL (see `getCacheUrlKey`) are only read from the store.
+	 *
+	 * @param key The cache key.
+	 * @param cacheType The type of the cache entry.
+	 * @returns The cache entry, or `null` when it does not exist or the read fails.
+	 */
 	async get<CacheType extends CacheEntryType = "cache">(
 		key: string,
 		cacheType?: CacheType
@@ -129,7 +138,8 @@ class RegionalCache implements IncrementalCache {
 			const urlKey = this.getCacheUrlKey(key, cacheType);
 
 			// Check for a cached entry as this will be faster than the store response.
-			const cachedResponse = await cache.match(urlKey);
+			// Keys without a Cache API URL are only read from the store.
+			const cachedResponse = urlKey === null ? undefined : await cache.match(urlKey);
 
 			if (cachedResponse) {
 				debugCache("RegionalCache", `get ${key} -> cached response`);
@@ -199,13 +209,21 @@ class RegionalCache implements IncrementalCache {
 		}
 	}
 
+	/**
+	 * Deletes a cache entry from the store and from the Cache API.
+	 *
+	 * @param key The cache key.
+	 */
 	async delete(key: string): Promise<void> {
 		debugCache("RegionalCache", `delete ${key}`);
 		try {
 			await this.store.delete(key);
 
-			const cache = await this.getCacheInstance();
-			await cache.delete(this.getCacheUrlKey(key));
+			const urlKey = this.getCacheUrlKey(key);
+			if (urlKey !== null) {
+				const cache = await this.getCacheInstance();
+				await cache.delete(urlKey);
+			}
 		} catch (e) {
 			error("Failed to delete from regional cache", e);
 		}
@@ -218,13 +236,39 @@ class RegionalCache implements IncrementalCache {
 		return this.localCache;
 	}
 
-	protected getCacheUrlKey(key: string, cacheType?: CacheEntryType) {
+	/**
+	 * Returns the Cache API URL of the entry for `key`.
+	 *
+	 * The key is opaque and may contain characters that are meaningful in a URL (`%`, `\`, `?`, `#`, ...).
+	 * Each segment is encoded so that the URL parser can not resolve the key to the URL of a different entry
+	 * (i.e. `x/%2e%2e/admin` or `x\..\admin` to `admin`).
+	 *
+	 * @param key The cache key.
+	 * @param cacheType The type of the cache entry.
+	 * @returns The Cache API URL, or `null` when the key contains a `.` or `..` segment that the URL parser would resolve.
+	 */
+	protected getCacheUrlKey(key: string, cacheType?: CacheEntryType): string | null {
 		const buildId = process.env.OPEN_NEXT_BUILD_ID ?? FALLBACK_BUILD_ID;
-		return "http://cache.local" + `/${buildId}/${key}`.replace(/\/+/g, "/") + `.${cacheType ?? "cache"}`;
+		const segments = `/${buildId}/${key}.${cacheType ?? "cache"}`.replace(/\/+/g, "/").split("/");
+		if (segments.some((segment) => segment === "." || segment === "..")) {
+			return null;
+		}
+		return `http://cache.local${segments.map(encodeURIComponent).join("/")}`;
 	}
 
+	/**
+	 * Stores an entry in the Cache API.
+	 *
+	 * Nothing is stored when the key has no Cache API URL (see `getCacheUrlKey`).
+	 *
+	 * @param input The key, type and entry to store.
+	 */
 	protected async putToCache({ key, cacheType, entry }: PutToCacheInput): Promise<void> {
 		const urlKey = this.getCacheUrlKey(key, cacheType);
+		if (urlKey === null) {
+			debugCache("RegionalCache", `invalid key ${key}`);
+			return;
+		}
 		const cache = await this.getCacheInstance();
 
 		const age =
