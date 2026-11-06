@@ -25,6 +25,7 @@ import { patchPagesRouterContext } from "./patches/plugins/pages-router-context.
 import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations.js";
 import { fixRequire } from "./patches/plugins/require.js";
 import { shimRequireHook } from "./patches/plugins/require-hook.js";
+import { resolvePackages } from "./patches/plugins/resolve-packages.js";
 import { patchRouteModules } from "./patches/plugins/route-module.js";
 import { shimReact } from "./patches/plugins/shim-react.js";
 import { setWranglerExternal } from "./patches/plugins/wrangler-external.js";
@@ -86,6 +87,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 	const openNextServerBundle = path.join(outputPath, packagePath, `handler.mjs`);
 
 	const updater = new ContentUpdater(buildOpts);
+	const useWorkerdCondition = getOpenNextConfig(buildOpts).cloudflare?.useWorkerdCondition !== false;
 
 	const result = await build({
 		entryPoints: [openNextServer],
@@ -108,7 +110,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 		// - default nft conditions: https://github.com/vercel/nft/blob/2b55b01/readme.md#exports--imports
 		// - Next no explicit override: https://github.com/vercel/next.js/blob/2efcf11/packages/next/src/build/collect-build-traces.ts#L287
 		// - ESBuild `node` platform: https://esbuild.github.io/api/#platform
-		conditions: getOpenNextConfig(buildOpts).cloudflare?.useWorkerdCondition === false ? [] : ["workerd"],
+		conditions: useWorkerdCondition ? ["workerd"] : [],
 		plugins: [
 			shimRequireHook(buildOpts),
 			shimReact(buildOpts),
@@ -125,6 +127,9 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			patchDepdDeprecations(updater),
 			patchResolveCache(updater, buildOpts),
 			patchSetWorkingDirectory(updater, buildOpts),
+			// Next.js traces the packages with the Node.js conditions, the files only used by their
+			// `workerd` build are resolved from the installed `node_modules`.
+			...(useWorkerdCondition ? [resolvePackages(buildOpts)] : []),
 			// Apply updater updates, must be the last plugin
 			updater.plugin,
 		] as Plugin[],

@@ -25,13 +25,11 @@ import type { FunctionOptions, SplittedFunctionOptions } from "@opennextjs/aws/t
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import type { Plugin } from "esbuild";
 
-import { getOpenNextConfig } from "../../../api/config.js";
 import { normalizePath } from "../../utils/normalize-path.js";
 import { patchModuleLoadingSignal } from "../patches/plugins/module-loading.js";
 import { patchResRevalidate } from "../patches/plugins/res-revalidate.js";
 import { patchTurbopackRuntime } from "../patches/plugins/turbopack.js";
 import { patchUseCacheIO } from "../patches/plugins/use-cache.js";
-import { copyWorkerdPackages } from "../utils/workerd.js";
 
 interface CodeCustomization {
 	// These patches are meant to apply on user and next generated code
@@ -184,19 +182,13 @@ async function generateBundle(
 	buildHelper.copyEnvFile(appBuildOutputPath, packagePath, outputPath);
 
 	// Copy all necessary traced files
-	const { tracedFiles, manifests, nodePackages } = await copyTracedFiles({
+	const { tracedFiles, manifests } = await copyTracedFiles({
 		buildOutputPath: appBuildOutputPath,
 		packagePath,
 		outputDir: outputPath,
 		routes: fnOptions.routes ?? ["app/page.tsx"],
 		bundledNextServer: isBundled,
 	});
-
-	if (getOpenNextConfig(options).cloudflare?.useWorkerdCondition !== false) {
-		// Next does not trace the "workerd" build condition
-		// So we need to copy the whole packages using the condition
-		await copyWorkerdPackages(options, nodePackages);
-	}
 
 	const additionalCodePatches = codeCustomization?.additionalCodePatches ?? [];
 
