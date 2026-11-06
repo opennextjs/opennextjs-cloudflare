@@ -27,6 +27,7 @@ import type { Plugin } from "esbuild";
 
 import { getOpenNextConfig } from "../../../api/config.js";
 import { normalizePath } from "../../utils/normalize-path.js";
+import { patchCloseRscStreams } from "../patches/plugins/close-rsc-streams.js";
 import { patchModuleLoadingSignal } from "../patches/plugins/module-loading.js";
 import { patchResRevalidate } from "../patches/plugins/res-revalidate.js";
 import { patchTurbopackRuntime } from "../patches/plugins/turbopack.js";
@@ -214,6 +215,7 @@ async function generateBundle(
 		patchResRevalidate,
 		patchUseCacheIO,
 		patchTurbopackRuntime,
+		patchCloseRscStreams,
 		...additionalCodePatches,
 	]);
 
