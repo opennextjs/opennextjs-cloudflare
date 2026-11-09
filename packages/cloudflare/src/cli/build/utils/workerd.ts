@@ -86,8 +86,9 @@ export function transformPackageJson(json: PackageJson) {
  * only reachable through a `workerd` condition are missing from the output.
  *
  * Every traced package declaring a `workerd` condition is copied in full, with a `package.json`
- * keeping only that condition, along with the dependencies only its `workerd` build uses
- * (see `copyUntracedDependencies`).
+ * keeping only that condition, along with the dependencies of its `workerd` build: the ones Next.js
+ * did not trace are copied and the ones it only partially traced are completed
+ * (see `copyWorkerdDependencies`).
  *
  * Only package roots inside `node_modules` are considered: the trace also lists the app's own
  * `package.json` and nested `package.json` type markers. Packages generated in a dot folder
@@ -117,7 +118,8 @@ export async function copyWorkerdPackages(
 					`Copying package using a workerd condition: ${path.relative(options.appPath, src)} -> ${path.relative(options.appPath, dst)}`
 				);
 				await copyPackage(src, dst, transformed);
-				await copyUntracedDependencies(options, pkgJson, src, dst, visited);
+				visited.add(dst);
+				await copyWorkerdDependencies(options, pkgJson, src, dst, visited);
 			}
 		} catch (e) {
 			logger.error(`Failed to copy ${src}:`, e instanceof Error ? e.message : e);
@@ -138,7 +140,8 @@ async function copyPackage(src: string, dst: string, transformed: PackageJson) {
 }
 
 /**
- * Copies the dependencies of a `workerd` build that Next.js did not trace.
+ * Copies the dependencies of a `workerd` build that Next.js did not trace, and completes the ones it
+ * only partially traced.
  *
  * Dependencies are resolved as Node.js does (hoisted and pnpm layouts) and copied, recursively, to
  * the mirrored location in the output. A dependency already in the output might only be partially
@@ -149,9 +152,9 @@ async function copyPackage(src: string, dst: string, transformed: PackageJson) {
  * @param pkgJson `package.json` of the package
  * @param src Installed directory of the package
  * @param dst Output directory of the package
- * @param visited Output directories of the dependencies already handled, which also stops cycles
+ * @param visited Output directories of the packages already handled, which also stops cycles
  */
-async function copyUntracedDependencies(
+async function copyWorkerdDependencies(
 	options: Pick<BuildOptions, "appPath">,
 	pkgJson: PackageJson,
 	src: string,
@@ -202,7 +205,7 @@ async function copyUntracedDependencies(
 			);
 			await copyPackage(realPath, depDst, transformPackageJson(depJson).transformed);
 		}
-		await copyUntracedDependencies(options, depJson, realPath, depDst, visited);
+		await copyWorkerdDependencies(options, depJson, realPath, depDst, visited);
 	}
 }
 

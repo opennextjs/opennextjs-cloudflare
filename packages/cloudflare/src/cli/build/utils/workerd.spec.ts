@@ -588,7 +588,10 @@ describe("copyWorkerdPackages", () => {
 
 	// Matches @sentry/vercel-edge depending on @sentry/server-utils, partially traced for @sentry/node.
 	// https://github.com/opennextjs/opennextjs-cloudflare/issues/1478
-	test("completes a dependency of a workerd build that is only partially traced", async () => {
+	test.each([
+		{ layout: "pnpm", version: "1.0.0" },
+		{ layout: "hoisted", version: undefined },
+	])("completes a partially traced dependency of a workerd build ($layout)", async ({ layout, version }) => {
 		const { src, dst } = createPackage(
 			"edge-sdk",
 			{
@@ -598,18 +601,21 @@ describe("copyWorkerdPackages", () => {
 			},
 			{ "workerd.js": "export * from 'server-utils/edge';" },
 			{ "node.js": "export * from 'server-utils';" },
-			"1.0.0"
+			version
 		);
 		const utils = createPackage(
 			"server-utils",
 			{ name: "server-utils", exports: { ".": "./index.js", "./edge": "./edge.js" } },
 			{ "edge.js": "export const edge = true;" },
 			{ "index.js": "export const node = true;" },
-			"1.0.0"
+			version
 		);
-		const link = path.join(path.dirname(src), "server-utils");
-		fs.symlinkSync(path.relative(path.dirname(link), utils.src), link);
+		if (layout === "pnpm") {
+			const link = path.join(path.dirname(src), "server-utils");
+			fs.symlinkSync(path.relative(path.dirname(link), utils.src), link);
+		}
 		fs.writeFileSync(path.join(utils.dst, "index.js"), "// traced");
+		fs.writeFileSync(path.join(utils.dst, "package.json"), '{ "name": "server-utils", "traced": true }');
 
 		await copyWorkerdPackages(
 			{ appPath },
@@ -621,6 +627,9 @@ describe("copyWorkerdPackages", () => {
 
 		expect(fs.readFileSync(path.join(utils.dst, "edge.js"), "utf8")).toBe("export const edge = true;");
 		expect(fs.readFileSync(path.join(utils.dst, "index.js"), "utf8")).toBe("// traced");
+		expect(fs.readFileSync(path.join(utils.dst, "package.json"), "utf8")).toBe(
+			'{ "name": "server-utils", "traced": true }'
+		);
 		expect(errorSpy).not.toHaveBeenCalled();
 	});
 
