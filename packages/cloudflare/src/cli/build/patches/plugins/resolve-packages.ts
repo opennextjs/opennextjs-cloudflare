@@ -100,6 +100,11 @@ export function resolvePackages(buildOpts: BuildOptions) {
 /**
  * Resolves a specifier from a directory with esbuild and replaces the result with its copy in the output.
  *
+ * @param build The esbuild plugin build
+ * @param specifier The specifier to resolve
+ * @param resolveDir The directory to resolve the specifier from
+ * @param args The arguments of the original resolution (kind, importer, import attributes)
+ * @param mapper Maps the installed tree to the output
  * @returns The esbuild result, `undefined` to let esbuild resolve the import itself
  */
 async function resolveFrom(
@@ -238,6 +243,10 @@ class PackageCache {
 
 	/**
 	 * Finds a package as Node.js does, looking up the `node_modules` folders from `fromDir`.
+	 *
+	 * @param name The package name, `pkg` or `@scope/pkg`
+	 * @param fromDir The directory to start the lookup from
+	 * @returns The first package found, `undefined` when there is none
 	 */
 	private findPackage(name: string, fromDir: string): PackageInfo | undefined {
 		let dir = fromDir;
@@ -258,6 +267,11 @@ class PackageCache {
 
 	/**
 	 * Finds the package containing `fromDir`, the scope of `#imports`.
+	 *
+	 * The lookup stops at the `node_modules` folder containing the package.
+	 *
+	 * @param fromDir The directory to start the lookup from
+	 * @returns The closest package with a `package.json`, `undefined` when there is none
 	 */
 	private findScope(fromDir: string): PackageInfo | undefined {
 		let dir = fromDir;
@@ -275,6 +289,12 @@ class PackageCache {
 		return undefined;
 	}
 
+	/**
+	 * Reads the package of a directory, once.
+	 *
+	 * @param dir The package directory
+	 * @returns The cached package info, `undefined` when the directory has no (valid) `package.json`
+	 */
 	private read(dir: string): PackageInfo | undefined {
 		let info = this.byDir.get(dir);
 		if (info === undefined) {
@@ -460,11 +480,24 @@ function isInNodeModules(file: string): boolean {
 	return /[\\/]node_modules[\\/]/.test(file);
 }
 
+/**
+ * Whether a path is inside a directory.
+ *
+ * @param file The path to check
+ * @param dir The directory
+ * @returns `true` when `file` is in `dir` or in one of its subdirectories, `false` for `dir` itself
+ */
 function isInside(file: string, dir: string): boolean {
 	const relative = path.relative(dir, file);
 	return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
+/**
+ * Resolves the symlinks of a path.
+ *
+ * @param file The path
+ * @returns The real path, or `file` when it can not be resolved (i.e. it does not exist)
+ */
 function realpath(file: string): string {
 	try {
 		return fs.realpathSync(file);
