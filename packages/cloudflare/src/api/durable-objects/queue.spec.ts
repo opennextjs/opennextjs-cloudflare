@@ -101,9 +101,9 @@ const createSqlStorage = () => {
 			return createCursor([]);
 		}
 
-		if (statement === "INSERT OR REPLACE INTO sync (id, lastSuccess, buildId) VALUES (?, unixepoch(), ?)") {
-			const [id, buildId] = bindings as [string, string];
-			sync.set(id, { lastSuccess: Math.floor(Date.now() / 1000), buildId });
+		if (statement === "INSERT OR REPLACE INTO sync (id, lastSuccess, buildId) VALUES (?, ?, ?)") {
+			const [id, lastSuccess, buildId] = bindings as [string, number, string];
+			sync.set(id, { lastSuccess, buildId });
 			return createCursor([]);
 		}
 
@@ -699,6 +699,72 @@ describe("DOQueueHandler", () => {
 			await queue.ongoingRevalidations.get("id");
 			expect(queue.service.fetch).toHaveBeenCalledTimes(1);
 			expect(queue.sql.exec).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("sync table", () => {
+		/**
+		 * Runs a successful revalidation that writes a new cache entry.
+		 *
+		 * @param queue The queue to run the revalidation on.
+		 * @param options.writeDelayMs Time from the start of the revalidation to the write.
+		 * @param options.responseDelayMs Time from the write to the response.
+		 * @returns The `lastModified` of the written entry.
+		 */
+		const revalidateWithWrite = async (
+			queue: TestDOQueueHandler,
+			{ writeDelayMs, responseDelayMs }: { writeDelayMs: number; responseDelayMs: number }
+		) => {
+			let lastModified = 0;
+			vi.mocked(queue.service.fetch).mockImplementationOnce(async () => {
+				vi.setSystemTime(Date.now() + writeDelayMs);
+				lastModified = Date.now();
+				vi.setSystemTime(Date.now() + responseDelayMs);
+				return new Response(null, { headers: { "x-nextjs-cache": "REVALIDATED" } });
+			});
+			await queue.revalidate(createMessage("revalidation", 0));
+			await queue.ongoingRevalidations.get("revalidation");
+			return lastModified;
+		};
+
+		it("should not skip an entry written during a slow revalidation", async () => {
+			vi.setSystemTime(new Date("2026-01-01T00:00:10.200Z"));
+			const queue = await createDurableObjectQueue({ fetchDuration: 10 });
+			const beforeStart = Date.now() - 5_000;
+
+			const lastModified = await revalidateWithWrite(queue, { writeDelayMs: 500, responseDelayMs: 1_500 });
+
+			// A stale hit on the fresh entry must trigger a new revalidation
+			expect(queue.checkSyncTable(createMessage("fresh", lastModified))).toBe(false);
+			// An entry written before the revalidation started is already covered by it
+			expect(queue.checkSyncTable(createMessage("older", beforeStart))).toBe(true);
+		});
+
+		it.each(["00.000", "00.499", "00.500", "00.999"])(
+			"should not skip an entry written when a revalidation started at %ss",
+			async (seconds) => {
+				vi.setSystemTime(new Date(`2026-01-01T00:00:${seconds}Z`));
+				const queue = await createDurableObjectQueue({ fetchDuration: 10 });
+
+				const lastModified = await revalidateWithWrite(queue, { writeDelayMs: 0, responseDelayMs: 2_000 });
+
+				expect(queue.checkSyncTable(createMessage("fresh", lastModified))).toBe(false);
+			}
+		);
+
+		it.each([
+			{ name: "an entry made stale by a tag", lastModified: 1 },
+			{ name: "an unknown lastModified", lastModified: 0 },
+		])("should not skip a message for $name", async ({ lastModified }) => {
+			const queue = await createDurableObjectQueue({ fetchDuration: 10 });
+			await queue.revalidate(createMessage("id"));
+			await queue.ongoingRevalidations.get("id");
+			vi.setSystemTime(Date.now() + 60_000);
+
+			await queue.revalidate(createMessage("stale", lastModified));
+			await queue.ongoingRevalidations.get("stale");
+
+			expect(queue.service.fetch).toHaveBeenCalledTimes(2);
 		});
 	});
 });
