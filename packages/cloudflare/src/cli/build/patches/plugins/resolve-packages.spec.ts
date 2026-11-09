@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { build, type Plugin } from "esbuild";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
@@ -79,7 +80,7 @@ describe("resolvePackages", () => {
 					outputDir: path.join(appPath, ".open-next"),
 					appBuildOutputPath: appPath,
 					monorepoRoot: root,
-				}),
+				} as BuildOptions),
 			],
 		});
 		return { code: result.outputFiles[0]!.text, inputs: Object.keys(result.metafile.inputs).sort() };
@@ -732,6 +733,18 @@ describe("keepCondition", () => {
 		};
 
 		expect(keepCondition(exports, "workerd")).toEqual(exports);
+	});
+
+	test("shares the subtrees without the condition", () => {
+		const exports = {
+			".": { node: "./node.js", default: ["./index.mjs", "./index.js"] },
+			"./sub": { node: "./sub-node.js", workerd: "./sub-worker.js" },
+		};
+
+		const transformed = keepCondition(exports, "workerd");
+
+		expect(transformed).toEqual({ ".": exports["."], "./sub": { workerd: "./sub-worker.js" } });
+		expect(transformed?.["."]).toBe(exports["."]);
 	});
 
 	test.each([["./index.js"], [["./index.js"]], [null], [undefined]])("not a map: %j", (map) => {

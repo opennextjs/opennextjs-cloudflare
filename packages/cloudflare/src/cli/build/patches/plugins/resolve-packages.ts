@@ -23,7 +23,7 @@ import fs from "node:fs";
 import { isBuiltin } from "node:module";
 import path from "node:path";
 
-import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
+import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import logger from "@opennextjs/aws/logger.js";
 import type { ImportKind, OnResolveArgs, OnResolveResult, PluginBuild } from "esbuild";
 import * as resolveExports from "resolve.exports";
@@ -39,17 +39,14 @@ const SKIP = Symbol.for(PLUGIN_NAME);
  * @param buildOpts Build options, uses `outputDir`, `appBuildOutputPath` and `monorepoRoot`
  * @returns The esbuild plugin
  */
-export function resolvePackages(
-	buildOpts: Pick<BuildOptions, "outputDir" | "appBuildOutputPath" | "monorepoRoot">
-) {
+export function resolvePackages(buildOpts: BuildOptions) {
 	return {
 		name: PLUGIN_NAME,
 
 		setup: (build: PluginBuild) => {
 			const outputRoot = realpath(path.join(buildOpts.outputDir, "server-functions/default"));
 			const mapper = createPathMapper(
-				// Same as `getPackagePath()`
-				path.join(outputRoot, path.relative(buildOpts.monorepoRoot, buildOpts.appBuildOutputPath)),
+				path.join(outputRoot, getPackagePath(buildOpts)),
 				realpath(buildOpts.appBuildOutputPath),
 				outputRoot
 			);
@@ -69,6 +66,7 @@ export function resolvePackages(
 				}
 
 				const specifier = args.path;
+				// Builtins and URL schemes (`cloudflare:`, `data:`, `https:`) are not packages
 				if (isBuiltin(specifier) || /^[a-z][a-z\d+.-]*:/i.test(specifier)) {
 					return undefined;
 				}
@@ -314,6 +312,7 @@ function readPackageInfo(dir: string): PackageInfo | null {
  *
  * In a conditions object with the condition, the other keys are dropped, except the subtrees that
  * contain the condition. Arrays of alternative targets are kept, their objects are transformed.
+ * The subtrees without the condition are not copied, they are shared with `map`.
  *
  * @param map The `exports` or `imports` of a `package.json`
  * @param condition The condition to keep, i.e. `workerd`
@@ -330,6 +329,12 @@ export function keepCondition(map: unknown, condition: string): { [key: string]:
 /**
  * Keeps only a condition of a value of an `exports` or `imports` map, recursively.
  *
+ * In an object with the condition, the other keys are dropped, except the subtrees that contain the
+ * condition. Objects and arrays are transformed recursively, other values (targets, `null`) are kept.
+ *
+ * The value is returned as is when it does not contain the condition, at any depth: it is not copied.
+ * The returned value can then share objects with the input.
+ *
  * @param value A target, a conditions or subpaths object, or an array of alternatives
  * @param condition The condition to keep
  * @returns The transformed value and whether it contains the condition
@@ -337,7 +342,8 @@ export function keepCondition(map: unknown, condition: string): { [key: string]:
 function transform(value: unknown, condition: string): { value: unknown; found: boolean } {
 	if (Array.isArray(value)) {
 		const items = value.map((item: unknown) => transform(item, condition));
-		return { value: items.map((item) => item.value), found: items.some((item) => item.found) };
+		const found = items.some((item) => item.found);
+		return { value: found ? items.map((item) => item.value) : value, found };
 	}
 	if (typeof value !== "object" || value == null) {
 		return { value, found: false };
@@ -354,7 +360,7 @@ function transform(value: unknown, condition: string): { value: unknown; found: 
 			found ||= result.found;
 		}
 	}
-	return { value: kept, found };
+	return { value: found ? kept : value, found };
 }
 
 /**
