@@ -97,49 +97,23 @@ describe("BucketCachePurge", () => {
 			expect(cache.ctx.storage.setAlarm).not.toHaveBeenCalled();
 		});
 
-		it("should re-arm the alarm when the stored alarm is in the past", async () => {
+		// `getAlarm()` returns the past time of a failed alarm while a retry is pending and after the
+		// last retry has failed. The latter used to block every later alarm (#929).
+		it.each([
+			["retries are exhausted", 8 * 24 * 60 * 60 * 1_000],
+			["a retry is pending", 2_000],
+			["it is due now", 0],
+		])("should re-arm the alarm when the stored alarm is in the past and %s", async (_, ageMs) => {
 			vi.useFakeTimers();
 			try {
 				const now = 1_700_000_000_000;
 				vi.setSystemTime(now);
 				const cache = createBucketCachePurge();
-				// A stale alarm left over after the alarm handler exhausted its retries (#929)
 				// @ts-expect-error - testing private method
-				cache.ctx.storage.getAlarm.mockResolvedValueOnce(now - 8 * 24 * 60 * 60 * 1000);
+				cache.ctx.storage.getAlarm.mockResolvedValueOnce(now - ageMs);
 				await cache.purgeCacheByTags(["tag"]);
 				// @ts-expect-error - testing private method
-				expect(cache.ctx.storage.setAlarm).toHaveBeenCalledWith(now + 5_000);
-			} finally {
-				vi.useRealTimers();
-			}
-		});
-
-		it("should re-arm an alarm waiting for a retry only once while revalidations keep coming", async () => {
-			vi.useFakeTimers();
-			try {
-				const now = 1_700_000_000_000;
-				vi.setSystemTime(now);
-				const cache = createBucketCachePurge();
-				// The alarm handler failed and the built-in retry has not started yet:
-				// `getAlarm()` still returns the past timestamp of the failed alarm.
-				let storedAlarm: number | null = now - 1_000;
-				// @ts-expect-error - testing private method
-				cache.ctx.storage.getAlarm.mockImplementation(async () => storedAlarm);
-				// @ts-expect-error - testing private method
-				cache.ctx.storage.setAlarm.mockImplementation(async (time: number) => {
-					storedAlarm = time;
-				});
-
-				await cache.purgeCacheByTags(["tag1"]);
-				vi.advanceTimersByTime(1_000);
-				await cache.purgeCacheByTags(["tag2"]);
-				vi.advanceTimersByTime(3_000);
-				await cache.purgeCacheByTags(["tag3"]);
-
-				// Later revalidations see the re-armed alarm in the future and do not push it back.
-				// @ts-expect-error - testing private method
-				expect(cache.ctx.storage.setAlarm).toHaveBeenCalledOnce();
-				expect(storedAlarm).toBe(now + 5_000);
+				expect(cache.ctx.storage.setAlarm).toHaveBeenCalledExactlyOnceWith(now + 5_000);
 			} finally {
 				vi.useRealTimers();
 			}

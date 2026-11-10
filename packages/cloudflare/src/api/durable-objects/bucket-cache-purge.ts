@@ -119,8 +119,12 @@ export abstract class BucketCachePurgeBase<Batch, Result> extends DurableObject<
 	/**
 	 * Adds cache tags to the buffered purge queue.
 	 *
-	 * An alarm is scheduled after the configured buffer delay only when no alarm is
-	 * pending in the future.
+	 * An alarm is scheduled after the configured buffer delay unless one is already
+	 * scheduled in the future.
+	 *
+	 * `getAlarm()` keeps returning the past time of a failed alarm, both while a retry
+	 * is pending and after the last retry has failed. Such an alarm is replaced like a
+	 * missing one, or the queued tags would never be purged.
 	 *
 	 * @param tags Cache tags to enqueue for purging.
 	 * @returns A promise that resolves after the tags are stored and an alarm is scheduled if needed.
@@ -131,15 +135,9 @@ export abstract class BucketCachePurgeBase<Batch, Result> extends DurableObject<
 		await this.enqueueTags(tags);
 
 		const nextAlarm = await this.ctx.storage.getAlarm();
-		// A past alarm is either about to fire, waiting for a retry, or a stale leftover once the
-		// alarm handler has exhausted its retries. In the last case no alarm would ever be scheduled
-		// again and every later purge would stay queued forever (#929), so the alarm is re-armed.
-		// Re-arming is safe: `alarm()` drains whatever tags remain.
-		// When a retry is pending, the re-armed alarm replaces it and fires after the buffer delay instead.
-		// The re-armed alarm is in the future, so later revalidations do not push it back: a purge is
-		// deferred by at most one buffer delay.
-		if (!nextAlarm || nextAlarm <= Date.now()) {
-			await this.ctx.storage.setAlarm(Date.now() + this.bufferTimeInSeconds * 1000);
+		const now = Date.now();
+		if (!nextAlarm || nextAlarm <= now) {
+			await this.ctx.storage.setAlarm(now + this.bufferTimeInSeconds * 1000);
 		}
 	}
 
