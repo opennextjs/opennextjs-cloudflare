@@ -91,10 +91,32 @@ describe("BucketCachePurge", () => {
 		it("should not set an alarm if one is already set", async () => {
 			const cache = createBucketCachePurge();
 			// @ts-expect-error - testing private method
-			cache.ctx.storage.getAlarm.mockResolvedValueOnce(true);
+			cache.ctx.storage.getAlarm.mockResolvedValueOnce(Date.now() + 10_000);
 			await cache.purgeCacheByTags(["tag"]);
 			// @ts-expect-error - testing private method
 			expect(cache.ctx.storage.setAlarm).not.toHaveBeenCalled();
+		});
+
+		// `getAlarm()` returns the past time of a failed alarm while a retry is pending and after the
+		// last retry has failed. The latter used to block every later alarm (#929).
+		it.each([
+			["retries are exhausted", 8 * 24 * 60 * 60 * 1_000],
+			["a retry is pending", 2_000],
+			["it is due now", 0],
+		])("should re-arm the alarm when the stored alarm is in the past and %s", async (_, ageMs) => {
+			vi.useFakeTimers();
+			try {
+				const now = 1_700_000_000_000;
+				vi.setSystemTime(now);
+				const cache = createBucketCachePurge();
+				// @ts-expect-error - testing private method
+				cache.ctx.storage.getAlarm.mockResolvedValueOnce(now - ageMs);
+				await cache.purgeCacheByTags(["tag"]);
+				// @ts-expect-error - testing private method
+				expect(cache.ctx.storage.setAlarm).toHaveBeenCalledExactlyOnceWith(now + 5_000);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 
