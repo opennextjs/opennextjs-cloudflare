@@ -60,6 +60,7 @@
 		"comment-json": "^4.5.1",
 		"enquirer": "^2.4.1",
 		"glob": "catalog:",
+		"resolve.exports": "^2.0.4",
 		"ts-tqdm": "^0.8.6",
 		"yargs": "catalog:"
 	},
