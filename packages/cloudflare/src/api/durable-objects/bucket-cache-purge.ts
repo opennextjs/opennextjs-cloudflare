@@ -135,6 +135,9 @@ export abstract class BucketCachePurgeBase<Batch, Result> extends DurableObject<
 		// alarm handler has exhausted its retries. In the last case no alarm would ever be scheduled
 		// again and every later purge would stay queued forever (#929), so the alarm is re-armed.
 		// Re-arming is safe: `alarm()` drains whatever tags remain.
+		// When a retry is pending, the re-armed alarm replaces it and fires after the buffer delay instead.
+		// The re-armed alarm is in the future, so later revalidations do not push it back: a purge is
+		// deferred by at most one buffer delay.
 		if (!nextAlarm || nextAlarm <= Date.now()) {
 			await this.ctx.storage.setAlarm(Date.now() + this.bufferTimeInSeconds * 1000);
 		}

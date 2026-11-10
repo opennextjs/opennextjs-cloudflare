@@ -113,6 +113,37 @@ describe("BucketCachePurge", () => {
 				vi.useRealTimers();
 			}
 		});
+
+		it("should re-arm an alarm waiting for a retry only once while revalidations keep coming", async () => {
+			vi.useFakeTimers();
+			try {
+				const now = 1_700_000_000_000;
+				vi.setSystemTime(now);
+				const cache = createBucketCachePurge();
+				// The alarm handler failed and the built-in retry has not started yet:
+				// `getAlarm()` still returns the past timestamp of the failed alarm.
+				let storedAlarm: number | null = now - 1_000;
+				// @ts-expect-error - testing private method
+				cache.ctx.storage.getAlarm.mockImplementation(async () => storedAlarm);
+				// @ts-expect-error - testing private method
+				cache.ctx.storage.setAlarm.mockImplementation(async (time: number) => {
+					storedAlarm = time;
+				});
+
+				await cache.purgeCacheByTags(["tag1"]);
+				vi.advanceTimersByTime(1_000);
+				await cache.purgeCacheByTags(["tag2"]);
+				vi.advanceTimersByTime(3_000);
+				await cache.purgeCacheByTags(["tag3"]);
+
+				// Later revalidations see the re-armed alarm in the future and do not push it back.
+				// @ts-expect-error - testing private method
+				expect(cache.ctx.storage.setAlarm).toHaveBeenCalledOnce();
+				expect(storedAlarm).toBe(now + 5_000);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 	});
 
 	describe("alarm", () => {
