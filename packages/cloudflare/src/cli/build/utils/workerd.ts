@@ -1,10 +1,9 @@
+import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { loadConfig } from "@opennextjs/aws/adapters/config/util.js";
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import logger from "@opennextjs/aws/logger.js";
-import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 
 /**
  * This function transforms the exports (or imports) object from the package.json
@@ -48,12 +47,14 @@ export function transformBuildCondition(
 	}
 	return { transformedExports: transformed, hasBuildCondition };
 }
-// We only care about these 2 fields
+// We only care about these fields
 interface PackageJson {
 	name: string;
 	// Note: `exports` can be a string, i.e. `"exports": "./index.js"`
 	exports?: string | { [key: string]: unknown };
 	imports?: { [key: string]: unknown };
+	dependencies?: Record<string, string>;
+	optionalDependencies?: Record<string, string>;
 }
 
 /**
@@ -77,29 +78,168 @@ export function transformPackageJson(json: PackageJson) {
 	return { transformed, hasBuildCondition };
 }
 
-export async function copyWorkerdPackages(options: BuildOptions, nodePackages: Map<string, string>) {
-	const isNodeModuleRegex = getCrossPlatformPathRegex(`.*/node_modules/(?<pkg>.*)`, { escape: false });
+/**
+ * Copies the `workerd` build of the traced packages into the output directory.
+ *
+ * Next.js traces the packages it does not bundle (`serverExternalPackages`, its built-in list such as
+ * `pg`, their dependencies such as `pg-cloudflare`, ...) with the Node.js conditions, so the files
+ * only reachable through a `workerd` condition are missing from the output.
+ *
+ * Every traced package declaring a `workerd` condition is copied in full, with a `package.json`
+ * keeping only that condition, along with the dependencies only its `workerd` build uses
+ * (see `copyUntracedDependencies`).
+ *
+ * Only package roots inside `node_modules` are considered: the trace also lists the app's own
+ * `package.json` and nested `package.json` type markers. Packages generated in a dot folder
+ * (`.prisma/client`) are package roots too. Workspace packages are not supported.
+ *
+ * @param options Build options, `appPath` is only used to log relative paths
+ * @param nodePackages Map of the traced package directories to their copy in the output directory
+ */
+export async function copyWorkerdPackages(
+	options: Pick<BuildOptions, "appPath">,
+	nodePackages: Map<string, string>
+) {
+	// The root folder of a package inside a `node_modules` folder, on posix and Windows. The package can be
+	// scoped (`@scope/name`) or generated in a dot folder, i.e. `.prisma/client` for the Prisma client.
+	const packageRootRegex = /[\\/]node_modules[\\/](?:[@.][^\\/]+[\\/])?[^\\/]+$/;
 
-	// Copy full external packages when they use "workerd" build condition
-	const nextConfig = loadConfig(path.join(options.appBuildOutputPath, ".next"));
-	const externalPackages =
-		// @ts-expect-error In Next 14 its under experimental.serverComponentsExternalPackages
-		nextConfig.serverExternalPackages ?? nextConfig.experimental.serverComponentsExternalPackages ?? [];
 	for (const [src, dst] of nodePackages.entries()) {
+		if (!packageRootRegex.test(src)) {
+			continue;
+		}
 		try {
-			const pkgJson = JSON.parse(await fs.readFile(path.join(src, "package.json"), "utf8"));
+			const pkgJson = await readPackageJson(src);
 			const { transformed, hasBuildCondition } = transformPackageJson(pkgJson);
-			const match = src.match(isNodeModuleRegex);
-			if (match?.groups?.pkg && externalPackages.includes(match.groups.pkg) && hasBuildCondition) {
+			if (hasBuildCondition) {
 				logger.debug(
 					`Copying package using a workerd condition: ${path.relative(options.appPath, src)} -> ${path.relative(options.appPath, dst)}`
 				);
-				await fs.cp(src, dst, { recursive: true, force: true });
-				// Overwrite with  the transformed package.json
-				await fs.writeFile(path.join(dst, "package.json"), JSON.stringify(transformed), "utf8");
+				await copyPackage(src, dst, transformed);
+				await copyUntracedDependencies(options, pkgJson, src, dst);
 			}
 		} catch (e) {
 			logger.error(`Failed to copy ${src}:`, e instanceof Error ? e.message : e);
 		}
 	}
+}
+
+async function readPackageJson(dir: string): Promise<PackageJson> {
+	return JSON.parse(await fs.readFile(path.join(dir, "package.json"), "utf8"));
+}
+
+/**
+ * Copies a whole package and overwrites its `package.json` with the transformed one.
+ */
+async function copyPackage(src: string, dst: string, transformed: PackageJson) {
+	await fs.cp(src, dst, { recursive: true, force: true });
+	await fs.writeFile(path.join(dst, "package.json"), JSON.stringify(transformed), "utf8");
+}
+
+/**
+ * Copies the dependencies of a `workerd` build that Next.js did not trace.
+ *
+ * Dependencies are resolved as Node.js does (hoisted and pnpm layouts) and copied, recursively, to
+ * the mirrored location in the output. A dependency already in the output (traced, or already
+ * copied, which also stops cycles) is not copied again.
+ *
+ * @param options Build options, `appPath` is only used to log relative paths
+ * @param pkgJson `package.json` of the package
+ * @param src Installed directory of the package
+ * @param dst Output directory of the package
+ */
+async function copyUntracedDependencies(
+	options: Pick<BuildOptions, "appPath">,
+	pkgJson: PackageJson,
+	src: string,
+	dst: string
+) {
+	const { srcRoot, dstRoot } = getRoots(src, dst);
+	// The installed tree might be reached through a symlink (i.e. `/var` -> `/private/var` on macOS)
+	const srcRootReal = await fs.realpath(srcRoot);
+	const names = Object.keys({ ...pkgJson.dependencies, ...pkgJson.optionalDependencies });
+
+	for (const name of names) {
+		const linkPath = findDependency(name, src);
+		if (!linkPath) {
+			// i.e. an optional dependency that is not installed
+			continue;
+		}
+		const realPath = await fs.realpath(linkPath);
+		if (!isInside(realPath, srcRootReal) || !isInside(linkPath, srcRoot)) {
+			logger.debug(`Not copying ${name}, it is installed outside of ${srcRoot}`);
+			continue;
+		}
+		if ((await fs.lstat(linkPath)).isSymbolicLink()) {
+			// Recreate the pnpm symlink, even when the dependency is in the output (it might be traced for another package)
+			const linkDst = path.join(dstRoot, path.relative(srcRoot, linkPath));
+			await fs.mkdir(path.dirname(linkDst), { recursive: true });
+			await fs.symlink(await fs.readlink(linkPath), linkDst).catch((e: NodeJS.ErrnoException) => {
+				if (e.code !== "EEXIST") {
+					throw e;
+				}
+			});
+		}
+
+		const depDst = path.join(dstRoot, path.relative(srcRootReal, realPath));
+		if (existsSync(depDst)) {
+			continue;
+		}
+		logger.debug(
+			`Copying dependency of a workerd build: ${path.relative(options.appPath, realPath)} -> ${path.relative(options.appPath, depDst)}`
+		);
+		const depJson = await readPackageJson(realPath);
+		await copyPackage(realPath, depDst, transformPackageJson(depJson).transformed);
+		await copyUntracedDependencies(options, depJson, realPath, depDst);
+	}
+}
+
+/**
+ * Finds the directory of a dependency as Node.js would resolve it from `fromDir`.
+ *
+ * @returns The directory of the dependency (a symlink with pnpm) or `undefined` when not found
+ */
+function findDependency(name: string, fromDir: string): string | undefined {
+	let dir = fromDir;
+	while (true) {
+		if (path.basename(dir) !== "node_modules") {
+			const candidate = path.join(dir, "node_modules", name);
+			if (existsSync(path.join(candidate, "package.json"))) {
+				return candidate;
+			}
+		}
+		const parent = path.dirname(dir);
+		if (parent === dir) {
+			return undefined;
+		}
+		dir = parent;
+	}
+}
+
+/**
+ * Splits the installed and the output directories of a package into the roots of the trees and the
+ * common path of the package inside `node_modules`, i.e. `/app/node_modules/pg` and
+ * `/app/.open-next/server-functions/default/node_modules/pg` have the roots `/app` and
+ * `/app/.open-next/server-functions/default`.
+ */
+function getRoots(src: string, dst: string): { srcRoot: string; dstRoot: string } {
+	const srcSegments = src.split(path.sep);
+	const dstSegments = dst.split(path.sep);
+	let common = 0;
+	while (
+		common < srcSegments.length &&
+		common < dstSegments.length &&
+		srcSegments[srcSegments.length - 1 - common] === dstSegments[dstSegments.length - 1 - common]
+	) {
+		common++;
+	}
+	return {
+		srcRoot: srcSegments.slice(0, srcSegments.length - common).join(path.sep),
+		dstRoot: dstSegments.slice(0, dstSegments.length - common).join(path.sep),
+	};
+}
+
+function isInside(file: string, dir: string): boolean {
+	const relative = path.relative(dir, file);
+	return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
 }

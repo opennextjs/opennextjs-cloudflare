@@ -2,7 +2,7 @@ import { error } from "@opennextjs/aws/adapters/logger.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
-import { debugCache, FALLBACK_BUILD_ID, purgeCacheByTags } from "../internal.js";
+import { debugCache, FALLBACK_BUILD_ID } from "../internal.js";
 import { BINDING_NAME, D1NextModeTagCache, NAME } from "./d1-next-tag-cache.js";
 
 // Mock dependencies
@@ -17,8 +17,6 @@ vi.mock("../../cloudflare-context.js", () => ({
 vi.mock("../internal.js", () => ({
 	debugCache: vi.fn(),
 	FALLBACK_BUILD_ID: "fallback-build-id",
-	purgeCacheByTags: vi.fn(),
-	isPurgeCacheEnabled: () => true,
 }));
 
 describe("D1NextModeTagCache", () => {
@@ -264,7 +262,6 @@ describe("D1NextModeTagCache", () => {
 			await tagCache.writeTags(["tag1", "tag2"]);
 
 			expect(mockBatch).not.toHaveBeenCalled();
-			expect(purgeCacheByTags).not.toHaveBeenCalled();
 		});
 
 		it("should do nothing when no database is available", async () => {
@@ -275,17 +272,15 @@ describe("D1NextModeTagCache", () => {
 			await tagCache.writeTags(["tag1", "tag2"]);
 
 			expect(mockBatch).not.toHaveBeenCalled();
-			expect(purgeCacheByTags).not.toHaveBeenCalled();
 		});
 
 		it("should do nothing when tags array is empty", async () => {
 			await tagCache.writeTags([]);
 
 			expect(mockBatch).not.toHaveBeenCalled();
-			expect(purgeCacheByTags).not.toHaveBeenCalled();
 		});
 
-		it("should write tags to database and purge cache", async () => {
+		it("should write tags to database", async () => {
 			const currentTime = Date.now();
 			vi.spyOn(Date, "now").mockReturnValue(currentTime);
 
@@ -305,8 +300,6 @@ describe("D1NextModeTagCache", () => {
 			expect(mockPrepare).toHaveBeenCalledWith(
 				"INSERT INTO revalidations (tag, revalidatedAt, stale, expire) VALUES (?, ?, ?, ?)"
 			);
-
-			expect(purgeCacheByTags).toHaveBeenCalledWith(tags);
 		});
 
 		it("should write object tags with explicit stale and expire", async () => {
@@ -319,7 +312,6 @@ describe("D1NextModeTagCache", () => {
 				"INSERT INTO revalidations (tag, revalidatedAt, stale, expire) VALUES (?, ?, ?, ?)"
 			);
 			expect(mockBind).toHaveBeenCalledWith(`${FALLBACK_BUILD_ID}/tag1`, 500, 500, 9999);
-			expect(purgeCacheByTags).toHaveBeenCalledWith(["tag1"]);
 		});
 
 		it("should handle single tag", async () => {
@@ -333,8 +325,6 @@ describe("D1NextModeTagCache", () => {
 					bind: expect.any(Function),
 				}),
 			]);
-
-			expect(purgeCacheByTags).toHaveBeenCalledWith(["single-tag"]);
 		});
 	});
 
