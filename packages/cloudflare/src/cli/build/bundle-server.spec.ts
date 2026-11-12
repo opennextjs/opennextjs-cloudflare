@@ -1,7 +1,35 @@
 import { build } from "esbuild";
 import { describe, expect, test } from "vitest";
 
-import { patchRequireHelper } from "./bundle-server.js";
+import { patchRequireHelper, serverExternals } from "./bundle-server.js";
+
+describe("serverExternals", () => {
+	const contents = `import { connect } from "cloudflare:sockets"; export const sockets = () => import("cloudflare:workers"); export { connect };`;
+
+	function bundle(external: string[]) {
+		return build({
+			stdin: { contents, resolveDir: process.cwd() },
+			bundle: true,
+			write: false,
+			format: "esm",
+			platform: "node",
+			external,
+			logLevel: "silent",
+		});
+	}
+
+	// i.e. the workerd build of postgres@4 (#1485)
+	test("leaves the cloudflare: imports to wrangler", async () => {
+		const bundled = (await bundle(serverExternals)).outputFiles[0]!.text;
+
+		expect(bundled).toContain(`from "cloudflare:sockets"`);
+		expect(bundled).toContain(`import("cloudflare:workers")`);
+	});
+
+	test("esbuild can not resolve the cloudflare: imports", async () => {
+		await expect(bundle([])).rejects.toThrow(/Could not resolve "cloudflare:sockets"/);
+	});
+});
 
 describe("patchRequireHelper", () => {
 	test("renames esbuild's helper in a real bundle", async () => {
