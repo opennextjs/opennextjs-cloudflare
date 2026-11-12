@@ -6,6 +6,7 @@ import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { build, type Plugin } from "esbuild";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
+import { serverExternals } from "../../bundle-server.js";
 import { handleOptionalDependencies } from "./optional-deps.js";
 import { isPackageTarget, keepCondition, packageName, resolvePackages } from "./resolve-packages.js";
 import { setWranglerExternal } from "./wrangler-external.js";
@@ -73,6 +74,7 @@ describe("resolvePackages", () => {
 			format: "esm",
 			platform: "node",
 			conditions: ["workerd"],
+			external: serverExternals,
 			logLevel: "silent",
 			plugins: [
 				...plugins,
@@ -586,6 +588,31 @@ describe("resolvePackages", () => {
 		// The `.wasm` is not traced, it is read from the install
 		expect(inputs).toEqual([`${OUTPUT}/.next/server/route.js`, "node_modules/photon/photon.js"]);
 		expect(code).toContain(`"${root}/node_modules/photon/photon.wasm"`);
+	});
+
+	// Matches postgres@4.1.0 (#1485): `workerd` is listed after `default`, and the workerd build
+	// imports `cloudflare:sockets` statically.
+	test("leaves the cloudflare: imports of the workerd build to wrangler", async () => {
+		writeTraced({
+			"node_modules/postgres/package.json": {
+				name: "postgres",
+				type: "module",
+				exports: { ".": { types: "./types/index.d.ts", default: "./src/index.js", workerd: "./src/cf.js" } },
+			},
+			"node_modules/postgres/src/index.js": "export default function postgres() { return 'node'; }",
+			"node_modules/postgres/src/cf.js":
+				"import { connect } from 'cloudflare:sockets'; import postgres from './index.js'; export default function Postgres() { return [postgres(), connect]; }",
+			".next/server/route.js": "export { default } from 'postgres';",
+		});
+
+		const { code, inputs } = await bundle(".next/server/route.js");
+
+		expect(inputs).toEqual([
+			`${OUTPUT}/.next/server/route.js`,
+			`${OUTPUT}/node_modules/postgres/src/cf.js`,
+			`${OUTPUT}/node_modules/postgres/src/index.js`,
+		]);
+		expect(code).toMatch(/import \{ connect \} from "cloudflare:sockets"/);
 	});
 
 	// `optional-deps` resolves its dependencies again with a marker, both plugins must not loop

@@ -50,6 +50,15 @@ const optionalDependencies = [
 ];
 
 /**
+ * Imports left external in the server bundle.
+ *
+ * - The middleware is bundled separately.
+ * - `cloudflare:*` modules are provided by workerd and resolved by wrangler, i.e. the static
+ *   `import { connect } from "cloudflare:sockets"` of the `workerd` build of `postgres` 4.
+ */
+export const serverExternals = ["./middleware/handler.mjs", "cloudflare:*"];
+
+/**
  * Bundle the Open Next server.
  *
  * @param buildOpts Build options.
@@ -133,7 +142,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			// Apply updater updates, must be the last plugin
 			updater.plugin,
 		] as Plugin[],
-		external: ["./middleware/handler.mjs"],
+		external: serverExternals,
 		alias: {
 			// When @vercel/og is not used, alias the edge entry to a throwing shim so the
 			// dynamic `import("next/dist/compiled/@vercel/og/index.edge.js")` call site
