@@ -1,7 +1,21 @@
+import path from "node:path";
+
 import { build } from "esbuild";
 import { describe, expect, test } from "vitest";
 
-import { patchRequireHelper, serverExternals } from "./bundle-server.js";
+import { getShimAliases, patchRequireHelper, serverExternals } from "./bundle-server.js";
+
+describe("getShimAliases", () => {
+	const og = "next/dist/compiled/@vercel/og/index.edge.js";
+
+	test("aliases `@vercel/og` to the throwing shim when it is not used", () => {
+		expect(getShimAliases("/shims", false)[og]).toBe(path.join("/shims", "throw.js"));
+	});
+
+	test("does not alias `@vercel/og` when it is used", () => {
+		expect(getShimAliases("/shims", true)).not.toHaveProperty([og]);
+	});
+});
 
 describe("serverExternals", () => {
 	const contents = `import { connect } from "cloudflare:sockets"; export const sockets = () => import("cloudflare:workers"); export { connect };`;

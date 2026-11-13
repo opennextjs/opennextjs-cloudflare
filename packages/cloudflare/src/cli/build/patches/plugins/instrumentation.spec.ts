@@ -8,7 +8,13 @@ import mockFs from "mock-fs";
 import { afterEach, describe, expect, test } from "vitest";
 
 import { normalizePath } from "../../../utils/normalize-path.js";
-import { getNext14Rule, getNext15Rule, getNext154Rule, patchInstrumentation } from "./instrumentation.js";
+import {
+	getNext14Rule,
+	getNext15Rule,
+	getNext154Rule,
+	noopInstrumentationGlobals,
+	patchInstrumentation,
+} from "./instrumentation.js";
 
 describe("LoadInstrumentationModule (Next15)", () => {
 	const code = `
@@ -243,14 +249,45 @@ describe("patchInstrumentation", () => {
 		expect(await loadPatched(instrumentationGlobalsPath)).toContain("cachedInstrumentationModule = null;");
 	});
 
-	test("nulls the instrumentation out when `loadInstrumentation` is false", async () => {
+	test("replaces the module registering the hook when `loadInstrumentation` is false", async () => {
 		mockFs({
 			[instrumentationGlobalsPath]: instrumentationGlobals,
 			[builtInstrumentationPath]: "exports.register = () => {};",
 		});
 
-		expect(await loadPatched(instrumentationGlobalsPath, { loadInstrumentation: false })).toContain(
-			"cachedInstrumentationModule = null;"
+		expect(await loadPatched(instrumentationGlobalsPath, { loadInstrumentation: false })).toBe(
+			noopInstrumentationGlobals
 		);
+	});
+});
+
+describe("noopInstrumentationGlobals", () => {
+	/**
+	 * Evaluates the module as CommonJS.
+	 *
+	 * @returns The exports of the module.
+	 */
+	function load(): Record<string, ((...args: string[]) => Promise<unknown>) | undefined> {
+		const module = { exports: {} };
+		new Function("module", noopInstrumentationGlobals)(module);
+		return module.exports;
+	}
+
+	// The middleware of Next.js 16.3 and 16.4 calls different exports
+	test.each(["ensureInstrumentationRegistered", "ensureInstrumentationRegisteredWithDeferredSpans"])(
+		"exports %s as a no-op",
+		async (name) => {
+			const ensureRegistered = load()[name];
+
+			expect(ensureRegistered).toBeTypeOf("function");
+			await expect(ensureRegistered!("/app", ".next")).resolves.toBeUndefined();
+		}
+	);
+
+	test("is not a thenable", async () => {
+		const exports = load();
+
+		expect(exports.then).toBeUndefined();
+		await expect(Promise.resolve(exports)).resolves.toBe(exports);
 	});
 });

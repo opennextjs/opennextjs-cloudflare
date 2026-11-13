@@ -59,6 +59,39 @@ const optionalDependencies = [
 export const serverExternals = ["./middleware/handler.mjs", "cloudflare:*"];
 
 /**
+ * Returns the aliases replacing the Next.js modules that are not used or not supported on Workers.
+ *
+ * They are shared by the server and the Node.js middleware bundles.
+ *
+ * @param shimsDir The directory of the shims.
+ * @param useOg Whether the bundle uses `@vercel/og`.
+ * @returns The esbuild aliases.
+ */
+export function getShimAliases(shimsDir: string, useOg: boolean): Record<string, string> {
+	const shim = (name: string) => path.join(shimsDir, `${name}.js`);
+	return {
+		// When @vercel/og is not used, alias the edge entry to a throwing shim so the
+		// dynamic `import("next/dist/compiled/@vercel/og/index.edge.js")` call site
+		// emitted by Next.js does not drag the library (~800 KiB) and its
+		// `resvg.wasm` (~1.4 MiB) into the Worker bundle.
+		...(useOg ? {} : { "next/dist/compiled/@vercel/og/index.edge.js": shim("throw") }),
+		// Workers have `fetch` so the `node-fetch` polyfill is not needed
+		"next/dist/compiled/node-fetch": shim("fetch"),
+		// Workers have builtin Web Sockets
+		"next/dist/compiled/ws": shim("empty"),
+		// The toolbox optimizer pulls severals MB of dependencies (`caniuse-lite`, `terser`, `acorn`, ...)
+		// Drop it to optimize the code size
+		// See https://github.com/vercel/next.js/blob/6eb235c/packages/next/src/server/optimize-amp.ts
+		"next/dist/compiled/@ampproject/toolbox-optimizer": shim("throw"),
+		// The edge runtime is not supported
+		"next/dist/compiled/edge-runtime": shim("empty"),
+		// `@next/env` is used by Next to load environment variables from files.
+		// OpenNext inlines the values at build time so this is not needed.
+		"@next/env": shim("env"),
+	};
+}
+
+/**
  * Bundle the Open Next server.
  *
  * @param buildOpts Build options.
@@ -138,44 +171,12 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			patchSetWorkingDirectory(updater, buildOpts),
 			// Next.js traces the packages with the Node.js conditions, the files only used by their
 			// `workerd` build are resolved from the installed `node_modules`.
-			...(useWorkerdCondition ? [resolvePackages(buildOpts)] : []),
+			...(useWorkerdCondition ? [resolvePackages(buildOpts, outputPath)] : []),
 			// Apply updater updates, must be the last plugin
 			updater.plugin,
 		] as Plugin[],
 		external: serverExternals,
-		alias: {
-			// When @vercel/og is not used, alias the edge entry to a throwing shim so the
-			// dynamic `import("next/dist/compiled/@vercel/og/index.edge.js")` call site
-			// emitted by Next.js does not drag the library (~800 KiB) and its
-			// `resvg.wasm` (~1.4 MiB) into the Worker bundle.
-			...(useOg
-				? {}
-				: {
-						"next/dist/compiled/@vercel/og/index.edge.js": path.join(
-							buildOpts.outputDir,
-							"cloudflare-templates/shims/throw.js"
-						),
-					}),
-			// Workers have `fetch` so the `node-fetch` polyfill is not needed
-			"next/dist/compiled/node-fetch": path.join(buildOpts.outputDir, "cloudflare-templates/shims/fetch.js"),
-			// Workers have builtin Web Sockets
-			"next/dist/compiled/ws": path.join(buildOpts.outputDir, "cloudflare-templates/shims/empty.js"),
-			// The toolbox optimizer pulls severals MB of dependencies (`caniuse-lite`, `terser`, `acorn`, ...)
-			// Drop it to optimize the code size
-			// See https://github.com/vercel/next.js/blob/6eb235c/packages/next/src/server/optimize-amp.ts
-			"next/dist/compiled/@ampproject/toolbox-optimizer": path.join(
-				buildOpts.outputDir,
-				"cloudflare-templates/shims/throw.js"
-			),
-			// The edge runtime is not supported
-			"next/dist/compiled/edge-runtime": path.join(
-				buildOpts.outputDir,
-				"cloudflare-templates/shims/empty.js"
-			),
-			// `@next/env` is used by Next to load environment variables from files.
-			// OpenNext inlines the values at build time so this is not needed.
-			"@next/env": path.join(buildOpts.outputDir, "cloudflare-templates/shims/env.js"),
-		},
+		alias: getShimAliases(path.join(outputDir, "cloudflare-templates/shims"), useOg),
 		define: {
 			// config file used by Next.js, see: https://github.com/vercel/next.js/blob/68a7128/packages/next/src/build/utils.ts#L2137-L2139
 			"process.env.__NEXT_PRIVATE_STANDALONE_CONFIG": JSON.stringify(JSON.stringify(nextConfig)),
