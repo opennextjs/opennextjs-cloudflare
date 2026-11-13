@@ -1,10 +1,11 @@
 /**
  * ESBuild plugin resolving packages from the installed `node_modules`, preferring the traced copies.
  *
- * The server functions output (`.open-next/server-functions/default`) only contains the files traced
- * by Next.js, with the Node.js conditions. The server is bundled with the `workerd` condition, so
- * the files only reachable through it (the `workerd` build of a package, its dependencies, the files
- * of a partially traced dependency it uses) are not in the output.
+ * The outputs of the server functions (`.open-next/server-functions/default`) and of the Node.js
+ * middleware (`.open-next/middleware`) only contain the files traced by Next.js, with the Node.js
+ * conditions. They are bundled with the `workerd` condition, so the files only reachable through it
+ * (the `workerd` build of a package, its dependencies, the files of a partially traced dependency
+ * it uses) are not in the output.
  *
  * The output is used as an overlay on top of the app:
  * - Bare specifiers (`pkg`, `pkg/sub`, `#imports`) of packages declaring a `workerd` condition are
@@ -37,18 +38,19 @@ const SKIP = Symbol.for(PLUGIN_NAME);
  * Creates the plugin resolving packages from the installed `node_modules`.
  *
  * @param buildOpts Build options, uses `outputDir`, `appBuildOutputPath` and `monorepoRoot`
+ * @param outputRoot The output the traced files are copied to, i.e. `.open-next/server-functions/default`
  * @returns The esbuild plugin
  */
-export function resolvePackages(buildOpts: BuildOptions) {
+export function resolvePackages(buildOpts: BuildOptions, outputRoot: string) {
 	return {
 		name: PLUGIN_NAME,
 
 		setup: (build: PluginBuild) => {
-			const outputRoot = realpath(path.join(buildOpts.outputDir, "server-functions/default"));
+			const root = realpath(outputRoot);
 			const mapper = createPathMapper(
-				path.join(outputRoot, getPackagePath(buildOpts)),
+				path.join(root, getPackagePath(buildOpts)),
 				realpath(buildOpts.appBuildOutputPath),
-				outputRoot
+				root
 			);
 			const outputDir = realpath(buildOpts.outputDir);
 			const packages = new PackageCache();
@@ -150,7 +152,7 @@ interface PathMapper {
  *
  * @param outputAppDir The app directory in the output (`<output>/<packagePath>`)
  * @param appDir The app directory (`appBuildOutputPath`)
- * @param outputRoot The output root (`.open-next/server-functions/default`)
+ * @param outputRoot The output root (i.e. `.open-next/server-functions/default`)
  * @returns The mapper
  */
 function createPathMapper(outputAppDir: string, appDir: string, outputRoot: string): PathMapper {

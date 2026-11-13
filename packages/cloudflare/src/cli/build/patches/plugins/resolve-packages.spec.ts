@@ -43,14 +43,18 @@ describe("resolvePackages", () => {
 
 	/**
 	 * Writes the same files to the app (installed tree) and to the output (traced copy).
+	 *
+	 * @param files The files, relative to the app
+	 * @param appDir The app directory, relative to the root
+	 * @param output The output, relative to the app
 	 */
-	function writeTraced(files: Record<string, string | object>, appDir = "") {
+	function writeTraced(files: Record<string, string | object>, appDir = "", output = OUTPUT) {
 		write(
 			Object.fromEntries(Object.entries(files).map(([file, content]) => [path.join(appDir, file), content]))
 		);
 		write(
 			Object.fromEntries(
-				Object.entries(files).map(([file, content]) => [path.join(appDir, OUTPUT, appDir, file), content])
+				Object.entries(files).map(([file, content]) => [path.join(appDir, output, appDir, file), content])
 			)
 		);
 	}
@@ -61,12 +65,13 @@ describe("resolvePackages", () => {
 	 * @param entry The entry point, relative to the app in the output
 	 * @param appDir The app directory, relative to the root
 	 * @param plugins The plugins registered before `resolvePackages`
+	 * @param output The output, relative to the app
 	 * @returns The bundled code and the bundled files, relative to the root
 	 */
-	async function bundle(entry: string, appDir = "", plugins: Plugin[] = []) {
+	async function bundle(entry: string, appDir = "", plugins: Plugin[] = [], output = OUTPUT) {
 		const appPath = path.join(root, appDir);
 		const result = await build({
-			entryPoints: [path.join(appPath, OUTPUT, appDir, entry)],
+			entryPoints: [path.join(appPath, output, appDir, entry)],
 			absWorkingDir: root,
 			bundle: true,
 			write: false,
@@ -78,11 +83,14 @@ describe("resolvePackages", () => {
 			logLevel: "silent",
 			plugins: [
 				...plugins,
-				resolvePackages({
-					outputDir: path.join(appPath, ".open-next"),
-					appBuildOutputPath: appPath,
-					monorepoRoot: root,
-				} as BuildOptions),
+				resolvePackages(
+					{
+						outputDir: path.join(appPath, ".open-next"),
+						appBuildOutputPath: appPath,
+						monorepoRoot: root,
+					} as BuildOptions,
+					path.join(appPath, output)
+				),
 			],
 		});
 		return { code: result.outputFiles[0]!.text, inputs: Object.keys(result.metafile.inputs).sort() };
@@ -612,6 +620,33 @@ describe("resolvePackages", () => {
 			`${OUTPUT}/node_modules/postgres/src/cf.js`,
 			`${OUTPUT}/node_modules/postgres/src/index.js`,
 		]);
+		expect(code).toMatch(/import \{ connect \} from "cloudflare:sockets"/);
+	});
+
+	// The Node.js middleware is traced to its own output (#1487)
+	test("resolves the untraced workerd build of a package traced to the middleware output", async () => {
+		const output = ".open-next/middleware";
+		writeTraced(
+			{
+				"node_modules/postgres/package.json": {
+					name: "postgres",
+					type: "module",
+					exports: { ".": { default: "./src/index.js", workerd: "./src/cf.js" } },
+				},
+				"node_modules/postgres/src/index.js": "export default function postgres() { return 'node'; }",
+				".next/server/middleware.js": "export { default } from 'postgres';",
+			},
+			"",
+			output
+		);
+		write({
+			"node_modules/postgres/src/cf.js":
+				"import { connect } from 'cloudflare:sockets'; export default function Postgres() { return connect; }",
+		});
+
+		const { code, inputs } = await bundle(".next/server/middleware.js", "", [], output);
+
+		expect(inputs).toEqual([`${output}/.next/server/middleware.js`, "node_modules/postgres/src/cf.js"]);
 		expect(code).toMatch(/import \{ connect \} from "cloudflare:sockets"/);
 	});
 

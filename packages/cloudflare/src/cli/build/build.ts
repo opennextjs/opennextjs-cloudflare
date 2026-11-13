@@ -105,7 +105,7 @@ export async function build(
 	await createMiddleware(options, { forceOnlyBuildOnce: true });
 
 	if (hasNodeMiddleware) {
-		await bundleNodeMiddleware(options);
+		await bundleNodeMiddleware(options, projectOpts);
 	}
 
 	createStaticAssets(options, { useBasePath: true });

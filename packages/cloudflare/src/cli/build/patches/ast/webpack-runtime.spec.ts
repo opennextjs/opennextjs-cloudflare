@@ -1,11 +1,11 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { applyRule, parseCode, patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
-import { buildChunkRequireRule, listChunks } from "./webpack-runtime.js";
+import { buildChunkRequireRule, listChunks, patchWebpackRuntime } from "./webpack-runtime.js";
 
 describe("webpack runtime", () => {
 	describe("buildChunkRequireRule", () => {
@@ -144,6 +144,39 @@ __webpack_require__.f.require = (chunkId, promises) => {
 
 		test("return an empty list when there is no chunks folder", () => {
 			expect(listChunks(join(tmpDir, "missing"))).toEqual([]);
+		});
+	});
+
+	describe("patchWebpackRuntime", () => {
+		const runtime = `t.f.require=(o,n)=>{e[o]||(658!=o?r(require("./chunks/"+t.u(o))):e[o]=1)}`;
+		let tmpDir: string;
+
+		beforeEach(() => {
+			tmpDir = mkdtempSync(join(tmpdir(), "webpack-runtime-test-"));
+			mkdirSync(join(tmpDir, "chunks"));
+			for (const file of ["webpack-runtime.js", "chunks/1.js", "chunks/2.js"]) {
+				writeFileSync(join(tmpDir, file), file === "webpack-runtime.js" ? runtime : "");
+			}
+		});
+
+		afterEach(() => {
+			rmSync(tmpDir, { recursive: true, force: true });
+		});
+
+		test("inline all the chunks by default", async () => {
+			await patchWebpackRuntime(tmpDir);
+			const patched = readFileSync(join(tmpDir, "webpack-runtime.js"), "utf-8");
+
+			expect(patched).toContain(`case "./chunks/1.js": return require("./chunks/1.js");`);
+			expect(patched).toContain(`case "./chunks/2.js": return require("./chunks/2.js");`);
+		});
+
+		test("inline the given chunks", async () => {
+			await patchWebpackRuntime(tmpDir, ["2.js"]);
+			const patched = readFileSync(join(tmpDir, "webpack-runtime.js"), "utf-8");
+
+			expect(patched).not.toContain(`"./chunks/1.js"`);
+			expect(patched).toContain(`case "./chunks/2.js": return require("./chunks/2.js");`);
 		});
 	});
 });
