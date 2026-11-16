@@ -2,6 +2,8 @@
 "@opennextjs/cloudflare": patch
 ---
 
-fix: declare esbuild as runtime dependency
+fix: declare esbuild as a dependency
 
-esbuild is imported at build time by the Cloudflare adapter but was only in devDependencies, so consumers relied on hoisting from @opennextjs/aws. Add it to dependencies so builds work under npm ci and with hoist conflicts.
+`opennextjs-cloudflare build` imports `esbuild`, but the package only listed it in its `devDependencies`. The import resolved only when the package manager happened to hoist the copy installed by `@opennextjs/aws` or `wrangler`. When another package claimed that slot, or with `npm ci` on a lockfile marking `esbuild` as extraneous, the build failed with `ERR_MODULE_NOT_FOUND: Cannot find package 'esbuild'`.
+
+`esbuild` is now a dependency, pinned to the version `@opennextjs/aws` uses.

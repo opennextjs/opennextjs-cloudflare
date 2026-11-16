@@ -31,7 +31,7 @@ catalogs:
       specifier: ^17.0.35
       version: 17.0.35
     esbuild:
-      specifier: ^0.28.2
+      specifier: 0.28.2
       version: 0.28.2
     eslint:
       specifier: ^9.39.5

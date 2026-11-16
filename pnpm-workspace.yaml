@@ -24,7 +24,8 @@ catalog:
   "@types/react": 19.0.6
   "@types/react-dom": 19.0.6
   "@types/yargs": ^17.0.35
-  esbuild: ^0.28.2
+  # Must be the version pinned by `@opennextjs/aws`, so a build uses a single esbuild.
+  esbuild: 0.28.2
   eslint: ^9.39.5
   eslint-plugin-import: ^2.32.0
   eslint-plugin-simple-import-sort: ^14.0.0
