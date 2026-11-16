@@ -16,6 +16,8 @@
  * - the config manifests are inlined by `openNextEdgePlugins` (as for the edge middleware)
  * - the middleware compiled by Next.js is statically bundled from the traced files that
  *   `@opennextjs/aws` copies to `middleware/<package path>/.next/server/middleware.js`
+ *
+ * The traced files are resolved, aliased and minified as for the server, see `bundle-server.ts`.
  */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -32,14 +34,39 @@ import { openNextReplacementPlugin } from "@opennextjs/aws/plugins/replacement.j
 import { openNextResolvePlugin } from "@opennextjs/aws/plugins/resolve.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
 import { build, type Plugin } from "esbuild";
-import { glob } from "glob";
 
+import { getOpenNextConfig } from "../../../api/config.js";
+import type { ProjectOptions } from "../../project-options.js";
 import { normalizePath } from "../../utils/normalize-path.js";
+import { getShimAliases } from "../bundle-server.js";
 import { patchVercelOgLibrary } from "../patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "../patches/ast/webpack-runtime.js";
 import { patchInstrumentation } from "../patches/plugins/instrumentation.js";
+import { resolvePackages } from "../patches/plugins/resolve-packages.js";
 import { patchTurbopackRuntimeCode, patchTurbopackWasmChunkCode } from "../patches/plugins/turbopack.js";
 import { setWranglerExternal } from "../patches/plugins/wrangler-external.js";
+
+/**
+ * Returns the chunks of the middleware compiled by Next.js, from its trace.
+ *
+ * `@opennextjs/aws` also copies the files traced for the instrumentation hook to the middleware
+ * output. They must not be bundled: the middleware does not load the hook, the server does.
+ * See https://github.com/opennextjs/opennextjs-cloudflare/issues/1401
+ *
+ * @param tracePath Path to the `.nft.json` trace of the middleware.
+ * @param dotNextServerDir The `.next/server` directory of the middleware output.
+ * @returns The `.js` and `.wasm` files of the trace in `.next/server/chunks`, that exist in the output.
+ * @throws When the trace can not be read.
+ */
+export function getMiddlewareChunks(tracePath: string, dotNextServerDir: string): string[] {
+	const chunksDir = path.join(dotNextServerDir, "chunks");
+	const { files } = JSON.parse(readFileSync(tracePath, "utf-8")) as { files: string[] };
+	return files
+		.map((file) => path.join(dotNextServerDir, file))
+		.filter(
+			(file) => file.startsWith(`${chunksDir}${path.sep}`) && /\.(js|wasm)$/.test(file) && existsSync(file)
+		);
+}
 
 /**
  * Inlines the chunks of the middleware compiled by Next.js.
@@ -49,40 +76,49 @@ import { setWranglerExternal } from "../patches/plugins/wrangler-external.js";
  *
  * @param options Build options.
  * @param dotNextServerDir The `.next/server` directory of the middleware output.
+ * @param chunks The chunks of the middleware, see {@link getMiddlewareChunks}.
+ * @throws When the Turbopack runtime is missing.
  */
-async function inlineMiddlewareChunks(options: BuildOptions, dotNextServerDir: string): Promise<void> {
+async function inlineMiddlewareChunks(
+	options: BuildOptions,
+	dotNextServerDir: string,
+	chunks: string[]
+): Promise<void> {
+	const chunksDir = path.join(dotNextServerDir, "chunks");
+
 	if (getBundlerRuntime(options) !== "turbopack") {
-		await patchWebpackRuntime(dotNextServerDir);
+		await patchWebpackRuntime(
+			dotNextServerDir,
+			chunks
+				.filter((chunk) => chunk.endsWith(".js"))
+				.map((chunk) => normalizePath(path.relative(chunksDir, chunk)))
+		);
 		return;
 	}
 
-	const runtimePath = path.join(dotNextServerDir, "chunks/[turbopack]_runtime.js");
+	const runtimePath = path.join(chunksDir, "[turbopack]_runtime.js");
 	if (!existsSync(runtimePath)) {
 		throw new Error(`Turbopack runtime not found at ${runtimePath}`);
 	}
 
 	// The Turbopack runtime resolves the chunks relative to the `.next` directory.
 	// `.wasm` chunks are needed too: they are inlined as static imports by `loadWasmChunk`.
-	const tracedFiles = await glob(path.join(dotNextServerDir, "**/*.{js,wasm}"), {
-		windowsPathsNoEscape: true,
-	});
-
 	writeFileSync(
 		runtimePath,
 		patchTurbopackRuntimeCode({
 			code: readFileSync(runtimePath, "utf-8"),
 			filePath: normalizePath(runtimePath),
-			tracedFiles,
+			tracedFiles: chunks,
 		})
 	);
 
 	// Since Next.js 16.3 the wasm helpers are emitted in the chunks rather than in the runtime.
-	for (const chunkPath of tracedFiles) {
-		if (!chunkPath.endsWith(".js") || normalizePath(chunkPath) === normalizePath(runtimePath)) {
+	for (const chunkPath of chunks) {
+		if (!chunkPath.endsWith(".js") || chunkPath === runtimePath) {
 			continue;
 		}
 		const code = readFileSync(chunkPath, "utf-8");
-		const patched = patchTurbopackWasmChunkCode({ code, tracedFiles });
+		const patched = patchTurbopackWasmChunkCode({ code, tracedFiles: chunks });
 		if (patched !== code) {
 			writeFileSync(chunkPath, patched);
 		}
@@ -160,10 +196,7 @@ export function nodeBuiltinsPlugin(): Plugin {
  * that most apps do not install. On the edge runtime Next.js does not fall back to its compiled
  * copy when the require throws, so the fallback is applied here.
  *
- * The package being installed does not mean that it can be resolved: Next.js only traces its
- * CommonJS build (`build/src`) while the `module` condition used for this bundle points to its
- * ESM build (`build/esm`), which is then missing from the middleware output.
- * See https://github.com/opennextjs/opennextjs-cloudflare/issues/1400
+ * See https://github.com/opennextjs/opennextjs-cloudflare/issues/969
  *
  * @returns The esbuild plugin.
  */
@@ -192,11 +225,15 @@ export function opentelemetryFallbackPlugin(): Plugin {
  * Bundles the traced Node.js middleware for Workers.
  *
  * @param options Build options.
+ * @param projectOpts Cloudflare project options.
  * @returns Resolves when the middleware handler has been written.
- * @throws When the compiled middleware is missing or preparing or bundling it fails.
+ * @throws When the compiled middleware or its trace is missing or preparing or bundling it fails.
  */
-export async function bundleNodeMiddleware(options: BuildOptions): Promise<void> {
-	const { config, outputDir } = options;
+export async function bundleNodeMiddleware(
+	options: BuildOptions,
+	projectOpts: ProjectOptions
+): Promise<void> {
+	const { config, outputDir, debug } = options;
 
 	const middlewareDir = path.join(outputDir, "middleware");
 	const dotNextServerDir = path.join(middlewareDir, getPackagePath(options), ".next/server");
@@ -206,9 +243,13 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 		throw new Error(`Compiled Node.js middleware not found at ${compiledMiddleware}`);
 	}
 
+	// Both `middleware.ts/js` and `proxy.ts/js` emit `middleware.js` and its `.nft.json` trace.
+	// Webpack's proxy output is renamed by Next.js; Turbopack emits this name directly.
+	const tracePath = path.join(options.appBuildOutputPath, ".next/server/middleware.js.nft.json");
+
 	// The bundler runtime resolves the chunks of the middleware at runtime, which workerd does
 	// not support. Inline the chunks so that they are statically bundled.
-	await inlineMiddlewareChunks(options, dotNextServerDir);
+	await inlineMiddlewareChunks(options, dotNextServerDir, getMiddlewareChunks(tracePath, dotNextServerDir));
 
 	logger.info("Bundling Node.js middleware...");
 
@@ -225,37 +266,39 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 	}
 	const includeCache = config.dangerous?.enableCacheInterception;
 
-	// Both `middleware.ts/js` and `proxy.ts/js` emit `middleware.js` and its `.nft.json` trace.
-	// Webpack's proxy output is renamed by Next.js; Turbopack emits this name directly.
-	// Only this trace is checked: a server route using OG should not pull it into middleware.
-	const usesOg = patchVercelOgLibrary(options, {
-		outputDir: middlewareDir,
-		traceFiles: [path.join(options.appBuildOutputPath, ".next/server/middleware.js.nft.json")],
-	});
+	// Only the trace of the middleware is checked: a server route using OG should not pull it into middleware.
+	const usesOg = patchVercelOgLibrary(options, { outputDir: middlewareDir, traceFiles: [tracePath] });
 	// `cloudflare-templates` is only copied to the output dir by `bundleServer`, after this
-	// bundle is built, so the shim is taken from the package dist.
-	const throwShimPath = path.join(
-		path.dirname(fileURLToPath(import.meta.url)),
-		"../../templates/shims/throw.js"
-	);
+	// bundle is built, so the shims are taken from the package dist.
+	const shimsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "../../templates/shims");
+	const useWorkerdCondition = getOpenNextConfig(options).cloudflare?.useWorkerdCondition !== false;
 
 	const updater = new ContentUpdater(options);
+	const outfile = path.join(middlewareDir, "handler.mjs");
 
-	await build({
+	const result = await build({
 		entryPoints: [path.join(options.openNextDistDir, "adapters", "middleware.js")],
-		outfile: path.join(middlewareDir, "handler.mjs"),
+		outfile,
 		allowOverwrite: true,
+		metafile: true,
 		bundle: true,
 		format: "esm",
 		target: "es2022",
-		platform: "neutral",
-		minify: options.minify,
-		sourcemap: options.debug ? "inline" : false,
+		// Same resolution as the server: Next.js traced the files with the default conditions of
+		// `nft` (`node`, `require`, `import` and `default`), other conditions would resolve files that
+		// are not in the output (i.e. the `module` condition and field, #1400 and #1401).
+		platform: "node",
+		conditions: useWorkerdCondition ? ["workerd"] : [],
+		// Minified as the server: safe, the identifiers are not renamed
+		minifyWhitespace: projectOpts.minify && !debug,
+		minifyIdentifiers: false,
+		minifySyntax: projectOpts.minify && !debug,
+		legalComments: "none",
+		sourcemap: debug ? "inline" : false,
 		sourcesContent: false,
-		treeShaking: true,
-		conditions: ["module"],
-		mainFields: ["module", "main"],
-		external: ["node:*", "./open-next.config.mjs"],
+		// `cloudflare:*` modules are resolved by wrangler, see `serverExternals`.
+		// Node.js builtins are handled by `nodeBuiltinsPlugin`.
+		external: ["cloudflare:*", "./open-next.config.mjs"],
 		define: {
 			// The base of the middleware compiled by Next.js is runtime agnostic. "edge" selects its
 			// Web API code paths (which workerd supports) over the Node.js server paths (which it does
@@ -264,13 +307,7 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 			"process.env.NEXT_RUNTIME": '"edge"',
 			"process.env.NODE_ENV": '"production"',
 		},
-		alias: {
-			// When @vercel/og is not used, alias the edge entry to a throwing shim so the
-			// `import("next/dist/compiled/@vercel/og/index.edge.js")` that the Turbopack runtime
-			// patch emits does not drag the library (~800 KiB) and its `resvg.wasm` into the bundle.
-			// Same as the server bundle, see `bundle-server.ts`.
-			...(usesOg ? {} : { "next/dist/compiled/@vercel/og/index.edge.js": throwShimPath }),
-		},
+		alias: getShimAliases(shimsDir, usesOg),
 		plugins: [
 			// Use the real `@opentelemetry/api` when it can be resolved, the copy of Next.js otherwise
 			opentelemetryFallbackPlugin(),
@@ -315,11 +352,14 @@ export async function bundleNodeMiddleware(options: BuildOptions): Promise<void>
 			//
 			// The guard Next.js uses (`process.env.NEXT_RUNTIME !== "edge"`) is inlined to `"nodejs"`
 			// when Next.js compiles the middleware, so the `define` above can not eliminate the branch.
-			// The loader is stubbed out instead, which matches what the edge runtime does here: it has
-			// no instrumentation entry to register, and the server function - which shares the isolate -
-			// already registers the hook.
+			// The module registering the hook is stubbed out instead, which matches what the edge runtime
+			// does here: it has no instrumentation entry to register, and the server function - which
+			// shares the isolate - already registers the hook.
 			// See https://github.com/opennextjs/opennextjs-cloudflare/issues/1362
 			patchInstrumentation(updater, options, { loadInstrumentation: false }),
+			// Next.js traces the packages with the Node.js conditions, the files only used by their
+			// `workerd` build are resolved from the installed `node_modules`.
+			...(useWorkerdCondition ? [resolvePackages(options, middlewareDir)] : []),
 			// Apply updater updates, must be the last plugin
 			updater.plugin,
 		] as Plugin[],
@@ -353,4 +393,6 @@ globalThis.nextVersion = "${options.nextVersion}";
 `,
 		},
 	});
+
+	writeFileSync(`${outfile}.meta.json`, JSON.stringify(result.metafile, null, 2));
 }

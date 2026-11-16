@@ -5,7 +5,14 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 export function middleware(request: NextRequest, event: NextFetchEvent) {
 	console.log("middleware");
-	if (request.nextUrl.pathname.startsWith("/admin")) {
+	// `request.nextUrl.pathname` is not decoded: `/%61dmin` must be checked as `/admin`.
+	let pathname: string;
+	try {
+		pathname = decodeURIComponent(request.nextUrl.pathname);
+	} catch {
+		return new NextResponse("Bad Request", { status: 400 });
+	}
+	if (pathname.startsWith("/admin")) {
 		return new NextResponse("Authentication required", { status: 401 });
 	}
 	if (request.nextUrl.pathname === "/encoded-m%69ddleware") {

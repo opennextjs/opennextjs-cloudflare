@@ -73,8 +73,9 @@ export function listChunks(chunksDir: string): string[] {
  * the webpack dynamic requires.
  *
  * @param dotNextServerDir Path to the `.next/server` folder.
+ * @param chunks The chunks to inline, relative to the chunks folder. Defaults to all the chunk files.
  */
-export async function patchWebpackRuntime(dotNextServerDir: string) {
+export async function patchWebpackRuntime(dotNextServerDir: string, chunks?: string[]) {
 	const runtimes = ["webpack-runtime.js", "webpack-api-runtime.js"]
 		.map((runtime) => join(dotNextServerDir, runtime))
 		.filter((runtime) => existsSync(runtime));
@@ -84,7 +85,7 @@ export async function patchWebpackRuntime(dotNextServerDir: string) {
 		return;
 	}
 
-	const chunks = listChunks(join(dotNextServerDir, "chunks"));
+	chunks ??= listChunks(join(dotNextServerDir, "chunks"));
 
 	for (const runtime of runtimes) {
 		patchFile(runtime, chunks);

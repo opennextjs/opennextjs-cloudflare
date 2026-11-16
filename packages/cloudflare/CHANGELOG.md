@@ -1,5 +1,68 @@
 # @opennextjs/cloudflare
 
+## 1.20.17
+
+### Patch Changes
+
+- [#1488](https://github.com/opennextjs/opennextjs-cloudflare/pull/1488) [`e6c6736`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e6c6736b576b8c226f499ac61428ccc272b5e387) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.16
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.16>
+
+  - Match `fallback: false` routes against the decoded pathname.
+  - Do not expose more Next.js internal headers on the middleware response.
+  - Send the time of entries made stale by a tag to the revalidation queue.
+  - Do not copy `next.config` headers onto the request headers.
+  - Strip the internal `next-resume` header from incoming requests.
+
+- [#1479](https://github.com/opennextjs/opennextjs-cloudflare/pull/1479) [`223f07f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/223f07f46a0620de23c716c633f38621d9282e72) Thanks [@vicb](https://github.com/vicb)! - fix: do not serve `/cdn-cgi/image/` for revalidation requests sent through `WORKER_SELF_REFERENCE`
+
+- [#1427](https://github.com/opennextjs/opennextjs-cloudflare/pull/1427) [`2d4665a`](https://github.com/opennextjs/opennextjs-cloudflare/commit/2d4665a1fc1a57df9fdc095f316241dc21b06769) Thanks [@jkugsiya](https://github.com/jkugsiya)! - fix: stop the Durable Object queue from revalidating routes again after every restart
+
+  Once a revalidation had failed, the Durable Object queue revalidated the route again every time it restarted, even after the retry succeeded or the queue gave up. The number of extra revalidations grew until the next deployment. The queue now forgets a route once it stops retrying it.
+
+- [#1486](https://github.com/opennextjs/opennextjs-cloudflare/pull/1486) [`843723c`](https://github.com/opennextjs/opennextjs-cloudflare/commit/843723cfadd9fdf401cd3a856225a8c92923ea4d) Thanks [@vicb](https://github.com/vicb)! - fix: leave `cloudflare:*` imports external in the server bundle
+
+  `postgres` 4 maps its Workers build (`src/cf.js`) to the `workerd` condition, and that build imports `cloudflare:sockets` statically. With `postgres` 4 in `serverExternalPackages`, the build failed while bundling the server with:
+
+  ```
+  ✘ [ERROR] Could not resolve "cloudflare:sockets"
+  ```
+
+  `cloudflare:*` imports are now left to wrangler, as `node:*` imports already are, so `postgres` 4 uses `cloudflare:sockets` in the Worker.
+
+- [#1441](https://github.com/opennextjs/opennextjs-cloudflare/pull/1441) [`7d97fe8`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7d97fe8a7ebdd2867b82ef0e142dda7149769b18) Thanks [@mathurshubham](https://github.com/mathurshubham)! - fix: stop the Durable Object queue from skipping ISR revalidations until the next deployment
+
+  With the Durable Object queue, some ISR pages stayed `x-nextjs-cache: STALE` until the next deployment:
+
+  - pages that took more than about a second to revalidate,
+  - pages made stale by `revalidateTag` after their first revalidation.
+
+  These pages are now revalidated.
+
+- [#1434](https://github.com/opennextjs/opennextjs-cloudflare/pull/1434) [`e476844`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e4768449e91dacde554016dbf27f95c7b522b8bd) Thanks [@mathurshubham](https://github.com/mathurshubham)! - fix: re-arm the bucket cache purge alarm when the stored alarm is in the past
+
+  Affects apps using `purgeCache({ type: "durableObject" })` (the `NEXT_CACHE_DO_PURGE` binding).
+
+  Once the purge alarm had exhausted its retries (for example after the `Wrong number of parameter bindings` error fixed in [#1289](https://github.com/opennextjs/opennextjs-cloudflare/issues/1289), or a purge rate limit), the Durable Object never scheduled another alarm. Every later `revalidateTag` / `revalidatePath` queued its tags but the CDN cache was never purged and pages stayed stale.
+
+  The alarm is now re-armed when it is in the past. After upgrading, the next revalidation purges the queued tags without having to reset the Durable Object. See https://github.com/opennextjs/opennextjs-cloudflare/issues/929
+
+- [#1431](https://github.com/opennextjs/opennextjs-cloudflare/pull/1431) [`8d30187`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8d30187ff558424b8a108ba671c53d1c0e7242fb) Thanks [@kremnyi](https://github.com/kremnyi)! - fix: retry all the failed revalidations of the Durable Object queue
+
+  When three or more failed ISR revalidations were waiting to be retried at the same time with the Durable Object queue (`DOQueueHandler`), only some of them were retried. The routes that were not retried stayed marked as failed, so later ISR requests for these routes did not trigger a revalidation either. These pages stayed stale until another revalidation failed or the Durable Object restarted.
+
+  All the failed revalidations are now retried.
+
+- [#1484](https://github.com/opennextjs/opennextjs-cloudflare/pull/1484) [`b6ccf33`](https://github.com/opennextjs/opennextjs-cloudflare/commit/b6ccf33cefe04d2161a90ba2b26d2b642ee42264) Thanks [@vicb](https://github.com/vicb)! - fix: resolve the `workerd` build of packages from the installed `node_modules` instead of copying it
+
+  Next.js traces the packages it does not bundle with the Node.js conditions, so the files only used by the `workerd` build of a package are missing from `.open-next`. They used to be copied, along with the dependencies of the `workerd` build, but a dependency that Next.js had partially traced for another package was left incomplete. With `serverExternalPackages: ["@sentry/nextjs"]`, 1.20.15 and 1.20.16 failed with:
+
+  ```
+  ✘ [ERROR] Could not resolve "@sentry/server-utils/no-diagnostic-channels"
+  ```
+
+  Nothing is copied anymore. The server bundle resolves the packages with a `workerd` condition from the installed `node_modules` (the `workerd` condition wins over the Node.js ones) and uses the traced copy of a file when there is one, so that each module is bundled once. The files that were not traced are read from `node_modules`.
+
 ## 1.20.16
 
 ### Patch Changes
