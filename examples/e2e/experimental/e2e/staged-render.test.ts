@@ -69,6 +69,31 @@ test.describe("Cache Components staged rendering", () => {
 		expect(prefetch).toContain('"data-large-block":63');
 	});
 
+	// Next.js treats the I/O that it does not track as uncached: only a navigation or a document has it.
+	test("a prefetch does not contain data from I/O that completed during the render", async ({ request }) => {
+		const body = await runtimePrefetch(request, "/uncached-io/one", "abc");
+
+		expect(body).toContain("Uncached I/O");
+		expect(body).not.toContain("Uncached render");
+	});
+
+	test("a route that was not prerendered does not cache data from I/O that completed during its render", async ({
+		request,
+	}) => {
+		const path = `/uncached-io/cold-${Date.now()}`;
+		const renders: string[] = [];
+
+		// The first request renders the route, the next ones use what that render cached.
+		for (let attempt = 0; attempt < 4; attempt++) {
+			const document = await request.get(path);
+			expect(document.status()).toEqual(200);
+			renders.push((await document.text()).match(/Uncached render (?:<!-- -->)?(\d+)/)?.[1] ?? "none");
+		}
+
+		expect(renders).not.toContain("none");
+		expect(new Set(renders).size).toEqual(renders.length);
+	});
+
 	test("a client navigation shows the request content without a document reload", async ({ page }) => {
 		const session = `session-${Date.now()}`;
 		await page.setExtraHTTPHeaders({ "x-session": session });

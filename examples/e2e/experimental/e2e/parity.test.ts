@@ -54,9 +54,19 @@ const ALL_KINDS = Object.keys(REQUESTS) as RequestKind[];
 // route prefetch are not resumed.
 const WITH_CACHED_SHELL: RequestKind[] = ["segment prefetch", "runtime prefetch"];
 
+// The document has the same content as on Node.js, but streams the uncached data earlier: its timer
+// of 0 ms fires sooner on workerd.
+const WITH_UNCACHED_IO: RequestKind[] = [
+	"navigation",
+	"segment prefetch",
+	"runtime prefetch",
+	"route prefetch",
+];
+
 const ROUTES: Array<{ path: string; kinds: RequestKind[] }> = [
 	{ path: "/ppr", kinds: ALL_KINDS },
 	{ path: "/deep-shell/one", kinds: ALL_KINDS },
+	{ path: "/uncached-io/one", kinds: WITH_UNCACHED_IO },
 	{ path: "/runtime-prefetch/one", kinds: WITH_CACHED_SHELL },
 	{ path: "/large-shell/one", kinds: WITH_CACHED_SHELL },
 ];

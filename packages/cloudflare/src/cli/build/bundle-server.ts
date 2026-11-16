@@ -5,9 +5,11 @@ import { fileURLToPath } from "node:url";
 
 import * as buildHelper from "@opennextjs/aws/build/helper.js";
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
+import logger from "@opennextjs/aws/logger.js";
 import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
 import { build, type Plugin } from "esbuild";
 import { globSync } from "glob";
+import type { Unstable_Config } from "wrangler";
 
 import { getOpenNextConfig } from "../../api/config.js";
 import type { ProjectOptions } from "../project-options.js";
@@ -16,6 +18,8 @@ import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
 import {
 	cacheComponentsSchedulerModule,
+	hasMicrotaskCheckpoint,
+	microtaskCheckpointWarning,
 	needsCacheComponentsScheduler,
 	patchCacheComponents,
 } from "./patches/plugins/cache-components.js";
@@ -61,7 +65,11 @@ const optionalDependencies = [
  * @returns Resolves when the server bundle and Worker entry point have been written.
  * @throws When preparing or bundling the server fails.
  */
-export async function bundleServer(buildOpts: BuildOptions, projectOpts: ProjectOptions): Promise<void> {
+export async function bundleServer(
+	buildOpts: BuildOptions,
+	projectOpts: ProjectOptions,
+	wranglerConfig: Unstable_Config
+): Promise<void> {
 	copyPackageCliFiles(packageDistDir, buildOpts);
 
 	const { appPath, outputDir, monorepoRoot, debug } = buildOpts;
@@ -70,6 +78,10 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 	const nextConfig = JSON.parse(fs.readFileSync(serverFiles, "utf-8")).config;
 
 	const useTurbopack = buildHelper.getBundlerRuntime(buildOpts) === "turbopack";
+
+	if (needsCacheComponentsScheduler(buildOpts, nextConfig) && !hasMicrotaskCheckpoint(wranglerConfig)) {
+		logger.warn(microtaskCheckpointWarning);
+	}
 
 	console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
 

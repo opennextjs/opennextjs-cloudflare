@@ -16,6 +16,9 @@ type CacheComponentsNextConfig = NextConfig & {
 
 export const cacheComponentsSchedulerModule = "__opennext_cache_components_scheduler";
 
+const microtaskCheckpointFlag = "unhandled_rejection_after_microtask_checkpoint";
+const microtaskCheckpointDate = "2026-03-03";
+
 /**
  * The flag is `experimental.dynamicIO` in Next.js 15.4, `experimental.cacheComponents` in 15.5 and
  * `cacheComponents` from 16.0.
@@ -31,6 +34,26 @@ export function isCacheComponentsEnabled(nextConfig: NextConfig): boolean {
 export function needsCacheComponentsScheduler(buildOpts: BuildOptions, nextConfig: NextConfig): boolean {
 	return isCacheComponentsEnabled(nextConfig) && !compareSemver(buildOpts.nextVersion, "<", "16.2.0");
 }
+
+/**
+ * The scheduler finds the end of a render stage with the `unhandledrejection` event, which workerd
+ * dispatches at the end of the microtask checkpoint from this compatibility date or with this flag.
+ */
+export function hasMicrotaskCheckpoint(wranglerConfig: {
+	compatibility_date?: string | undefined;
+	compatibility_flags?: string[] | undefined;
+}): boolean {
+	const flags = wranglerConfig.compatibility_flags ?? [];
+	if (flags.includes(`no_${microtaskCheckpointFlag}`)) {
+		return false;
+	}
+	return (
+		flags.includes(microtaskCheckpointFlag) ||
+		(wranglerConfig.compatibility_date ?? "") >= microtaskCheckpointDate
+	);
+}
+
+export const microtaskCheckpointWarning = `Cache Components is enabled but workerd cannot report the end of a render stage: cached content can then render at request time instead of from the cache. Set \`compatibility_date\` to ${microtaskCheckpointDate} or later, or add the \`${microtaskCheckpointFlag}\` compatibility flag, in your wrangler config.`;
 
 const runnerContentFilter = /DANGEROUSLY_runPendingImmediatesAfterCurrentTask/;
 

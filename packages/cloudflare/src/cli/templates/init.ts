@@ -20,6 +20,25 @@ Object.defineProperty(globalThis, Symbol.for("__cloudflare-context__"), {
 	},
 });
 
+// The Cache Components scheduler rejects a promise with this symbol to find the end of a render
+// stage: workerd dispatches `unhandledrejection` once the microtask queue is empty. The listener is
+// added when the worker starts, ahead of the listeners of the app, which never see the rejection.
+// Note: this symbol needs to be kept in sync with `cache-components-scheduler.ts`
+if (__CACHE_COMPONENTS_SCHEDULER__) {
+	const checkpoint = Symbol.for("__opennext-microtask-checkpoint__");
+	const hub: { onCheckpoint?: () => void } = {};
+	Object.defineProperty(globalThis, checkpoint, { value: hub });
+
+	addEventListener("unhandledrejection", (event) => {
+		if (event.reason !== checkpoint) {
+			return;
+		}
+		event.preventDefault();
+		event.stopImmediatePropagation();
+		hub.onCheckpoint?.();
+	});
+}
+
 /**
  * Executes the handler with the Cloudflare context.
  */
@@ -138,6 +157,8 @@ function populateProcessEnv(url: URL, env: CloudflareEnv) {
 declare global {
 	// Build timestamp
 	var __BUILD_TIMESTAMP_MS__: number;
+	// Whether the server bundle has the Cache Components scheduler
+	var __CACHE_COMPONENTS_SCHEDULER__: boolean;
 	// Next basePath
 	var __NEXT_BASE_PATH__: string;
 	// Value of `run_worker_first` for the asset binding

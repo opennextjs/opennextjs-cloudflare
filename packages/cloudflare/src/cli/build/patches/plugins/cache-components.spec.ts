@@ -9,6 +9,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import {
 	cacheComponentsSchedulerModule,
+	hasMicrotaskCheckpoint,
 	isCacheComponentsEnabled,
 	needsCacheComponentsScheduler,
 	patchCacheComponents,
@@ -172,6 +173,32 @@ describe("isCacheComponentsEnabled", () => {
 		["16.4", { cacheComponents: false, experimental: {} }, false],
 	] as const)("reads the Next.js %s config %j: %s", (_, nextConfig, expected) => {
 		expect(isCacheComponentsEnabled(nextConfig as NextConfig)).toBe(expected);
+	});
+});
+
+describe("hasMicrotaskCheckpoint", () => {
+	test.each([
+		[{ compatibility_date: "2026-03-03" }, true],
+		[{ compatibility_date: "2026-08-01", compatibility_flags: ["nodejs_compat"] }, true],
+		[{ compatibility_date: "2026-03-02" }, false],
+		[{ compatibility_date: "2025-12-01", compatibility_flags: ["nodejs_compat"] }, false],
+		[{}, false],
+		[
+			{
+				compatibility_date: "2025-12-01",
+				compatibility_flags: ["unhandled_rejection_after_microtask_checkpoint"],
+			},
+			true,
+		],
+		[
+			{
+				compatibility_date: "2026-08-01",
+				compatibility_flags: ["no_unhandled_rejection_after_microtask_checkpoint"],
+			},
+			false,
+		],
+	])("%j -> %s", (wranglerConfig, expected) => {
+		expect(hasMicrotaskCheckpoint(wranglerConfig)).toBe(expected);
 	});
 });
 
