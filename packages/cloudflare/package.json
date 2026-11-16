@@ -20,14 +20,14 @@
 	"types": "./dist/api/index.d.ts",
 	"exports": {
 		".": {
-			"import": "./dist/api/index.js",
 			"types": "./dist/api/index.d.ts",
+			"import": "./dist/api/index.js",
 			"default": "./dist/api/index.js"
 		},
 		"./package.json": "./package.json",
 		"./*": {
-			"import": "./dist/api/*.js",
 			"types": "./dist/api/*.d.ts",
+			"import": "./dist/api/*.js",
 			"default": "./dist/api/*.js"
 		}
 	},
