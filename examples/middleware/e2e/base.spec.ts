@@ -29,6 +29,31 @@ test.describe("middleware", () => {
 		expect(await page.textContent("h1")).toContain("Via middleware");
 	});
 
+	test("protected route requires authentication", async ({ request }) => {
+		const res = await request.get("/admin");
+
+		expect(res.status()).toEqual(401);
+		await expect(res.text()).resolves.toEqual("Authentication required");
+	});
+
+	for (const path of ["/%61dmin", "/adm%69n", "/%61%64min", "/%61dmin/foo"]) {
+		test(`encoded alias ${path} of a protected route requires authentication`, async ({ request }) => {
+			const res = await request.get(path);
+
+			expect(res.status()).toEqual(401);
+			expect(res.headers()["x-opennext-cache"]).toBeUndefined();
+			await expect(res.text()).resolves.toEqual("Authentication required");
+		});
+	}
+
+	test("malformed encoding of a protected route is rejected", async ({ request }) => {
+		const res = await request.get("/admin/%ZZ");
+
+		expect(res.status()).toEqual(400);
+		expect(res.headers()["x-opennext-cache"]).toBeUndefined();
+		expect(await res.text()).not.toContain("Protected content");
+	});
+
 	test("malformed paths cannot select protected cached routes", async ({ request }) => {
 		const res = await request.get("/%61dmin/%ZZ");
 
