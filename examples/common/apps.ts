@@ -24,6 +24,7 @@ const apps = [
 	"gh-119",
 	"gh-219",
 	"gh-223",
+	"gh-1322",
 ] as const;
 
 export type AppName = (typeof apps)[number];

@@ -1,7 +1,7 @@
 {
 	"name": "@opennextjs/cloudflare",
 	"description": "Cloudflare builder for next apps",
-	"version": "1.20.10",
+	"version": "1.20.17",
 	"type": "module",
 	"scripts": {
 		"clean": "rimraf dist",
@@ -55,12 +55,14 @@
 	"dependencies": {
 		"@ast-grep/napi": "^0.45.3",
 		"@dotenvx/dotenvx": "catalog:",
-		"@opennextjs/aws": "4.1.9",
+		"@opennextjs/aws": "4.1.16",
 		"ci-info": "^4.2.0",
 		"cloudflare": "^4.4.1",
 		"comment-json": "^4.5.1",
 		"enquirer": "^2.4.1",
+		"esbuild": "catalog:",
 		"glob": "catalog:",
+		"resolve.exports": "^2.0.4",
 		"ts-tqdm": "^0.8.6",
 		"yargs": "catalog:"
 	},
@@ -73,8 +75,7 @@
 		"@types/picomatch": "^4.0.0",
 		"@types/rclone.js": "^0.6.1",
 		"@types/yargs": "catalog:",
-		"diff": "^8.0.2",
-		"esbuild": "catalog:",
+		"diff": "^9.0.0",
 		"eslint": "catalog:",
 		"eslint-plugin-import": "catalog:",
 		"eslint-plugin-simple-import-sort": "catalog:",
@@ -90,7 +91,7 @@
 		"vitest": "catalog:"
 	},
 	"peerDependencies": {
-		"next": ">=15.5.27 <16 || >=16.3.8",
+		"next": ">=15.5.29 <16 || >=16.4.5",
 		"rclone.js": "^0.6.6",
 		"wrangler": "catalog:"
 	},

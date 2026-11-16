@@ -1,10 +1,17 @@
 import { execFile } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { promisify } from "node:util";
 
 import { build, type BuildOptions } from "esbuild";
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
-import { nodeBuiltinsPlugin } from "./bundle-node-middleware.js";
+import {
+	getMiddlewareChunks,
+	nodeBuiltinsPlugin,
+	opentelemetryFallbackPlugin,
+} from "./bundle-node-middleware.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -12,7 +19,8 @@ const execFileAsync = promisify(execFile);
  * Bundles `contents` with `nodeBuiltinsPlugin` installed.
  *
  * Mirrors the esbuild options `bundleNodeMiddleware` uses, as the plugin behaviour depends on
- * them: `platform: "neutral"` means esbuild does not handle the Node.js builtins itself.
+ * them: with `platform: "node"` esbuild leaves the builtins external, the `require` calls the
+ * plugin does not handle are emitted as calls to esbuild's `__require` helper, which throws in workerd.
  *
  * @param contents Source of the entry point, treated as CommonJS.
  * @param options Extra esbuild options.
@@ -23,7 +31,7 @@ async function bundle(contents: string, options: BuildOptions = {}): Promise<str
 		stdin: { contents, loader: "js", resolveDir: import.meta.dirname },
 		bundle: true,
 		format: "esm",
-		platform: "neutral",
+		platform: "node",
 		target: "es2022",
 		write: false,
 		logLevel: "silent",
@@ -156,5 +164,182 @@ describe("nodeBuiltinsPlugin", () => {
 		`);
 
 		expect(uuid).toMatch(/^[0-9a-f-]{36}$/);
+	});
+});
+
+describe("opentelemetryFallbackPlugin", () => {
+	// The module of Next.js requiring `@opentelemetry/api`.
+	const tracer = "next/dist/server/lib/trace/tracer.js";
+	// The entry points `@opentelemetry/api` declares.
+	const packageJson = JSON.stringify({
+		name: "@opentelemetry/api",
+		main: "build/src/index.js",
+		module: "build/esm/index.js",
+		exports: { ".": { module: "./build/esm/index.js", default: "./build/src/index.js" } },
+	});
+
+	let dir: string;
+
+	/**
+	 * Writes files to the `node_modules` of the temporary directory.
+	 *
+	 * @param files File contents by path.
+	 */
+	function writeNodeModules(files: Record<string, string>): void {
+		for (const [file, contents] of Object.entries(files)) {
+			const filePath = path.join(dir, "node_modules", file);
+			mkdirSync(path.dirname(filePath), { recursive: true });
+			writeFileSync(filePath, contents);
+		}
+	}
+
+	/**
+	 * Bundles `tracer.js` and evaluates it.
+	 *
+	 * Mirrors the esbuild options `bundleNodeMiddleware` uses to resolve the packages.
+	 *
+	 * @returns The `source` exported by the module `@opentelemetry/api` was resolved to.
+	 */
+	async function getOpentelemetrySource(): Promise<unknown> {
+		const result = await build({
+			entryPoints: [path.join(dir, "node_modules", tracer)],
+			bundle: true,
+			format: "esm",
+			platform: "node",
+			target: "es2022",
+			conditions: ["workerd"],
+			write: false,
+			logLevel: "silent",
+			plugins: [opentelemetryFallbackPlugin()],
+		});
+		return runInNode(
+			result.outputFiles![0]!.text,
+			`const { default: value } = await import(process.env.BUNDLE_URL);
+			process.stdout.write(JSON.stringify(value));`
+		);
+	}
+
+	beforeEach(() => {
+		dir = mkdtempSync(path.join(tmpdir(), "bundle-node-middleware-test-"));
+		writeNodeModules({
+			[tracer]: `module.exports = require("@opentelemetry/api").source;`,
+			"next/dist/compiled/@opentelemetry/api/index.js": `module.exports = { source: "next" };`,
+		});
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	test("uses the copy compiled into Next.js when the package is not installed", async () => {
+		expect(await getOpentelemetrySource()).toBe("next");
+	});
+
+	// Next.js only traces the CommonJS build of the package (#1400)
+	test("uses the traced CommonJS build of the package", async () => {
+		writeNodeModules({
+			"@opentelemetry/api/package.json": packageJson,
+			"@opentelemetry/api/build/src/index.js": `module.exports = { source: "cjs" };`,
+		});
+
+		expect(await getOpentelemetrySource()).toBe("cjs");
+	});
+
+	test("does not use the `module` entry point of the package", async () => {
+		writeNodeModules({
+			"@opentelemetry/api/package.json": packageJson,
+			"@opentelemetry/api/build/src/index.js": `module.exports = { source: "cjs" };`,
+			"@opentelemetry/api/build/esm/index.js": `export const source = "esm";`,
+		});
+
+		expect(await getOpentelemetrySource()).toBe("cjs");
+	});
+});
+
+describe("getMiddlewareChunks", () => {
+	let dir: string;
+
+	/**
+	 * Writes empty files to the temporary directory.
+	 *
+	 * @param files The paths of the files, relative to the temporary directory.
+	 */
+	function writeFiles(files: string[]): void {
+		for (const file of files) {
+			const filePath = path.join(dir, file);
+			mkdirSync(path.dirname(filePath), { recursive: true });
+			writeFileSync(filePath, "");
+		}
+	}
+
+	/**
+	 * Writes the trace of the middleware to the app and returns the chunks for the output.
+	 *
+	 * @param files The files of the trace, relative to the `.next/server` directory of the app.
+	 * @returns The chunks, relative to the `.next/server` directory of the output.
+	 */
+	function getChunks(files: string[]): string[] {
+		const tracePath = path.join(dir, "app/.next/server/middleware.js.nft.json");
+		mkdirSync(path.dirname(tracePath), { recursive: true });
+		writeFileSync(tracePath, JSON.stringify({ version: 1, files }));
+		const dotNextServerDir = path.join(dir, "output/.next/server");
+		return getMiddlewareChunks(tracePath, dotNextServerDir).map((chunk) =>
+			path.relative(dotNextServerDir, chunk).replaceAll(path.sep, "/")
+		);
+	}
+
+	beforeEach(() => {
+		dir = mkdtempSync(path.join(tmpdir(), "bundle-node-middleware-test-"));
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	test("returns the traced chunks", () => {
+		writeFiles([
+			"output/.next/server/chunks/[turbopack]_runtime.js",
+			"output/.next/server/chunks/nested/1.js",
+			"output/.next/server/chunks/2.wasm",
+		]);
+
+		expect(getChunks(["chunks/[turbopack]_runtime.js", "chunks/nested/1.js", "chunks/2.wasm"])).toEqual([
+			"chunks/[turbopack]_runtime.js",
+			"chunks/nested/1.js",
+			"chunks/2.wasm",
+		]);
+	});
+
+	// `@opennextjs/aws` also copies the files traced for the instrumentation hook (#1401)
+	test("does not return the chunks that are not in the trace", () => {
+		writeFiles(["output/.next/server/chunks/1.js", "output/.next/server/chunks/instrumentation.js"]);
+
+		expect(getChunks(["chunks/1.js"])).toEqual(["chunks/1.js"]);
+	});
+
+	test("only returns the `.js` and `.wasm` files of the chunks directory", () => {
+		writeFiles([
+			"output/.next/server/chunks/1.js",
+			"output/.next/server/chunks/1.js.map",
+			"output/.next/server/webpack-runtime.js",
+			"output/.next/server/middleware-manifest.json",
+			"output/node_modules/next/dist/server/web/adapter.js",
+		]);
+
+		expect(
+			getChunks([
+				"chunks/1.js",
+				"chunks/1.js.map",
+				"webpack-runtime.js",
+				"middleware-manifest.json",
+				"../../node_modules/next/dist/server/web/adapter.js",
+			])
+		).toEqual(["chunks/1.js"]);
+	});
+
+	test("does not return the traced chunks missing from the output", () => {
+		writeFiles(["output/.next/server/chunks/1.js"]);
+
+		expect(getChunks(["chunks/1.js", "chunks/2.js"])).toEqual(["chunks/1.js"]);
 	});
 });

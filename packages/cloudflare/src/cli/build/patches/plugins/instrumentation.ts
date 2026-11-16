@@ -17,8 +17,9 @@ import { normalizePath } from "../../../utils/normalize-path.js";
  *
  * @param updater The content updater applying the patches.
  * @param buildOpts The open-next build options.
- * @param options.loadInstrumentation When `false`, the loaders always resolve to `null` so that the
- * instrumentation hook is never registered by this bundle. Defaults to `true`.
+ * @param options.loadInstrumentation When `false`, the instrumentation hook is never registered by this
+ * bundle: the loaders resolve to `null` and the module registering the hook since Next.js 15.4 is
+ * replaced, see {@link noopInstrumentationGlobals}. Defaults to `true`.
  * @returns An esbuild plugin.
  */
 export function patchInstrumentation(
@@ -37,7 +38,10 @@ export function patchInstrumentation(
 				}
 			),
 			contentFilter: /getInstrumentationModule\(/,
-			callback: ({ contents }) => patchCode(contents, getNext154Rule(builtInstrumentationPath)),
+			callback: ({ contents }) =>
+				loadInstrumentation
+					? patchCode(contents, getNext154Rule(builtInstrumentationPath))
+					: noopInstrumentationGlobals,
 		},
 	]);
 
@@ -62,6 +66,19 @@ export function patchInstrumentation(
 		setup() {},
 	};
 }
+
+/**
+ * Replaces `next/dist/server/lib/router-utils/instrumentation-globals.external.js` when the
+ * instrumentation hook is not registered.
+ *
+ * The exports of the module load, register or call the hook. They are replaced with no-op async
+ * functions so that the dependencies of the module (the tracer, `@opentelemetry/api`, ...) are not
+ * bundled. A Proxy is used because the exports differ between Next.js versions (i.e.
+ * `ensureInstrumentationRegisteredWithDeferredSpans` was added in 16.4). It relies on Next.js
+ * `require`-ing the module and reading the exports it calls, which goes through the `get` trap.
+ * `then` is not defined so that the module is not taken for a thenable.
+ */
+export const noopInstrumentationGlobals = `module.exports = new Proxy({}, { get: (_, name) => (name === "then" ? undefined : async () => {}) });`;
 
 export function getNext154Rule(builtInstrumentationPath: string | null) {
 	return `

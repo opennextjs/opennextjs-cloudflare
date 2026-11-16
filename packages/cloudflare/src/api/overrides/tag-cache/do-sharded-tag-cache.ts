@@ -7,7 +7,7 @@ import { getCloudflareContext } from "../../cloudflare-context.js";
 import type { OpenNextConfig } from "../../config.js";
 import type { TagData } from "../../durable-objects/sharded-tag-cache.js";
 import { DOShardedTagCache } from "../../durable-objects/sharded-tag-cache.js";
-import { debugCache, isPurgeCacheEnabled, purgeCacheByTags } from "../internal.js";
+import { debugCache } from "../internal.js";
 
 type NormalizedTagInput = { tag: string; stale?: number; expire?: number | null };
 type CachedTagValue = { tag: string } & TagData;
@@ -238,11 +238,6 @@ class ShardedDOTagCache implements NextModeTagCache {
 				await this.performWriteTagsWithRetry(doId, shardNormalized);
 			})
 		);
-
-		// TODO: See https://github.com/opennextjs/opennextjs-aws/issues/986
-		if (isPurgeCacheEnabled()) {
-			await purgeCacheByTags(tagStrings);
-		}
 	}
 
 	/**
