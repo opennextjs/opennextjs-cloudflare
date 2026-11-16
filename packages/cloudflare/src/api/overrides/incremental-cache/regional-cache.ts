@@ -3,6 +3,7 @@ import {
 	CacheEntryType,
 	CacheValue,
 	IncrementalCache,
+	TagCacheResult,
 	WithLastModified,
 } from "@opennextjs/aws/types/overrides.js";
 import { compareSemver } from "@opennextjs/aws/utils/semver.js";
@@ -160,7 +161,7 @@ class RegionalCache implements IncrementalCache {
 			if (cachedResponse) {
 				debugCache("RegionalCache", `get ${key} -> cached response`);
 
-				// Defer the lazy update so getTagCacheResult() can decide whether it should happen.
+				// Defer the lazy update so onTagCacheResult() can decide whether it should happen.
 				// If the entry turns out to be stale or revalidated we must not refresh the regional
 				// cache with outdated data.
 				if (this.opts.shouldLazilyUpdateOnCacheHit) {
@@ -181,7 +182,7 @@ class RegionalCache implements IncrementalCache {
 
 			debugCache("RegionalCache", `get ${key} -> put to cache`);
 
-			// Defer storing into the regional cache until getTagCacheResult() confirms the entry
+			// Defer storing into the regional cache until onTagCacheResult() confirms the entry
 			// is neither stale nor revalidated. Storing immediately could propagate stale data.
 			getPendingEntries()?.set(key, {
 				type: "put",
@@ -240,13 +241,8 @@ class RegionalCache implements IncrementalCache {
 		}
 	}
 
-	async getTagCacheResult(params: {
-		key: string;
-		hasBeenRevalidated: boolean;
-		isStaleFromTag: boolean;
-		isStaleFromTime?: boolean;
-	}): Promise<void> {
-		const { key, hasBeenRevalidated, isStaleFromTag, isStaleFromTime } = params;
+	async onTagCacheResult(result: TagCacheResult): Promise<void> {
+		const { key, hasBeenRevalidated, isStaleFromTag, isStaleFromTime } = result;
 
 		const pending = getPendingEntries();
 		const entry = pending?.get(key);
