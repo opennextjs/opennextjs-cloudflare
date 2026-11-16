@@ -467,34 +467,40 @@ class ShardedDOTagCache implements NextModeTagCache {
 
 	/**
 	 * Resolves tag data from the per-request in-memory cache, falling back to
-	 * `#fetchTagDataFromShards` for any misses. Results are stored back so repeated
-	 * calls within the same request avoid duplicate shard fetches.
+	 * `#fetchTagDataFromShards` for any misses.
+	 *
+	 * The pending fetch is cached, not its result, so concurrent calls within the same
+	 * request (e.g. parallel `fetch` cache hits during a render) share one shard read
+	 * instead of each sending their own to the same Durable Object.
 	 */
 	async #resolveTagData(tags: string[]): Promise<Map<string, TagData | null>> {
 		const store = globalThis.__openNextAls?.getStore();
-		const itemsCache = store?.requestCache.getOrCreate<string, TagData | null>("do-sharded:tagItems");
+		const itemsCache = store?.requestCache.getOrCreate<string, Promise<TagData | null>>(
+			"do-sharded:tagItems"
+		);
 
-		const result = new Map<string, TagData | null>();
-		const uncachedTags: string[] = [];
-
-		for (const tag of tags) {
-			if (itemsCache?.has(tag)) {
-				result.set(tag, itemsCache.get(tag) ?? null);
-			} else {
-				uncachedTags.push(tag);
-			}
+		if (!itemsCache) {
+			return this.#fetchTagDataFromShards(tags);
 		}
+
+		const uncachedTags = [...new Set(tags)].filter((tag) => !itemsCache.has(tag));
 
 		if (uncachedTags.length > 0) {
-			const fetched = await this.#fetchTagDataFromShards(uncachedTags);
+			const fetching = this.#fetchTagDataFromShards(uncachedTags);
 			for (const tag of uncachedTags) {
-				const value = fetched.get(tag) ?? null;
-				itemsCache?.set(tag, value);
-				result.set(tag, value);
+				itemsCache.set(
+					tag,
+					fetching.then((fetched) => fetched.get(tag) ?? null)
+				);
 			}
+			// A failed fetch must not be reused for the rest of the request.
+			fetching.catch(() => {
+				for (const tag of uncachedTags) itemsCache.delete(tag);
+			});
 		}
 
-		return result;
+		const values = await Promise.all(tags.map((tag) => itemsCache.get(tag)!));
+		return new Map(tags.map((tag, i) => [tag, values[i] ?? null]));
 	}
 
 	private getDurableObjectStub(doId: DOId) {
