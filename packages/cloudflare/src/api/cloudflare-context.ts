@@ -50,14 +50,13 @@ declare global {
 		NEXT_CACHE_DO_QUEUE?: DurableObjectNamespace<DOQueueHandler>;
 
 		// Below are the optional environment variables to configure the durable object queue
-		// The max number of revalidations that can be processed by the durable worker at the same time
+		// The max number of revalidations that can be processed by the durable object at the same time
 		NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION?: string;
 		// The max time in milliseconds that a revalidation can take before being considered as failed
 		NEXT_CACHE_DO_QUEUE_REVALIDATION_TIMEOUT_MS?: string;
-		// The amount of time after which a revalidation will be attempted again if it failed
-		// If it fails again it will exponentially back off until it reaches the max retry interval
+		// The base interval in milliseconds of the exponential backoff between the retries of a failed revalidation
 		NEXT_CACHE_DO_QUEUE_RETRY_INTERVAL_MS?: string;
-		// The maximum number of attempts that can be made to revalidate a path
+		// The maximum number of times a failed revalidation is retried
 		NEXT_CACHE_DO_QUEUE_MAX_RETRIES?: string;
 		// Disable SQLite for the durable object queue handler
 		// This can be safely used if you don't use an eventually consistent incremental cache (i.e. R2 without the regional cache for example)

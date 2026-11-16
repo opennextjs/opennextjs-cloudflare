@@ -5,6 +5,19 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 export function middleware(request: NextRequest, event: NextFetchEvent) {
 	console.log("middleware");
+	// `request.nextUrl.pathname` is not decoded: `/%61dmin` must be checked as `/admin`.
+	let pathname: string;
+	try {
+		pathname = decodeURIComponent(request.nextUrl.pathname);
+	} catch {
+		return new NextResponse("Bad Request", { status: 400 });
+	}
+	if (pathname.startsWith("/admin")) {
+		return new NextResponse("Authentication required", { status: 401 });
+	}
+	if (request.nextUrl.pathname === "/encoded-m%69ddleware") {
+		return new NextResponse("Middleware matched encoded path");
+	}
 	if (request.nextUrl.pathname === "/about") {
 		return NextResponse.redirect(new URL("/redirected", request.url));
 	}
@@ -34,5 +47,12 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
 }
 
 export const config = {
-	matcher: ["/about/:path*", "/another/:path*", "/middleware/:path*", "/clerk"],
+	matcher: [
+		"/about/:path*",
+		"/another/:path*",
+		"/middleware/:path*",
+		"/encoded-middleware",
+		"/admin/:path*",
+		"/clerk",
+	],
 };

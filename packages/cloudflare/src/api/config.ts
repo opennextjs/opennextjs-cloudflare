@@ -144,7 +144,7 @@ function resolveCdnInvalidation(value: CloudflareOverrides["cachePurge"] = "dumm
 interface OpenNextConfig extends AwsOpenNextConfig {
 	cloudflare?: {
 		/**
-		 * Whether to use the "workerd" build conditions when bundling the server.
+		 * Whether to use the "workerd" build conditions when bundling the server and the Node.js middleware.
 		 * It is recommended to set it to `true` so that code specifically targeted to the
 		 * workerd runtime is bundled.
 		 *

@@ -1,7 +1,7 @@
 {
 	"name": "@opennextjs/cloudflare",
 	"description": "Cloudflare builder for next apps",
-	"version": "1.20.1",
+	"version": "1.20.17",
 	"type": "module",
 	"scripts": {
 		"clean": "rimraf dist",
@@ -52,14 +52,15 @@
 	},
 	"homepage": "https://github.com/opennextjs/opennextjs-cloudflare",
 	"dependencies": {
-		"@ast-grep/napi": "^0.40.5",
+		"@ast-grep/napi": "^0.45.3",
 		"@dotenvx/dotenvx": "catalog:",
-		"@opennextjs/aws": "https://pkg.pr.new/@opennextjs/aws@1193",
+		"@opennextjs/aws": "4.1.16",
 		"ci-info": "^4.2.0",
 		"cloudflare": "^4.4.1",
 		"comment-json": "^4.5.1",
 		"enquirer": "^2.4.1",
 		"glob": "catalog:",
+		"resolve.exports": "^2.0.4",
 		"ts-tqdm": "^0.8.6",
 		"yargs": "catalog:"
 	},
@@ -72,7 +73,7 @@
 		"@types/picomatch": "^4.0.0",
 		"@types/rclone.js": "^0.6.1",
 		"@types/yargs": "catalog:",
-		"diff": "^8.0.2",
+		"diff": "^9.0.0",
 		"esbuild": "catalog:",
 		"eslint": "catalog:",
 		"eslint-plugin-import": "catalog:",
@@ -89,7 +90,7 @@
 		"vitest": "catalog:"
 	},
 	"peerDependencies": {
-		"next": ">=15.5.18 <16 || >=16.2.6",
+		"next": ">=15.5.29 <16 || >=16.4.5",
 		"rclone.js": "^0.6.6",
 		"wrangler": "catalog:"
 	},

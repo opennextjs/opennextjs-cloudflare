@@ -12,13 +12,14 @@ import { OpenNextConfig } from "../../api/config.js";
 import type { ProjectOptions } from "../project-options.js";
 import { ensureNextjsVersionSupported } from "../utils/nextjs-support.js";
 import { bundleServer } from "./bundle-server.js";
-import { compileCacheAssetsManifestSqlFile } from "./open-next/compile-cache-assets-manifest.js";
+import { bundleNodeMiddleware } from "./open-next/bundle-node-middleware.js";
 import { compileEnvFiles } from "./open-next/compile-env-files.js";
 import { compileImages } from "./open-next/compile-images.js";
 import { compileInit } from "./open-next/compile-init.js";
 import { compileSkewProtection } from "./open-next/compile-skew-protection.js";
 import { compileDurableObjects } from "./open-next/compileDurableObjects.js";
 import { createServerBundle } from "./open-next/createServerBundle.js";
+import { ensureAssetsConfig } from "./utils/ensure-assets-config.js";
 import { useNodeMiddleware } from "./utils/middleware.js";
 import { getVersion } from "./utils/version.js";
 
@@ -68,6 +69,7 @@ export async function build(
 			}
 		}
 	}
+	ensureAssetsConfig(wranglerConfig.assets);
 
 	// Clean the output directory before building the Next app.
 	buildHelper.initOutputDir(options);
@@ -81,10 +83,11 @@ export async function build(
 		buildNextjsApp(options);
 	}
 
-	// Make sure no Node.js middleware is used
-	if (useNodeMiddleware(options)) {
-		logger.error("Node.js middleware is not currently supported. Consider switching to Edge Middleware.");
-		process.exit(1);
+	const hasNodeMiddleware = useNodeMiddleware(options);
+	if (hasNodeMiddleware) {
+		logger.warn(
+			"Node.js middleware support is experimental in cloudflare, and not officially maintained by OpenNext maintainers. Use at your own risk."
+		);
 	}
 
 	// Generate deployable bundle
@@ -101,14 +104,14 @@ export async function build(
 	// Compile middleware
 	await createMiddleware(options, { forceOnlyBuildOnce: true });
 
+	if (hasNodeMiddleware) {
+		await bundleNodeMiddleware(options, projectOpts);
+	}
+
 	createStaticAssets(options, { useBasePath: true });
 
 	if (config.dangerous?.disableIncrementalCache !== true) {
-		const { useTagCache, metaFiles } = createCacheAssets(options);
-
-		if (useTagCache) {
-			compileCacheAssetsManifestSqlFile(options, metaFiles);
-		}
+		createCacheAssets(options);
 	}
 
 	await createServerBundle(options);
