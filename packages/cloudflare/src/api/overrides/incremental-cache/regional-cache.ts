@@ -341,8 +341,8 @@ class RegionalCache implements IncrementalCache {
 					"cache-control": `max-age=${age}`,
 					...(tags.length > 0
 						? {
-							"cache-tag": tags.join(","),
-						}
+								"cache-tag": tags.join(","),
+							}
 						: {}),
 				}),
 			})
