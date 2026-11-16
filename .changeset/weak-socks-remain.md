@@ -4,7 +4,7 @@
 
 fix: do not serve stale entries from the regional cache after `revalidateTag`
 
-With the regional cache (`withRegionalCache`) and `bypassTagCacheOnCacheHit`, a page revalidated with `revalidateTag` could keep being served stale until the regional cache entry expired or was purged.
+With the regional cache (`withRegionalCache`) and `bypassTagCacheOnCacheHit` (the default on Next.js < 16 when cache purge is enabled), a page revalidated with `revalidateTag` could keep being served stale until the regional cache entry expired or was purged.
 
 On a regional cache miss, the entry read from the incremental cache store was copied to the Cache API right away, before OpenNext checked the tag cache. A revalidated entry would then be served from the regional cache without the tag cache ever being checked again.
 

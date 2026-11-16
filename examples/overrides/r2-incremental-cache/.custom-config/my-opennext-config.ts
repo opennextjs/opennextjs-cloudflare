@@ -8,7 +8,8 @@ export default defineCloudflareConfig({
 	incrementalCache: withRegionalCache(r2IncrementalCache, {
 		mode: "long-lived",
 		shouldLazilyUpdateOnCacheHit: true,
-		// Required to reproduce https://github.com/opennextjs/opennextjs-cloudflare/issues/1295
+		// `bypassTagCacheOnCacheHit` and `enableCacheInterception` are required to reproduce
+		// https://github.com/opennextjs/opennextjs-cloudflare/issues/1295 (see `e2e/revalidate-tag.spec.ts`)
 		bypassTagCacheOnCacheHit: true,
 	}),
 	tagCache: d1NextTagCache,

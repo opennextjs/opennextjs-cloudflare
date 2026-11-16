@@ -12,7 +12,7 @@ The e2e tests cover:
 
 `e2e/revalidate-tag.spec.ts` revalidates `/revalidate-tag` before the page is in the regional cache. There is no cache purge locally, so once the page is in the regional cache, revalidating it has no effect.
 
-The regional cache uses the Cache API, which wrangler persists in `.wrangler/state/v3/cache`. Its keys contain the build id, so a new build starts with an empty regional cache, but running the tests again on the same build (i.e. with `CI=true` or `SKIP_NEXT_APP_BUILD=true`) would not. That's why `preview:worker` deletes `.wrangler/state/v3/cache` before starting the worker. The D1 and R2 state can be kept: `preview` uploads the prerendered entries to R2 again.
+The regional cache uses the Cache API, which wrangler persists in `.wrangler/state/v3/cache`. Its keys contain the build id, so a new build starts with an empty regional cache, but running the tests again on the same build (e.g. with `CI=true` or `SKIP_NEXT_APP_BUILD=true`) would not. That's why `preview:worker` deletes `.wrangler/state/v3/cache` before starting the worker. The D1 and R2 state can be kept: `preview` uploads the prerendered entries to R2 again.
 
 The test still fails when:
 

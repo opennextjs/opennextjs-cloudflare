@@ -34,6 +34,7 @@ type Options = {
 
 	/**
 	 * Whether the regional cache entry should be updated in the background on regional cache hits.
+	 * The entry is only updated when OpenNext reports it as neither revalidated nor stale.
 	 *
 	 * NOTE: Use the default value unless you know what you are doing. It is set to:
 	 * - Next < 16:
@@ -275,18 +276,14 @@ class RegionalCache implements IncrementalCache {
 
 		const pending = getPendingEntries();
 		const entry = pending?.get(key);
-		if (!entry) return;
+		if (!pending || !entry) return;
 
 		// Consume the entry: only one storage decision per get() call.
-		pending!.delete(key);
+		pending.delete(key);
 
-		// - hasBeenRevalidated: the entry was revalidated on-demand; set() will write the fresh content.
-		//   Storing the old value would serve stale data until the regional cache expires.
-		// - isStaleFromTag: the entry is within an SWR stale window triggered by a tag revalidation.
-		//   Storing it would extend the stale window in the regional cache and break SWR semantics.
-		// - isStaleFromTime: the entry has exceeded its time-based revalidation interval.
-		//   Avoid caching it regionally to prevent serving outdated content longer than intended.
-		//   `undefined` means unknown (only the cache interceptor reports it), the entry is then stored.
+		// Revalidated or stale entries are not stored: they would be served from the regional cache
+		// (possibly without checking the tag cache) until they expire.
+		// `isStaleFromTime` is only reported by the cache interceptor, `undefined` (unknown) entries are stored.
 		if (hasBeenRevalidated || isStaleFromTag || isStaleFromTime) {
 			debugCache(
 				"RegionalCache",

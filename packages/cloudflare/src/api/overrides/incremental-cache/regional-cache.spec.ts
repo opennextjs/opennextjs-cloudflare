@@ -32,7 +32,10 @@ class FakeCache {
 		this.headers.set(FakeCache.normalize(url), response.headers);
 	});
 
-	delete = vi.fn(async (url: string) => this.entries.delete(FakeCache.normalize(url)));
+	delete = vi.fn(async (url: string) => {
+		this.headers.delete(FakeCache.normalize(url));
+		return this.entries.delete(FakeCache.normalize(url));
+	});
 
 	/**
 	 * Returns the URL used to identify a cache entry.
@@ -407,7 +410,7 @@ describe("RegionalCache deferred put", () => {
 			expect(fakeCache.put).toHaveBeenCalledTimes(1);
 		});
 
-		it("stores at most one entry per get when the key is read several times in a request", async () => {
+		it("stores the entry once per get when the key is read several times in a request", async () => {
 			const regionalCache = createRegionalCache();
 
 			// i.e. the cache interceptor falls back to the server which reads the same key again.
@@ -421,9 +424,10 @@ describe("RegionalCache deferred put", () => {
 			expect(fakeCache.entries.size).toBe(1);
 		});
 
-		it("does not store an entry that is revalidated on the second read in a request", async () => {
+		it("keeps one pending entry per key when the key is read twice before onTagCacheResult", async () => {
 			const regionalCache = createRegionalCache();
 
+			// The second read replaces the pending entry of the first one.
 			await regionalCache.get(PAGE_KEY);
 			await regionalCache.get(PAGE_KEY);
 			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, hasBeenRevalidated: true });
