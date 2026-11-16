@@ -34,6 +34,8 @@ export default [
 			"import/first": "error",
 			"import/newline-after-import": "error",
 			"import/no-duplicates": "error",
+			// The published package only installs `dependencies` and `peerDependencies`.
+			"import/no-extraneous-dependencies": ["error", { devDependencies: ["**/*.spec.ts", "**/*.config.*"] }],
 		},
 	},
 	{
