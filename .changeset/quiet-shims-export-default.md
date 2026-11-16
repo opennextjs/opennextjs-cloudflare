@@ -4,9 +4,12 @@
 
 fix: add a default export to the `@next/env` shim
 
-Payload's `dist/bin/loadEnv.js` imports `@next/env` with a default import and destructures
-`loadEnvConfig` off it. The shim only had a named export, so bundling a Payload app failed with
-`No matching export in "cloudflare-templates/shims/env.js" for import "default"`.
+Payload 3.x (`payload/dist/bin/loadEnv.js`) imports `@next/env` with a default import, so bundling a Payload app failed with:
 
-The shim now also exports a default object. `loadEnvConfig` stays a no-op because OpenNext inlines
-the environment values at build time.
+```
+No matching export in ".open-next/cloudflare-templates/shims/env.js" for import "default"
+```
+
+The shim now has a default export, and `loadEnvConfig` returns the same shape as `@next/env` (`{ combinedEnv, parsedEnv, loadedEnvFiles }`) so callers destructuring the result no longer throw.
+
+It still does not load any file: `process.env` is populated at runtime from the Worker bindings and the `.env*` files compiled at build time for the `NEXTJS_ENV` mode.
