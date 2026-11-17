@@ -375,6 +375,22 @@ describe("RegionalCache deferred put", () => {
 			expect(JSON.parse(fakeCache.entries.get(PAGE_URL)!).value).toEqual(createPageValue());
 		});
 
+		it("returns the entry when it can not be stored in the Cache API", async () => {
+			// A tag that is not a valid header value.
+			const value = {
+				...createPageValue(),
+				meta: { status: 200, headers: { "x-next-cache-tags": "a\nb" } },
+			} as CacheValue<"cache">;
+			store.get.mockResolvedValue({ value, lastModified: 1000 });
+			const regionalCache = createRegionalCache();
+
+			expect(await regionalCache.get(PAGE_KEY)).toEqual({ value, lastModified: 1000 });
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+			await flushWaitUntil();
+
+			expect(fakeCache.put).not.toHaveBeenCalled();
+		});
+
 		it("does not store anything outside of a request", async () => {
 			vi.stubGlobal("__openNextAls", undefined);
 			const regionalCache = createRegionalCache();

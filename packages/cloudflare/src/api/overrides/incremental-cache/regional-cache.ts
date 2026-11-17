@@ -73,7 +73,8 @@ interface PutToCacheInput {
 
 type PendingCacheEntry =
 	// Cache miss: the entry read from the store, ready to be stored in the regional cache.
-	| { type: "put"; urlKey: string; response: Response }
+	// `response` is `undefined` when the entry can not be stored in the Cache API.
+	| { type: "put"; urlKey: string; response?: Response }
 	// Cache hit with shouldLazilyUpdateOnCacheHit: needs a fresh fetch from the store before storing,
 	// or is evicted when it has been revalidated or is stale.
 	| { type: "lazy-update"; urlKey: string; cacheType?: CacheEntryType };
@@ -199,7 +200,13 @@ class RegionalCache implements IncrementalCache {
 			// is neither stale nor revalidated. Storing immediately could propagate stale data.
 			// The entry is snapshotted now as the returned value is shared with OpenNext and Next.js.
 			if (urlKey !== null) {
-				const response = this.createCacheResponse(key, { value, lastModified });
+				let response: Response | undefined;
+				try {
+					response = this.createCacheResponse(key, { value, lastModified });
+				} catch (e) {
+					// i.e. a tag that is not a valid header value. The entry is still returned.
+					error(`Failed to prepare the regional cache entry for ${key}`, e);
+				}
 				getPendingEntries()?.set(key, { type: "put", urlKey, response });
 			}
 
@@ -299,7 +306,9 @@ class RegionalCache implements IncrementalCache {
 		const { ctx } = getCloudflareContext();
 
 		if (entry.type === "put") {
-			ctx.waitUntil(cache.put(entry.urlKey, entry.response));
+			if (entry.response) {
+				ctx.waitUntil(cache.put(entry.urlKey, entry.response));
+			}
 		} else {
 			// lazy-update: re-fetch the entry from the store, then refresh the regional cache.
 			ctx.waitUntil(
