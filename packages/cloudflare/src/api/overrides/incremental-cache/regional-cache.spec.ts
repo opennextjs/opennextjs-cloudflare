@@ -552,24 +552,43 @@ describe("RegionalCache deferred put", () => {
 
 				expect(store.get).not.toHaveBeenCalled();
 
-				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, isStaleFromTag: true });
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, hasBeenRevalidated: true });
 
 				expect(fakeCache.delete).toHaveBeenCalledWith(PAGE_URL);
 			});
 
+			// Their staleness is detected again on every read.
+			it.each([{ isStaleFromTag: true }, { isStaleFromTag: false, isStaleFromTime: true }])(
+				"updates a stale regional hit from the store (%o)",
+				async (stale) => {
+					const regionalCache = createRegionalCache({
+						shouldLazilyUpdateOnCacheHit: true,
+						bypassTagCacheOnCacheHit: false,
+					});
+
+					await regionalCache.get(PAGE_KEY);
+					await regionalCache.onTagCacheResult({ key: PAGE_KEY, hasBeenRevalidated: false, ...stale });
+					await flushWaitUntil();
+
+					expect(fakeCache.delete).not.toHaveBeenCalled();
+					expect(store.get).toHaveBeenCalledTimes(1);
+
+					// The next request gets the entry of the store from the Cache API.
+					startRequest();
+					expect((await regionalCache.get(PAGE_KEY))?.lastModified).toBe(1000);
+					expect(store.get).toHaveBeenCalledTimes(1);
+				}
+			);
+
 			// The store may hold a newer entry than the regional copy, i.e. regenerated in another region.
-			it.each([
-				{ hasBeenRevalidated: true, isStaleFromTag: false },
-				{ hasBeenRevalidated: false, isStaleFromTag: true },
-				{ hasBeenRevalidated: false, isStaleFromTag: false, isStaleFromTime: true },
-			])("evicts a regional hit that is revalidated or stale (%o)", async (verdict) => {
+			it("evicts a regional hit that has been revalidated", async () => {
 				const regionalCache = createRegionalCache({
 					shouldLazilyUpdateOnCacheHit: true,
 					bypassTagCacheOnCacheHit: false,
 				});
 
 				await regionalCache.get(PAGE_KEY);
-				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...verdict });
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, hasBeenRevalidated: true });
 				await flushWaitUntil();
 
 				expect(store.get).not.toHaveBeenCalled();

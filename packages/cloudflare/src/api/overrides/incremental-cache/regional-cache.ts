@@ -34,7 +34,7 @@ type Options = {
 
 	/**
 	 * Whether the regional cache entry should be updated in the background on regional cache hits.
-	 * The entry is only updated when OpenNext reports it as neither revalidated nor stale, otherwise it is evicted.
+	 * The entry is evicted instead when OpenNext reports it as revalidated.
 	 *
 	 * NOTE: Use the default value unless you know what you are doing. It is set to:
 	 * - Next < 16:
@@ -78,7 +78,7 @@ type PendingCacheEntry =
 	// `response` is `undefined` when the entry can not be stored in the Cache API.
 	| { type: "put"; urlKey: string; lastModified?: number; response?: Response; overlapping?: boolean }
 	// Cache hit with shouldLazilyUpdateOnCacheHit: needs a fresh fetch from the store before storing,
-	// or is evicted when it has been revalidated or is stale.
+	// or is evicted when it has been revalidated.
 	| {
 			type: "lazy-update";
 			urlKey: string;
@@ -205,9 +205,8 @@ class RegionalCache implements IncrementalCache {
 
 				const responseJson: Record<string, unknown> & { lastModified?: number } = await cachedResponse.json();
 
-				// Defer the lazy update so onTagCacheResult() can decide whether it should happen.
-				// If the entry turns out to be stale or revalidated we must not refresh the regional
-				// cache with outdated data.
+				// Defer the lazy update so onTagCacheResult() can evict the entry instead when it has been
+				// revalidated.
 				// Note: this is only useful when the Cache API is not purged automatically.
 				if (this.opts.shouldLazilyUpdateOnCacheHit) {
 					addPendingEntry(key, {
@@ -297,11 +296,12 @@ class RegionalCache implements IncrementalCache {
 	}
 
 	/**
-	 * Stores the pending entry of `get` in the Cache API when it has not been revalidated and is not stale.
+	 * Stores or updates the regional cache entry of a `get` once the tag cache has been checked.
 	 *
 	 * Called by OpenNext after the tag cache has been checked for an entry returned by `get`.
-	 * A regional cache hit that has been revalidated or is stale is evicted from the Cache API when
-	 * `shouldLazilyUpdateOnCacheHit` is on, so that the next request reads the store.
+	 * An entry read from the store is only stored when it has not been revalidated and is not stale.
+	 * With `shouldLazilyUpdateOnCacheHit`, a regional cache hit is updated from the store, or evicted from the
+	 * Cache API when it has been revalidated so that the next request reads the store.
 	 * Pending entries are consumed, so calling it again or for a key without a pending entry is a no-op.
 	 * Nothing is stored for a key with overlapping reads of different entries in the request (see `addPendingEntry`).
 	 *
@@ -322,20 +322,24 @@ class RegionalCache implements IncrementalCache {
 
 		const cache = await this.getCacheInstance();
 
-		// Revalidated or stale entries are not stored: they would be served from the regional cache
-		// (possibly without checking the tag cache) until they expire.
-		// `isStaleFromTime` is only reported by the cache interceptor, `undefined` (unknown) entries are stored.
-		if (hasBeenRevalidated || isStaleFromTag || isStaleFromTime) {
+		if (entry.type === "lazy-update") {
+			// A revalidated regional hit is evicted: the store may hold a newer entry (i.e. regenerated in another
+			// region) that would otherwise not be read until the regional entry expires.
+			// Awaited so that it can not delete an entry written by `set()` later in the request.
+			// Stale hits are updated as usual: their staleness is detected again on every read.
+			if (hasBeenRevalidated) {
+				debugCache("RegionalCache", `onTagCacheResult ${key} -> evict (revalidated)`);
+				await cache.delete(entry.urlKey);
+				return;
+			}
+		} else if (hasBeenRevalidated || isStaleFromTag || isStaleFromTime) {
+			// Revalidated or stale entries read from the store are not stored: they would be served from the regional
+			// cache (possibly without checking the tag cache) until they expire.
+			// `isStaleFromTime` is only reported by the cache interceptor, `undefined` (unknown) entries are stored.
 			debugCache(
 				"RegionalCache",
 				`onTagCacheResult ${key} -> skip (revalidated: ${hasBeenRevalidated}, stale from tag: ${isStaleFromTag}, stale from time: ${isStaleFromTime})`
 			);
-			// A rejected regional hit is evicted: the store may hold a newer entry (i.e. regenerated in another
-			// region) that would otherwise not be read until the regional entry expires.
-			// Awaited so that it can not delete an entry written by `set()` later in the request.
-			if (entry.type === "lazy-update") {
-				await cache.delete(entry.urlKey);
-			}
 			return;
 		}
 
