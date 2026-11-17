@@ -243,42 +243,29 @@ async function getCloudflareContextAsync<
 }
 
 /**
- * Options accepted by `getPlatformProxy` from `wrangler`.
+ * Options forwarded to `getPlatformProxy` from `wrangler`.
  *
- * This mirrors the `GetPlatformProxyOptions` type exported by `wrangler` (same field names and types), but is declared
- * locally: importing it from `wrangler` leaked wrangler's and miniflare's declaration files into the published `.d.ts`,
- * which do not type-check on their own and broke consumers using `skipLibCheck: false`.
- * See https://github.com/opennextjs/opennextjs-cloudflare/issues/1408
- *
- * TODO: import the type from `wrangler` once its published declarations type-check,
- * see https://github.com/cloudflare/workers-sdk/issues/15940
+ * Mirrors wrangler's `GetPlatformProxyOptions`. Importing it would pull wrangler's declarations into the published
+ * `.d.ts`, and they do not type-check with `skipLibCheck: false` (#1408, cloudflare/workers-sdk#15940).
+ * Import it again once the upstream issue is fixed.
  */
 type GetPlatformProxyOptions = {
-	/** The name of the environment to use */
+	/** Name of the wrangler environment to use */
 	environment?: string;
-	/**
-	 * The path to the config file to use. If not specified, wrangler searches from the current directory
-	 * up the filesystem for a Wrangler configuration file.
-	 */
+	/** Path to the wrangler configuration file, looked up from the current directory by default */
 	configPath?: string;
-	/**
-	 * Paths to `.env` files to load environment variables from, relative to the project directory.
-	 * If `undefined`, wrangler's default `.env` file lookup is used.
-	 */
+	/** `.env` files to load the variables from, relative to the project directory */
 	envFiles?: string[];
-	/**
-	 * Indicates if and where to persist the bindings data. If `true` or not present, wrangler's default location
-	 * (`.wrangler/state/v3`) is used. If `false`, no data is persisted on the filesystem.
-	 */
+	/** Whether and where to persist the bindings data, defaults to `.wrangler/state/v3` */
 	persist?: boolean | { path: string };
-	/** Whether remote bindings should be enabled or not (defaults to `true`) */
+	/** Whether remote bindings are enabled, defaults to `true` */
 	remoteBindings?: boolean;
 };
 
 type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 
 // Fails to compile when the local type drifts from wrangler's.
-// The type-only import is not used by any exported declaration, so it is elided from the published `.d.ts`.
+// The import is only used here, so it is elided from the published `.d.ts`.
 true satisfies Equals<GetPlatformProxyOptions, WranglerGetPlatformProxyOptions>;
 
 /**
