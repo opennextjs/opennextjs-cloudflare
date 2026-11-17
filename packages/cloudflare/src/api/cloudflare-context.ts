@@ -1,6 +1,6 @@
 import type { Context, RunningCodeOptions } from "node:vm";
 
-import type { GetPlatformProxyOptions } from "wrangler";
+import type { GetPlatformProxyOptions as WranglerGetPlatformProxyOptions } from "wrangler";
 
 import type { BucketCachePurge } from "./durable-objects/bucket-cache-purge.js";
 import type { DOQueueHandler } from "./durable-objects/queue.js";
@@ -241,6 +241,32 @@ async function getCloudflareContextAsync<
 
 	throw new Error(initOpenNextCloudflareForDevErrorMsg);
 }
+
+/**
+ * Options forwarded to `getPlatformProxy` from `wrangler`.
+ *
+ * Mirrors wrangler's `GetPlatformProxyOptions`. Importing it would pull wrangler's declarations into the published
+ * `.d.ts`, and they do not type-check with `skipLibCheck: false` (#1408, cloudflare/workers-sdk#15940).
+ * Import it again once the upstream issue is fixed.
+ */
+type GetPlatformProxyOptions = {
+	/** Name of the wrangler environment to use */
+	environment?: string;
+	/** Path to the wrangler configuration file, looked up from the current directory by default */
+	configPath?: string;
+	/** @deprecated Ignored: Next.js loads the `.env*` files itself, so the adapter always passes `[]` to wrangler */
+	envFiles?: string[];
+	/** Whether and where to persist the bindings data, defaults to `.wrangler/state/v3` */
+	persist?: boolean | { path: string };
+	/** Whether remote bindings are enabled, defaults to `true` */
+	remoteBindings?: boolean;
+};
+
+type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+
+// Fails to compile when the local type drifts from wrangler's.
+// The import is only used here, so it is elided from the published `.d.ts`.
+true satisfies Equals<GetPlatformProxyOptions, WranglerGetPlatformProxyOptions>;
 
 /**
  * Performs some initial setup to integrate as best as possible the local Next.js dev server (run via `next dev`)
