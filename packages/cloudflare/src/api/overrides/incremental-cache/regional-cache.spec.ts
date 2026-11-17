@@ -477,20 +477,6 @@ describe("RegionalCache deferred put", () => {
 				expect(fakeCache.headers.get(PAGE_URL)?.get("cache-tag")).toBe(PAGE_TAGS);
 			});
 
-			it("does not update an entry that has been revalidated", async () => {
-				const regionalCache = createRegionalCache({
-					shouldLazilyUpdateOnCacheHit: true,
-					bypassTagCacheOnCacheHit: false,
-				});
-
-				await regionalCache.get(PAGE_KEY);
-				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, hasBeenRevalidated: true });
-				await flushWaitUntil();
-
-				expect(store.get).not.toHaveBeenCalled();
-				expect(fakeCache.put).not.toHaveBeenCalled();
-			});
-
 			// The store may hold a newer entry than the regional copy, i.e. regenerated in another region.
 			it.each([
 				{ hasBeenRevalidated: true, isStaleFromTag: false },
@@ -506,6 +492,8 @@ describe("RegionalCache deferred put", () => {
 				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...verdict });
 				await flushWaitUntil();
 
+				expect(store.get).not.toHaveBeenCalled();
+				expect(fakeCache.put).not.toHaveBeenCalled();
 				expect(fakeCache.delete).toHaveBeenCalledWith(PAGE_URL);
 
 				// The next request reads the store.
