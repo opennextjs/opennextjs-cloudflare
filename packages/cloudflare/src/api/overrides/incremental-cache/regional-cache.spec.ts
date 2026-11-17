@@ -440,18 +440,51 @@ describe("RegionalCache deferred put", () => {
 			expect(fakeCache.entries.size).toBe(1);
 		});
 
-		it("keeps one pending entry per key when the key is read twice before onTagCacheResult", async () => {
+		// i.e. the same `unstable_cache` called from a layout and a page.
+		it("stores a key with overlapping reads of the same entry in a request", async () => {
 			const regionalCache = createRegionalCache();
 
-			// The second read replaces the pending entry of the first one.
 			await regionalCache.get(PAGE_KEY);
 			await regionalCache.get(PAGE_KEY);
-			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, hasBeenRevalidated: true });
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
 			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
 			await flushWaitUntil();
 
-			expect(fakeCache.put).not.toHaveBeenCalled();
+			expect(fakeCache.put).toHaveBeenCalledTimes(1);
 		});
+
+		// The verdicts only have the key: they can not be matched with one of the overlapping reads.
+		it.each([
+			{ order: "fresh, then revalidated", verdicts: [FRESH, { ...FRESH, hasBeenRevalidated: true }] },
+			{ order: "revalidated, then fresh", verdicts: [{ ...FRESH, hasBeenRevalidated: true }, FRESH] },
+		])(
+			"does not store a key with overlapping reads of different entries in a request ($order)",
+			async ({ verdicts }) => {
+				const regionalCache = createRegionalCache();
+				// i.e. the entry is regenerated between the two reads.
+				store.get.mockResolvedValueOnce({ value: createPageValue(), lastModified: 2000 });
+
+				await regionalCache.get(PAGE_KEY);
+				await regionalCache.get(PAGE_KEY);
+				for (const verdict of verdicts) {
+					await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...verdict });
+				}
+				// Nor for a later read in the request.
+				await regionalCache.get(PAGE_KEY);
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+				await flushWaitUntil();
+
+				expect(fakeCache.put).not.toHaveBeenCalled();
+
+				// The next request stores it.
+				startRequest();
+				await regionalCache.get(PAGE_KEY);
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+				await flushWaitUntil();
+
+				expect(fakeCache.put).toHaveBeenCalledTimes(1);
+			}
+		);
 	});
 
 	describe("on a regional cache hit", () => {
@@ -502,6 +535,26 @@ describe("RegionalCache deferred put", () => {
 				expect(fakeCache.delete).not.toHaveBeenCalled();
 				expect(fakeCache.put).toHaveBeenCalledTimes(1);
 				expect(fakeCache.headers.get(PAGE_URL)?.get("cache-tag")).toBe(PAGE_TAGS);
+			});
+
+			it("evicts but does not update a key with overlapping reads of different entries in a request", async () => {
+				const regionalCache = createRegionalCache({
+					shouldLazilyUpdateOnCacheHit: true,
+					bypassTagCacheOnCacheHit: false,
+				});
+
+				await regionalCache.get(PAGE_KEY);
+				// i.e. the regional entry is updated between the two reads.
+				fakeCache.entries.set(PAGE_URL, JSON.stringify({ value: createPageValue(), lastModified: 2000 }));
+				await regionalCache.get(PAGE_KEY);
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+				await flushWaitUntil();
+
+				expect(store.get).not.toHaveBeenCalled();
+
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, isStaleFromTag: true });
+
+				expect(fakeCache.delete).toHaveBeenCalledWith(PAGE_URL);
 			});
 
 			// The store may hold a newer entry than the regional copy, i.e. regenerated in another region.

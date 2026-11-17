@@ -71,13 +71,21 @@ interface PutToCacheInput {
 	entry: IncrementalCacheEntry<CacheEntryType>;
 }
 
+// `lastModified` is the one of the entry that was read.
+// `overlapping` is set when reads of different entries of the key overlapped in the request (see `addPendingEntry`).
 type PendingCacheEntry =
 	// Cache miss: the entry read from the store, ready to be stored in the regional cache.
 	// `response` is `undefined` when the entry can not be stored in the Cache API.
-	| { type: "put"; urlKey: string; response?: Response }
+	| { type: "put"; urlKey: string; lastModified?: number; response?: Response; overlapping?: boolean }
 	// Cache hit with shouldLazilyUpdateOnCacheHit: needs a fresh fetch from the store before storing,
 	// or is evicted when it has been revalidated or is stale.
-	| { type: "lazy-update"; urlKey: string; cacheType?: CacheEntryType };
+	| {
+			type: "lazy-update";
+			urlKey: string;
+			lastModified?: number;
+			cacheType?: CacheEntryType;
+			overlapping?: boolean;
+	  };
 
 /**
  * Returns the pending regional cache entries of the current request.
@@ -91,6 +99,27 @@ function getPendingEntries(): Map<string, PendingCacheEntry> | undefined {
 	return globalThis.__openNextAls
 		?.getStore()
 		?.requestCache.getOrCreate<string, PendingCacheEntry>("regional-cache:pending");
+}
+
+/**
+ * Records the pending entry of a `get` in the current request.
+ *
+ * `onTagCacheResult` only gets the key, so its verdict can not be matched with one of several pending reads of the
+ * key. That is fine when they read the same entry (same `lastModified`): the verdict depends on the entry only.
+ * When they read different entries, the entry is flagged as `overlapping`: the regional cache is then not populated
+ * for the key for the rest of the request.
+ *
+ * Nothing is recorded outside of a request (i.e. no OpenNext ALS store).
+ *
+ * @param key The cache key.
+ * @param entry The pending entry.
+ */
+function addPendingEntry(key: string, entry: PendingCacheEntry): void {
+	const pending = getPendingEntries();
+	if (!pending) return;
+	const prev = pending.get(key);
+	const overlapping = prev !== undefined && (prev.overlapping || prev.lastModified !== entry.lastModified);
+	pending.set(key, overlapping ? { ...entry, overlapping } : entry);
 }
 
 /**
@@ -174,15 +203,20 @@ class RegionalCache implements IncrementalCache {
 			if (urlKey !== null && cachedResponse) {
 				debugCache("RegionalCache", `get ${key} -> cached response`);
 
+				const responseJson: Record<string, unknown> & { lastModified?: number } = await cachedResponse.json();
+
 				// Defer the lazy update so onTagCacheResult() can decide whether it should happen.
 				// If the entry turns out to be stale or revalidated we must not refresh the regional
 				// cache with outdated data.
 				// Note: this is only useful when the Cache API is not purged automatically.
 				if (this.opts.shouldLazilyUpdateOnCacheHit) {
-					getPendingEntries()?.set(key, { type: "lazy-update", urlKey, cacheType });
+					addPendingEntry(key, {
+						type: "lazy-update",
+						urlKey,
+						lastModified: responseJson.lastModified,
+						cacheType,
+					});
 				}
-
-				const responseJson: Record<string, unknown> = await cachedResponse.json();
 
 				return {
 					...responseJson,
@@ -207,7 +241,7 @@ class RegionalCache implements IncrementalCache {
 					// i.e. a tag that is not a valid header value. The entry is still returned.
 					error(`Failed to prepare the regional cache entry for ${key}`, e);
 				}
-				getPendingEntries()?.set(key, { type: "put", urlKey, response });
+				addPendingEntry(key, { type: "put", urlKey, lastModified, response });
 			}
 
 			return { value, lastModified };
@@ -269,6 +303,7 @@ class RegionalCache implements IncrementalCache {
 	 * A regional cache hit that has been revalidated or is stale is evicted from the Cache API when
 	 * `shouldLazilyUpdateOnCacheHit` is on, so that the next request reads the store.
 	 * Pending entries are consumed, so calling it again or for a key without a pending entry is a no-op.
+	 * Nothing is stored for a key with overlapping reads of different entries in the request (see `addPendingEntry`).
 	 *
 	 * @param result The tag cache result for the entry.
 	 */
@@ -280,7 +315,10 @@ class RegionalCache implements IncrementalCache {
 		if (!pending || !entry) return;
 
 		// Consume the entry: only one storage decision per get() call.
-		pending.delete(key);
+		// Overlapping entries are kept so that the later reads of the key in the request are flagged too.
+		if (!entry.overlapping) {
+			pending.delete(key);
+		}
 
 		const cache = await this.getCacheInstance();
 
@@ -298,6 +336,12 @@ class RegionalCache implements IncrementalCache {
 			if (entry.type === "lazy-update") {
 				await cache.delete(entry.urlKey);
 			}
+			return;
+		}
+
+		// The verdict may be about another entry of the key.
+		if (entry.overlapping) {
+			debugCache("RegionalCache", `onTagCacheResult ${key} -> skip (overlapping reads)`);
 			return;
 		}
 
