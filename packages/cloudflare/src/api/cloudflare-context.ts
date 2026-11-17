@@ -254,7 +254,7 @@ type GetPlatformProxyOptions = {
 	environment?: string;
 	/** Path to the wrangler configuration file, looked up from the current directory by default */
 	configPath?: string;
-	/** `.env` files to load the variables from, relative to the project directory */
+	/** @deprecated Ignored: Next.js loads the `.env*` files itself, so the adapter always passes `[]` to wrangler */
 	envFiles?: string[];
 	/** Whether and where to persist the bindings data, defaults to `.wrangler/state/v3` */
 	persist?: boolean | { path: string };
