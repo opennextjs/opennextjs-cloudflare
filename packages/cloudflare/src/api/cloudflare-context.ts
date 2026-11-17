@@ -1,5 +1,7 @@
 import type { Context, RunningCodeOptions } from "node:vm";
 
+import type { GetPlatformProxyOptions as WranglerGetPlatformProxyOptions } from "wrangler";
+
 import type { BucketCachePurge } from "./durable-objects/bucket-cache-purge.js";
 import type { DOQueueHandler } from "./durable-objects/queue.js";
 import type { DOShardedTagCache } from "./durable-objects/sharded-tag-cache.js";
@@ -269,6 +271,12 @@ type GetPlatformProxyOptions = {
 	/** Whether remote bindings should be enabled or not (defaults to `true`) */
 	remoteBindings?: boolean;
 };
+
+type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+
+// Fails to compile when the local type drifts from wrangler's.
+// The type-only import is not used by any exported declaration, so it is elided from the published `.d.ts`.
+true satisfies Equals<GetPlatformProxyOptions, WranglerGetPlatformProxyOptions>;
 
 /**
  * Performs some initial setup to integrate as best as possible the local Next.js dev server (run via `next dev`)
