@@ -456,6 +456,17 @@ describe("RegionalCache deferred put", () => {
 			expect(fakeCache.put).not.toHaveBeenCalled();
 		});
 
+		it("does not evict a stale entry when shouldLazilyUpdateOnCacheHit is false", async () => {
+			const regionalCache = createRegionalCache({ bypassTagCacheOnCacheHit: false });
+
+			await regionalCache.get(PAGE_KEY);
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, isStaleFromTag: true });
+			await flushWaitUntil();
+
+			expect(fakeCache.delete).not.toHaveBeenCalled();
+			expect(fakeCache.entries.has(PAGE_URL)).toBe(true);
+		});
+
 		describe("with shouldLazilyUpdateOnCacheHit", () => {
 			it("defers the lazy update until the entry is reported as fresh", async () => {
 				const regionalCache = createRegionalCache({
