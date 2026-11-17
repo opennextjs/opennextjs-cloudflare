@@ -25,6 +25,9 @@ async function getPage(request: APIRequestContext) {
 // There is no cache purge locally: once the page is in the regional cache, revalidating it has no effect.
 // The regional cache must be empty when the test starts (see the README), and nothing else must request
 // `/revalidate-tag` before it.
+// A retry would run against the regional cache filled by the first attempt, and fail like the bug does.
+test.describe.configure({ retries: 0 });
+
 test.describe("r2-incremental-cache - revalidateTag with the regional cache", () => {
 	test("a page revalidated before it is in the regional cache is not served stale", async ({ request }) => {
 		const revalidatedAt = Date.now();
@@ -35,7 +38,7 @@ test.describe("r2-incremental-cache - revalidateTag with the regional cache", ()
 		const first = await getPage(request);
 		expect(first.renderedAt).toBeGreaterThanOrEqual(revalidatedAt);
 
-		// The regenerated page is stored in the regional cache and served by the cache interceptor.
+		// The regenerated page is served by the cache interceptor, without being regenerated again.
 		const second = await getPage(request);
 		expect(second.renderedAt).toBe(first.renderedAt);
 		expect(second.response.headers()["x-opennext-cache"]).toBe("HIT");
