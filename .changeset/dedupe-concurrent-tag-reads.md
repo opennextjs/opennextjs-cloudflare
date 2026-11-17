@@ -2,8 +2,8 @@
 "@opennextjs/cloudflare": patch
 ---
 
-fix: share concurrent tag reads within a request in the sharded Durable Object tag cache
+perf: read each tag once per request in the sharded Durable Object tag cache
 
-With `doShardedTagCache`, cached page renders could wait about a second on tag cache reads. A render checks the same tags from many cache hits at once, and the per-request memo only stored a tag once its read resolved, so each concurrent check sent its own regional cache lookup and Durable Object read. The reads queued on the same single-threaded shard, which was worst on low-traffic sites where the regional cache had usually expired.
+With `doShardedTagCache`, cached pages could take up to about a second longer to render, mostly on low-traffic sites. Every cached `fetch` or `"use cache"` entry on a page checked its tags separately, so the same tags were read from the Durable Objects many times per render.
 
-Concurrent checks of a tag within a request now share one read, and a failed read is retried by the next check instead of being reused.
+Each tag is now read once per request, which cuts Durable Object reads, and their cost, on pages with many cached entries.
