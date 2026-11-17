@@ -32,7 +32,9 @@ class FakeCache {
 		this.headers.set(FakeCache.normalize(url), response.headers);
 	});
 
+	// Completes on a later macrotask, so that a deletion that is not awaited completes after the next operations.
 	delete = vi.fn(async (url: string) => {
+		await new Promise((resolve) => setTimeout(resolve, 0));
 		this.headers.delete(FakeCache.normalize(url));
 		return this.entries.delete(FakeCache.normalize(url));
 	});
@@ -579,6 +581,21 @@ describe("RegionalCache deferred put", () => {
 					expect(store.get).toHaveBeenCalledTimes(1);
 				}
 			);
+
+			it("evicts a revalidated regional hit before the entry is regenerated", async () => {
+				const regionalCache = createRegionalCache({
+					shouldLazilyUpdateOnCacheHit: true,
+					bypassTagCacheOnCacheHit: false,
+				});
+
+				await regionalCache.get(PAGE_KEY);
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, hasBeenRevalidated: true });
+				// i.e. Next.js regenerates the entry in the same request.
+				await regionalCache.set(PAGE_KEY, createPageValue());
+				await flushWaitUntil();
+
+				expect(fakeCache.entries.has(PAGE_URL)).toBe(true);
+			});
 
 			// The store may hold a newer entry than the regional copy, i.e. regenerated in another region.
 			it("evicts a regional hit that has been revalidated", async () => {
