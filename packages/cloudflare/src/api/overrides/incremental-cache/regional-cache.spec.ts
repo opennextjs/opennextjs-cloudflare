@@ -210,6 +210,7 @@ describe("RegionalCache", () => {
 
 const PAGE_KEY = "/index";
 const PAGE_URL = "http://cache.local/build-id/index.cache";
+const FETCH_URL = "http://cache.local/build-id/index.fetch";
 const PAGE_TAGS = "_N_T_/layout,_N_T_/page,my-tag";
 
 /**
@@ -323,6 +324,17 @@ describe("RegionalCache deferred put", () => {
 				expect(next?.shouldBypassTagCache).toBe(true);
 			}
 		);
+
+		it("stores a fetch entry at its URL", async () => {
+			const regionalCache = createRegionalCache();
+
+			await regionalCache.get(PAGE_KEY, "fetch");
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+			await flushWaitUntil();
+
+			expect(store.get).toHaveBeenCalledWith(PAGE_KEY, "fetch");
+			expect([...fakeCache.entries.keys()]).toEqual([FETCH_URL]);
+		});
 
 		// Regression test for https://github.com/opennextjs/opennextjs-cloudflare/issues/1295
 		it("does not store an entry that has been revalidated", async () => {
@@ -636,6 +648,28 @@ describe("RegionalCache deferred put", () => {
 				startRequest();
 				expect(await regionalCache.get(PAGE_KEY)).toEqual({ value: createPageValue(), lastModified: 1000 });
 				expect(store.get).toHaveBeenCalledTimes(1);
+			});
+
+			it("updates and evicts a fetch entry at its URL", async () => {
+				const regionalCache = createRegionalCache({
+					shouldLazilyUpdateOnCacheHit: true,
+					bypassTagCacheOnCacheHit: false,
+				});
+				await regionalCache.set(PAGE_KEY, createPageValue(), "fetch");
+
+				await regionalCache.get(PAGE_KEY, "fetch");
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+				await flushWaitUntil();
+
+				expect(store.get).toHaveBeenCalledWith(PAGE_KEY, "fetch");
+				expect(JSON.parse(fakeCache.entries.get(FETCH_URL)!).lastModified).toBe(1000);
+
+				await regionalCache.get(PAGE_KEY, "fetch");
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, hasBeenRevalidated: true });
+
+				expect(fakeCache.entries.has(FETCH_URL)).toBe(false);
+				// The page entry of the same key is kept.
+				expect(fakeCache.entries.has(PAGE_URL)).toBe(true);
 			});
 		});
 	});
