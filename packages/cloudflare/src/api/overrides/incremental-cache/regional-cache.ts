@@ -136,10 +136,11 @@ function addPendingEntry(key: string, entry: PendingCacheEntry): void {
  * is out of sync with the cache store (i.e. R2). That's why when cache purge is not enabled the Cache
  * API is refreshed from the cache store on cache hits (for the long-lived mode).
  *
- * Entries read from the store are only stored in the Cache API once OpenNext reports (via `onTagCacheResult`)
+ * Entries read from the store on a miss are only stored in the Cache API once OpenNext reports (via `onTagCacheResult`)
  * that they have not been revalidated and are not stale:
  * - Entries that are stale because of time are only skipped when they are read by the cache interceptor
- *   (`enableCacheInterception`), the only code path that reports `isStaleFromTime`. Otherwise they are stored as before.
+ *   (`enableCacheInterception`), the only code path that reports `isStaleFromTime`.
+ *   Otherwise they are stored as before.
  * - Nothing is stored outside of a request context (no OpenNext ALS store).
  */
 class RegionalCache implements IncrementalCache {
@@ -427,7 +428,7 @@ class RegionalCache implements IncrementalCache {
 	 * @param key The cache key, used as the tag when the entry has none.
 	 * @param entry The entry to store.
 	 * @returns The response to store in the Cache API.
-	 * @throws When a tag of the entry is not a valid header value.
+	 * @throws When the entry can not be serialized or a tag is not a valid header value.
 	 */
 	protected createCacheResponse(key: string, entry: IncrementalCacheEntry<CacheEntryType>): Response {
 		const age =
