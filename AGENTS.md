@@ -98,13 +98,17 @@ A patch that stops matching fails **silently** - the build succeeds and the Work
 
 - **Assert on the built artifact, not just the spec.** `rg -c '<the call you removed>' examples/<app>/.open-next/server-functions/default/**/handler.mjs` should be 0. A green spec only proves the rule matches the fixture you wrote.
 - **Find out what Next actually emits.** The chunks Turbopack/webpack write have sourcemaps with `sourcesContent`, which gives you the original TypeScript of the emitted helper and its module name - far faster than reading minified output:
+
   ```sh
   node -e 'const m=require("./path/to/chunk.js.map");console.log(m.sources);console.log(m.sourcesContent[0])'
   ```
+
 - **Pin the version boundary before writing the matcher**, so you know which shapes you must support:
+
   ```sh
   npm pack next@16.2.12 next@16.3.0   # then untar and diff the emitting template
   ```
+
 - **`patchCode(code) === code` is not a valid "nothing matched" test.** It reparses and re-prints, so whitespace differs and it always reports a change. Use `applyRule(rule, root).edits.length` when the patch has to be a no-op for non-matching files.
 - **`stopBy: end` matches enclosing nodes too.** Two overlapping matches produce overlapping edits in `commitEdits`. Anchor on `field: body` + a direct child when you mean "the innermost function".
 - Match on **shape** (arity, `async`, statement position) when the emitted code is minified - names are gone.
@@ -131,7 +135,7 @@ Format:
 <body explaining the why>
 ```
 
-- `type` is one of `feature | fix | refactor | docs | chore`.
+- `type` is one of `feature | fix | refactor | perf | docs | chore`.
 - Bugfixes and experimental work -> `patch`.
 - New feature -> `minor`.
 - Breaking changes -> `major`.
@@ -150,7 +154,7 @@ chore: bump Next.js to 15.5.24 and 16.3.3
 feat: support Node.js middleware (proxy.ts)
 ```
 
-- PRs are squash-merged and GitHub appends ` (#1234)`; don't add it by hand.
+- PRs are squash-merged and GitHub appends `(#1234)`; don't add it by hand.
 - `Version Packages (#…)` commits are produced by the changesets bot - never write one.
 - Only commit when asked. Stage the changeset with the code (`git add .changeset/*.md`) so the change and its changelog entry land together.
 
