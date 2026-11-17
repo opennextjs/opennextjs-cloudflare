@@ -471,6 +471,11 @@ class ShardedDOTagCache implements NextModeTagCache {
 	 * The pending fetch is cached, not its result, so concurrent calls within the same
 	 * request (e.g. parallel `fetch` cache hits during a render) share one shard read
 	 * instead of each sending their own to the same Durable Object.
+	 *
+	 * @param tags - The tags to resolve, duplicates are read once.
+	 * @returns A map of tag to its TagData, or null when the tag has never been revalidated.
+	 * @throws When the shard read fails. The failed read is evicted from the request cache
+	 *   so the next call retries it.
 	 */
 	async #resolveTagData(tags: string[]): Promise<Map<string, TagData | null>> {
 		const store = globalThis.__openNextAls?.getStore();
@@ -495,11 +500,16 @@ class ShardedDOTagCache implements NextModeTagCache {
 				);
 			}
 			// A failed fetch must not be reused for the rest of the request.
+			// This reaction is queued with the per-tag ones above, so the tags are evicted before
+			// any caller awaiting them sees the rejection and a later call can retry.
 			fetching.catch(() => {
 				for (const tag of uncachedTags) itemsCache.delete(tag);
 			});
 		}
 
+		// Every tag is in the cache at this point: either pending from an earlier call or set above.
+		// Awaiting each per-tag promise created above also keeps a failed fetch from surfacing as an
+		// unhandled rejection.
 		const values = await Promise.all(uniqueTags.map((tag) => itemsCache.get(tag)!));
 		return new Map(uniqueTags.map((tag, i) => [tag, values[i] ?? null]));
 	}
