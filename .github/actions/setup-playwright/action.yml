@@ -1,5 +1,9 @@
 name: "Setup Playwright"
 description: "Setup Playwright with caching"
+inputs:
+  browsers:
+    description: Space separated list of browsers to install (i.e. "chromium"). Installs all browsers when empty.
+    default: ""
 
 runs:
   using: "composite"
@@ -14,14 +18,14 @@ runs:
       uses: actions/cache@v5
       with:
         path: ${{ runner.os == 'Windows' && format('{0}{1}', env.HOME, '\AppData\Local\ms-playwright') || runner.os == 'Linux' && '~/.cache/ms-playwright' || '~/Library/Caches/ms-playwright' }}
-        key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+        key: playwright-${{ runner.os }}-${{ inputs.browsers || 'all' }}-${{ hashFiles('pnpm-lock.yaml') }}
 
     - name: Install Playwright with dependencies
       if: steps.playwright-cache.outputs.cache-hit != 'true'
       shell: bash
-      run: pnpm playwright install --with-deps
+      run: pnpm playwright install --with-deps ${{ inputs.browsers }}
 
     - name: Install Playwright's dependencies
       if: steps.playwright-cache.outputs.cache-hit == 'true'
       shell: bash
-      run: pnpm playwright install-deps
+      run: pnpm playwright install-deps ${{ inputs.browsers }}

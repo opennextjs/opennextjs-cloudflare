@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LocalPattern } from "./images.js";
 import {
 	detectImageContentType,
+	handleCdnCgiImageRequest,
 	handleImageRequest,
+	isCdnCgiImageRequest,
 	matchLocalPattern,
 	matchRemotePattern as mRP,
 	parseCdnCgiImageRequest,
@@ -433,6 +435,73 @@ describe("matchLocalPattern", () => {
 	});
 });
 
+describe("isCdnCgiImageRequest", () => {
+	/**
+	 * Calls `isCdnCgiImageRequest` the same way the worker does.
+	 *
+	 * @param url The request URL.
+	 * @param headers The request headers.
+	 * @returns Whether the request is served by the /cdn-cgi/image/ handler.
+	 */
+	function isServed(url: string, headers?: HeadersInit): boolean {
+		const request = new Request(url, { headers });
+		return isCdnCgiImageRequest(new URL(request.url), request.headers);
+	}
+
+	it.each([
+		"https://example.com/cdn-cgi/image/width=640/image.png",
+		"http://localhost:8787/cdn-cgi/image/width=640,quality=75/https://images.example.com/image.png",
+	])("serves %s", (url) => {
+		expect(isServed(url)).toBe(true);
+	});
+
+	it.each([
+		"https://example.com/",
+		"https://example.com/_next/image?url=%2Fimage.png&w=640&q=75",
+		"https://example.com/cdn-cgi/imagex/width=640/image.png",
+		"https://example.com/page/cdn-cgi/image/width=640/image.png",
+	])("does not serve %s", (url) => {
+		expect(isServed(url)).toBe(false);
+	});
+
+	describe("revalidation requests sent through WORKER_SELF_REFERENCE", () => {
+		const attackURL = "https://example.com/cdn-cgi/image/w=100/https://evil.example.com/secret";
+
+		it("does not serve `res.revalidate()` requests", () => {
+			// Headers sent by Next for `res.revalidate()` (`revalidateHeaders`)
+			expect(isServed(attackURL, { "x-prerender-revalidate": "preview-mode-id" })).toBe(false);
+			expect(
+				isServed(attackURL, {
+					"x-prerender-revalidate": "preview-mode-id",
+					"x-prerender-revalidate-if-generated": "1",
+					cookie: "a=b",
+				})
+			).toBe(false);
+		});
+
+		it("does not serve queue revalidation requests", () => {
+			// Headers sent by the DO queue and the memory queue
+			expect(isServed(attackURL, { "x-prerender-revalidate": "preview-mode-id", "x-isr": "1" })).toBe(false);
+		});
+
+		it("does not serve revalidation requests regardless of the header value or case", () => {
+			expect(isServed(attackURL, { "x-prerender-revalidate": "" })).toBe(false);
+			expect(isServed(attackURL, { "X-Prerender-Revalidate": "preview-mode-id" })).toBe(false);
+		});
+
+		it.each([
+			"https://example.com/cdn-cgi\\image/w=100/https://evil.example.com/secret",
+			"https://example.com/page/../cdn-cgi/image/w=100/https://evil.example.com/secret",
+			"https://example.com/./cdn-cgi/image/w=100/https://evil.example.com/secret",
+		])("does not serve normalized paths: %s", (url) => {
+			// The URL is normalized to `/cdn-cgi/image/...` as when the worker routes the request
+			expect(new URL(url).pathname.startsWith("/cdn-cgi/image/")).toBe(true);
+			expect(isServed(url)).toBe(true);
+			expect(isServed(url, { "x-prerender-revalidate": "preview-mode-id" })).toBe(false);
+		});
+	});
+});
+
 describe("parseCdnCgiImageRequest", () => {
 	it("should parse a valid local image request", () => {
 		const result = parseCdnCgiImageRequest(
@@ -523,16 +592,75 @@ describe("detectImageContentType", () => {
 
 	it("should detect AVIF", () => {
 		const buffer = new Uint8Array(32);
-		const avifHeader = [0x00, 0x00, 0x00, 0x00, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66];
-		// Bytes at positions 0-3 are wildcards (any non-zero matches), fill with typical values
-		buffer[0] = 0x00;
-		buffer[1] = 0x00;
-		buffer[2] = 0x00;
-		buffer[3] = 0x1c; // non-zero (file size prefix); the detection uses !b to skip zero bytes
-		avifHeader.forEach((b, i) => {
-			if (b !== 0) buffer[i] = b;
-		});
+		// Bytes 0-3 are the big-endian size of the ftyp box (0x1c)
+		const avifHeader = [0x00, 0x00, 0x00, 0x1c, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66];
+		avifHeader.forEach((b, i) => (buffer[i] = b));
 		expect(detectImageContentType(buffer)).toBe("image/avif");
+	});
+
+	it("should detect AVIF from a real header", () => {
+		// First 32 bytes of next.js test/unit/image-optimizer/images/test.avif
+		const buffer = new Uint8Array([
+			0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66, 0x00, 0x00, 0x00, 0x00, 0x61,
+			0x76, 0x69, 0x66, 0x6d, 0x69, 0x66, 0x31, 0x6d, 0x69, 0x61, 0x66, 0x4d, 0x41, 0x31, 0x42,
+		]);
+		expect(detectImageContentType(buffer)).toBe("image/avif");
+	});
+
+	it("should detect HEIC from a real header", () => {
+		// First 32 bytes of next.js test/unit/image-optimizer/images/test.heic
+		const buffer = new Uint8Array([
+			0x00, 0x00, 0x00, 0x24, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63, 0x00, 0x00, 0x00, 0x00, 0x6d,
+			0x69, 0x66, 0x31, 0x4d, 0x69, 0x50, 0x72, 0x6d, 0x69, 0x61, 0x66, 0x4d, 0x69, 0x48, 0x42,
+		]);
+		expect(detectImageContentType(buffer)).toBe("image/heic");
+	});
+
+	it("should not return avif or heic for svg prefixed with an ftyp-looking comment", () => {
+		// The comment places "ftypavif"/"ftypheic" at byte offset 4 where the
+		// ISOBMFF signature looks for it. The prefixed box size is not plausible
+		// so the buffer must not be detected as AVIF/HEIC.
+		const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"></svg>`;
+		for (const brand of ["avif", "heic"]) {
+			const buffer = new TextEncoder().encode(`<!--ftyp${brand}-->\n${svg}`).slice(0, 32);
+			expect(detectImageContentType(buffer)).toBeNull();
+		}
+	});
+
+	it.each([
+		["zero", 0x00000000],
+		["too small", 0x0000000f],
+		["too large", 0x00001001],
+	])("should not detect AVIF or HEIC when the ftyp box size is %s", (_, boxSize) => {
+		for (const brand of ["avif", "heic"]) {
+			const buffer = new Uint8Array(32);
+			new DataView(buffer.buffer).setUint32(0, boxSize);
+			buffer.set(new TextEncoder().encode(`ftyp${brand}`), 4);
+			expect(detectImageContentType(buffer)).toBeNull();
+		}
+	});
+
+	it.each([
+		["minimum", 0x00000010],
+		["maximum", 0x00001000],
+	])("should detect AVIF and HEIC when the ftyp box size is the %s", (_, boxSize) => {
+		for (const brand of ["avif", "heic"]) {
+			const buffer = new Uint8Array(32);
+			new DataView(buffer.buffer).setUint32(0, boxSize);
+			buffer.set(new TextEncoder().encode(`ftyp${brand}`), 4);
+			expect(detectImageContentType(buffer)).toBe(`image/${brand}`);
+		}
+	});
+
+	it("should not detect AVIF or HEIC when the buffer is too short", () => {
+		const buffer = new Uint8Array([0x00, 0x00, 0x00, 0x10, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69]);
+		expect(detectImageContentType(buffer)).toBeNull();
+	});
+
+	it("should detect AVIF from a subarray", () => {
+		const buffer = new Uint8Array(40);
+		buffer.set([0x00, 0x00, 0x00, 0x1c, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66], 8);
+		expect(detectImageContentType(buffer.subarray(8))).toBe("image/avif");
 	});
 
 	it("should detect ICO", () => {
@@ -659,5 +787,110 @@ describe("handleImageRequest", () => {
 
 		expect(output).toHaveBeenCalledWith({ quality: 75, format: "image/gif" });
 		expect(response.headers.get("Content-Type")).toBe("image/webp");
+	});
+
+	// Port of next.js test/e2e/app-dir/avif-svg-signature-confusion
+	describe("avif-svg-signature-confusion", () => {
+		/**
+		 * Returns the first bytes of the UTF-8 encoding of a text, as used by `createEnv()`.
+		 *
+		 * @param text The text to encode.
+		 * @returns The first 32 bytes of the encoded text.
+		 */
+		function textHeader(text: string): number[] {
+			return Array.from(new TextEncoder().encode(text).slice(0, 32));
+		}
+
+		// An ordinary SVG document, served with no trick prefix.
+		const CONTROL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+  <rect width="100" height="100" fill="red"/>
+</svg>
+`;
+
+		// A valid SVG document that begins with the HTML comment `<!--ftypavif-->`.
+		// The byte sequence "ftypavif" lands at byte offset 4, which is exactly where
+		// the AVIF magic-byte signature looks for it.
+		const EVIL_AVIF_SVG = `<!--ftypavif-->
+${CONTROL_SVG}`;
+
+		const EVIL_HEIC_SVG = `<!--ftypheic-->
+${CONTROL_SVG}`;
+
+		const AVIF_HEADER = [0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66];
+
+		beforeEach(() => {
+			vi.stubGlobal("__IMAGES_ALLOW_SVG__", false);
+		});
+
+		it("rejects an ordinary SVG when dangerouslyAllowSVG is false", async () => {
+			const { env, output } = createEnv(textHeader(CONTROL_SVG), "image/webp");
+
+			const response = await handleImageRequest(requestURL, new Headers({ Accept: "image/webp" }), env);
+
+			expect(response.status).toBe(400);
+			expect(await response.text()).toContain("image type is not allowed");
+			expect(output).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			["<!--ftypavif-->", EVIL_AVIF_SVG],
+			["<!--ftypheic-->", EVIL_HEIC_SVG],
+		])("rejects an SVG prefixed with %s", async (_, svg) => {
+			const { env, output } = createEnv(textHeader(svg), "image/webp");
+
+			const response = await handleImageRequest(requestURL, new Headers({ Accept: "image/webp" }), env);
+
+			expect(response.status).toBe(400);
+			expect(await response.text()).toContain("image type is not allowed");
+			expect(output).not.toHaveBeenCalled();
+		});
+
+		it("rejects an SVG prefixed with <!--ftypavif--> when the IMAGES binding is not defined", async () => {
+			const { env } = createEnv(textHeader(EVIL_AVIF_SVG), "image/webp");
+			delete (env as { IMAGES?: unknown }).IMAGES;
+
+			const response = await handleImageRequest(requestURL, new Headers({ Accept: "image/webp" }), env);
+
+			expect(response.status).toBe(400);
+			expect(await response.text()).toContain("image type is not allowed");
+		});
+
+		it("rejects an SVG prefixed with <!--ftypavif--> when dangerouslyAllowSVG is true", async () => {
+			// The content is not detected as SVG nor AVIF.
+			vi.stubGlobal("__IMAGES_ALLOW_SVG__", true);
+			const { env, output } = createEnv(textHeader(EVIL_AVIF_SVG), "image/webp");
+
+			const response = await handleImageRequest(requestURL, new Headers({ Accept: "image/webp" }), env);
+
+			expect(response.status).toBe(400);
+			expect(await response.text()).toContain("image type is not allowed");
+			expect(output).not.toHaveBeenCalled();
+		});
+
+		it("still optimizes an AVIF image", async () => {
+			const { env, output } = createEnv(AVIF_HEADER, "image/webp");
+
+			const response = await handleImageRequest(requestURL, new Headers({ Accept: "image/webp" }), env);
+
+			expect(response.status).toBe(200);
+			expect(output).toHaveBeenCalledWith({ quality: 75, format: "image/webp" });
+			expect(response.headers.get("Content-Type")).toBe("image/webp");
+		});
+
+		it.each([
+			["an ordinary SVG", CONTROL_SVG],
+			["an SVG prefixed with <!--ftypheic-->", EVIL_HEIC_SVG],
+		])("rejects %s on /cdn-cgi/image/ when dangerouslyAllowSVG is false", async (_, svg) => {
+			// Note: HEIC is a supported input format for /cdn-cgi/image/, AVIF is not.
+			const { env } = createEnv(textHeader(svg), "image/webp");
+
+			const response = await handleCdnCgiImageRequest(
+				new URL("https://example.com/cdn-cgi/image/width=640/image.png"),
+				env
+			);
+
+			expect(response.status).toBe(400);
+			expect(await response.text()).toContain("image type is not allowed");
+		});
 	});
 });

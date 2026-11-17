@@ -120,6 +120,28 @@ fix: |-
 `;
 
 /**
+ * Extract the module specifier from the target of a dangling Turbopack external symlink.
+ *
+ * Live links are imported by their hashed id (see {@link discoverExternalModuleMappings}). This is
+ * the fallback for links whose target does not exist in `.open-next`: the specifier is taken from the
+ * part of the path after the **last** `node_modules` segment, so that esbuild has a chance to resolve
+ * it from the application tree:
+ * - npm/yarn: `../../node_modules/shiki` -> `shiki`
+ * - pnpm: `../../../../node_modules/.pnpm/pg@8.23.1/node_modules/pg` -> `pg`
+ * - pnpm, scoped: `.../node_modules/.pnpm/@scope+name@1.0.0/node_modules/@scope/name` -> `@scope/name`
+ *
+ * Both `/` and `\` separators are accepted (`readlink` returns the latter on Windows), as well as
+ * absolute targets and a trailing separator.
+ *
+ * @param target The target of the symlink, as returned by `readlink`.
+ * @returns The module specifier, or `undefined` when the target is not inside a `node_modules` folder.
+ */
+export function packageNameFromSymlinkTarget(target: string): string | undefined {
+	// The greedy prefix matches up to the last `node_modules/`.
+	return normalizePath(target).match(/^(?:.*\/)?node_modules\/(.+?)\/?$/)?.[1];
+}
+
+/**
  * Discover Turbopack external module mappings by reading symlinks in .next/node_modules/.
  *
  * Turbopack externalizes packages listed in serverExternalPackages and creates hashed
@@ -129,11 +151,22 @@ fix: |-
  * statically analyze those hashed names. This function discovers the mappings so we can
  * generate explicit switch cases for the bundler.
  *
+ * Live links are mapped to their hashed id: the link is copied verbatim into `.open-next` and
+ * resolves there, so esbuild follows it and applies the package `exports` (with the `workerd`
+ * condition) to the exact version Turbopack linked - which is also what Node.js does at runtime.
+ * A bare package name would only resolve for direct dependencies of the app (pnpm keeps
+ * transitive packages in `node_modules/.pnpm/<pkg>@<version>/node_modules/<pkg>`), and a path
+ * into `.pnpm` would bypass `exports` altogether (#1409).
+ *
+ * Dangling links are mapped to the package name extracted from their target, see
+ * {@link packageNameFromSymlinkTarget}.
+ *
  * @param filePath Absolute path to the Turbopack runtime file being patched
  *                 (e.g. `/abs/path/to/.open-next/server-functions/default/.../.next/server/chunks/ssr/[turbopack]_runtime.js`).
  *                 This must be the actual file in `.open-next/` (not `buildOptions.appBuildOutputPath`)
  *                 because the `.next/node_modules/` symlinks are in the traced copy, not the original.
- * @returns A map from hashed identifiers to real package names (e.g. "shiki-43d062b67f27bbdc" -> "shiki").
+ * @returns A map from hashed identifiers to the specifiers to import
+ *          (e.g. "shiki-43d062b67f27bbdc" -> "shiki-43d062b67f27bbdc").
  */
 function discoverExternalModuleMappings(filePath: string): Map<string, string> {
 	// filePath is like: .../.next/server/chunks/ssr/[turbopack]_runtime.js
@@ -151,11 +184,12 @@ function discoverExternalModuleMappings(filePath: string): Map<string, string> {
 		try {
 			if (entry.isSymbolicLink()) {
 				const entryPath = path.join(nodeModulesDir, entry.name);
-				const target = fs.readlinkSync(entryPath);
-				// target is like "../../node_modules/shiki" — extract package name
-				const match = target.match(/node_modules\/(.+)$/);
-				if (match?.[1]) {
-					mappings.set(entry.name, match[1]);
+				// `existsSync` follows the link: it is `false` when the link is dangling.
+				const specifier = fs.existsSync(entryPath)
+					? entry.name
+					: packageNameFromSymlinkTarget(fs.readlinkSync(entryPath));
+				if (specifier) {
+					mappings.set(entry.name, specifier);
 				}
 			}
 		} catch {
@@ -168,7 +202,8 @@ function discoverExternalModuleMappings(filePath: string): Map<string, string> {
 
 /**
  * Build a dynamic inlineExternalImportRule that includes cases for all discovered
- * Turbopack external module hashes, mapping them back to their real package names.
+ * Turbopack external module hashes, mapping them to the specifiers to import
+ * (see {@link discoverExternalModuleMappings}).
  *
  * We use a switch for exact matches (including bare + subpath cases) and a fallback
  * for the default case. Since switch/case can only match exact strings, we enumerate
@@ -279,7 +314,8 @@ function discoverBareExternalImports(tracedFiles: string[], runtimeCode: string)
 
 /**
  * Scan traced chunk files for external module subpath imports.
- * E.g. find "shiki-43d062b67f27bbdc/wasm" in chunk code and map it to "shiki/wasm".
+ * E.g. find "shiki-43d062b67f27bbdc/wasm" in chunk code and map it to the subpath of the mapped
+ * specifier: "shiki-43d062b67f27bbdc/wasm" for a live link, "shiki/wasm" for a dangling one.
  *
  * Only scans files with "[externals]" in the name since those are the chunks that
  * contain externalImport calls.

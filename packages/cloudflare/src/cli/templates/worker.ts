@@ -1,5 +1,5 @@
 //@ts-expect-error: Will be resolved by wrangler build
-import { handleCdnCgiImageRequest, handleImageRequest } from "./cloudflare/images.js";
+import { handleCdnCgiImageRequest, handleImageRequest, isCdnCgiImageRequest } from "./cloudflare/images.js";
 //@ts-expect-error: Will be resolved by wrangler build
 import { runWithCloudflareRequestContext } from "./cloudflare/init.js";
 //@ts-expect-error: Will be resolved by wrangler build
@@ -25,8 +25,7 @@ export default {
 			const url = new URL(request.url);
 
 			// Serve images in development.
-			// Note: "/cdn-cgi/image/..." requests do not reach production workers.
-			if (url.pathname.startsWith("/cdn-cgi/image/")) {
+			if (isCdnCgiImageRequest(url, request.headers)) {
 				return handleCdnCgiImageRequest(url, env);
 			}
 
