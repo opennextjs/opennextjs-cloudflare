@@ -153,7 +153,7 @@ To help maintain consistency in the changelog, changesets should have the follow
 [BREAKING CHANGES <BREAKING_CHANGE_NOTES>]
 ```
 
-- `TYPE` should be a single word describing the "type" of the change. For example, one of `feature`, `fix`, `refactor`, `docs` or `chore`.
+- `TYPE` should be a single word describing the "type" of the change. For example, one of `feature`, `fix`, `refactor`, `perf`, `docs` or `chore`.
 - `TITLE` should be a single sentence containing an imperative description of the change.
 - `BODY` should be one or more paragraphs that go into more detail about the reason for the change and anything notable about the approach taken.
 - `BREAKING_CHANGE_NOTES` (optional) should be one or more paragraphs describing how this change breaks current usage and how to migrate to the new usage.

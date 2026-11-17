@@ -20,13 +20,14 @@
 	"types": "./dist/api/index.d.ts",
 	"exports": {
 		".": {
-			"import": "./dist/api/index.js",
 			"types": "./dist/api/index.d.ts",
+			"import": "./dist/api/index.js",
 			"default": "./dist/api/index.js"
 		},
+		"./package.json": "./package.json",
 		"./*": {
-			"import": "./dist/api/*.js",
 			"types": "./dist/api/*.d.ts",
+			"import": "./dist/api/*.js",
 			"default": "./dist/api/*.js"
 		}
 	},
@@ -59,6 +60,7 @@
 		"cloudflare": "^4.4.1",
 		"comment-json": "^4.5.1",
 		"enquirer": "^2.4.1",
+		"esbuild": "catalog:",
 		"glob": "catalog:",
 		"resolve.exports": "^2.0.4",
 		"ts-tqdm": "^0.8.6",
@@ -74,7 +76,6 @@
 		"@types/rclone.js": "^0.6.1",
 		"@types/yargs": "catalog:",
 		"diff": "^9.0.0",
-		"esbuild": "catalog:",
 		"eslint": "catalog:",
 		"eslint-plugin-import": "catalog:",
 		"eslint-plugin-simple-import-sort": "catalog:",
