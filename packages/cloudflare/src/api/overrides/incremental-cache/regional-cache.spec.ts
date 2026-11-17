@@ -487,6 +487,24 @@ describe("RegionalCache deferred put", () => {
 				expect(fakeCache.put).toHaveBeenCalledTimes(1);
 			}
 		);
+
+		// Hits without shouldLazilyUpdateOnCacheHit are only recorded to detect overlapping reads.
+		it("does not store a key with an overlapping hit of a different entry in a request", async () => {
+			const regionalCache = createRegionalCache();
+
+			// The miss reads an old entry from the store.
+			await regionalCache.get(PAGE_KEY);
+			// i.e. another request regenerates the entry between the two reads.
+			fakeCache.entries.set(PAGE_URL, JSON.stringify({ value: createPageValue(), lastModified: 2000 }));
+			expect((await regionalCache.get(PAGE_KEY))?.shouldBypassTagCache).toBe(true);
+			// The verdict of the hit, which is not checked against the tag cache, comes first.
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, hasBeenRevalidated: true });
+			await flushWaitUntil();
+
+			expect(fakeCache.put).not.toHaveBeenCalled();
+			expect(JSON.parse(fakeCache.entries.get(PAGE_URL)!).lastModified).toBe(2000);
+		});
 	});
 
 	describe("on a regional cache hit", () => {

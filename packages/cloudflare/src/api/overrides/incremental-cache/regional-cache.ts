@@ -85,7 +85,9 @@ type PendingCacheEntry =
 			lastModified?: number;
 			cacheType?: CacheEntryType;
 			overlapping?: boolean;
-	  };
+	  }
+	// Cache hit without shouldLazilyUpdateOnCacheHit: nothing to store, only recorded to detect overlapping reads.
+	| { type: "hit"; lastModified?: number; overlapping?: boolean };
 
 /**
  * Returns the pending regional cache entries of the current request.
@@ -207,16 +209,15 @@ class RegionalCache implements IncrementalCache {
 				const responseJson: Record<string, unknown> & { lastModified?: number } = await cachedResponse.json();
 
 				// Defer the lazy update so onTagCacheResult() can evict the entry instead when it has been
-				// revalidated.
-				// Note: this is only useful when the Cache API is not purged automatically.
-				if (this.opts.shouldLazilyUpdateOnCacheHit) {
-					addPendingEntry(key, {
-						type: "lazy-update",
-						urlKey,
-						lastModified: responseJson.lastModified,
-						cacheType,
-					});
-				}
+				// revalidated. Hits without lazy update are recorded too, to detect overlapping reads.
+				// Note: the lazy update is only useful when the Cache API is not purged automatically.
+				const { lastModified } = responseJson;
+				addPendingEntry(
+					key,
+					this.opts.shouldLazilyUpdateOnCacheHit
+						? { type: "lazy-update", urlKey, lastModified, cacheType }
+						: { type: "hit", lastModified }
+				);
 
 				return {
 					...responseJson,
@@ -321,6 +322,8 @@ class RegionalCache implements IncrementalCache {
 		if (!entry.overlapping) {
 			pending.delete(key);
 		}
+
+		if (entry.type === "hit") return;
 
 		const cache = await this.getCacheInstance();
 
