@@ -71,18 +71,9 @@ interface PutToCacheInput {
 	entry: IncrementalCacheEntry<CacheEntryType>;
 }
 
-/**
- * What is written to the Cache API for an entry.
- */
-interface PreparedCacheEntry {
-	urlKey: string;
-	body: string;
-	headers: Record<string, string>;
-}
-
 type PendingCacheEntry =
 	// Cache miss: the entry read from the store, ready to be stored in the regional cache.
-	| { type: "put"; prepared: PreparedCacheEntry }
+	| { type: "put"; urlKey: string; response: Response }
 	// Cache hit with shouldLazilyUpdateOnCacheHit: needs a fresh fetch from the store before storing,
 	// or is evicted when it has been revalidated or is stale.
 	| { type: "lazy-update"; urlKey: string; cacheType?: CacheEntryType };
@@ -207,9 +198,9 @@ class RegionalCache implements IncrementalCache {
 			// Defer storing into the regional cache until onTagCacheResult() confirms the entry
 			// is neither stale nor revalidated. Storing immediately could propagate stale data.
 			// The entry is snapshotted now as the returned value is shared with OpenNext and Next.js.
-			const prepared = this.prepareCacheEntry({ key, cacheType, entry: { value, lastModified } });
-			if (prepared) {
-				getPendingEntries()?.set(key, { type: "put", prepared });
+			if (urlKey !== null) {
+				const response = this.createCacheResponse(key, { value, lastModified });
+				getPendingEntries()?.set(key, { type: "put", urlKey, response });
 			}
 
 			return { value, lastModified };
@@ -284,6 +275,8 @@ class RegionalCache implements IncrementalCache {
 		// Consume the entry: only one storage decision per get() call.
 		pending.delete(key);
 
+		const cache = await this.getCacheInstance();
+
 		// Revalidated or stale entries are not stored: they would be served from the regional cache
 		// (possibly without checking the tag cache) until they expire.
 		// `isStaleFromTime` is only reported by the cache interceptor, `undefined` (unknown) entries are stored.
@@ -296,7 +289,6 @@ class RegionalCache implements IncrementalCache {
 			// region) that would otherwise not be read until the regional entry expires.
 			// Awaited so that it can not delete an entry written by `set()` later in the request.
 			if (entry.type === "lazy-update") {
-				const cache = await this.getCacheInstance();
 				await cache.delete(entry.urlKey);
 			}
 			return;
@@ -307,7 +299,7 @@ class RegionalCache implements IncrementalCache {
 		const { ctx } = getCloudflareContext();
 
 		if (entry.type === "put") {
-			ctx.waitUntil(this.writeToCache(entry.prepared));
+			ctx.waitUntil(cache.put(entry.urlKey, entry.response));
 		} else {
 			// lazy-update: re-fetch the entry from the store, then refresh the regional cache.
 			ctx.waitUntil(
@@ -355,28 +347,26 @@ class RegionalCache implements IncrementalCache {
 	 *
 	 * @param input The key, type and entry to store.
 	 */
-	protected async putToCache(input: PutToCacheInput): Promise<void> {
-		const prepared = this.prepareCacheEntry(input);
-		if (prepared) {
-			await this.writeToCache(prepared);
-		}
-	}
-
-	/**
-	 * Computes what is written to the Cache API for an entry.
-	 *
-	 * The entry is serialized synchronously so that later changes to the value do not affect what is stored.
-	 *
-	 * @param input The key, type and entry to store.
-	 * @returns The entry to write, or `null` when the key has no Cache API URL (see `getCacheUrlKey`).
-	 */
-	protected prepareCacheEntry({ key, cacheType, entry }: PutToCacheInput): PreparedCacheEntry | null {
+	protected async putToCache({ key, cacheType, entry }: PutToCacheInput): Promise<void> {
 		const urlKey = this.getCacheUrlKey(key, cacheType);
 		if (urlKey === null) {
 			debugCache("RegionalCache", `invalid key ${key}`);
-			return null;
+			return;
 		}
+		const cache = await this.getCacheInstance();
+		await cache.put(urlKey, this.createCacheResponse(key, entry));
+	}
 
+	/**
+	 * Returns the Cache API response for an entry.
+	 *
+	 * The entry is serialized synchronously so that later changes to the value do not affect what is stored.
+	 *
+	 * @param key The cache key, used as the tag when the entry has none.
+	 * @param entry The entry to store.
+	 * @returns The response to store in the Cache API.
+	 */
+	protected createCacheResponse(key: string, entry: IncrementalCacheEntry<CacheEntryType>): Response {
 		const age =
 			this.opts.mode === "short-lived"
 				? ONE_MINUTE_IN_SECONDS
@@ -386,28 +376,16 @@ class RegionalCache implements IncrementalCache {
 		// so that we can also revalidate page router based entry this way.
 		const tags = getTagsFromCacheEntry(entry) ?? [key];
 
-		return {
-			urlKey,
-			body: JSON.stringify(entry),
-			headers: {
+		return new Response(JSON.stringify(entry), {
+			headers: new Headers({
 				"cache-control": `max-age=${age}`,
 				...(tags.length > 0
 					? {
 							"cache-tag": tags.join(","),
 						}
 					: {}),
-			},
-		};
-	}
-
-	/**
-	 * Writes a prepared entry to the Cache API.
-	 *
-	 * @param prepared The entry to write (see `prepareCacheEntry`).
-	 */
-	protected async writeToCache({ urlKey, body, headers }: PreparedCacheEntry): Promise<void> {
-		const cache = await this.getCacheInstance();
-		await cache.put(urlKey, new Response(body, { headers: new Headers(headers) }));
+			}),
+		});
 	}
 }
 
