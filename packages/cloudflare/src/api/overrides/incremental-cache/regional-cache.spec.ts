@@ -608,6 +608,8 @@ describe("RegionalCache deferred put", () => {
 
 				await regionalCache.get(PAGE_KEY);
 				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, hasBeenRevalidated: true });
+				// The eviction has completed when OpenNext gets control back.
+				expect(fakeCache.entries.has(PAGE_URL)).toBe(false);
 				// i.e. Next.js regenerates the entry in the same request.
 				await regionalCache.set(PAGE_KEY, createPageValue());
 				await flushWaitUntil();
