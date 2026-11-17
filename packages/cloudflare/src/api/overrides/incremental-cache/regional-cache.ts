@@ -34,7 +34,7 @@ type Options = {
 
 	/**
 	 * Whether the regional cache entry should be updated in the background on regional cache hits.
-	 * The entry is only updated when OpenNext reports it as neither revalidated nor stale.
+	 * The entry is only updated when OpenNext reports it as neither revalidated nor stale, otherwise it is evicted.
 	 *
 	 * NOTE: Use the default value unless you know what you are doing. It is set to:
 	 * - Next < 16:
@@ -83,8 +83,9 @@ interface PreparedCacheEntry {
 type PendingCacheEntry =
 	// Cache miss: the entry read from the store, ready to be stored in the regional cache.
 	| { type: "put"; prepared: PreparedCacheEntry }
-	// Cache hit with shouldLazilyUpdateOnCacheHit: needs a fresh fetch from the store before storing.
-	| { type: "lazy-update"; cacheType?: CacheEntryType };
+	// Cache hit with shouldLazilyUpdateOnCacheHit: needs a fresh fetch from the store before storing,
+	// or is evicted when it has been revalidated or is stale.
+	| { type: "lazy-update"; urlKey: string; cacheType?: CacheEntryType };
 
 /**
  * Returns the pending regional cache entries of the current request.
@@ -178,7 +179,7 @@ class RegionalCache implements IncrementalCache {
 			// Keys without a Cache API URL are only read from the store.
 			const cachedResponse = urlKey === null ? undefined : await cache.match(urlKey);
 
-			if (cachedResponse) {
+			if (urlKey !== null && cachedResponse) {
 				debugCache("RegionalCache", `get ${key} -> cached response`);
 
 				// Defer the lazy update so onTagCacheResult() can decide whether it should happen.
@@ -186,7 +187,7 @@ class RegionalCache implements IncrementalCache {
 				// cache with outdated data.
 				// Note: this is only useful when the Cache API is not purged automatically.
 				if (this.opts.shouldLazilyUpdateOnCacheHit) {
-					getPendingEntries()?.set(key, { type: "lazy-update", cacheType });
+					getPendingEntries()?.set(key, { type: "lazy-update", urlKey, cacheType });
 				}
 
 				const responseJson: Record<string, unknown> = await cachedResponse.json();
@@ -267,6 +268,8 @@ class RegionalCache implements IncrementalCache {
 	 * Stores the pending entry of `get` in the Cache API when it has not been revalidated and is not stale.
 	 *
 	 * Called by OpenNext after the tag cache has been checked for an entry returned by `get`.
+	 * A regional cache hit that has been revalidated or is stale is evicted from the Cache API when
+	 * `shouldLazilyUpdateOnCacheHit` is on, so that the next request reads the store.
 	 * Pending entries are consumed, so calling it again or for a key without a pending entry is a no-op.
 	 *
 	 * @param result The tag cache result for the entry.
@@ -289,6 +292,13 @@ class RegionalCache implements IncrementalCache {
 				"RegionalCache",
 				`onTagCacheResult ${key} -> skip (revalidated: ${hasBeenRevalidated}, stale from tag: ${isStaleFromTag}, stale from time: ${isStaleFromTime})`
 			);
+			// A rejected regional hit is evicted: the store may hold a newer entry (i.e. regenerated in another
+			// region) that would otherwise not be read until the regional entry expires.
+			// Awaited so that it can not delete an entry written by `set()` later in the request.
+			if (entry.type === "lazy-update") {
+				const cache = await this.getCacheInstance();
+				await cache.delete(entry.urlKey);
+			}
 			return;
 		}
 

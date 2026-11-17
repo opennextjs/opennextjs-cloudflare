@@ -472,6 +472,7 @@ describe("RegionalCache deferred put", () => {
 				await flushWaitUntil();
 
 				expect(store.get).toHaveBeenCalledWith(PAGE_KEY, undefined);
+				expect(fakeCache.delete).not.toHaveBeenCalled();
 				expect(fakeCache.put).toHaveBeenCalledTimes(1);
 				expect(fakeCache.headers.get(PAGE_URL)?.get("cache-tag")).toBe(PAGE_TAGS);
 			});
@@ -488,6 +489,29 @@ describe("RegionalCache deferred put", () => {
 
 				expect(store.get).not.toHaveBeenCalled();
 				expect(fakeCache.put).not.toHaveBeenCalled();
+			});
+
+			// The store may hold a newer entry than the regional copy, i.e. regenerated in another region.
+			it.each([
+				{ hasBeenRevalidated: true, isStaleFromTag: false },
+				{ hasBeenRevalidated: false, isStaleFromTag: true },
+				{ hasBeenRevalidated: false, isStaleFromTag: false, isStaleFromTime: true },
+			])("evicts a regional hit that is revalidated or stale (%o)", async (verdict) => {
+				const regionalCache = createRegionalCache({
+					shouldLazilyUpdateOnCacheHit: true,
+					bypassTagCacheOnCacheHit: false,
+				});
+
+				await regionalCache.get(PAGE_KEY);
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...verdict });
+				await flushWaitUntil();
+
+				expect(fakeCache.delete).toHaveBeenCalledWith(PAGE_URL);
+
+				// The next request reads the store.
+				startRequest();
+				expect(await regionalCache.get(PAGE_KEY)).toEqual({ value: createPageValue(), lastModified: 1000 });
+				expect(store.get).toHaveBeenCalledTimes(1);
 			});
 		});
 	});
