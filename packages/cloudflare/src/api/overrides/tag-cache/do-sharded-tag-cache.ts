@@ -137,9 +137,8 @@ class ShardedDOTagCache implements NextModeTagCache {
 		if (isDisabled || tags.length === 0) {
 			return 0;
 		}
-		const deduplicatedTags = Array.from(new Set(tags)); // We deduplicate the tags to avoid unnecessary requests
 		try {
-			const tagData = await this.#resolveTagData(deduplicatedTags);
+			const tagData = await this.#resolveTagData(tags);
 			const timeMs = Math.max(
 				0,
 				...[...tagData.values()].filter((d): d is TagData => d != null).map((d) => d.revalidatedAt)
@@ -479,11 +478,13 @@ class ShardedDOTagCache implements NextModeTagCache {
 			"do-sharded:tagItems"
 		);
 
+		const uniqueTags = [...new Set(tags)];
+
 		if (!itemsCache) {
-			return this.#fetchTagDataFromShards(tags);
+			return this.#fetchTagDataFromShards(uniqueTags);
 		}
 
-		const uncachedTags = [...new Set(tags)].filter((tag) => !itemsCache.has(tag));
+		const uncachedTags = uniqueTags.filter((tag) => !itemsCache.has(tag));
 
 		if (uncachedTags.length > 0) {
 			const fetching = this.#fetchTagDataFromShards(uncachedTags);
@@ -499,8 +500,8 @@ class ShardedDOTagCache implements NextModeTagCache {
 			});
 		}
 
-		const values = await Promise.all(tags.map((tag) => itemsCache.get(tag)!));
-		return new Map(tags.map((tag, i) => [tag, values[i] ?? null]));
+		const values = await Promise.all(uniqueTags.map((tag) => itemsCache.get(tag)!));
+		return new Map(uniqueTags.map((tag, i) => [tag, values[i] ?? null]));
 	}
 
 	private getDurableObjectStub(doId: DOId) {

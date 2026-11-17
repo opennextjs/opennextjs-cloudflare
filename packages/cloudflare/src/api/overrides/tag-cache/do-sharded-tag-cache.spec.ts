@@ -307,6 +307,17 @@ describe("DOShardedTagCache", () => {
 			expect(idFromNameMock).toHaveBeenCalledTimes(2);
 			expect(getTagDataMock).toHaveBeenCalledTimes(2);
 		});
+
+		it("should read duplicate tags once without a request store", async () => {
+			const cache = shardedDOTagCache();
+			cache.getFromRegionalCache = vi.fn().mockResolvedValueOnce([]);
+			getTagDataMock.mockResolvedValueOnce({});
+			const result = await cache.hasBeenRevalidated(["tag1", "tag1"], 123456);
+			expect(result).toBe(false);
+			expect(cache.getFromRegionalCache).toHaveBeenCalledWith(expect.objectContaining({ tags: ["tag1"] }));
+			expect(getTagDataMock).toHaveBeenCalledTimes(1);
+			expect(getTagDataMock).toHaveBeenCalledWith(["tag1"]);
+		});
 	});
 
 	describe("isStale", () => {
