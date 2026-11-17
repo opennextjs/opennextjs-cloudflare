@@ -431,7 +431,7 @@ describe("RegionalCache deferred put", () => {
 		it("stores the entry once per get when the key is read several times in a request", async () => {
 			const regionalCache = createRegionalCache();
 
-			// i.e. the cache interceptor falls back to the server which reads the same key again.
+			// i.e. the same `unstable_cache` called twice in a row in a request.
 			await regionalCache.get(PAGE_KEY);
 			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
 			await regionalCache.get(PAGE_KEY);

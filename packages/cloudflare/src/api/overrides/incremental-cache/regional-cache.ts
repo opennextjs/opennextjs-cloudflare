@@ -136,8 +136,8 @@ function addPendingEntry(key: string, entry: PendingCacheEntry): void {
  *
  * Entries read from the store are only stored in the Cache API once OpenNext reports (via `onTagCacheResult`)
  * that they have not been revalidated and are not stale:
- * - Entries that are stale because of time are only skipped when `enableCacheInterception` is on, because that
- *   is the only code path that reports `isStaleFromTime`. Otherwise they are stored as before.
+ * - Entries that are stale because of time are only skipped when they are read by the cache interceptor
+ *   (`enableCacheInterception`), the only code path that reports `isStaleFromTime`. Otherwise they are stored as before.
  * - Nothing is stored outside of a request context (no OpenNext ALS store).
  */
 class RegionalCache implements IncrementalCache {
@@ -183,6 +183,7 @@ class RegionalCache implements IncrementalCache {
 	 * Reads a cache entry from the Cache API, or from the store on a miss.
 	 *
 	 * Keys without a Cache API URL (see `getCacheUrlKey`) are only read from the store.
+	 * The regional cache is only updated once OpenNext has checked the tag cache (see `onTagCacheResult`).
 	 *
 	 * @param key The cache key.
 	 * @param cacheType The type of the cache entry.
@@ -303,7 +304,8 @@ class RegionalCache implements IncrementalCache {
 	 * With `shouldLazilyUpdateOnCacheHit`, a regional cache hit is updated from the store, or evicted from the
 	 * Cache API when it has been revalidated so that the next request reads the store.
 	 * Pending entries are consumed, so calling it again or for a key without a pending entry is a no-op.
-	 * Nothing is stored for a key with overlapping reads of different entries in the request (see `addPendingEntry`).
+	 * The exception is overlapping reads of different entries (see `addPendingEntry`): their pending entry is kept and
+	 * nothing is stored for the key for the rest of the request.
 	 *
 	 * @param result The tag cache result for the entry.
 	 */
@@ -422,6 +424,7 @@ class RegionalCache implements IncrementalCache {
 	 * @param key The cache key, used as the tag when the entry has none.
 	 * @param entry The entry to store.
 	 * @returns The response to store in the Cache API.
+	 * @throws When a tag of the entry is not a valid header value.
 	 */
 	protected createCacheResponse(key: string, entry: IncrementalCacheEntry<CacheEntryType>): Response {
 		const age =
