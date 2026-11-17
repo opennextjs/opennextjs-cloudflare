@@ -432,6 +432,35 @@ describe("DOShardedTagCache", () => {
 			expect(getTagDataMock).toHaveBeenNthCalledWith(2, ["tag2"]);
 		});
 
+		it("should reuse a resolved read for later lookups in the same request", async () => {
+			const cache = shardedDOTagCache();
+			cache.getFromRegionalCache = vi.fn().mockResolvedValue([]);
+			getTagDataMock.mockResolvedValueOnce({ tag1: { revalidatedAt: 2000, stale: null, expire: null } });
+
+			expect(await cache.getLastRevalidated(["tag1"])).toBe(2000);
+			expect(await cache.hasBeenRevalidated(["tag1"], 1000)).toBe(true);
+			expect(cache.getFromRegionalCache).toHaveBeenCalledTimes(1);
+			expect(getTagDataMock).toHaveBeenCalledTimes(1);
+		});
+
+		it("should fail every concurrent lookup sharing a failed read and retry on the next one", async () => {
+			const cache = shardedDOTagCache();
+			cache.getFromRegionalCache = vi.fn().mockResolvedValue([]);
+			getTagDataMock
+				.mockRejectedValueOnce(new Error("error"))
+				.mockResolvedValueOnce({ tag1: { revalidatedAt: 2000, stale: null, expire: null } });
+
+			const results = await Promise.all([
+				cache.getLastRevalidated(["tag1"]),
+				cache.hasBeenRevalidated(["tag1"], 1000),
+			]);
+
+			expect(results).toEqual([0, false]);
+			expect(getTagDataMock).toHaveBeenCalledTimes(1);
+			expect(await cache.hasBeenRevalidated(["tag1"], 1000)).toBe(true);
+			expect(getTagDataMock).toHaveBeenCalledTimes(2);
+		});
+
 		it("should not reuse a failed read", async () => {
 			const cache = shardedDOTagCache();
 			cache.getFromRegionalCache = vi.fn().mockResolvedValue([]);
