@@ -3221,7 +3221,7 @@ packages:
     resolution: {integrity: sha512-ifLaO34EbbPj0Xgro4G5lP5asESjwHracYJvVaPIyXMuiuXLlhic3S47cBdTb+jfODkTE5YtGCLt3Ay3+J97sA==}
 
   '@opennextjs/aws@https://pkg.pr.new/@opennextjs/aws@1193':
-    resolution: {integrity: sha512-PMIFbdWfupY6KnADuCSVgpvk1aQJ8OixebAfT8UvkFrm3cjP5iAwSdpq1jlA/k7yhPAtTFX0Ry8JdjAKq9kyWw==, tarball: https://pkg.pr.new/@opennextjs/aws@1193}
+    resolution: {integrity: sha512-GwLv8QCQgbZvJY4HOzDeIlnUpbEl0SyMrJGsGuiOwffWnkolpOpO70O2/A4Lq4n0jqE7BRK/f1UhKXl1ZTFfCQ==, tarball: https://pkg.pr.new/@opennextjs/aws@1193}
     version: 4.1.16
     hasBin: true
     peerDependencies:
