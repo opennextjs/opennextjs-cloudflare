@@ -249,6 +249,9 @@ async function getCloudflareContextAsync<
  * locally: importing it from `wrangler` leaked wrangler's and miniflare's declaration files into the published `.d.ts`,
  * which do not type-check on their own and broke consumers using `skipLibCheck: false`.
  * See https://github.com/opennextjs/opennextjs-cloudflare/issues/1408
+ *
+ * TODO: import the type from `wrangler` once its published declarations type-check,
+ * see https://github.com/cloudflare/workers-sdk/issues/15940
  */
 type GetPlatformProxyOptions = {
 	/** The name of the environment to use */
