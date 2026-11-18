@@ -94,6 +94,28 @@ test.describe("Cache Components staged rendering", () => {
 		expect(new Set(renders).size).toEqual(renders.length);
 	});
 
+	test("a Worker service binding stays dynamic across prefetch and document requests", async ({
+		request,
+	}) => {
+		const path = `/service-binding/cold-${Date.now()}`;
+		const bindingValue = async () => {
+			const document = await request.get(path);
+			expect(document.status()).toEqual(200);
+			const html = await document.text();
+			expect(html).toContain("</html>");
+			expect(html).toContain("Cached service binding shell");
+			const values = [...new Set(html.match(/service-binding-value-\d+/g))];
+			expect(values).toHaveLength(1);
+			return values[0];
+		};
+
+		const firstValue = await bindingValue();
+		const prefetch = await runtimePrefetch(request, path, "binding-test");
+		expect(prefetch).toContain("Cached service binding shell");
+		expect(prefetch).not.toContain("service-binding-value-");
+		expect(await bindingValue()).not.toEqual(firstValue);
+	});
+
 	test("a client navigation shows the request content without a document reload", async ({ page }) => {
 		const session = `session-${Date.now()}`;
 		await page.setExtraHTTPHeaders({ "x-session": session });

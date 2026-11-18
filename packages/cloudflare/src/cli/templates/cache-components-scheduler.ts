@@ -1,24 +1,12 @@
 /**
- * Next.js runs the stages of a Cache Components render as timers of a single Node.js timers phase,
- * and runs the immediates of a stage from `process.nextTick`. No I/O completes between two stages,
- * so a stage holds exactly the work that was ready when it started, and Next.js treats the rest as
- * uncached data.
+ * Next.js uses one Node.js timers phase to keep native I/O between render stages out of Cache
+ * Components output. workerd can deliver I/O between timers, so this runner advances all stages in
+ * one workerd task. It drains the render's ticks, promise reactions and immediates before advancing.
  *
- * workerd delivers I/O between any two timers, and its `process.nextTick` is a microtask, which
- * cannot tell when a task has ended.
- *
- * This runner keeps the stages of a render in one task: it runs the ticks and the immediates of the
- * render from its own queues and does not return to the event loop before the last stage has
- * settled, so no I/O is delivered to the render in between.
- *
- * A stage has settled when the microtask queue is empty and both queues are. workerd reports an
- * empty microtask queue through the `unhandledrejection` event, which it dispatches at the end of
- * the microtask checkpoint, within the task. The runner rejects a promise to get the event, and the
- * listener in `init.ts` reports it back. That needs the
- * `unhandled_rejection_after_microtask_checkpoint` compatibility flag, on by default from the
- * `2026-03-03` compatibility date, and workerd runs at most 64 extra checkpoints per task. Without
- * the flag or past that budget the runner waits for microtasks that schedule nothing instead. That
- * can end a stage early, which makes cached content dynamic. It never makes uncached data static.
+ * With `unhandled_rejection_after_microtask_checkpoint`, workerd dispatches promise rejection events
+ * after draining the microtask queue. The listener in `init.ts` forwards the runner's own events.
+ * Without the flag or after the checkpoint budget runs out, a bounded microtask wait can advance the
+ * stage early. The runner still completes its stages before returning to the event loop.
  *
  * See https://github.com/cloudflare/workerd/issues/7687
  */
@@ -35,10 +23,16 @@ type AnyCallback = (...args: unknown[]) => void;
 /** A callback of the render that the runner calls before the native immediate does. */
 type CapturedImmediate = { run: Task | null; native: NodeJS.Immediate | null };
 
-type StageGroup = { requestContext: unknown; ticks: Task[]; immediates: CapturedImmediate[] };
+type StageGroup = {
+	requestContext: unknown;
+	ticks: Task[];
+	immediates: CapturedImmediate[];
+	checkpoints: number;
+	pendingCheckpoint?: { signal: Promise<unknown>; resolve: Task; reject: (error: Error) => void };
+};
 
 /** Set by `init.ts` when it listens for the checkpoint rejections. */
-type CheckpointHub = { onCheckpoint?: () => void };
+type CheckpointHub = { onCheckpoint?: (signal: Promise<unknown>) => void };
 
 type NextOriginals = { setImmediate: unknown; clearImmediate: unknown; nextTick: unknown };
 
@@ -54,9 +48,6 @@ const NEARBY_MICROTASKS = 64;
 
 // The microtasks without activity that end a stage when there is no checkpoint to wait for.
 const QUIET_MICROTASKS = 1024;
-
-// Long enough to tell a checkpoint from a microtask.
-const PROBE_MICROTASKS = 8;
 
 const MISSING_CHECKPOINT =
 	"The render was stopped because workerd did not dispatch the `unhandledrejection` event that ends a Cache Components render stage.";
@@ -83,10 +74,6 @@ const nativeNextTick = process.nextTick;
 let activeGroup: StageGroup | null = null;
 
 const capturedImmediates = new WeakMap<object, CapturedImmediate>();
-
-let pendingCheckpoint: { resolve: Task; reject: (error: Error) => void } | null = null;
-let checkpointsInTask = 0;
-let checkpointSupport: Promise<boolean> | undefined;
 
 /**
  * The group that owns the current task. A group stays set when workerd ends its request in the
@@ -216,20 +203,23 @@ function runTask(task: Task): void {
 }
 
 const checkpointHub = globals[CHECKPOINT];
+let checkpointAvailable = checkpointHub !== undefined;
 if (checkpointHub) {
-	checkpointHub.onCheckpoint = () => {
-		const pending = pendingCheckpoint;
-		pendingCheckpoint = null;
-		pending?.resolve();
+	checkpointHub.onCheckpoint = (signal) => {
+		const group = capturingGroup();
+		const pending = group?.pendingCheckpoint;
+		if (group && pending?.signal === signal) {
+			group.pendingCheckpoint = undefined;
+			pending.resolve();
+		}
 	};
 }
 
 /** Resolves when the microtask queue is empty, before the task ends. */
-function microtaskCheckpoint(): Promise<void> {
+function microtaskCheckpoint(group: StageGroup): Promise<void> {
 	return new Promise((resolve, reject) => {
-		pendingCheckpoint = { resolve, reject };
-		checkpointsInTask++;
-		void Promise.reject(CHECKPOINT);
+		group.pendingCheckpoint = { signal: Promise.reject(CHECKPOINT), resolve, reject };
+		group.checkpoints++;
 	});
 }
 
@@ -241,121 +231,93 @@ async function waitMicrotasks(count: number, isDone?: () => boolean): Promise<bo
 	return false;
 }
 
-/** Without the compatibility flag the event is dispatched from a microtask, ahead of the reactions. */
-function hasMicrotaskCheckpoint(): Promise<boolean> {
-	checkpointSupport ??=
-		checkpointHub !== undefined
-			? (async () => {
-					let reactionsRan = false;
-					void waitMicrotasks(PROBE_MICROTASKS).then(() => (reactionsRan = true));
-					const atCheckpoint = microtaskCheckpoint().then(() => reactionsRan);
-					const atNextTask = new Promise<boolean>((resolve) => nativeSetImmediate(() => resolve(false)));
-					return Promise.race([atCheckpoint, atNextTask]);
-				})()
-			: Promise.resolve(false);
-	return checkpointSupport;
-}
-
 /**
- * Resolves at the end of the current stage: no tick, no promise reaction and no immediate is left.
- *
- * It follows the order of a Node.js task: the ticks that the task scheduled, then the promise
- * reactions, then the ticks that the reactions scheduled, and so on until both are done. The next
- * immediate is the next task.
+ * Run ticks, then let promise reactions run. Repeat if the reactions schedule ticks. Each immediate
+ * starts a new round. When workerd can report a checkpoint, the runner can skip polling the queues.
  */
 async function settle(group: StageGroup, hasCheckpoint: boolean): Promise<void> {
-	const hasWork = () => group.ticks.length > 0 || hasImmediate(group);
-
-	// Waits for the microtask queue to be empty, or for long enough that it is likely to be.
-	const drain = async (isDone?: () => boolean) => {
-		if (hasCheckpoint && checkpointsInTask < MAX_CHECKPOINTS_PER_TASK) {
-			await microtaskCheckpoint();
-		} else {
-			await waitMicrotasks(QUIET_MICROTASKS, isDone);
-		}
-	};
+	const hasTicks = () => group.ticks.length > 0;
 
 	for (;;) {
 		runTicks(group);
+		const hasPendingImmediate = hasImmediate(group);
+		const limit = hasPendingImmediate ? TASK_SEPARATION_CHECKPOINTS : MAX_CHECKPOINTS_PER_TASK;
 
-		if (!hasImmediate(group)) {
-			// Look for what the reactions schedule before paying for a checkpoint.
-			const found = await waitMicrotasks(NEARBY_MICROTASKS, hasWork);
-			if (found && group.ticks.length === 0) continue;
-			await drain(found ? undefined : hasWork);
-			if (!hasWork()) return;
-			continue;
+		if (hasCheckpoint && group.checkpoints < limit) {
+			await microtaskCheckpoint(group);
+		} else if (!hasPendingImmediate) {
+			if (await waitMicrotasks(QUIET_MICROTASKS, () => !hasTicks() && hasImmediate(group))) continue;
+		} else if (await waitMicrotasks(NEARBY_MICROTASKS, hasTicks)) {
+			// Reserve the remaining checkpoints for ticks and stage boundaries.
+			if (hasCheckpoint && group.checkpoints < MAX_CHECKPOINTS_PER_TASK) {
+				await microtaskCheckpoint(group);
+			} else {
+				await waitMicrotasks(QUIET_MICROTASKS);
+			}
 		}
 
-		if (hasCheckpoint && checkpointsInTask < TASK_SEPARATION_CHECKPOINTS) {
-			await microtaskCheckpoint();
-		} else {
-			// The order of the immediates within a stage matters less than the end of the stage.
-			await waitMicrotasks(NEARBY_MICROTASKS, () => group.ticks.length > 0);
-			if (group.ticks.length > 0) await drain();
-		}
-		if (group.ticks.length === 0) runNextImmediate(group);
+		if (hasTicks()) continue;
+		if (!hasImmediate(group)) return;
+		runNextImmediate(group);
 	}
 }
 
 async function runStages<T>(
-	stages: Array<() => unknown>,
+	first: () => T,
+	rest: Array<() => void>,
 	group: StageGroup,
-	runInContext: <R>(run: () => R) => R,
-	hasCheckpoint: boolean
+	runInContext: <R>(run: () => R) => R
 ): Promise<T> {
+	// A queued render can start before the previous render's end-of-task watchdog.
+	if (activeGroup?.pendingCheckpoint) checkpointAvailable = false;
 	activeGroup = group;
-	// A request that workerd ended in the middle of a stage leaves its state behind.
-	pendingCheckpoint = null;
-	checkpointsInTask = 0;
-
-	// workerd stops dispatching `unhandledrejection` once a listener of the app has rejected a promise
-	// during a dispatch. The task then ends while a stage waits, and I/O can reach the render. The
-	// render fails rather than cache that data, and the next ones do not wait for a checkpoint.
-	const taskEnded = nativeSetImmediate(() => {
-		if (activeGroup !== group) return;
-		checkpointSupport = Promise.resolve(false);
-		pendingCheckpoint?.reject(new Error(MISSING_CHECKPOINT));
-		pendingCheckpoint = null;
-	});
+	const hasCheckpoint = checkpointAvailable;
+	// An application rejection listener can prevent workerd from dispatching later checkpoints.
+	// If the task ends while the runner waits, reject the staged result before any stage advances.
+	const taskEnded = hasCheckpoint
+		? nativeSetImmediate(() => {
+				const pending = group.pendingCheckpoint;
+				if (!pending) return;
+				checkpointAvailable = false;
+				group.pendingCheckpoint = undefined;
+				pending.reject(new Error(MISSING_CHECKPOINT));
+			})
+		: undefined;
 
 	try {
-		let result: unknown;
-		for (const [index, stage] of stages.entries()) {
-			const value = runInContext(stage);
-			if (index === 0) {
-				result = value;
-				// A later stage can reject this promise. The caller observes it through the returned promise.
-				if (isThenable(result)) {
-					result.then(noop, noop);
-				}
-			}
+		const result = runInContext(first);
+		// A later stage can reject this promise. The caller observes it through the returned promise.
+		if (isThenable(result)) result.then(noop, noop);
+		await settle(group, hasCheckpoint);
+		for (const stage of rest) {
+			runInContext(stage);
 			await settle(group, hasCheckpoint);
 		}
-		return result as T;
+		return result;
 	} finally {
-		nativeClearImmediate(taskEnded);
+		if (taskEnded !== undefined) nativeClearImmediate(taskEnded);
 		if (activeGroup === group) activeGroup = null;
 		// After an error. The immediates that are left run from their native immediate.
 		for (const tick of group.ticks) nativeNextTick(tick);
 	}
 }
 
-/** Drop-in for `runInSequentialTasks` from Next.js: each callback runs in its own settled task. */
+/** Runs the render stages and drains their work within one workerd task. */
 export function runInSequentialTasks<T>(first: () => T, ...rest: Array<() => void>): Promise<T> {
-	const group: StageGroup = { requestContext: globals[REQUEST_CONTEXT], ticks: [], immediates: [] };
+	const group: StageGroup = {
+		requestContext: globals[REQUEST_CONTEXT],
+		ticks: [],
+		immediates: [],
+		checkpoints: 0,
+	};
 	const runInContext = AsyncLocalStorage.snapshot();
 
-	return hasMicrotaskCheckpoint().then(
-		(hasCheckpoint) =>
-			new Promise<T>((resolve, reject) => {
-				// As the first timer of Next.js does, the stages start in a task of their own. It has the
-				// whole checkpoint budget, and the stages of a render that started first are done.
-				nativeSetImmediate(() => {
-					runStages<T>([first, ...rest], group, runInContext, hasCheckpoint).then(resolve, reject);
-				});
-			})
-	);
+	return new Promise<T>((resolve, reject) => {
+		// Start with a fresh checkpoint budget after any running stages have settled.
+		nativeSetImmediate(() => {
+			runStages(first, rest, group, runInContext).then(resolve, reject);
+		});
+	});
 }
 
 function isThenable(value: unknown): value is PromiseLike<unknown> {

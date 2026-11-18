@@ -24,9 +24,12 @@ Object.defineProperty(globalThis, Symbol.for("__cloudflare-context__"), {
 // stage: workerd dispatches `unhandledrejection` once the microtask queue is empty. The listener is
 // added when the worker starts, ahead of the listeners of the app, which never see the rejection.
 // Note: this symbol needs to be kept in sync with `cache-components-scheduler.ts`
-if (__CACHE_COMPONENTS_SCHEDULER__) {
+if (
+	__CACHE_COMPONENTS_SCHEDULER__ &&
+	Cloudflare.compatibilityFlags.unhandled_rejection_after_microtask_checkpoint
+) {
 	const checkpoint = Symbol.for("__opennext-microtask-checkpoint__");
-	const hub: { onCheckpoint?: () => void } = {};
+	const hub: { onCheckpoint?: (signal: Promise<unknown>) => void } = {};
 	Object.defineProperty(globalThis, checkpoint, { value: hub });
 
 	addEventListener("unhandledrejection", (event) => {
@@ -35,7 +38,7 @@ if (__CACHE_COMPONENTS_SCHEDULER__) {
 		}
 		event.preventDefault();
 		event.stopImmediatePropagation();
-		hub.onCheckpoint?.();
+		hub.onCheckpoint?.(event.promise);
 	});
 }
 
