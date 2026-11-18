@@ -207,6 +207,7 @@ async function getEvalManifestRule(buildOpts: BuildOptions): Promise<RuleConfig>
 
 	// Map of factored large objects (variable name -> {...})
 	const factoredObjects = new Map<string, string>();
+	const cssObjectNames = new Set<string>();
 	// Map of manifest path -> factored manifest content
 	const factoredManifest = new Map<string, string>();
 	// Shared map of short hash prefix -> full SHA1 hash, used for collision resolution.
@@ -225,7 +226,13 @@ async function getEvalManifestRule(buildOpts: BuildOptions): Promise<RuleConfig>
 				"entryCSSFiles",
 				"entryJSFiles",
 			]) {
-				manifest = factorManifestValue(manifest, key, factoredObjects, prefixMap);
+				manifest = factorManifestValue(
+					manifest,
+					key,
+					factoredObjects,
+					prefixMap,
+					key === "entryCSSFiles" ? cssObjectNames : undefined
+				);
 			}
 			factoredManifest.set(path, manifest);
 		}
@@ -237,8 +244,9 @@ async function getEvalManifestRule(buildOpts: BuildOptions): Promise<RuleConfig>
 	for (const [varName, value] of factoredObjects) {
 		factoredObjects.set(varName, factorObjectValues(value, factoredValues, prefixMap));
 	}
+	factorRepeatedInlineCss(factoredObjects, cssObjectNames, factoredValues, prefixMap);
 
-	// Prepend chunks variable declarations before the factored values
+	// Declare shared chunks and CSS strings before the objects that reference them.
 	const factoredValueCode = [...factoredValues.entries()]
 		.map(([name, val]) => `const ${name} = ${val};`)
 		.join("\n");
@@ -306,13 +314,15 @@ function evalManifest($PATH, $$$ARGS) {
  * @param values A map to store the factored values (indexed by variable name).
  * @param prefixMap Map of short hash prefix → full hash, updated in place for
  *   collision resolution across calls.
+ * @param factoredNames Optional set of variable names factored for this key.
  * @returns The manifest code with large values factored out.
  */
 export function factorManifestValue(
 	manifest: string,
 	key: string,
 	values: Map<string, string>,
-	prefixMap: Map<string, string>
+	prefixMap: Map<string, string>,
+	factoredNames?: Set<string>
 ): string {
 	const valueName = "VALUE";
 	// ASTGrep rule to extract the value of a specific key from the manifest object in the evalManifest function.
@@ -346,6 +356,7 @@ inside:
 			// Factor out large values into separate variables.
 			const varName = getOrCreateVarName(value, prefixMap);
 			values.set(varName, value);
+			factoredNames?.add(varName);
 			// Replace the value in the manifest with the variable reference.
 			return rootNode.commitEdits([match.replace(`"${key}": ${varName}`)]);
 		}
@@ -403,6 +414,68 @@ rule:
 	return edits.length === 0
 		? valueText
 		: rootNode.commitEdits(edits.map((e) => e.match.replace(e.replacement)));
+}
+
+const inlineCssContentRule: RuleConfig = {
+	rule: {
+		kind: "pair",
+		all: [
+			{ has: { field: "key", pattern: '"content"' } },
+			{ has: { field: "value", kind: "string", pattern: "$CONTENT" } },
+		],
+		inside: {
+			kind: "object",
+			has: {
+				kind: "pair",
+				all: [{ has: { field: "key", pattern: '"inlined"' } }, { has: { field: "value", pattern: "true" } }],
+			},
+		},
+	},
+};
+
+function findInlineCssLiterals(root: SgNode) {
+	return applyRule(inlineCssContentRule, root, { once: false })
+		.matches.map((match) => {
+			const node = match.getMatch("CONTENT")!;
+			return { node, literal: node.text() };
+		})
+		.filter(({ literal }) => literal.length > 30);
+}
+
+/**
+ * Turbopack repeats inline stylesheets in otherwise different route entries.
+ * Count the emitted objects so a stylesheet already stored once stays inline.
+ */
+function factorRepeatedInlineCss(
+	objects: Map<string, string>,
+	cssObjectNames: ReadonlySet<string>,
+	sharedVars: Map<string, string>,
+	prefixMap: Map<string, string>
+): void {
+	const occurrences = new Map<string, number>();
+	for (const name of cssObjectNames) {
+		const root = parse(Lang.JavaScript, objects.get(name)!).root();
+		for (const { literal } of findInlineCssLiterals(root)) {
+			occurrences.set(literal, (occurrences.get(literal) ?? 0) + 1);
+		}
+	}
+	const sharedByLiteral = new Map<string, string>();
+	for (const [literal, count] of occurrences) {
+		if (count < 2) continue;
+		const varName = getOrCreateVarName(literal, prefixMap);
+		sharedByLiteral.set(literal, varName);
+		sharedVars.set(varName, literal);
+	}
+	if (sharedByLiteral.size === 0) return;
+
+	for (const name of cssObjectNames) {
+		const root = parse(Lang.JavaScript, objects.get(name)!).root();
+		const edits = findInlineCssLiterals(root).flatMap(({ node, literal }) => {
+			const varName = sharedByLiteral.get(literal);
+			return varName ? [node.replace(varName)] : [];
+		});
+		if (edits.length > 0) objects.set(name, root.commitEdits(edits));
+	}
 }
 
 /** Minimum number of hex characters used for short hash prefixes. */

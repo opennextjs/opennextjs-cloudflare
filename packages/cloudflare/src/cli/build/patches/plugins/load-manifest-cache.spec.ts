@@ -40,13 +40,27 @@ type ManifestPatcher = {
  *
  * @param version The Next.js version.
  * @param prerenderManifestText The content of the `prerender-manifest.json`.
+ * @param clientReferenceManifests Client reference manifests keyed by app route.
  * @returns The patcher.
  */
-function createManifestPatcher(version: string, prerenderManifestText = manifestText): ManifestPatcher {
+function createManifestPatcher(
+	version: string,
+	prerenderManifestText = manifestText,
+	clientReferenceManifests: Record<string, unknown> = {}
+): ManifestPatcher {
 	const outputDir = mkdtempSync(join(tmpdir(), "opennext-manifest-"));
 	const dotNextDir = join(outputDir, "server-functions/default/.next");
 	mkdirSync(dotNextDir, { recursive: true });
 	writeFileSync(join(dotNextDir, "prerender-manifest.json"), prerenderManifestText);
+	for (const [route, value] of Object.entries(clientReferenceManifests)) {
+		const manifestFile = join(dotNextDir, "server/app", `${route}_client-reference-manifest.js`);
+		mkdirSync(dirname(manifestFile), { recursive: true });
+		writeFileSync(
+			manifestFile,
+			`globalThis.__RSC_MANIFEST ??= {};
+globalThis.__RSC_MANIFEST[${JSON.stringify(`/${route}`)}] = ${JSON.stringify(value)};`
+		);
+	}
 
 	const buildOpts = {
 		outputDir,
@@ -168,4 +182,48 @@ describe("invalid manifest", () => {
 		);
 		await expect(patcher.patch(contents)).rejects.toThrow("Failed to parse the manifest");
 	});
+});
+
+test("stores repeated inline CSS once while preserving the evaluated client reference manifests", async () => {
+	const sharedCss = '.opennext-shared-css::before { content: "入口"; }\n';
+	const uniqueCss = ".opennext-unique-css { border: 2px solid purple; }".repeat(800);
+	const linkedCss = { path: "static/chunks/linked.css", inlined: false };
+	const alpha = {
+		entryCSSFiles: {
+			layout: [
+				{ path: "static/chunks/shared.css", inlined: true, content: sharedCss },
+				linkedCss,
+				{ path: "static/chunks/unique.css", inlined: true, content: uniqueCss },
+			],
+		},
+	};
+	const beta = {
+		entryCSSFiles: {
+			"beta/page": [linkedCss, { path: "static/chunks/also-shared.css", inlined: true, content: sharedCss }],
+			layout: [{ path: "static/chunks/shared.css", inlined: true, content: sharedCss }],
+		},
+	};
+	const originals = { "alpha/page": alpha, "beta/page": beta, "gamma/page": alpha };
+	const patcher = createManifestPatcher("16.4.1", manifestText, originals);
+	try {
+		const contents = readFileSync(
+			new URL("./fixtures/load-manifest/next-16.4.1.txt", import.meta.url),
+			"utf8"
+		);
+		const patched = await patcher.patch(
+			contents + '\nfunction evalManifest(path, cache) { throw new Error("Unpatched evalManifest"); }\n'
+		);
+		const evaluate = runInNewContext(`${patched}; evalManifest;`);
+		for (const [route, value] of Object.entries(originals)) {
+			const result = evaluate(`/app/.next/server/app/${route}_client-reference-manifest.js`);
+			const expected = {
+				__RSC_MANIFEST: { [`/${route}`]: value },
+			};
+			expect(JSON.stringify(result)).toBe(JSON.stringify(expected));
+		}
+		expect(patched.split(".opennext-shared-css")).toHaveLength(2);
+		expect(patched).toMatch(/"content":\s*"\.opennext-unique-css/);
+	} finally {
+		patcher.cleanup();
+	}
 });
