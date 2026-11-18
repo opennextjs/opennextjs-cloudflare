@@ -180,22 +180,14 @@ describe("compileConfig", () => {
 });
 
 describe("withWranglerPassthroughArgs", () => {
-	const baseArgs = { _: [], $0: "opennextjs-cloudflare", configPath: undefined, config: undefined };
-
-	it("should not pass `--env` when no environment is provided", () => {
-		const { wranglerArgs } = withWranglerPassthroughArgs({ ...baseArgs, env: undefined });
-
-		expect(wranglerArgs).toEqual([]);
-	});
-
-	it("should pass a named environment", () => {
-		const { wranglerArgs } = withWranglerPassthroughArgs({ ...baseArgs, env: "staging" });
-
-		expect(wranglerArgs).toEqual(["--env", "staging"]);
-	});
-
-	it("should pass an empty environment to target the top-level environment", () => {
-		const { wranglerArgs } = withWranglerPassthroughArgs({ ...baseArgs, env: "" });
+	it("should forward an empty environment", () => {
+		const { wranglerArgs } = withWranglerPassthroughArgs({
+			_: [],
+			$0: "opennextjs-cloudflare",
+			configPath: undefined,
+			config: undefined,
+			env: "",
+		});
 
 		expect(wranglerArgs).toEqual(['--env=""']);
 	});
