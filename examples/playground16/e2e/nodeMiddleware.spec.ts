@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
 
+import { expectOgImage, OG_IMAGE_MD5 } from "../../common/expect-og-image";
+import { ogImage } from "../../common/og-image";
+
 // The app uses a Node.js middleware (`proxy.ts`).
 // See https://github.com/opennextjs/opennextjs-cloudflare/issues/617
 test.describe("Node Middleware", () => {
@@ -16,6 +19,12 @@ test.describe("Node Middleware", () => {
 		expect(resp.status()).toEqual(200);
 		const json = await resp.json();
 		expect(json).toEqual({ name: "World" });
+	});
+
+	test("Node middleware should render an OG image using the fallback font", async ({ request }, testInfo) => {
+		const response = await request.get("/middleware-og");
+		const md5 = testInfo.config.metadata.isWorker ? OG_IMAGE_MD5.workerd : OG_IMAGE_MD5.node;
+		await expectOgImage(response, { ...ogImage.size, md5 });
 	});
 
 	test("Node middleware should redirect", async ({ page }) => {

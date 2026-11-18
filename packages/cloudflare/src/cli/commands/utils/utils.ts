@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import url from "node:url";
@@ -90,12 +90,26 @@ export async function compileConfig(configPath: string | undefined) {
 }
 
 /**
- * Retrieve a compiled OpenNext config, and ensure it is for Cloudflare.
+ * Retrieve the OpenNext config compiled by the build, and ensure it is for Cloudflare.
+ *
+ * The compiled config is looked up in the default build output first. When it is not there, the
+ * source config is compiled to resolve a custom `buildOutputPath`.
+ *
+ * Exits the process when the compiled config can not be found, i.e. the app was not built.
  *
  * @returns OpenNext config.
  */
 export async function retrieveCompiledConfig() {
-	const configPath = path.join(nextAppDir, ".open-next/.build/open-next.config.edge.mjs");
+	let configPath = path.join(nextAppDir, ".open-next/.build/open-next.config.edge.mjs");
+
+	if (!existsSync(configPath)) {
+		const sourceConfigPath = findOpenNextConfig(nextAppDir);
+		if (sourceConfigPath) {
+			const { config, buildDir } = await compileOpenNextConfig(sourceConfigPath);
+			rmSync(buildDir, { recursive: true, force: true });
+			configPath = path.join(getNormalizedOptions(config).buildDir, "open-next.config.edge.mjs");
+		}
+	}
 
 	if (!existsSync(configPath)) {
 		logger.error("Could not find compiled Open Next config, did you run the build command?");

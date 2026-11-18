@@ -1,6 +1,6 @@
 import type { Context, RunningCodeOptions } from "node:vm";
 
-import type { GetPlatformProxyOptions } from "wrangler";
+import type { GetPlatformProxyOptions as WranglerGetPlatformProxyOptions } from "wrangler";
 
 import type { BucketCachePurge } from "./durable-objects/bucket-cache-purge.js";
 import type { DOQueueHandler } from "./durable-objects/queue.js";
@@ -50,14 +50,13 @@ declare global {
 		NEXT_CACHE_DO_QUEUE?: DurableObjectNamespace<DOQueueHandler>;
 
 		// Below are the optional environment variables to configure the durable object queue
-		// The max number of revalidations that can be processed by the durable worker at the same time
+		// The max number of revalidations that can be processed by the durable object at the same time
 		NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION?: string;
 		// The max time in milliseconds that a revalidation can take before being considered as failed
 		NEXT_CACHE_DO_QUEUE_REVALIDATION_TIMEOUT_MS?: string;
-		// The amount of time after which a revalidation will be attempted again if it failed
-		// If it fails again it will exponentially back off until it reaches the max retry interval
+		// The base interval in milliseconds of the exponential backoff between the retries of a failed revalidation
 		NEXT_CACHE_DO_QUEUE_RETRY_INTERVAL_MS?: string;
-		// The maximum number of attempts that can be made to revalidate a path
+		// The maximum number of times a failed revalidation is retried
 		NEXT_CACHE_DO_QUEUE_MAX_RETRIES?: string;
 		// Disable SQLite for the durable object queue handler
 		// This can be safely used if you don't use an eventually consistent incremental cache (i.e. R2 without the regional cache for example)
@@ -242,6 +241,32 @@ async function getCloudflareContextAsync<
 
 	throw new Error(initOpenNextCloudflareForDevErrorMsg);
 }
+
+/**
+ * Options forwarded to `getPlatformProxy` from `wrangler`.
+ *
+ * Mirrors wrangler's `GetPlatformProxyOptions`. Importing it would pull wrangler's declarations into the published
+ * `.d.ts`, and they do not type-check with `skipLibCheck: false` (#1408, cloudflare/workers-sdk#15940).
+ * Import it again once the upstream issue is fixed.
+ */
+type GetPlatformProxyOptions = {
+	/** Name of the wrangler environment to use */
+	environment?: string;
+	/** Path to the wrangler configuration file, looked up from the current directory by default */
+	configPath?: string;
+	/** @deprecated Ignored: Next.js loads the `.env*` files itself, so the adapter always passes `[]` to wrangler */
+	envFiles?: string[];
+	/** Whether and where to persist the bindings data, defaults to `.wrangler/state/v3` */
+	persist?: boolean | { path: string };
+	/** Whether remote bindings are enabled, defaults to `true` */
+	remoteBindings?: boolean;
+};
+
+type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+
+// Fails to compile when the local type drifts from wrangler's.
+// The import is only used here, so it is elided from the published `.d.ts`.
+true satisfies Equals<GetPlatformProxyOptions, WranglerGetPlatformProxyOptions>;
 
 /**
  * Performs some initial setup to integrate as best as possible the local Next.js dev server (run via `next dev`)

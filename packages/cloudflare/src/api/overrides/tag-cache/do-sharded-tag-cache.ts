@@ -7,7 +7,7 @@ import { getCloudflareContext } from "../../cloudflare-context.js";
 import type { OpenNextConfig } from "../../config.js";
 import type { TagData } from "../../durable-objects/sharded-tag-cache.js";
 import { DOShardedTagCache } from "../../durable-objects/sharded-tag-cache.js";
-import { debugCache, isPurgeCacheEnabled, purgeCacheByTags } from "../internal.js";
+import { debugCache } from "../internal.js";
 
 type NormalizedTagInput = { tag: string; stale?: number; expire?: number | null };
 type CachedTagValue = { tag: string } & TagData;
@@ -137,9 +137,8 @@ class ShardedDOTagCache implements NextModeTagCache {
 		if (isDisabled || tags.length === 0) {
 			return 0;
 		}
-		const deduplicatedTags = Array.from(new Set(tags)); // We deduplicate the tags to avoid unnecessary requests
 		try {
-			const tagData = await this.#resolveTagData(deduplicatedTags);
+			const tagData = await this.#resolveTagData(tags);
 			const timeMs = Math.max(
 				0,
 				...[...tagData.values()].filter((d): d is TagData => d != null).map((d) => d.revalidatedAt)
@@ -238,11 +237,6 @@ class ShardedDOTagCache implements NextModeTagCache {
 				await this.performWriteTagsWithRetry(doId, shardNormalized);
 			})
 		);
-
-		// TODO: See https://github.com/opennextjs/opennextjs-aws/issues/986
-		if (isPurgeCacheEnabled()) {
-			await purgeCacheByTags(tagStrings);
-		}
 	}
 
 	/**
@@ -472,34 +466,52 @@ class ShardedDOTagCache implements NextModeTagCache {
 
 	/**
 	 * Resolves tag data from the per-request in-memory cache, falling back to
-	 * `#fetchTagDataFromShards` for any misses. Results are stored back so repeated
-	 * calls within the same request avoid duplicate shard fetches.
+	 * `#fetchTagDataFromShards` for any misses.
+	 *
+	 * The pending fetch is cached, not its result, so concurrent calls within the same
+	 * request (e.g. parallel `fetch` cache hits during a render) share one shard read
+	 * instead of each sending their own to the same Durable Object.
+	 *
+	 * @param tags - The tags to resolve, duplicates are read once.
+	 * @returns A map of tag to its TagData, or null when the tag has never been revalidated.
+	 * @throws When the shard read fails. The failed read is evicted from the request cache
+	 *   so the next call retries it.
 	 */
 	async #resolveTagData(tags: string[]): Promise<Map<string, TagData | null>> {
 		const store = globalThis.__openNextAls?.getStore();
-		const itemsCache = store?.requestCache.getOrCreate<string, TagData | null>("do-sharded:tagItems");
+		const itemsCache = store?.requestCache.getOrCreate<string, Promise<TagData | null>>(
+			"do-sharded:tagItems"
+		);
 
-		const result = new Map<string, TagData | null>();
-		const uncachedTags: string[] = [];
+		const uniqueTags = [...new Set(tags)];
 
-		for (const tag of tags) {
-			if (itemsCache?.has(tag)) {
-				result.set(tag, itemsCache.get(tag) ?? null);
-			} else {
-				uncachedTags.push(tag);
-			}
+		if (!itemsCache) {
+			return this.#fetchTagDataFromShards(uniqueTags);
 		}
+
+		const uncachedTags = uniqueTags.filter((tag) => !itemsCache.has(tag));
 
 		if (uncachedTags.length > 0) {
-			const fetched = await this.#fetchTagDataFromShards(uncachedTags);
+			const fetching = this.#fetchTagDataFromShards(uncachedTags);
 			for (const tag of uncachedTags) {
-				const value = fetched.get(tag) ?? null;
-				itemsCache?.set(tag, value);
-				result.set(tag, value);
+				itemsCache.set(
+					tag,
+					fetching.then((fetched) => fetched.get(tag) ?? null)
+				);
 			}
+			// A failed fetch must not be reused for the rest of the request.
+			// This reaction is queued with the per-tag ones above, so the tags are evicted before
+			// any caller awaiting them sees the rejection and a later call can retry.
+			fetching.catch(() => {
+				for (const tag of uncachedTags) itemsCache.delete(tag);
+			});
 		}
 
-		return result;
+		// Every tag is in the cache at this point: either pending from an earlier call or set above.
+		// Awaiting each per-tag promise created above also keeps a failed fetch from surfacing as an
+		// unhandled rejection.
+		const values = await Promise.all(uniqueTags.map((tag) => itemsCache.get(tag)!));
+		return new Map(uniqueTags.map((tag, i) => [tag, values[i] ?? null]));
 	}
 
 	private getDurableObjectStub(doId: DOId) {
