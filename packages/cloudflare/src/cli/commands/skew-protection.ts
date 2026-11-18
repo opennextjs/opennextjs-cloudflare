@@ -27,7 +27,7 @@ import path from "node:path";
 import { loadConfig } from "@opennextjs/aws/adapters/config/util.js";
 import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import logger from "@opennextjs/aws/logger.js";
-import { Cloudflare, NotFoundError } from "cloudflare";
+import { APIError, Cloudflare, NotFoundError } from "cloudflare";
 import type { VersionGetResponse } from "cloudflare/resources/workers/scripts/versions.js";
 
 import type { OpenNextConfig } from "../../api/index.js";
@@ -104,33 +104,41 @@ export async function getDeploymentMapping(
 	});
 	const scriptName = envVars.CF_WORKER_NAME!;
 
-	const deployedVersions = await listWorkerVersions(scriptName, {
-		client,
-		accountId,
-		maxNumberOfVersions: config.cloudflare?.skewProtection?.maxNumberOfVersions,
-		afterTimeMs: config.cloudflare?.skewProtection?.maxVersionAgeDays
-			? Date.now() - config.cloudflare?.skewProtection?.maxVersionAgeDays * MS_PER_DAY
-			: undefined,
-	});
+	try {
+		const deployedVersions = await listWorkerVersions(scriptName, {
+			client,
+			accountId,
+			maxNumberOfVersions: config.cloudflare?.skewProtection?.maxNumberOfVersions,
+			afterTimeMs: config.cloudflare?.skewProtection?.maxVersionAgeDays
+				? Date.now() - config.cloudflare?.skewProtection?.maxVersionAgeDays * MS_PER_DAY
+				: undefined,
+		});
 
-	const existingMapping =
-		deployedVersions.length === 0
-			? {}
-			: await getExistingDeploymentMapping(scriptName, deployedVersions[0]!.id, {
-					client,
-					accountId,
-				});
+		const existingMapping =
+			deployedVersions.length === 0
+				? {}
+				: await getExistingDeploymentMapping(scriptName, deployedVersions[0]!.id, {
+						client,
+						accountId,
+					});
 
-	if (deploymentId in existingMapping) {
-		logger.error(
-			`The deploymentId "${deploymentId}" has been used previously, update your next config and rebuild`
-		);
-		process.exit(1);
+		if (deploymentId in existingMapping) {
+			logger.error(
+				`The deploymentId "${deploymentId}" has been used previously, update your next config and rebuild`
+			);
+			process.exit(1);
+		}
+
+		return updateDeploymentMapping(existingMapping, deployedVersions, deploymentId);
+	} catch (error) {
+		if (error instanceof APIError && (error.status === 401 || error.status === 403)) {
+			throw new Error(
+				`Skew protection could not read Worker versions (HTTP ${error.status}). ` +
+					"Check that CF_WORKERS_SCRIPTS_API_TOKEN is valid and grants Workers Scripts:Read for CF_ACCOUNT_ID."
+			);
+		}
+		throw error;
 	}
-
-	const mapping = updateDeploymentMapping(existingMapping, deployedVersions, deploymentId);
-
-	return mapping;
 }
 
 /**

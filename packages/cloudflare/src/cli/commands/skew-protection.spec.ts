@@ -1,20 +1,26 @@
+import { AuthenticationError, NotFoundError, PermissionDeniedError, RateLimitError } from "cloudflare";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { CURRENT_VERSION_ID } from "../templates/skew-protection.js";
 import { getDeploymentMapping, listWorkerVersions, updateDeploymentMapping } from "./skew-protection.js";
 
-const { MockCloudflare } = vi.hoisted(() => {
+const { MockCloudflare, listVersions, getVersion } = vi.hoisted(() => {
+	type Version = { id: string; metadata: { created_on: string } };
+	const listVersions = vi.fn<() => Iterable<Version> | AsyncIterable<Version>>(() => []);
+	const getVersion = vi.fn();
+
 	class MockCloudflare {
 		workers = {
 			scripts: {
 				versions: {
-					list: vi.fn(() => []),
+					list: listVersions,
+					get: getVersion,
 				},
 			},
 		};
 	}
 
-	return { MockCloudflare: vi.fn(MockCloudflare) };
+	return { MockCloudflare: vi.fn(MockCloudflare), listVersions, getVersion };
 });
 
 vi.mock("@opennextjs/aws/adapters/config/util.js", () => ({
@@ -28,6 +34,19 @@ vi.mock("cloudflare", async (importOriginal) => {
 
 describe("skew protection", () => {
 	describe("getDeploymentMapping", () => {
+		const getMapping = () =>
+			getDeploymentMapping(
+				{ appBuildOutputPath: "/tmp/app" } as never,
+				{ cloudflare: { skewProtection: { enabled: true } } },
+				{}
+			);
+
+		function rejectVersionList(error: Error) {
+			listVersions.mockReturnValueOnce({
+				[Symbol.asyncIterator]: () => ({ next: () => Promise.reject(error) }),
+			});
+		}
+
 		beforeEach(() => {
 			vi.stubEnv("CF_WORKER_NAME", "worker-name");
 			vi.stubEnv("CF_PREVIEW_DOMAIN", "example.workers.dev");
@@ -40,18 +59,47 @@ describe("skew protection", () => {
 		});
 
 		test("disables response compression for worker version requests", async () => {
-			await expect(
-				getDeploymentMapping(
-					{ appBuildOutputPath: "/tmp/app" } as never,
-					{ cloudflare: { skewProtection: { enabled: true } } },
-					{}
-				)
-			).resolves.toEqual({ "deployment-id": CURRENT_VERSION_ID });
+			await expect(getMapping()).resolves.toEqual({ "deployment-id": CURRENT_VERSION_ID });
 
 			expect(MockCloudflare).toHaveBeenCalledWith({
 				apiToken: "test-token",
 				defaultHeaders: { "Accept-Encoding": "identity" },
 			});
+		});
+
+		test("explains which token to check when listing Worker versions returns HTTP 401", async () => {
+			rejectVersionList(new AuthenticationError(401, undefined, "Authentication failed", {}));
+
+			await expect(getMapping()).rejects.toMatchObject({
+				message:
+					"Skew protection could not read Worker versions (HTTP 401). Check that CF_WORKERS_SCRIPTS_API_TOKEN is valid and grants Workers Scripts:Read for CF_ACCOUNT_ID.",
+			});
+		});
+
+		test("explains which permission to check when reading a Worker version returns HTTP 403", async () => {
+			listVersions.mockReturnValueOnce([
+				{ id: "previous", metadata: { created_on: new Date().toISOString() } },
+			]);
+			getVersion.mockRejectedValueOnce(new PermissionDeniedError(403, undefined, "Permission denied", {}));
+
+			await expect(getMapping()).rejects.toMatchObject({
+				message:
+					"Skew protection could not read Worker versions (HTTP 403). Check that CF_WORKERS_SCRIPTS_API_TOKEN is valid and grants Workers Scripts:Read for CF_ACCOUNT_ID.",
+			});
+		});
+
+		test("handles HTTP 404 from listing Worker versions as a first deployment", async () => {
+			rejectVersionList(new NotFoundError(404, undefined, "Worker not found", {}));
+
+			await expect(getMapping()).resolves.toEqual({ "deployment-id": CURRENT_VERSION_ID });
+			expect(getVersion).not.toHaveBeenCalled();
+		});
+
+		test("preserves other Cloudflare API errors", async () => {
+			const rateLimit = new RateLimitError(429, undefined, "Rate limited", {});
+			rejectVersionList(rateLimit);
+
+			await expect(getMapping()).rejects.toBe(rateLimit);
 		});
 	});
 
