@@ -9,7 +9,7 @@ import { afterAll, beforeEach, describe, expect, it, type MockInstance, vi } fro
 import { askConfirmation } from "../../utils/ask-confirmation.js";
 import { createOpenNextConfigFile, findOpenNextConfig } from "../../utils/create-open-next-config.js";
 import { isNonInteractiveOrCI } from "../../utils/is-interactive.js";
-import { compileConfig, retrieveCompiledConfig } from "./utils.js";
+import { compileConfig, retrieveCompiledConfig, withWranglerPassthroughArgs } from "./utils.js";
 
 const { mockExistsSync } = vi.hoisted(() => ({
 	mockExistsSync: vi.fn(),
@@ -176,6 +176,20 @@ describe("compileConfig", () => {
 
 		expect(askConfirmation).toHaveBeenCalledOnce();
 		expect(createOpenNextConfigFile).toHaveBeenCalledOnce();
+	});
+});
+
+describe("withWranglerPassthroughArgs", () => {
+	it("should forward an empty environment", () => {
+		const { wranglerArgs } = withWranglerPassthroughArgs({
+			_: [],
+			$0: "opennextjs-cloudflare",
+			configPath: undefined,
+			config: undefined,
+			env: "",
+		});
+
+		expect(wranglerArgs).toEqual(['--env=""']);
 	});
 });
 
