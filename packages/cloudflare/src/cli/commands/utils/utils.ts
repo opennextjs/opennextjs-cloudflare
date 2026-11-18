@@ -19,6 +19,7 @@ import {
 	OPEN_NEXT_CONFIG_FILE_NAME,
 } from "../../utils/create-open-next-config.js";
 import { isNonInteractiveOrCI } from "../../utils/is-interactive.js";
+import { getWranglerEnvArgs } from "./run-wrangler.js";
 
 export type WithWranglerArgs<T = unknown> = T & {
 	// Array of arguments that can be given to wrangler commands, including the `--config` and `--env` args.
@@ -206,9 +207,7 @@ function getWranglerArgs(
 	return [
 		...(args.configPath ? ["--config", args.configPath] : []),
 		...(args.config ? ["--config", args.config] : []),
-		// Note: an empty `--env` targets the top-level environment.
-		//       It is passed as a single argument as wrangler is spawned in a shell, which would drop a standalone empty argument.
-		...(args.env === "" ? ['--env=""'] : args.env ? ["--env", args.env] : []),
+		...getWranglerEnvArgs(args.env),
 		...(args.remote ? ["--remote"] : []),
 		// Note: the `args` array contains unrecognised flags.
 		...(args.args?.map((a) => `${a}`) ?? []),
