@@ -1,3 +1,6 @@
+import path from "node:path";
+
+import { loadConfig } from "@opennextjs/aws/adapters/config/util.js";
 import { buildNextjsApp, setStandaloneBuildMode } from "@opennextjs/aws/build/buildNextApp.js";
 import { compileCache } from "@opennextjs/aws/build/compileCache.js";
 import { createCacheAssets, createStaticAssets } from "@opennextjs/aws/build/createAssets.js";
@@ -21,6 +24,7 @@ import { compileDurableObjects } from "./open-next/compileDurableObjects.js";
 import { createServerBundle } from "./open-next/createServerBundle.js";
 import { ensureAssetsConfig } from "./utils/ensure-assets-config.js";
 import { useNodeMiddleware } from "./utils/middleware.js";
+import { usesCacheComponents } from "./utils/next-config.js";
 import { getVersion } from "./utils/version.js";
 
 /**
@@ -87,6 +91,12 @@ export async function build(
 	if (hasNodeMiddleware) {
 		logger.warn(
 			"Node.js middleware support is experimental in cloudflare, and not officially maintained by OpenNext maintainers. Use at your own risk."
+		);
+	}
+
+	if (usesCacheComponents(loadConfig(path.join(options.appBuildOutputPath, ".next")))) {
+		logger.warn(
+			"Cache Components are not fully supported on Cloudflare yet. Track progress at https://github.com/opennextjs/opennextjs-cloudflare/pull/1318"
 		);
 	}
 
