@@ -93,6 +93,20 @@ test("formData should work in POST route handler", async ({ request }) => {
 	expect(postData.message).toBe("ok");
 });
 
+test("should reuse a NextRequest as request init", async ({ request }) => {
+	const response = await request.post("/methods/post/reuse-request", {
+		headers: { "Content-Type": "text/plain" },
+		data: "request payload",
+	});
+
+	expect(response.status()).toBe(200);
+	expect(await response.json()).toEqual({
+		method: "POST",
+		contentType: "text/plain",
+		body: "request payload",
+	});
+});
+
 test("revalidate should work in GET route handler", async ({ request, page }) => {
 	let time = Date.parse((await request.get("/methods/get/revalidate").then((res) => res.json())).time);
 	let newTime: number;
