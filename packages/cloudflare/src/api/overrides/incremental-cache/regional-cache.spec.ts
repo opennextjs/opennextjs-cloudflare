@@ -1,4 +1,5 @@
-import type { CacheValue, IncrementalCache } from "@opennextjs/aws/types/overrides.js";
+import type { CacheValue, IncrementalCache, TagCacheResult } from "@opennextjs/aws/types/overrides.js";
+import { RequestCache } from "@opennextjs/aws/utils/requestCache.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
@@ -19,6 +20,7 @@ vi.mock("../../cloudflare-context.js", () => ({
  */
 class FakeCache {
 	readonly entries = new Map<string, string>();
+	readonly headers = new Map<string, Headers>();
 
 	match = vi.fn(async (url: string) => {
 		const body = this.entries.get(FakeCache.normalize(url));
@@ -27,9 +29,15 @@ class FakeCache {
 
 	put = vi.fn(async (url: string, response: Response) => {
 		this.entries.set(FakeCache.normalize(url), await response.text());
+		this.headers.set(FakeCache.normalize(url), response.headers);
 	});
 
-	delete = vi.fn(async (url: string) => this.entries.delete(FakeCache.normalize(url)));
+	// Completes on a later macrotask, so that a deletion that is not awaited completes after the next operations.
+	delete = vi.fn(async (url: string) => {
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		this.headers.delete(FakeCache.normalize(url));
+		return this.entries.delete(FakeCache.normalize(url));
+	});
 
 	/**
 	 * Returns the URL used to identify a cache entry.
@@ -196,6 +204,473 @@ describe("RegionalCache", () => {
 
 			expect(store.delete).toHaveBeenCalledWith(key);
 			expect(fakeCache.delete).not.toHaveBeenCalled();
+		});
+	});
+});
+
+const PAGE_KEY = "/index";
+const PAGE_URL = "http://cache.local/build-id/index.cache";
+const FETCH_URL = "http://cache.local/build-id/index.fetch";
+const PAGE_TAGS = "_N_T_/layout,_N_T_/page,my-tag";
+
+/**
+ * Returns a page value as read from the store.
+ *
+ * @returns A new page value with its tags in the `x-next-cache-tags` header.
+ */
+function createPageValue(): CacheValue<"cache"> {
+	return {
+		type: "app",
+		html: "<html></html>",
+		rsc: "rsc",
+		meta: { status: 200, headers: { "x-next-cache-tags": PAGE_TAGS } },
+		revalidate: 60,
+	} as CacheValue<"cache">;
+}
+
+describe("RegionalCache deferred put", () => {
+	let fakeCache: FakeCache;
+	let store: { [K in keyof IncrementalCache]: ReturnType<typeof vi.fn> } & { name: string };
+	let waitUntilPromises: Promise<unknown>[];
+
+	const FRESH: Omit<TagCacheResult, "key"> = { hasBeenRevalidated: false, isStaleFromTag: false };
+
+	/**
+	 * Creates a regional cache wrapping the mock store.
+	 *
+	 * @param opts Options overriding the defaults of the tests.
+	 * @returns The regional cache.
+	 */
+	function createRegionalCache(opts: Partial<Parameters<typeof withRegionalCache>[1]> = {}) {
+		return withRegionalCache(store as unknown as IncrementalCache, {
+			mode: "long-lived",
+			shouldLazilyUpdateOnCacheHit: false,
+			bypassTagCacheOnCacheHit: true,
+			...opts,
+		});
+	}
+
+	/**
+	 * Waits for all the promises passed to `waitUntil`.
+	 */
+	async function flushWaitUntil(): Promise<void> {
+		while (waitUntilPromises.length > 0) {
+			await Promise.all(waitUntilPromises.splice(0));
+		}
+	}
+
+	/**
+	 * Sets up the OpenNext ALS store of a new request.
+	 */
+	function startRequest(): void {
+		const requestStore = { requestCache: new RequestCache() };
+		vi.stubGlobal("__openNextAls", { getStore: () => requestStore });
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.stubEnv("OPEN_NEXT_BUILD_ID", "build-id");
+		fakeCache = new FakeCache();
+		vi.stubGlobal("caches", { open: vi.fn(async () => fakeCache) });
+		waitUntilPromises = [];
+		vi.mocked(getCloudflareContext).mockReturnValue({
+			ctx: { waitUntil: vi.fn((p: Promise<unknown>) => waitUntilPromises.push(p)) },
+		} as unknown as ReturnType<typeof getCloudflareContext>);
+		store = {
+			name: "store",
+			get: vi.fn(async () => ({ value: createPageValue(), lastModified: 1000 })),
+			set: vi.fn(async () => {}),
+			delete: vi.fn(async () => {}),
+		};
+		startRequest();
+	});
+
+	afterEach(() => {
+		vi.unstubAllEnvs();
+		vi.unstubAllGlobals();
+	});
+
+	describe("on a regional cache miss", () => {
+		it("does not store the entry in the Cache API from get", async () => {
+			const regionalCache = createRegionalCache();
+
+			expect((await regionalCache.get(PAGE_KEY))?.value).toEqual(createPageValue());
+			await flushWaitUntil();
+
+			expect(fakeCache.put).not.toHaveBeenCalled();
+		});
+
+		it.each([{ isStaleFromTime: undefined }, { isStaleFromTime: false }])(
+			"stores the entry with its tags when it is fresh (%o)",
+			async ({ isStaleFromTime }) => {
+				const regionalCache = createRegionalCache();
+
+				await regionalCache.get(PAGE_KEY);
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, isStaleFromTime });
+				await flushWaitUntil();
+
+				expect(fakeCache.put).toHaveBeenCalledTimes(1);
+				expect(fakeCache.headers.get(PAGE_URL)?.get("cache-tag")).toBe(PAGE_TAGS);
+				expect(fakeCache.headers.get(PAGE_URL)?.get("cache-control")).toBe("max-age=60");
+				expect(JSON.parse(fakeCache.entries.get(PAGE_URL)!)).toEqual({
+					value: createPageValue(),
+					lastModified: 1000,
+				});
+
+				// The next request is served from the Cache API.
+				startRequest();
+				const next = await regionalCache.get(PAGE_KEY);
+				expect(store.get).toHaveBeenCalledTimes(1);
+				expect(next?.shouldBypassTagCache).toBe(true);
+			}
+		);
+
+		it("stores a fetch entry at its URL", async () => {
+			const regionalCache = createRegionalCache();
+
+			await regionalCache.get(PAGE_KEY, "fetch");
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+			await flushWaitUntil();
+
+			expect(store.get).toHaveBeenCalledWith(PAGE_KEY, "fetch");
+			expect([...fakeCache.entries.keys()]).toEqual([FETCH_URL]);
+		});
+
+		// Regression test for https://github.com/opennextjs/opennextjs-cloudflare/issues/1295
+		it("does not store an entry that has been revalidated", async () => {
+			const regionalCache = createRegionalCache();
+
+			const result = await regionalCache.get(PAGE_KEY);
+			expect(result?.shouldBypassTagCache).toBeUndefined();
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, hasBeenRevalidated: true });
+			await flushWaitUntil();
+
+			expect(fakeCache.put).not.toHaveBeenCalled();
+
+			// The next request must read the store again and not bypass the tag cache.
+			startRequest();
+			const next = await regionalCache.get(PAGE_KEY);
+			expect(store.get).toHaveBeenCalledTimes(2);
+			expect(next?.shouldBypassTagCache).toBeUndefined();
+		});
+
+		it.each([
+			{ isStaleFromTag: true, isStaleFromTime: undefined },
+			{ isStaleFromTag: false, isStaleFromTime: true },
+		])("does not store a stale entry (%o)", async (stale) => {
+			const regionalCache = createRegionalCache();
+
+			await regionalCache.get(PAGE_KEY);
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, hasBeenRevalidated: false, ...stale });
+			await flushWaitUntil();
+
+			expect(fakeCache.put).not.toHaveBeenCalled();
+		});
+
+		it("does not store anything when onTagCacheResult is not called", async () => {
+			const regionalCache = createRegionalCache();
+
+			await regionalCache.get(PAGE_KEY);
+			await flushWaitUntil();
+
+			expect(fakeCache.put).not.toHaveBeenCalled();
+		});
+
+		it("stores the entry as it was read even if the returned value is changed", async () => {
+			const regionalCache = createRegionalCache();
+
+			const result = await regionalCache.get(PAGE_KEY);
+			const value = result!.value as { meta: { headers: Record<string, string> } };
+			delete value.meta.headers["x-next-cache-tags"];
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+			await flushWaitUntil();
+
+			expect(fakeCache.headers.get(PAGE_URL)?.get("cache-tag")).toBe(PAGE_TAGS);
+			expect(JSON.parse(fakeCache.entries.get(PAGE_URL)!).value).toEqual(createPageValue());
+		});
+
+		it("returns the entry when it can not be stored in the Cache API", async () => {
+			// A tag that is not a valid header value.
+			const value = {
+				...createPageValue(),
+				meta: { status: 200, headers: { "x-next-cache-tags": "a\nb" } },
+			} as CacheValue<"cache">;
+			store.get.mockResolvedValue({ value, lastModified: 1000 });
+			const regionalCache = createRegionalCache();
+
+			expect(await regionalCache.get(PAGE_KEY)).toEqual({ value, lastModified: 1000 });
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+			await flushWaitUntil();
+
+			expect(fakeCache.put).not.toHaveBeenCalled();
+		});
+
+		it("does not store anything outside of a request", async () => {
+			vi.stubGlobal("__openNextAls", undefined);
+			const regionalCache = createRegionalCache();
+
+			expect((await regionalCache.get(PAGE_KEY))?.value).toEqual(createPageValue());
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+			await flushWaitUntil();
+
+			expect(fakeCache.put).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("onTagCacheResult", () => {
+		it("is a no-op for a key without a pending entry", async () => {
+			const regionalCache = createRegionalCache();
+
+			await regionalCache.get(PAGE_KEY);
+			await regionalCache.onTagCacheResult({ key: "/other", ...FRESH });
+			await flushWaitUntil();
+
+			expect(fakeCache.put).not.toHaveBeenCalled();
+			expect(getCloudflareContext).not.toHaveBeenCalled();
+		});
+
+		it("consumes the pending entry", async () => {
+			const regionalCache = createRegionalCache();
+
+			await regionalCache.get(PAGE_KEY);
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+			await flushWaitUntil();
+
+			expect(fakeCache.put).toHaveBeenCalledTimes(1);
+		});
+
+		it("stores the entry once per get when the key is read several times in a request", async () => {
+			const regionalCache = createRegionalCache();
+
+			// i.e. the same `unstable_cache` called twice in a row in a request.
+			await regionalCache.get(PAGE_KEY);
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+			await regionalCache.get(PAGE_KEY);
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+			await flushWaitUntil();
+
+			expect(fakeCache.put).toHaveBeenCalledTimes(2);
+			expect(fakeCache.entries.size).toBe(1);
+		});
+
+		// i.e. the same `unstable_cache` called from a layout and a page.
+		it("stores a key with overlapping reads of the same entry in a request", async () => {
+			const regionalCache = createRegionalCache();
+
+			await regionalCache.get(PAGE_KEY);
+			await regionalCache.get(PAGE_KEY);
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+			await flushWaitUntil();
+
+			expect(fakeCache.put).toHaveBeenCalledTimes(1);
+		});
+
+		// The verdicts only have the key: they can not be matched with one of the overlapping reads.
+		it.each([
+			{ order: "fresh, then revalidated", verdicts: [FRESH, { ...FRESH, hasBeenRevalidated: true }] },
+			{ order: "revalidated, then fresh", verdicts: [{ ...FRESH, hasBeenRevalidated: true }, FRESH] },
+		])(
+			"does not store a key with overlapping reads of different entries in a request ($order)",
+			async ({ verdicts }) => {
+				const regionalCache = createRegionalCache();
+				// i.e. the entry is regenerated between the two reads.
+				store.get.mockResolvedValueOnce({ value: createPageValue(), lastModified: 2000 });
+
+				await regionalCache.get(PAGE_KEY);
+				await regionalCache.get(PAGE_KEY);
+				for (const verdict of verdicts) {
+					await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...verdict });
+				}
+				// Nor for a later read in the request.
+				await regionalCache.get(PAGE_KEY);
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+				await flushWaitUntil();
+
+				expect(fakeCache.put).not.toHaveBeenCalled();
+
+				// The next request stores it.
+				startRequest();
+				await regionalCache.get(PAGE_KEY);
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+				await flushWaitUntil();
+
+				expect(fakeCache.put).toHaveBeenCalledTimes(1);
+			}
+		);
+
+		// Hits without shouldLazilyUpdateOnCacheHit are only recorded to detect overlapping reads.
+		it("does not store a key with an overlapping hit of a different entry in a request", async () => {
+			const regionalCache = createRegionalCache();
+
+			// The miss reads an old entry from the store.
+			await regionalCache.get(PAGE_KEY);
+			// i.e. another request regenerates the entry between the two reads.
+			fakeCache.entries.set(PAGE_URL, JSON.stringify({ value: createPageValue(), lastModified: 2000 }));
+			expect((await regionalCache.get(PAGE_KEY))?.shouldBypassTagCache).toBe(true);
+			// The verdict of the hit, which is not checked against the tag cache, comes first.
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, hasBeenRevalidated: true });
+			await flushWaitUntil();
+
+			expect(fakeCache.put).not.toHaveBeenCalled();
+			expect(JSON.parse(fakeCache.entries.get(PAGE_URL)!).lastModified).toBe(2000);
+		});
+	});
+
+	describe("on a regional cache hit", () => {
+		beforeEach(async () => {
+			await createRegionalCache().set(PAGE_KEY, createPageValue());
+			fakeCache.put.mockClear();
+		});
+
+		it("does not update the Cache API when shouldLazilyUpdateOnCacheHit is false", async () => {
+			const regionalCache = createRegionalCache();
+
+			const result = await regionalCache.get(PAGE_KEY);
+			expect(result?.shouldBypassTagCache).toBe(true);
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+			await flushWaitUntil();
+
+			expect(store.get).not.toHaveBeenCalled();
+			expect(fakeCache.put).not.toHaveBeenCalled();
+		});
+
+		it("does not evict a stale entry when shouldLazilyUpdateOnCacheHit is false", async () => {
+			const regionalCache = createRegionalCache({ bypassTagCacheOnCacheHit: false });
+
+			await regionalCache.get(PAGE_KEY);
+			await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, isStaleFromTag: true });
+			await flushWaitUntil();
+
+			expect(fakeCache.delete).not.toHaveBeenCalled();
+			expect(fakeCache.entries.has(PAGE_URL)).toBe(true);
+		});
+
+		describe("with shouldLazilyUpdateOnCacheHit", () => {
+			it("defers the lazy update until the entry is reported as fresh", async () => {
+				const regionalCache = createRegionalCache({
+					shouldLazilyUpdateOnCacheHit: true,
+					bypassTagCacheOnCacheHit: false,
+				});
+
+				const result = await regionalCache.get(PAGE_KEY);
+				expect(result?.shouldBypassTagCache).toBe(false);
+				await flushWaitUntil();
+				expect(store.get).not.toHaveBeenCalled();
+
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+				await flushWaitUntil();
+
+				expect(store.get).toHaveBeenCalledWith(PAGE_KEY, undefined);
+				expect(fakeCache.delete).not.toHaveBeenCalled();
+				expect(fakeCache.put).toHaveBeenCalledTimes(1);
+				expect(fakeCache.headers.get(PAGE_URL)?.get("cache-tag")).toBe(PAGE_TAGS);
+			});
+
+			it("evicts but does not update a key with overlapping reads of different entries in a request", async () => {
+				const regionalCache = createRegionalCache({
+					shouldLazilyUpdateOnCacheHit: true,
+					bypassTagCacheOnCacheHit: false,
+				});
+
+				await regionalCache.get(PAGE_KEY);
+				// i.e. the regional entry is updated between the two reads.
+				fakeCache.entries.set(PAGE_URL, JSON.stringify({ value: createPageValue(), lastModified: 2000 }));
+				await regionalCache.get(PAGE_KEY);
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+				await flushWaitUntil();
+
+				expect(store.get).not.toHaveBeenCalled();
+
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, hasBeenRevalidated: true });
+
+				expect(fakeCache.delete).toHaveBeenCalledWith(PAGE_URL);
+			});
+
+			// Their staleness is detected again on every read.
+			it.each([{ isStaleFromTag: true }, { isStaleFromTag: false, isStaleFromTime: true }])(
+				"updates a stale regional hit from the store (%o)",
+				async (stale) => {
+					const regionalCache = createRegionalCache({
+						shouldLazilyUpdateOnCacheHit: true,
+						bypassTagCacheOnCacheHit: false,
+					});
+
+					await regionalCache.get(PAGE_KEY);
+					await regionalCache.onTagCacheResult({ key: PAGE_KEY, hasBeenRevalidated: false, ...stale });
+					await flushWaitUntil();
+
+					expect(fakeCache.delete).not.toHaveBeenCalled();
+					expect(store.get).toHaveBeenCalledTimes(1);
+
+					// The next request gets the entry of the store from the Cache API.
+					startRequest();
+					expect((await regionalCache.get(PAGE_KEY))?.lastModified).toBe(1000);
+					expect(store.get).toHaveBeenCalledTimes(1);
+				}
+			);
+
+			it("evicts a revalidated regional hit before the entry is regenerated", async () => {
+				const regionalCache = createRegionalCache({
+					shouldLazilyUpdateOnCacheHit: true,
+					bypassTagCacheOnCacheHit: false,
+				});
+
+				await regionalCache.get(PAGE_KEY);
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, hasBeenRevalidated: true });
+				// The eviction has completed when OpenNext gets control back.
+				expect(fakeCache.entries.has(PAGE_URL)).toBe(false);
+				// i.e. Next.js regenerates the entry in the same request.
+				await regionalCache.set(PAGE_KEY, createPageValue());
+				await flushWaitUntil();
+
+				expect(fakeCache.entries.has(PAGE_URL)).toBe(true);
+			});
+
+			// The store may hold a newer entry than the regional copy, i.e. regenerated in another region.
+			it("evicts a regional hit that has been revalidated", async () => {
+				const regionalCache = createRegionalCache({
+					shouldLazilyUpdateOnCacheHit: true,
+					bypassTagCacheOnCacheHit: false,
+				});
+
+				await regionalCache.get(PAGE_KEY);
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, hasBeenRevalidated: true });
+				await flushWaitUntil();
+
+				expect(store.get).not.toHaveBeenCalled();
+				expect(fakeCache.put).not.toHaveBeenCalled();
+				expect(fakeCache.delete).toHaveBeenCalledWith(PAGE_URL);
+
+				// The next request reads the store.
+				startRequest();
+				expect(await regionalCache.get(PAGE_KEY)).toEqual({ value: createPageValue(), lastModified: 1000 });
+				expect(store.get).toHaveBeenCalledTimes(1);
+			});
+
+			it("updates and evicts a fetch entry at its URL", async () => {
+				const regionalCache = createRegionalCache({
+					shouldLazilyUpdateOnCacheHit: true,
+					bypassTagCacheOnCacheHit: false,
+				});
+				await regionalCache.set(PAGE_KEY, createPageValue(), "fetch");
+
+				await regionalCache.get(PAGE_KEY, "fetch");
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH });
+				await flushWaitUntil();
+
+				expect(store.get).toHaveBeenCalledWith(PAGE_KEY, "fetch");
+				expect(JSON.parse(fakeCache.entries.get(FETCH_URL)!).lastModified).toBe(1000);
+
+				await regionalCache.get(PAGE_KEY, "fetch");
+				await regionalCache.onTagCacheResult({ key: PAGE_KEY, ...FRESH, hasBeenRevalidated: true });
+
+				expect(fakeCache.entries.has(FETCH_URL)).toBe(false);
+				// The page entry of the same key is kept.
+				expect(fakeCache.entries.has(PAGE_URL)).toBe(true);
+			});
 		});
 	});
 });
