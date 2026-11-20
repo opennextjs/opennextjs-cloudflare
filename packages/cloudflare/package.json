@@ -9,8 +9,9 @@
 		"build:watch": "tsc -w",
 		"lint:check": "eslint",
 		"lint:fix": "eslint --cache --fix",
-		"ts:check": "tsc --noEmit",
-		"test": "vitest --run",
+		"ts:check": "tsc --noEmit && tsc -p test/workers/tsconfig.json",
+		"test": "vitest --run && pnpm test:workers",
+		"test:workers": "vitest --run --config vitest.workers.config.ts",
 		"test:watch": "vitest"
 	},
 	"bin": {
@@ -67,6 +68,7 @@
 		"yargs": "catalog:"
 	},
 	"devDependencies": {
+		"@cloudflare/vitest-plugin": "1.4.0",
 		"@cloudflare/workers-types": "catalog:",
 		"@eslint/js": "catalog:",
 		"@tsconfig/strictest": "catalog:",
