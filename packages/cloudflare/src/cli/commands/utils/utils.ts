@@ -7,7 +7,6 @@ import { compileOpenNextConfig } from "@opennextjs/aws/build/compileConfig.js";
 import { normalizeOptions } from "@opennextjs/aws/build/helper.js";
 import { printHeader, showWarningOnWindows } from "@opennextjs/aws/build/utils.js";
 import logger from "@opennextjs/aws/logger.js";
-import { unstable_readConfig } from "wrangler";
 import type yargs from "yargs";
 
 import type { OpenNextConfig } from "../../../api/config.js";
@@ -147,6 +146,8 @@ export function getNormalizedOptions(config: OpenNextConfig, buildDir = nextAppD
  * @returns Wrangler config.
  */
 export async function readWranglerConfig(args: WithWranglerArgs) {
+	const { unstable_readConfig } = await import("wrangler");
+
 	// Note: `unstable_readConfig` is sync as of wrangler 4.60.0
 	//       But it will eventually become async.
 	//       See https://github.com/cloudflare/workers-sdk/pull/12031
