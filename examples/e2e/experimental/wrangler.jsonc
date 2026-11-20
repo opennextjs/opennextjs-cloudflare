@@ -1,6 +1,6 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"main": ".open-next/worker.js",
+	"main": "worker.js",
 	"name": "experimental",
 	"compatibility_date": "2026-08-01",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
@@ -38,6 +38,10 @@
 	"services": [
 		{
 			"binding": "WORKER_SELF_REFERENCE",
+			"service": "experimental"
+		},
+		{
+			"binding": "UNTRACKED_IO",
 			"service": "experimental"
 		}
 	]

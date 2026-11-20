@@ -6,6 +6,8 @@ import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { build } from "esbuild";
 import type { Unstable_Config } from "wrangler";
 
+import { needsCacheComponentsScheduler } from "../patches/plugins/cache-components.js";
+
 /**
  * Compiles the initialization code for the workerd runtime
  */
@@ -29,6 +31,7 @@ export async function compileInit(options: BuildOptions, wranglerConfig: Unstabl
 		platform: "node",
 		define: {
 			__BUILD_TIMESTAMP_MS__: JSON.stringify(Date.now()),
+			__CACHE_COMPONENTS_SCHEDULER__: JSON.stringify(needsCacheComponentsScheduler(options, nextConfig)),
 			__NEXT_BASE_PATH__: JSON.stringify(basePath),
 			__ASSETS_RUN_WORKER_FIRST__: JSON.stringify(wranglerConfig.assets?.run_worker_first ?? false),
 			__DEPLOYMENT_ID__: JSON.stringify(deploymentId),
