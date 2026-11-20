@@ -18,7 +18,6 @@ import type { IncrementalCache, TagCache } from "@opennextjs/aws/types/overrides
 import { globSync } from "glob";
 import { tqdm } from "ts-tqdm";
 import type { Unstable_Config as WranglerConfig } from "wrangler";
-import { unstable_startWorker } from "wrangler";
 import type yargs from "yargs";
 
 import {
@@ -302,6 +301,8 @@ async function populateR2IncrementalCache(
 			);
 		}
 	}
+
+	const { unstable_startWorker } = await import("wrangler");
 
 	// Start a local worker and proxy it to the Cloudflare network when remote mode is enabled.
 	const worker = await unstable_startWorker({

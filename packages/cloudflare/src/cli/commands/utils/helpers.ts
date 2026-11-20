@@ -1,5 +1,5 @@
 import { type BuildOptions } from "@opennextjs/aws/build/helper.js";
-import { getPlatformProxy, type GetPlatformProxyOptions } from "wrangler";
+import type { GetPlatformProxyOptions } from "wrangler";
 
 import { extractProjectEnvVars } from "../../utils/extract-project-env-vars.js";
 
@@ -37,6 +37,8 @@ export type WorkerEnvVar = Record<keyof CloudflareEnv, string | undefined>;
 export async function getEnvFromPlatformProxy(options: GetPlatformProxyOptions, buildOpts: BuildOptions) {
 	// 1. Start from `process.env`
 	const envVars = process.env;
+
+	const { getPlatformProxy } = await import("wrangler");
 
 	// 2. Apply vars from workers `env`
 	const proxy = await getPlatformProxy<CloudflareEnv>({

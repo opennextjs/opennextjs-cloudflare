@@ -30,7 +30,7 @@ import { patchRouteModules } from "./patches/plugins/route-module.js";
 import { shimReact } from "./patches/plugins/shim-react.js";
 import { setWranglerExternal } from "./patches/plugins/wrangler-external.js";
 import { copyPackageCliFiles } from "./utils/copy-package-cli-files.js";
-import { needsExperimentalReact } from "./utils/needs-experimental-react.js";
+import { needsExperimentalReact } from "./utils/next-config.js";
 
 /** The dist directory of the Cloudflare adapter package */
 const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
