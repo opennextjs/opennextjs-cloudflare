@@ -184,11 +184,13 @@ describe("invalid manifest", () => {
 	});
 });
 
-test("stores repeated inline CSS once while preserving the evaluated client reference manifests", async () => {
+test("shares repeated CSS and chunk arrays while preserving the evaluated client reference manifests", async () => {
 	const sharedCss = '.opennext-shared-css::before { content: "入口"; }\n';
 	const uniqueCss = ".opennext-unique-css { border: 2px solid purple; }".repeat(800);
 	const linkedCss = { path: "static/chunks/linked.css", inlined: false };
+	const chunks = ["static/chunks/opennext-shared-client-chunk.js"];
 	const alpha = {
+		clientModules: { alpha: { id: 1, chunks } },
 		entryCSSFiles: {
 			layout: [
 				{ path: "static/chunks/shared.css", inlined: true, content: sharedCss },
@@ -198,6 +200,7 @@ test("stores repeated inline CSS once while preserving the evaluated client refe
 		},
 	};
 	const beta = {
+		clientModules: { beta: { id: 2, chunks } },
 		entryCSSFiles: {
 			"beta/page": [linkedCss, { path: "static/chunks/also-shared.css", inlined: true, content: sharedCss }],
 			layout: [{ path: "static/chunks/shared.css", inlined: true, content: sharedCss }],
@@ -222,7 +225,8 @@ test("stores repeated inline CSS once while preserving the evaluated client refe
 			expect(JSON.stringify(result)).toBe(JSON.stringify(expected));
 		}
 		expect(patched.split(".opennext-shared-css")).toHaveLength(2);
-		expect(patched).toMatch(/"content":\s*"\.opennext-unique-css/);
+		expect(patched).toMatch(/const v[0-9a-f]+\s*=\s*"\.opennext-unique-css/);
+		expect(patched.split("opennext-shared-client-chunk.js")).toHaveLength(2);
 	} finally {
 		patcher.cleanup();
 	}

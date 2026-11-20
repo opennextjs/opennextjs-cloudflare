@@ -10,7 +10,7 @@ import crypto from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join, posix, relative, sep } from "node:path";
 
-import { Lang, parse, type SgNode } from "@ast-grep/napi";
+import { type Edit, Lang, parse } from "@ast-grep/napi";
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { applyRule, patchCode, type RuleConfig } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
@@ -182,9 +182,9 @@ async function readManifestAsStringLiteral(path: string): Promise<string> {
  * `evalManifest` reads and evaluates the `*_client-reference-manifest.js` files at
  * runtime, which is not supported by workerd. The replacement returns the
  * `__RSC_MANIFEST` entry for the requested path:
- * - `page_client-reference-manifest.js` contents are inlined, with large repeated
- *   values factored out into shared top-level variables to reduce the bundle size
- *   (see `factorManifestValue` and `factorObjectValues`),
+ * - `page_client-reference-manifest.js` contents are inlined, with eligible large
+ *   values lifted into top-level variables so identical values can share a declaration
+ *   (see `factorManifestValues` and `factorObjectValues`),
  * - other manifests are loaded via `require` so they get bundled.
  *
  * Paths are matched longest first to avoid suffix collisions. A missing
@@ -205,9 +205,8 @@ async function getEvalManifestRule(buildOpts: BuildOptions): Promise<RuleConfig>
 		nodir: true,
 	});
 
-	// Map of factored large objects (variable name -> {...})
-	const factoredObjects = new Map<string, string>();
-	const cssObjectNames = new Set<string>();
+	// Map of factored large objects by variable name.
+	const factoredObjects = new Map<string, FactoredObject>();
 	// Map of manifest path -> factored manifest content
 	const factoredManifest = new Map<string, string>();
 	// Shared map of short hash prefix -> full SHA1 hash, used for collision resolution.
@@ -217,34 +216,15 @@ async function getEvalManifestRule(buildOpts: BuildOptions): Promise<RuleConfig>
 		if (path.endsWith("page_client-reference-manifest.js")) {
 			// `page_client-reference-manifest.js` files could contain large repeated values.
 			// Factor out large values into separate variables to reduce the overall size of the generated code.
-			let manifest = await readFile(path, "utf-8");
-			for (const key of [
-				"clientModules",
-				"ssrModuleMapping",
-				"edgeSSRModuleMapping",
-				"rscModuleMapping",
-				"entryCSSFiles",
-				"entryJSFiles",
-			]) {
-				manifest = factorManifestValue(
-					manifest,
-					key,
-					factoredObjects,
-					prefixMap,
-					key === "entryCSSFiles" ? cssObjectNames : undefined
-				);
-			}
-			factoredManifest.set(path, manifest);
+			const manifest = await readFile(path, "utf-8");
+			factoredManifest.set(path, factorManifestValues(manifest, factoredObjects, prefixMap));
 		}
 	}
 
 	// Map of factored values in an object
 	const factoredValues = new Map<string, string>();
 
-	for (const [varName, value] of factoredObjects) {
-		factoredObjects.set(varName, factorObjectValues(value, factoredValues, prefixMap));
-	}
-	factorRepeatedInlineCss(factoredObjects, cssObjectNames, factoredValues, prefixMap);
+	factorObjectValues(factoredObjects, factoredValues, prefixMap);
 
 	// Declare shared chunks and CSS strings before the objects that reference them.
 	const factoredValueCode = [...factoredValues.entries()]
@@ -252,7 +232,7 @@ async function getEvalManifestRule(buildOpts: BuildOptions): Promise<RuleConfig>
 		.join("\n");
 
 	const factoredObjectCode = [...factoredObjects.entries()]
-		.map(([varName, value]) => `const ${varName} = ${value};`)
+		.map(([varName, { source }]) => `const ${varName} = ${source};`)
 		.join("\n");
 
 	const returnManifests = manifestPaths
@@ -307,121 +287,100 @@ function evalManifest($PATH, $$$ARGS) {
 }
 
 /**
- * Factor out large manifest values into separate variables.
- *
- * @param manifest The manifest code.
- * @param key The key to factor out.
- * @param values A map to store the factored values (indexed by variable name).
- * @param prefixMap Map of short hash prefix → full hash, updated in place for
- *   collision resolution across calls.
- * @param factoredNames Optional set of variable names factored for this key.
- * @returns The manifest code with large values factored out.
+ * A manifest section lifted into a shared variable.
  */
-export function factorManifestValue(
-	manifest: string,
-	key: string,
-	values: Map<string, string>,
-	prefixMap: Map<string, string>,
-	factoredNames?: Set<string>
-): string {
-	const valueName = "VALUE";
-	// ASTGrep rule to extract the value of a specific key from the manifest object in the evalManifest function.
-	//
-	// globalThis.__RSC_MANIFEST["/path/to/page"] = {
-	//  // ...
-	//  key: $VALUE
-	//  // ...
-	// }
-	const extractValueRule = `
-rule:
-  kind: pair
-  all:
-    - has:
-        field: key
-        pattern: '"${key}"'
-    - has:
-        field: value
-        pattern: $${valueName}
-inside:
-  pattern: globalThis.__RSC_MANIFEST[$$$_] = { $$$ };
-  stopBy: end
-`;
-
-	const rootNode = parse(Lang.JavaScript, manifest).root();
-	const { matches } = applyRule(extractValueRule, rootNode, { once: true });
-	if (matches.length === 1 && matches[0]?.getMatch(valueName)) {
-		const match = matches[0];
-		const value = match.getMatch(valueName)!.text();
-		if (value.length > 30) {
-			// Factor out large values into separate variables.
-			const varName = getOrCreateVarName(value, prefixMap);
-			values.set(varName, value);
-			factoredNames?.add(varName);
-			// Replace the value in the manifest with the variable reference.
-			return rootNode.commitEdits([match.replace(`"${key}": ${varName}`)]);
-		}
-	}
-
-	// Return the original manifest if the value is not found or is small enough to not warrant factoring out.
-	return manifest;
-}
+export type FactoredObject = {
+	/** JavaScript source for the shared value, updated when nested values are factored out. */
+	source: string;
+	/** Whether at least one reference came from `entryCSSFiles`, making it eligible for inline CSS deduplication. */
+	isEntryCssFiles: boolean;
+};
 
 /**
- * Factor out large object values into separate variables.
+ * Top-level client reference manifest keys eligible for factoring.
+ */
+const factoredManifestKeys = [
+	"clientModules",
+	"ssrModuleMapping",
+	"edgeSSRModuleMapping",
+	"rscModuleMapping",
+	"entryCSSFiles",
+	"entryJSFiles",
+];
+
+/**
+ * Match the object assigned to a client reference manifest entry.
+ */
+const manifestObjectRule: RuleConfig = {
+	rule: {
+		kind: "object",
+		inside: { field: "right", pattern: "globalThis.__RSC_MANIFEST[$$$_] = { $$$ }" },
+	},
+};
+
+/**
+ * Lift eligible large top-level sections from a client reference manifest.
  *
- * @param valueText The JS source text of the module mapping object.
- * @param sharedVars Map to accumulate shared variable declarations.
+ * Sections listed in `factoredManifestKeys` are lifted when their source text is
+ * longer than 30 characters, even if they occur only once. Identical section
+ * source reuses the same variable across manifests.
+ *
+ * @param manifest The manifest code.
+ * @param values Map of variable names to factored objects and their CSS-section metadata.
  * @param prefixMap Map of short hash prefix → full hash, updated in place for
  *   collision resolution across calls.
- * @returns The rewritten value text with chunks arrays replaced by variable refs.
+ * @returns The manifest code with large values factored out.
  */
-export function factorObjectValues(
-	valueText: string,
-	sharedVars: Map<string, string>,
+export function factorManifestValues(
+	manifest: string,
+	values: Map<string, FactoredObject>,
 	prefixMap: Map<string, string>
 ): string {
-	const rootNode = parse(Lang.JavaScript, valueText).root();
+	const root = parse(Lang.JavaScript, manifest).root();
+	const [object] = applyRule(manifestObjectRule, root, { once: true }).matches;
+	if (!object) return manifest;
 
-	// Find all "chunks": [...] pairs
-	const chunksRule = `
-rule:
-  kind: pair
-  all:
-    - has:
-        field: key
-        pattern: '"chunks"'
-    - has:
-        field: value
-        kind: array
-        pattern: $CHUNKS
-`;
+	const edits: Edit[] = [];
+	const seenKeys = new Set<string>();
+	for (const pair of object.children()) {
+		if (pair.kind() !== "pair") continue;
+		const keyNode = pair.field("key");
+		if (!keyNode) continue;
+		const text = keyNode.text();
+		const key = keyNode.kind() === "string" ? text.slice(1, -1) : text;
+		if (!factoredManifestKeys.includes(key) || seenKeys.has(key)) continue;
+		seenKeys.add(key);
 
-	const { matches } = applyRule(chunksRule, rootNode, { once: false });
+		const source = pair.field("value")?.text();
+		if (!source || source.length <= 30) continue;
 
-	const edits: Array<{ match: SgNode; replacement: string }> = [];
-
-	for (const match of matches) {
-		const chunksNode = match.getMatch("CHUNKS");
-		if (!chunksNode) continue;
-		const chunksText = chunksNode.text();
-		if (chunksText.length <= 30) continue; // Skip small arrays
-
-		const varName = getOrCreateVarName(chunksText, prefixMap);
-		sharedVars.set(varName, chunksText);
-		edits.push({ match, replacement: `"chunks": ${varName}` });
+		const varName = getOrCreateVarName(source, prefixMap);
+		values.set(varName, {
+			source,
+			isEntryCssFiles: key === "entryCSSFiles" || values.get(varName)?.isEntryCssFiles === true,
+		});
+		edits.push(pair.replace(`${JSON.stringify(key)}: ${varName}`));
 	}
 
-	return edits.length === 0
-		? valueText
-		: rootNode.commitEdits(edits.map((e) => e.match.replace(e.replacement)));
+	return edits.length > 0 ? root.commitEdits(edits) : manifest;
 }
+
+const chunksArrayRule: RuleConfig = {
+	rule: {
+		kind: "pair",
+		all: [
+			{ has: { field: "key", pattern: '"chunks"' } },
+			{ has: { field: "value", kind: "array", pattern: "$VALUE" } },
+		],
+	},
+};
 
 const inlineCssContentRule: RuleConfig = {
 	rule: {
 		kind: "pair",
 		all: [
 			{ has: { field: "key", pattern: '"content"' } },
-			{ has: { field: "value", kind: "string", pattern: "$CONTENT" } },
+			{ has: { field: "value", kind: "string", pattern: "$VALUE" } },
 		],
 		inside: {
 			kind: "object",
@@ -433,48 +392,39 @@ const inlineCssContentRule: RuleConfig = {
 	},
 };
 
-function findInlineCssLiterals(root: SgNode) {
-	return applyRule(inlineCssContentRule, root, { once: false })
-		.matches.map((match) => {
-			const node = match.getMatch("CONTENT")!;
-			return { node, literal: node.text() };
-		})
-		.filter(({ literal }) => literal.length > 30);
-}
-
 /**
- * Turbopack repeats inline stylesheets in otherwise different route entries.
- * Count the emitted objects so a stylesheet already stored once stays inline.
+ * Lift large chunks arrays and inline CSS strings into shared variables.
+ *
+ * Parse each object once. Lift matching values longer than 30 characters even
+ * if they occur only once, and reuse the same variable for identical source.
+ *
+ * @param objects The distinct emitted objects, whose source is rewritten in place.
+ * @param sharedVars Map to accumulate shared variable declarations.
+ * @param prefixMap Map of short hash prefix → full hash, updated in place for collision resolution.
+ * @returns Nothing; updates the object sources and shared variable maps in place.
  */
-function factorRepeatedInlineCss(
-	objects: Map<string, string>,
-	cssObjectNames: ReadonlySet<string>,
+export function factorObjectValues(
+	objects: ReadonlyMap<string, FactoredObject>,
 	sharedVars: Map<string, string>,
 	prefixMap: Map<string, string>
 ): void {
-	const occurrences = new Map<string, number>();
-	for (const name of cssObjectNames) {
-		const root = parse(Lang.JavaScript, objects.get(name)!).root();
-		for (const { literal } of findInlineCssLiterals(root)) {
-			occurrences.set(literal, (occurrences.get(literal) ?? 0) + 1);
-		}
-	}
-	const sharedByLiteral = new Map<string, string>();
-	for (const [literal, count] of occurrences) {
-		if (count < 2) continue;
-		const varName = getOrCreateVarName(literal, prefixMap);
-		sharedByLiteral.set(literal, varName);
-		sharedVars.set(varName, literal);
-	}
-	if (sharedByLiteral.size === 0) return;
+	for (const object of objects.values()) {
+		const root = parse(Lang.JavaScript, object.source).root();
+		const rules = object.isEntryCssFiles ? [chunksArrayRule, inlineCssContentRule] : [chunksArrayRule];
+		const edits: Edit[] = [];
+		for (const rule of rules) {
+			for (const match of applyRule(rule, root).matches) {
+				const value = match.getMatch("VALUE");
+				if (!value) continue;
+				const source = value.text();
+				if (source.length <= 30) continue;
 
-	for (const name of cssObjectNames) {
-		const root = parse(Lang.JavaScript, objects.get(name)!).root();
-		const edits = findInlineCssLiterals(root).flatMap(({ node, literal }) => {
-			const varName = sharedByLiteral.get(literal);
-			return varName ? [node.replace(varName)] : [];
-		});
-		if (edits.length > 0) objects.set(name, root.commitEdits(edits));
+				const varName = getOrCreateVarName(source, prefixMap);
+				sharedVars.set(varName, source);
+				edits.push(value.replace(varName));
+			}
+		}
+		if (edits.length > 0) object.source = root.commitEdits(edits);
 	}
 }
 
