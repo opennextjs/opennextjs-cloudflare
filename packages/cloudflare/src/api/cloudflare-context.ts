@@ -9,87 +9,95 @@ import type { PREFIX_ENV_NAME as KV_CACHE_PREFIX_ENV_NAME } from "./overrides/in
 import type { PREFIX_ENV_NAME as R2_CACHE_PREFIX_ENV_NAME } from "./overrides/incremental-cache/r2-incremental-cache.js";
 
 declare global {
-	interface CloudflareEnv {
-		// Asset binding
-		ASSETS?: Fetcher;
+	// Wrangler declares this base for `wrangler types --env-interface CloudflareEnv`.
+	// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- Wrangler's generated declaration adds the configured bindings.
+	interface __BaseEnv_CloudflareEnv {}
 
-		// Images binding for image optimization
-		// Optimization is disabled if undefined
-		IMAGES?: ImagesBinding;
+	// Generated bindings inherit from the same base and take precedence over adapter fallbacks.
+	// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- The interface remains open for app declarations.
+	interface CloudflareEnv extends Omit<OpenNextBindings, keyof __BaseEnv_CloudflareEnv> {}
+}
 
-		// Environment to use when loading Next `.env` files
-		// Default to "production"
-		NEXTJS_ENV?: string;
+interface OpenNextBindings {
+	// Asset binding
+	ASSETS?: Fetcher;
 
-		// Service binding for the worker itself to be able to call itself from within the worker
-		WORKER_SELF_REFERENCE?: Service;
+	// Images binding for image optimization
+	// Optimization is disabled if undefined
+	IMAGES?: ImagesBinding;
 
-		// KV used for the incremental cache
-		NEXT_INC_CACHE_KV?: KVNamespace;
-		// Prefix used for the KV incremental cache key
-		[KV_CACHE_PREFIX_ENV_NAME]?: string;
+	// Environment to use when loading Next `.env` files
+	// Default to "production"
+	NEXTJS_ENV?: string;
 
-		// R2 bucket used for the incremental cache
-		NEXT_INC_CACHE_R2_BUCKET?: R2Bucket;
-		// Prefix used for the R2 incremental cache bucket
-		[R2_CACHE_PREFIX_ENV_NAME]?: string;
+	// Service binding for the worker itself to be able to call itself from within the worker
+	WORKER_SELF_REFERENCE?: Service;
 
-		// D1 db used for the tag cache
-		NEXT_TAG_CACHE_D1?: D1Database;
+	// KV used for the incremental cache
+	NEXT_INC_CACHE_KV?: KVNamespace;
+	// Prefix used for the KV incremental cache key
+	[KV_CACHE_PREFIX_ENV_NAME]?: string;
 
-		// KV used for the tag cache
-		NEXT_TAG_CACHE_KV?: KVNamespace;
+	// R2 bucket used for the incremental cache
+	NEXT_INC_CACHE_R2_BUCKET?: R2Bucket;
+	// Prefix used for the R2 incremental cache bucket
+	[R2_CACHE_PREFIX_ENV_NAME]?: string;
 
-		// Durables object namespace to use for the sharded tag cache
-		NEXT_TAG_CACHE_DO_SHARDED?: DurableObjectNamespace<DOShardedTagCache>;
-		// Queue of failed tag write
-		// Optional, could be used to monitor or reprocess failed writes
-		NEXT_TAG_CACHE_DO_SHARDED_DLQ?: Queue;
+	// D1 db used for the tag cache
+	NEXT_TAG_CACHE_D1?: D1Database;
 
-		// Durable Object namespace to use for the durable object queue
-		NEXT_CACHE_DO_QUEUE?: DurableObjectNamespace<DOQueueHandler>;
+	// KV used for the tag cache
+	NEXT_TAG_CACHE_KV?: KVNamespace;
 
-		// Below are the optional environment variables to configure the durable object queue
-		// The max number of revalidations that can be processed by the durable object at the same time
-		NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION?: string;
-		// The max time in milliseconds that a revalidation can take before being considered as failed
-		NEXT_CACHE_DO_QUEUE_REVALIDATION_TIMEOUT_MS?: string;
-		// The base interval in milliseconds of the exponential backoff between the retries of a failed revalidation
-		NEXT_CACHE_DO_QUEUE_RETRY_INTERVAL_MS?: string;
-		// The maximum number of times a failed revalidation is retried
-		NEXT_CACHE_DO_QUEUE_MAX_RETRIES?: string;
-		// Disable SQLite for the durable object queue handler
-		// This can be safely used if you don't use an eventually consistent incremental cache (i.e. R2 without the regional cache for example)
-		NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE?: string;
+	// Durables object namespace to use for the sharded tag cache
+	NEXT_TAG_CACHE_DO_SHARDED?: DurableObjectNamespace<DOShardedTagCache>;
+	// Queue of failed tag write
+	// Optional, could be used to monitor or reprocess failed writes
+	NEXT_TAG_CACHE_DO_SHARDED_DLQ?: Queue;
 
-		// Below are the env variables to use for purging the cache
-		// Durable Object namespace to use for the durable object cache purge (not needed in direct mode)
-		NEXT_CACHE_DO_PURGE?: DurableObjectNamespace<BucketCachePurge>;
-		// The amount of time in seconds that the cache purge will wait before purging the cache (not needed in direct mode)
-		NEXT_CACHE_DO_PURGE_BUFFER_TIME_IN_SECONDS?: string;
-		// The zone ID to use for the cache purge https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/
-		CACHE_PURGE_ZONE_ID?: string;
-		// The API token to use for the cache purge. It should have the `Cache Purge` permission
-		CACHE_PURGE_API_TOKEN?: string;
+	// Durable Object namespace to use for the durable object queue
+	NEXT_CACHE_DO_QUEUE?: DurableObjectNamespace<DOQueueHandler>;
 
-		// The following variables must be provided when skew protection is enabled
-		// The name of the worker (as defined in the wrangler configuration)
-		// When a specific wrangler environment is used, it should be appended at the end:
-		// - Use `worker-name` when no wrangler environment is used
-		// - Use `worker-name-<environment>` when a wrangler environment is used via `wrangler --env=<environment>`
-		CF_WORKER_NAME?: string;
-		// The subdomain where the previews are deployed, i.e. `<version-name>.<domain>.workers.dev`
-		CF_PREVIEW_DOMAIN?: string;
-		// Should have the `Workers Scripts:Read` permission
-		CF_WORKERS_SCRIPTS_API_TOKEN?: string;
+	// Below are the optional environment variables to configure the durable object queue
+	// The max number of revalidations that can be processed by the durable object at the same time
+	NEXT_CACHE_DO_QUEUE_MAX_REVALIDATION?: string;
+	// The max time in milliseconds that a revalidation can take before being considered as failed
+	NEXT_CACHE_DO_QUEUE_REVALIDATION_TIMEOUT_MS?: string;
+	// The base interval in milliseconds of the exponential backoff between the retries of a failed revalidation
+	NEXT_CACHE_DO_QUEUE_RETRY_INTERVAL_MS?: string;
+	// The maximum number of times a failed revalidation is retried
+	NEXT_CACHE_DO_QUEUE_MAX_RETRIES?: string;
+	// Disable SQLite for the durable object queue handler
+	// This can be safely used if you don't use an eventually consistent incremental cache (i.e. R2 without the regional cache for example)
+	NEXT_CACHE_DO_QUEUE_DISABLE_SQLITE?: string;
 
-		// Cloudflare account id - needed for skew protection and R2 batch population
-		CF_ACCOUNT_ID?: string;
+	// Below are the env variables to use for purging the cache
+	// Durable Object namespace to use for the durable object cache purge (not needed in direct mode)
+	NEXT_CACHE_DO_PURGE?: DurableObjectNamespace<BucketCachePurge>;
+	// The amount of time in seconds that the cache purge will wait before purging the cache (not needed in direct mode)
+	NEXT_CACHE_DO_PURGE_BUFFER_TIME_IN_SECONDS?: string;
+	// The zone ID to use for the cache purge https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/
+	CACHE_PURGE_ZONE_ID?: string;
+	// The API token to use for the cache purge. It should have the `Cache Purge` permission
+	CACHE_PURGE_API_TOKEN?: string;
 
-		// R2 S3 API credentials used by `rclone`
-		R2_ACCESS_KEY_ID?: string;
-		R2_SECRET_ACCESS_KEY?: string;
-	}
+	// The following variables must be provided when skew protection is enabled
+	// The name of the worker (as defined in the wrangler configuration)
+	// When a specific wrangler environment is used, it should be appended at the end:
+	// - Use `worker-name` when no wrangler environment is used
+	// - Use `worker-name-<environment>` when a wrangler environment is used via `wrangler --env=<environment>`
+	CF_WORKER_NAME?: string;
+	// The subdomain where the previews are deployed, i.e. `<version-name>.<domain>.workers.dev`
+	CF_PREVIEW_DOMAIN?: string;
+	// Should have the `Workers Scripts:Read` permission
+	CF_WORKERS_SCRIPTS_API_TOKEN?: string;
+
+	// Cloudflare account id - needed for skew protection and R2 batch population
+	CF_ACCOUNT_ID?: string;
+
+	// R2 S3 API credentials used by `rclone`
+	R2_ACCESS_KEY_ID?: string;
+	R2_SECRET_ACCESS_KEY?: string;
 }
 
 export type CloudflareContext<
