@@ -113,6 +113,12 @@ Run all the unit tests, via Vitest:
 pnpm run test
 ```
 
+Run the build CLI integration tests without starting a Worker or browser:
+
+```sh
+pnpm test:build
+```
+
 Run all the e2e tests, via Playwright:
 
 ```sh

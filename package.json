@@ -13,6 +13,7 @@
 		"fix": "pnpm prettier:fix && pnpm lint:fix",
 		"build": "pnpm --filter cloudflare build",
 		"test": "pnpm build && pnpm -r test",
+		"test:build": "pnpm build && node --test packages/cloudflare/test/build-cli.test.mjs",
 		"e2e": "pnpm build && pnpm -r e2e",
 		"e2e-turbopack": "pnpm build && pnpm -r e2e-turbopack",
 		"e2e:dev": "pnpm build && pnpm -r e2e:dev",

@@ -22,3 +22,7 @@ jobs:
 
       - name: ${{ matrix.script }}
         run: pnpm run ${{ matrix.script }}
+
+      - name: Test the build CLI
+        if: matrix.script == 'test'
+        run: node --test packages/cloudflare/test/build-cli.test.mjs
