@@ -18,6 +18,7 @@ describe("maybeGetAssetResult", () => {
 	beforeEach(async () => {
 		vi.resetModules();
 		mockAssetsFetch.mockReset();
+		globalThis.__NEXT_BASE_PATH__ = "";
 		globalThis.__ASSETS_RUN_WORKER_FIRST__ = true;
 		resolver = (await import("./index.js")).default;
 	});
@@ -78,13 +79,47 @@ describe("maybeGetAssetResult", () => {
 		expect(mockAssetsFetch).not.toHaveBeenCalled();
 	});
 
-	test("returns undefined when run_worker_first is false", async () => {
-		globalThis.__ASSETS_RUN_WORKER_FIRST__ = false;
+	test.each(["", "/docs"])(
+		"serves Next.js static assets when run_worker_first is false (basePath %j)",
+		async (basePath) => {
+			globalThis.__NEXT_BASE_PATH__ = basePath;
+			globalThis.__ASSETS_RUN_WORKER_FIRST__ = false;
+			mockAssetsFetch.mockResolvedValue(new Response("compiled JavaScript"));
+			const requestPath = `${basePath}/_next/static/chunks/app.js`;
 
-		const result = await resolver.maybeGetAssetResult(makeEvent("GET", "/style.css"));
+			const result = await resolver.maybeGetAssetResult(makeEvent("GET", requestPath));
+
+			expect(result?.statusCode).toBe(200);
+			expect(mockAssetsFetch).toHaveBeenCalledWith(
+				new URL(requestPath, "https://assets.local"),
+				expect.objectContaining({ method: "GET", redirect: "manual" })
+			);
+		}
+	);
+
+	test.each(["/style.css", "/_next/image", "/_next/data/build/index.json"])(
+		"defers other paths to existing routing when run_worker_first is false (%s)",
+		async (requestPath) => {
+			globalThis.__ASSETS_RUN_WORKER_FIRST__ = false;
+
+			const result = await resolver.maybeGetAssetResult(makeEvent("GET", requestPath));
+
+			expect(result).toBeUndefined();
+			expect(mockAssetsFetch).not.toHaveBeenCalled();
+		}
+	);
+
+	test("preserves 404 handling when a rewritten Next.js asset is missing", async () => {
+		globalThis.__ASSETS_RUN_WORKER_FIRST__ = false;
+		mockAssetsFetch.mockResolvedValue(new Response(null, { status: 404 }));
+
+		const result = await resolver.maybeGetAssetResult(makeEvent("HEAD", "/_next/static/chunks/missing.js"));
 
 		expect(result).toBeUndefined();
-		expect(mockAssetsFetch).not.toHaveBeenCalled();
+		expect(mockAssetsFetch).toHaveBeenCalledWith(
+			new URL("/_next/static/chunks/missing.js", "https://assets.local"),
+			expect.objectContaining({ method: "HEAD" })
+		);
 	});
 });
 

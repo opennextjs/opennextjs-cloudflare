@@ -4,12 +4,11 @@ import type { AssetResolver } from "@opennextjs/aws/types/overrides.js";
 import { getCloudflareContext } from "../../cloudflare-context.js";
 
 /**
- * Serves assets when `run_worker_first` is set to true.
+ * Serves assets from the Next.js routing layer.
  *
- * When `run_worker_first` is `false`, the assets are served directly bypassing Next routing.
- *
- * When it is `true`, assets are served from the routing layer. It should be used when assets
- * should be behind the middleware or when skew protection is enabled.
+ * Next.js rewrites prefixed build assets to their packaged location before resolving them.
+ * The Worker can therefore receive a request after the asset router initially missed it.
+ * For other paths, `run_worker_first` determines when routing should handle the asset.
  *
  * Like Next.js, public files are only served at their exact path. This is ensured by the `html_handling`
  * and `not_found_handling` assets config which are checked at build time (see `ensureAssetsConfig`).
@@ -20,19 +19,19 @@ const resolver: AssetResolver = {
 	name: "cloudflare-asset-resolver",
 	async maybeGetAssetResult(event: InternalEvent) {
 		const { ASSETS } = getCloudflareContext().env;
+		const { method, headers, rawPath } = event;
 
-		if (!ASSETS || !isUserWorkerFirst(globalThis.__ASSETS_RUN_WORKER_FIRST__, event.rawPath)) {
-			// Only handle assets when the user worker runs first for the path
+		if (!ASSETS || (method !== "GET" && method !== "HEAD")) {
 			return undefined;
 		}
 
-		const { method, headers } = event;
+		const url = new URL(rawPath, "https://assets.local");
+		const isNextStaticAsset = url.pathname.startsWith(`${globalThis.__NEXT_BASE_PATH__ ?? ""}/_next/static/`);
 
-		if (method !== "GET" && method != "HEAD") {
+		if (!isNextStaticAsset && !isUserWorkerFirst(globalThis.__ASSETS_RUN_WORKER_FIRST__, rawPath)) {
 			return undefined;
 		}
 
-		const url = new URL(event.rawPath, "https://assets.local");
 		const response = await ASSETS.fetch(url, {
 			headers,
 			method,
