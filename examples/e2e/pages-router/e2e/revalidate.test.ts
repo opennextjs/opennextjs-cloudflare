@@ -1,19 +1,27 @@
 import { expect, test } from "@playwright/test";
 
-test("`res.revalidate` should revalidate the ssg page", async ({ page, request }) => {
-	await page.goto("/ssg/");
-	const initialTime = await page.getByTestId("time").textContent();
+test("res.revalidate should revalidate the page", async ({ page, request }) => {
+	// The page is SSG: it is served from the cache until it is revalidated
+	const initialResponse = await page.goto("/revalidate/1");
+	const headers = initialResponse?.headers() ?? {};
+	expect(headers["x-nextjs-cache"] ?? headers["x-opennext-cache"]).toBe("HIT");
+	const initialUpdatedAt = await page.getByTestId("updated-at").textContent();
+	expect(initialUpdatedAt).toBeTruthy();
 
 	await page.reload();
-	const newTime = await page.getByTestId("time").textContent();
+	const reloadedUpdatedAt = await page.getByTestId("updated-at").textContent();
+	expect(reloadedUpdatedAt).toBe(initialUpdatedAt);
 
-	expect(initialTime).toBe(newTime);
+	// Trigger the revalidation from an API route
+	const res = await request.post("/api/revalidate?key=1");
+	expect(res.ok(), await res.text()).toBe(true);
+	expect(await res.json()).toEqual({
+		revalidated: true,
+		path: "/revalidate/1",
+	});
 
-	const revalidateResult = await request.post("/api/revalidate");
-	expect(revalidateResult.status()).toBe(200);
-	expect(await revalidateResult.json()).toEqual({ hello: "OpenNext rocks!" });
-
+	// `res.revalidate` resolves once the page has been regenerated
 	await page.reload();
-	const revalidatedTime = await page.getByTestId("time").textContent();
-	expect(initialTime).not.toBe(revalidatedTime);
+	const revalidatedUpdatedAt = await page.getByTestId("updated-at").textContent();
+	expect(new Date(revalidatedUpdatedAt!).getTime()).toBeGreaterThan(new Date(initialUpdatedAt!).getTime());
 });

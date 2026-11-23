@@ -20,5 +20,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-	matcher: ["/", "/rewrite-client-path/:path*"],
+	matcher: ["/", "/rewrite-client-path/:path*", "/revalidate/:path*"],
 };
