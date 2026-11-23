@@ -532,6 +532,10 @@ async function sendEntriesToR2Worker(options: {
 	const { workerUrl, assets, prefix, maxConcurrency } = options;
 
 	const pending = new Set<Promise<void>>();
+	// A task that terminally fails while we're throttled or waiting on a slot
+	// leaves `pending` before anything awaits it. Collect failures so they're
+	// thrown below instead of letting the populate "succeed" with missing keys.
+	const failures: unknown[] = [];
 	// Shared cooldown across all uploads: when an entry fails with a retryable
 	// error, no new requests are sent until the failing entry's own retry delay
 	// elapses. Under sustained failures (e.g. the client exhausting connections)
@@ -544,6 +548,7 @@ async function sendEntriesToR2Worker(options: {
 		const { fullPath, key, buildId, isFetch } = asset;
 
 		await waitForThrottle(throttle);
+		if (failures.length > 0) break;
 
 		const task = sendEntryToR2Worker({
 			workerUrl,
@@ -554,7 +559,11 @@ async function sendEntriesToR2Worker(options: {
 			}),
 			filename: fullPath,
 			throttle,
-		}).finally(() => pending.delete(task));
+		})
+			.catch((e: unknown) => {
+				failures.push(e);
+			})
+			.finally(() => pending.delete(task));
 
 		pending.add(task);
 
@@ -565,6 +574,9 @@ async function sendEntriesToR2Worker(options: {
 	}
 
 	await Promise.all(pending);
+	if (failures.length > 0) {
+		throw failures[0];
+	}
 }
 
 class RetryableWorkerError extends Error {}
@@ -572,9 +584,12 @@ class RetryableWorkerError extends Error {}
 type UploadThrottle = { resumeAt: number };
 
 async function waitForThrottle(throttle: UploadThrottle): Promise<void> {
-	const delay = throttle.resumeAt - Date.now();
-	if (delay > 0) {
+	// Re-check after waking: an in-flight failure may have extended the
+	// cooldown past the deadline we originally slept until.
+	let delay = throttle.resumeAt - Date.now();
+	while (delay > 0) {
 		await setTimeout(delay);
+		delay = throttle.resumeAt - Date.now();
 	}
 }
 

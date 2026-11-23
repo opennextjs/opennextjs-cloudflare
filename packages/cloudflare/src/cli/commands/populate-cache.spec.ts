@@ -594,6 +594,93 @@ describe("populateCache", () => {
 			expect(mockWorkerDispose).toHaveBeenCalled();
 		});
 
+		test("holds a fresh upload admitted while a cooldown is active", async () => {
+			mockFs({
+				"/test/output": {
+					cache: {
+						buildID: {
+							path: {
+								to: {
+									"test-a.cache": JSON.stringify({ data: "test" }),
+									"test-b.cache": JSON.stringify({ data: "test" }),
+									"test-c.cache": JSON.stringify({ data: "test" }),
+								},
+							},
+						},
+					},
+				},
+			});
+			vi.useFakeTimers();
+
+			const mockWorkerDispose = vi.fn();
+			// @ts-expect-error - Mock unstable_startWorker to return a mock worker instance
+			vi.mocked(unstable_startWorker).mockResolvedValueOnce({
+				ready: Promise.resolve(),
+				url: Promise.resolve(new URL("http://localhost:12345")),
+				dispose: mockWorkerDispose,
+			});
+
+			// test-c uploads first and fails attempt 0 (250ms shared cooldown).
+			// test-b takes 50ms to succeed, so its slot frees while the cooldown
+			// is still active — the fresh test-a upload must wait it out.
+			const fetchMock = vi
+				.spyOn(global, "fetch")
+				.mockImplementationOnce(async (_input, init) => {
+					if (init?.body instanceof ReadableStream) {
+						await init.body.cancel();
+					}
+
+					return new Response(
+						JSON.stringify({ success: false, error: "R2 storage error", code: "ERR_WRITE_FAILED" }),
+						{ status: 500, headers: { "Content-Type": "application/json" } }
+					);
+				})
+				.mockImplementationOnce(async (_input, init) => {
+					if (init?.body instanceof ReadableStream) {
+						await init.body.cancel();
+					}
+
+					await new Promise((r) => setTimeout(r, 50));
+
+					return new Response(JSON.stringify({ success: true }), {
+						status: 200,
+						headers: { "Content-Type": "application/json" },
+					});
+				})
+				.mockImplementation(async (_input, init) => {
+					if (init?.body instanceof ReadableStream) {
+						await init.body.cancel();
+					}
+
+					return new Response(JSON.stringify({ success: true }), {
+						status: 200,
+						headers: { "Content-Type": "application/json" },
+					});
+				});
+
+			const result = populateCache(
+				buildOptions,
+				config,
+				wranglerConfig,
+				{ target: "local", shouldUsePreviewId: false, cacheChunkSize: 2 },
+				envVars
+			);
+
+			await vi.advanceTimersByTimeAsync(10);
+			expect(fetchMock).toHaveBeenCalledTimes(2);
+
+			// test-b is done and a concurrency slot is free, but test-c's failure
+			// set a 250ms cooldown: test-a must not send yet.
+			await vi.advanceTimersByTimeAsync(100);
+			expect(fetchMock).toHaveBeenCalledTimes(2);
+
+			await vi.advanceTimersByTimeAsync(1000);
+			await expect(result).resolves.toBeUndefined();
+
+			expect(fetchMock).toHaveBeenCalledTimes(4);
+			expect(mockWorkerDispose).toHaveBeenCalled();
+		});
+
 		test("retries worker exceeded resource limits responses", async () => {
 			setupMockFileSystem();
 			vi.useFakeTimers();
