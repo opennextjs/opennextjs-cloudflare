@@ -47,6 +47,17 @@ import { patchTurbopackRuntimeCode, patchTurbopackWasmChunkCode } from "../patch
 import { setWranglerExternal } from "../patches/plugins/wrangler-external.js";
 
 /**
+ * Imports left external in the Node.js middleware bundle.
+ *
+ * - `cloudflare:*` modules are provided by workerd and resolved by wrangler, as for the server
+ *   (see `serverExternals`). The middleware is bundled with the `workerd` condition, so the static
+ *   `import { connect } from "cloudflare:sockets"` of the `workerd` build of `postgres` 4 reaches it
+ *   when `proxy.ts` imports `postgres`.
+ * - `./open-next.config.mjs` is not bundled.
+ */
+export const nodeMiddlewareExternals = ["cloudflare:*", "./open-next.config.mjs"];
+
+/**
  * Returns the chunks of the middleware compiled by Next.js, from its trace.
  *
  * `@opennextjs/aws` also copies the files traced for the instrumentation hook to the middleware
@@ -296,9 +307,8 @@ export async function bundleNodeMiddleware(
 		legalComments: "none",
 		sourcemap: debug ? "inline" : false,
 		sourcesContent: false,
-		// `cloudflare:*` modules are resolved by wrangler, see `serverExternals`.
 		// Node.js builtins are handled by `nodeBuiltinsPlugin`.
-		external: ["cloudflare:*", "./open-next.config.mjs"],
+		external: nodeMiddlewareExternals,
 		define: {
 			// The base of the middleware compiled by Next.js is runtime agnostic. "edge" selects its
 			// Web API code paths (which workerd supports) over the Node.js server paths (which it does

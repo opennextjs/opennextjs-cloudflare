@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import {
 	getMiddlewareChunks,
 	nodeBuiltinsPlugin,
+	nodeMiddlewareExternals,
 	opentelemetryFallbackPlugin,
 } from "./bundle-node-middleware.js";
 
@@ -341,5 +342,63 @@ describe("getMiddlewareChunks", () => {
 		writeFiles(["output/.next/server/chunks/1.js"]);
 
 		expect(getChunks(["chunks/1.js", "chunks/2.js"])).toEqual(["chunks/1.js"]);
+	});
+});
+
+describe("nodeMiddlewareExternals", () => {
+	let dir: string;
+
+	beforeEach(() => {
+		dir = mkdtempSync(path.join(tmpdir(), "node-middleware-externals-"));
+		// A package whose `workerd` build imports `cloudflare:*` modules, as `postgres` 4 does.
+		const files: Record<string, string> = {
+			"node_modules/pg-like/package.json": JSON.stringify({
+				name: "pg-like",
+				exports: { ".": { workerd: "./cf.js", default: "./node.js" } },
+			}),
+			"node_modules/pg-like/cf.js": `import { connect } from "cloudflare:sockets"; export const sockets = () => import("cloudflare:workers"); export { connect };`,
+			"node_modules/pg-like/node.js": `export const connect = () => "node";`,
+		};
+		for (const [file, contents] of Object.entries(files)) {
+			mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+			writeFileSync(path.join(dir, file), contents);
+		}
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	/**
+	 * Bundles a module importing `pg-like` with the resolution options of `bundleNodeMiddleware`.
+	 *
+	 * @param external The imports to leave external.
+	 * @returns The bundled output.
+	 */
+	async function bundleWorkerd(external: string[]): Promise<string> {
+		const result = await build({
+			stdin: { contents: `export * from "pg-like";`, resolveDir: dir },
+			bundle: true,
+			format: "esm",
+			platform: "node",
+			target: "es2022",
+			conditions: ["workerd"],
+			external,
+			write: false,
+			logLevel: "silent",
+		});
+		return result.outputFiles[0]!.text;
+	}
+
+	// See https://github.com/opennextjs/opennextjs-cloudflare/issues/1487
+	test("leaves the cloudflare: imports of a package's workerd build to wrangler", async () => {
+		const bundled = await bundleWorkerd(nodeMiddlewareExternals);
+
+		expect(bundled).toContain(`from "cloudflare:sockets"`);
+		expect(bundled).toContain(`import("cloudflare:workers")`);
+	});
+
+	test("esbuild can not resolve the cloudflare: imports", async () => {
+		await expect(bundleWorkerd([])).rejects.toThrow(/Could not resolve "cloudflare:sockets"/);
 	});
 });
