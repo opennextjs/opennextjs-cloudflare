@@ -62,7 +62,7 @@ describe("resolvePackages", () => {
 	/**
 	 * Bundles an entry point of the output with the `workerd` condition, as `bundleServer` does.
 	 *
-	 * @param entry The entry point, relative to the app in the output
+	 * @param entry The entry point, relative to the app in the output, or an absolute path
 	 * @param appDir The app directory, relative to the root
 	 * @param plugins The plugins registered before `resolvePackages`
 	 * @param output The output, relative to the app
@@ -71,7 +71,7 @@ describe("resolvePackages", () => {
 	async function bundle(entry: string, appDir = "", plugins: Plugin[] = [], output = OUTPUT) {
 		const appPath = path.join(root, appDir);
 		const result = await build({
-			entryPoints: [path.join(appPath, output, appDir, entry)],
+			entryPoints: [path.isAbsolute(entry) ? entry : path.join(appPath, output, appDir, entry)],
 			absWorkingDir: root,
 			bundle: true,
 			write: false,
@@ -648,6 +648,22 @@ describe("resolvePackages", () => {
 
 		expect(inputs).toEqual([`${output}/.next/server/middleware.js`, "node_modules/postgres/src/cf.js"]);
 		expect(code).toMatch(/import \{ connect \} from "cloudflare:sockets"/);
+	});
+
+	// The Node.js middleware bundles the `@opennextjs/aws` adapter from the install (#1506)
+	test("keeps the module type of the installed files it does not remap", async () => {
+		write({
+			"node_modules/adapter/package.json": { name: "adapter", type: "module" },
+			"node_modules/adapter/middleware.js": "export * from './converter.js';",
+			"node_modules/adapter/converter.js": "import cookie from 'cookie'; export const { parse } = cookie;",
+			"node_modules/cookie/package.json": { name: "cookie" },
+			"node_modules/cookie/index.js": "Object.defineProperty(exports, '__esModule', { value: true });",
+		});
+
+		const { code } = await bundle(path.join(root, "node_modules/adapter/middleware.js"));
+
+		// `1` is the Node.js mode: `default` is `module.exports`
+		expect(code).toMatch(/__toESM\(require_cookie\(\), 1\)/);
 	});
 
 	// `optional-deps` resolves its dependencies again with a marker, both plugins must not loop

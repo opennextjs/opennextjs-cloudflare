@@ -14,6 +14,13 @@ test.describe("Node Middleware", () => {
 		expect(headers["x-random-node"]).toBeDefined();
 	});
 
+	// See https://github.com/opennextjs/opennextjs-cloudflare/issues/1506
+	test("Node middleware should handle requests with cookies", async ({ request }) => {
+		const resp = await request.get("/", { headers: { cookie: "a=b" } });
+		expect(resp.status()).toEqual(200);
+		expect(resp.headers()["x-middleware-test"]).toEqual("1");
+	});
+
 	test("Node middleware should return json", async ({ request }) => {
 		const resp = await request.get("/api/hello");
 		expect(resp.status()).toEqual(200);

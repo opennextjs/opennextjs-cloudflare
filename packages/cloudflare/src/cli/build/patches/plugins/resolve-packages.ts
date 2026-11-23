@@ -102,6 +102,10 @@ export function resolvePackages(buildOpts: BuildOptions, outputRoot: string) {
 /**
  * Resolves a specifier from a directory with esbuild and replaces the result with its copy in the output.
  *
+ * The import is left to esbuild when it resolves to the same file: esbuild ignores the `"type": "module"`
+ * of a file resolved by a plugin, and the default import of a CommonJS module setting `__esModule`
+ * (i.e. `cookie@1`) would be `undefined` (#1506, https://github.com/evanw/esbuild/issues/2958).
+ *
  * @param build The esbuild plugin build
  * @param specifier The specifier to resolve
  * @param resolveDir The directory to resolve the specifier from
@@ -130,7 +134,11 @@ async function resolveFrom(
 	if (result.external || result.namespace !== "file") {
 		return result;
 	}
-	return { ...result, path: mapper.preferOutput(result.path) };
+	const resolvedPath = mapper.preferOutput(result.path);
+	if (resolvedPath === result.path && specifier === args.path && resolveDir === args.resolveDir) {
+		return undefined;
+	}
+	return { ...result, path: resolvedPath };
 }
 
 interface PathMapper {
