@@ -522,6 +522,78 @@ describe("populateCache", () => {
 			expect(mockWorkerDispose).toHaveBeenCalled();
 		});
 
+		test("pauses new uploads while failed requests back off", async () => {
+			mockFs({
+				"/test/output": {
+					cache: {
+						buildID: {
+							path: {
+								to: {
+									"test-a.cache": JSON.stringify({ data: "test" }),
+									"test-b.cache": JSON.stringify({ data: "test" }),
+									"test-c.cache": JSON.stringify({ data: "test" }),
+								},
+							},
+						},
+					},
+				},
+			});
+			vi.useFakeTimers();
+
+			const mockWorkerDispose = vi.fn();
+			// @ts-expect-error - Mock unstable_startWorker to return a mock worker instance
+			vi.mocked(unstable_startWorker).mockResolvedValueOnce({
+				ready: Promise.resolve(),
+				url: Promise.resolve(new URL("http://localhost:12345")),
+				dispose: mockWorkerDispose,
+			});
+
+			// Entries are sent in descending order, so test-c uploads first and
+			// test-b second: both fail attempt 0 (250ms delay), then test-c fails
+			// attempt 1 with a longer delay (~325ms). test-a never fails.
+			const fetchMock = vi.spyOn(global, "fetch").mockImplementation(async (_input, init) => {
+				if (init?.body instanceof ReadableStream) {
+					await init.body.cancel();
+				}
+
+				const shouldFail = fetchMock.mock.calls.length <= 3;
+
+				return shouldFail
+					? new Response(
+							JSON.stringify({ success: false, error: "R2 storage error", code: "ERR_WRITE_FAILED" }),
+							{ status: 500, headers: { "Content-Type": "application/json" } }
+						)
+					: new Response(JSON.stringify({ success: true }), {
+							status: 200,
+							headers: { "Content-Type": "application/json" },
+						});
+			});
+
+			const result = populateCache(
+				buildOptions,
+				config,
+				wranglerConfig,
+				{ target: "local", shouldUsePreviewId: false, cacheChunkSize: 2 },
+				envVars
+			);
+
+			await vi.waitFor(() => {
+				expect(fetchMock).toHaveBeenCalledTimes(2);
+			});
+
+			// First backoff elapses: test-c's retry runs and fails again, extending
+			// the shared cooldown. test-b's own backoff also elapsed, but its retry
+			// is held by test-c's new cooldown instead of firing immediately.
+			await vi.advanceTimersByTimeAsync(250);
+			expect(fetchMock).toHaveBeenCalledTimes(3);
+
+			await vi.advanceTimersByTimeAsync(2000);
+			await expect(result).resolves.toBeUndefined();
+
+			expect(fetchMock).toHaveBeenCalledTimes(6);
+			expect(mockWorkerDispose).toHaveBeenCalled();
+		});
+
 		test("retries worker exceeded resource limits responses", async () => {
 			setupMockFileSystem();
 			vi.useFakeTimers();
