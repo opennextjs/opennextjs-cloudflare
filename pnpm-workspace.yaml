@@ -30,7 +30,7 @@ catalog:
   eslint-plugin-import: ^2.32.0
   eslint-plugin-simple-import-sort: ^14.0.0
   eslint-plugin-unicorn: ^65.0.1
-  glob: ^13.0.6
+  glob: ^14.0.6
   globals: ^17.13.0
   mock-fs: ^5.5.0
   next: ^15.5.29
