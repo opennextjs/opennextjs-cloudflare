@@ -9,8 +9,8 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import {
 	getMiddlewareChunks,
+	getNodeMiddlewareResolveOptions,
 	nodeBuiltinsPlugin,
-	nodeMiddlewareExternals,
 	opentelemetryFallbackPlugin,
 } from "./bundle-node-middleware.js";
 
@@ -345,7 +345,7 @@ describe("getMiddlewareChunks", () => {
 	});
 });
 
-describe("nodeMiddlewareExternals", () => {
+describe("getNodeMiddlewareResolveOptions", () => {
 	let dir: string;
 
 	beforeEach(() => {
@@ -370,35 +370,42 @@ describe("nodeMiddlewareExternals", () => {
 	});
 
 	/**
-	 * Bundles a module importing `pg-like` with the resolution options of `bundleNodeMiddleware`.
+	 * Bundles a module importing `pg-like` with the resolution options `bundleNodeMiddleware` uses.
 	 *
-	 * @param external The imports to leave external.
+	 * @param options The resolution options, see {@link getNodeMiddlewareResolveOptions}.
 	 * @returns The bundled output.
 	 */
-	async function bundleWorkerd(external: string[]): Promise<string> {
+	async function bundlePackage(options: BuildOptions): Promise<string> {
 		const result = await build({
 			stdin: { contents: `export * from "pg-like";`, resolveDir: dir },
 			bundle: true,
 			format: "esm",
-			platform: "node",
 			target: "es2022",
-			conditions: ["workerd"],
-			external,
 			write: false,
 			logLevel: "silent",
+			...options,
 		});
-		return result.outputFiles[0]!.text;
+		return result.outputFiles![0]!.text;
 	}
 
 	// See https://github.com/opennextjs/opennextjs-cloudflare/issues/1487
 	test("leaves the cloudflare: imports of a package's workerd build to wrangler", async () => {
-		const bundled = await bundleWorkerd(nodeMiddlewareExternals);
+		const bundled = await bundlePackage(getNodeMiddlewareResolveOptions(true));
 
 		expect(bundled).toContain(`from "cloudflare:sockets"`);
 		expect(bundled).toContain(`import("cloudflare:workers")`);
 	});
 
-	test("esbuild can not resolve the cloudflare: imports", async () => {
-		await expect(bundleWorkerd([])).rejects.toThrow(/Could not resolve "cloudflare:sockets"/);
+	test("esbuild can not resolve the cloudflare: imports when they are not external", async () => {
+		const options = { ...getNodeMiddlewareResolveOptions(true), external: [] };
+
+		await expect(bundlePackage(options)).rejects.toThrow(/Could not resolve "cloudflare:sockets"/);
+	});
+
+	test("resolves the Node.js build of the packages without the workerd condition", async () => {
+		const bundled = await bundlePackage(getNodeMiddlewareResolveOptions(false));
+
+		expect(bundled).toContain(`"node"`);
+		expect(bundled).not.toContain("cloudflare:");
 	});
 });
