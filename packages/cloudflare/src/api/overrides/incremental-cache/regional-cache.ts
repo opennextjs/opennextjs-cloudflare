@@ -34,7 +34,8 @@ type Options = {
 
 	/**
 	 * Whether the regional cache entry should be updated in the background on regional cache hits.
-	 * The entry is evicted instead when OpenNext reports it as revalidated.
+	 * The entry is evicted instead when OpenNext reports it as revalidated, which can only happen
+	 * when the tag cache is not bypassed on hits (see `bypassTagCacheOnCacheHit`).
 	 *
 	 * NOTE: Use the default value unless you know what you are doing. It is set to:
 	 * - Next < 16:
