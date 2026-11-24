@@ -161,7 +161,7 @@ export async function ensureR2Bucket(
 			await client.r2.buckets.get(bucketName, {
 				account_id: accountId,
 				// @ts-expect-error Let the API handle validation and potential errors for unsupported jurisdictions
-				jurisdiction,
+				"cf-r2-jurisdiction": jurisdiction,
 			});
 			// Bucket exists
 			return { success: true, bucketName };
@@ -178,7 +178,7 @@ export async function ensureR2Bucket(
 			account_id: accountId,
 			name: bucketName,
 			// @ts-expect-error Let the API handle validation and potential errors for unsupported jurisdictions
-			jurisdiction,
+			"cf-r2-jurisdiction": jurisdiction,
 		});
 
 		return { success: true, bucketName };

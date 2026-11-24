@@ -3,8 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { runWrangler } from "../commands/utils/run-wrangler.js";
 import { ensureR2Bucket } from "./ensure-r2-bucket.js";
 
-const { MockCloudflare, mockR2BucketsGet } = vi.hoisted(() => {
+const { MockCloudflare, mockR2BucketsGet, mockR2BucketsCreate } = vi.hoisted(() => {
 	const mockR2BucketsGet = vi.fn();
+	const mockR2BucketsCreate = vi.fn();
 
 	class MockCloudflare {
 		static NotFoundError = class extends Error {};
@@ -14,12 +15,12 @@ const { MockCloudflare, mockR2BucketsGet } = vi.hoisted(() => {
 		r2 = {
 			buckets: {
 				get: mockR2BucketsGet,
-				create: vi.fn(),
+				create: mockR2BucketsCreate,
 			},
 		};
 	}
 
-	return { MockCloudflare: vi.fn(MockCloudflare), mockR2BucketsGet };
+	return { MockCloudflare: vi.fn(MockCloudflare), mockR2BucketsGet, mockR2BucketsCreate };
 });
 
 vi.mock("@opennextjs/aws/build/helper.js", () => ({
@@ -76,6 +77,29 @@ describe("ensureR2Bucket", () => {
 			apiKey: "test-key",
 			apiEmail: "test@example.com",
 			defaultHeaders: { "Accept-Encoding": "identity" },
+		});
+	});
+
+	it("passes the jurisdiction to the bucket lookup and creation", async () => {
+		vi.mocked(runWrangler).mockReturnValue({
+			success: true,
+			stdout: JSON.stringify({ type: "api_token", token: "test-token" }),
+			stderr: "",
+		});
+		mockR2BucketsGet.mockRejectedValueOnce(new MockCloudflare.NotFoundError());
+
+		await expect(ensureR2Bucket("/tmp/app", "test-bucket", "eu")).resolves.toEqual({
+			success: true,
+			bucketName: "test-bucket",
+		});
+		expect(mockR2BucketsGet).toHaveBeenCalledWith("test-bucket", {
+			account_id: "test-account-id",
+			"cf-r2-jurisdiction": "eu",
+		});
+		expect(mockR2BucketsCreate).toHaveBeenCalledWith({
+			account_id: "test-account-id",
+			name: "test-bucket",
+			"cf-r2-jurisdiction": "eu",
 		});
 	});
 });
