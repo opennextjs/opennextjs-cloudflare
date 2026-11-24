@@ -19,5 +19,8 @@ export default defineConfig({
 		dir: "src",
 		clearMocks: true,
 		restoreMocks: true,
+		// `@opennextjs/aws` uses extension-less relative imports that Node can not resolve.
+		// It is processed by Vite so that tests can use its adapters.
+		server: { deps: { inline: ["@opennextjs/aws"] } },
 	},
 });
