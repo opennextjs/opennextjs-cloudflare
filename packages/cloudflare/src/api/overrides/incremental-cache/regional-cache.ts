@@ -3,6 +3,7 @@ import {
 	CacheEntryType,
 	CacheValue,
 	IncrementalCache,
+	TagCacheResult,
 	WithLastModified,
 } from "@opennextjs/aws/types/overrides.js";
 import { compareSemver } from "@opennextjs/aws/utils/semver.js";
@@ -33,6 +34,8 @@ type Options = {
 
 	/**
 	 * Whether the regional cache entry should be updated in the background on regional cache hits.
+	 * The entry is evicted instead when OpenNext reports it as revalidated, which can only happen
+	 * when the tag cache is not bypassed on hits (see `bypassTagCacheOnCacheHit`).
 	 *
 	 * NOTE: Use the default value unless you know what you are doing. It is set to:
 	 * - Next < 16:
@@ -80,6 +83,13 @@ interface PutToCacheInput {
  * When cache purge is not enabled, there is a possibility that the Cache API (local to a Data Center)
  * is out of sync with the cache store (i.e. R2). That's why when cache purge is not enabled the Cache
  * API is refreshed from the cache store on cache hits (for the long-lived mode).
+ *
+ * Entries read from the store on a miss are only stored in the Cache API once OpenNext reports (via the entry's callback)
+ * that they have not been revalidated and are not stale:
+ * - Entries that are stale because of time are only skipped when they are read by the cache interceptor
+ *   (`enableCacheInterception`), the only code path that reports `isStaleFromTime`.
+ *   Otherwise they are stored as before.
+ * - Entries read outside of a request (no OpenNext ALS store) are not stored. `set()` always stores.
  */
 class RegionalCache implements IncrementalCache {
 	public name: string;
@@ -124,6 +134,8 @@ class RegionalCache implements IncrementalCache {
 	 * Reads a cache entry from the Cache API, or from the store on a miss.
 	 *
 	 * Keys without a Cache API URL (see `getCacheUrlKey`) are only read from the store.
+	 * The regional cache is only updated after OpenNext invokes the returned validation callback.
+	 * On a store read, that verdict also belongs to the wrapped store's entry.
 	 *
 	 * @param key The cache key.
 	 * @param cacheType The type of the cache entry.
@@ -134,6 +146,7 @@ class RegionalCache implements IncrementalCache {
 		cacheType?: CacheType
 	): Promise<WithLastModified<CacheValue<CacheType>> | null> {
 		try {
+			const inRequest = !!globalThis.__openNextAls?.getStore();
 			const cache = await this.getCacheInstance();
 			const urlKey = this.getCacheUrlKey(key, cacheType);
 
@@ -141,28 +154,38 @@ class RegionalCache implements IncrementalCache {
 			// Keys without a Cache API URL are only read from the store.
 			const cachedResponse = urlKey === null ? undefined : await cache.match(urlKey);
 
-			if (cachedResponse) {
+			if (urlKey !== null && cachedResponse) {
 				debugCache("RegionalCache", `get ${key} -> cached response`);
 
-				// Re-fetch from the store and update the regional cache in the background.
-				// Note: this is only useful when the Cache API is not purged automatically.
-				if (this.opts.shouldLazilyUpdateOnCacheHit) {
-					getCloudflareContext().ctx.waitUntil(
-						this.store.get(key, cacheType).then(async (rawEntry) => {
-							const { value, lastModified } = rawEntry ?? {};
-
-							if (value && typeof lastModified === "number") {
-								await this.putToCache({ key, cacheType, entry: { value, lastModified } });
-							}
-						})
-					);
-				}
-
 				const responseJson: Record<string, unknown> = await cachedResponse.json();
+				const onTagCacheResult =
+					inRequest && this.opts.shouldLazilyUpdateOnCacheHit
+						? async ({ hasBeenRevalidated }: TagCacheResult) => {
+								// A revalidated hit is evicted: the store may hold a newer entry (i.e. regenerated in another
+								// region) that would otherwise not be read until the regional entry expires.
+								// Awaited so that it can not delete an entry written by `set()` later in the request.
+								if (hasBeenRevalidated) {
+									debugCache("RegionalCache", `onTagCacheResult ${key} -> evict (revalidated)`);
+									await cache.delete(urlKey);
+									return;
+								}
+								// Stale hits remain usable and are checked again on every read.
+								debugCache("RegionalCache", `onTagCacheResult ${key} -> lazy-update`);
+								getCloudflareContext().ctx.waitUntil(
+									this.store.get(key, cacheType).then(async (rawEntry) => {
+										const { value, lastModified } = rawEntry ?? {};
+										if (value && typeof lastModified === "number") {
+											await this.putToCache({ key, cacheType, entry: { value, lastModified } });
+										}
+									})
+								);
+							}
+						: undefined;
 
 				return {
 					...responseJson,
 					shouldBypassTagCache: this.opts.bypassTagCacheOnCacheHit,
+					onTagCacheResult,
 				};
 			}
 
@@ -170,14 +193,35 @@ class RegionalCache implements IncrementalCache {
 			const { value, lastModified } = rawEntry ?? {};
 			if (!value || typeof lastModified !== "number") return null;
 
-			debugCache("RegionalCache", `get ${key} -> put to cache`);
-
-			// Update the locale cache after retrieving from the store.
-			getCloudflareContext().ctx.waitUntil(
-				this.putToCache({ key, cacheType, entry: { value, lastModified } })
-			);
-
-			return { value, lastModified };
+			return {
+				value,
+				lastModified,
+				// The entry is only stored in the regional cache once OpenNext reports that it is neither revalidated
+				// nor stale. OpenNext calls this before using the entry, so it is still unmodified.
+				onTagCacheResult: async (result) => {
+					try {
+						const { hasBeenRevalidated, isStaleFromTag, isStaleFromTime } = result;
+						// Revalidated or stale entries would be served from the regional cache
+						// (possibly without checking the tag cache) until they expire.
+						if (hasBeenRevalidated || isStaleFromTag || isStaleFromTime) {
+							debugCache(
+								"RegionalCache",
+								`onTagCacheResult ${key} -> skip (revalidated: ${hasBeenRevalidated}, stale from tag: ${isStaleFromTag}, stale from time: ${isStaleFromTime})`
+							);
+							return;
+						}
+						if (inRequest) {
+							debugCache("RegionalCache", `onTagCacheResult ${key} -> put to cache`);
+							getCloudflareContext().ctx.waitUntil(
+								this.putToCache({ key, cacheType, entry: { value, lastModified } })
+							);
+						}
+					} finally {
+						// The verdict also belongs to the entry read from the wrapped store.
+						await rawEntry?.onTagCacheResult?.(result);
+					}
+				},
+			};
 		} catch (e) {
 			error("Failed to get from regional cache", e);
 			return null;
@@ -269,8 +313,6 @@ class RegionalCache implements IncrementalCache {
 			debugCache("RegionalCache", `invalid key ${key}`);
 			return;
 		}
-		const cache = await this.getCacheInstance();
-
 		const age =
 			this.opts.mode === "short-lived"
 				? ONE_MINUTE_IN_SECONDS
@@ -279,19 +321,20 @@ class RegionalCache implements IncrementalCache {
 		// We default to the entry key if no tags are found.
 		// so that we can also revalidate page router based entry this way.
 		const tags = getTagsFromCacheEntry(entry) ?? [key];
-		await cache.put(
-			urlKey,
-			new Response(JSON.stringify(entry), {
-				headers: new Headers({
-					"cache-control": `max-age=${age}`,
-					...(tags.length > 0
-						? {
-								"cache-tag": tags.join(","),
-							}
-						: {}),
-				}),
-			})
-		);
+
+		// Serialized before the first `await`: the entry is captured as it is when called.
+		const response = new Response(JSON.stringify(entry), {
+			headers: new Headers({
+				"cache-control": `max-age=${age}`,
+				...(tags.length > 0
+					? {
+							"cache-tag": tags.join(","),
+						}
+					: {}),
+			}),
+		});
+		const cache = await this.getCacheInstance();
+		await cache.put(urlKey, response);
 	}
 }
 

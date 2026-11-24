@@ -8,7 +8,7 @@
 		"start": "next start",
 		"lint": "next lint",
 		"build:worker": "pnpm opennextjs-cloudflare build --openNextConfigPath=./.custom-config/my-opennext-config.ts",
-		"preview:worker": "pnpm opennextjs-cloudflare preview",
+		"preview:worker": "rimraf .wrangler/state/v3/cache && pnpm opennextjs-cloudflare preview",
 		"preview": "pnpm build:worker && pnpm preview:worker",
 		"e2e": "playwright test -c e2e/playwright.config.ts"
 	},
@@ -23,6 +23,7 @@
 		"@types/node": "catalog:",
 		"@types/react": "catalog:e2e",
 		"@types/react-dom": "catalog:e2e",
+		"rimraf": "catalog:",
 		"typescript": "catalog:",
 		"wrangler": "catalog:"
 	}
