@@ -214,8 +214,9 @@ async function getVersionDetail(
 	}
 ): Promise<VersionGetResponse> {
 	const { client, accountId } = options;
-	return await client.workers.scripts.versions.get(scriptName, versionId, {
+	return await client.workers.scripts.versions.get(versionId, {
 		account_id: accountId,
+		script_name: scriptName,
 	});
 }
 

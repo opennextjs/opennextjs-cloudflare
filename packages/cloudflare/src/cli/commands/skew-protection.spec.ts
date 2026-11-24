@@ -1,20 +1,24 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { CURRENT_VERSION_ID } from "../templates/skew-protection.js";
+import { CURRENT_VERSION_ID, DEPLOYMENT_MAPPING_ENV_NAME } from "../templates/skew-protection.js";
 import { getDeploymentMapping, listWorkerVersions, updateDeploymentMapping } from "./skew-protection.js";
 
-const { MockCloudflare } = vi.hoisted(() => {
+const { MockCloudflare, versionsList, versionsGet } = vi.hoisted(() => {
+	const versionsList = vi.fn((): unknown[] => []);
+	const versionsGet = vi.fn();
+
 	class MockCloudflare {
 		workers = {
 			scripts: {
 				versions: {
-					list: vi.fn(() => []),
+					list: versionsList,
+					get: versionsGet,
 				},
 			},
 		};
 	}
 
-	return { MockCloudflare: vi.fn(MockCloudflare) };
+	return { MockCloudflare: vi.fn(MockCloudflare), versionsList, versionsGet };
 });
 
 vi.mock("@opennextjs/aws/adapters/config/util.js", () => ({
@@ -51,6 +55,37 @@ describe("skew protection", () => {
 			expect(MockCloudflare).toHaveBeenCalledWith({
 				apiToken: "test-token",
 				defaultHeaders: { "Accept-Encoding": "identity" },
+			});
+		});
+
+		test("reads the existing mapping from the latest deployed version", async () => {
+			versionsList.mockReturnValueOnce([{ id: "version-1", metadata: { created_on: new Date() } }]);
+			versionsGet.mockResolvedValueOnce({
+				resources: {
+					bindings: [
+						{
+							name: DEPLOYMENT_MAPPING_ENV_NAME,
+							type: "plain_text",
+							text: JSON.stringify({ "previous-deployment-id": CURRENT_VERSION_ID }),
+						},
+					],
+				},
+			});
+
+			await expect(
+				getDeploymentMapping(
+					{ appBuildOutputPath: "/tmp/app" } as never,
+					{ cloudflare: { skewProtection: { enabled: true } } },
+					{}
+				)
+			).resolves.toEqual({
+				"deployment-id": CURRENT_VERSION_ID,
+				"previous-deployment-id": "version-1",
+			});
+
+			expect(versionsGet).toHaveBeenCalledWith("version-1", {
+				account_id: "test-account-id",
+				script_name: "worker-name",
 			});
 		});
 	});
