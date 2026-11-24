@@ -829,6 +829,9 @@ importers:
       '@types/react-dom':
         specifier: catalog:e2e
         version: 19.3.0(@types/react@19.3.0)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.4
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
