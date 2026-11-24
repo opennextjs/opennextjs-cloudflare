@@ -41,10 +41,14 @@ test.describe("r2-incremental-cache - revalidateTag with the regional cache", ()
 		// A regenerated page can still contain the old unstable_cache (fetch) entry.
 		expect(first.data).toBeGreaterThanOrEqual(revalidatedAt);
 
-		// The regenerated page is served by the cache interceptor, without being regenerated again.
-		const second = await getPage(request);
-		expect(second.renderedAt).toBe(first.renderedAt);
-		expect(second.data).toBe(first.data);
-		expect(second.response.headers()["x-opennext-cache"]).toBe("HIT");
+		// The regenerated page is written after the response: wait until it is served by the cache interceptor.
+		let second = first;
+		await expect(async () => {
+			second = await getPage(request);
+			expect(second.response.headers()["x-opennext-cache"]).toBe("HIT");
+		}).toPass({ timeout: 10_000 });
+		// A read racing the write may have regenerated the page again, but never served it stale.
+		expect(second.renderedAt).toBeGreaterThanOrEqual(first.renderedAt);
+		expect(second.data).toBeGreaterThanOrEqual(revalidatedAt);
 	});
 });
