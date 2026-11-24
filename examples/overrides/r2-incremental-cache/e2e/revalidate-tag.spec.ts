@@ -38,17 +38,21 @@ test.describe("r2-incremental-cache - revalidateTag with the regional cache", ()
 		// Regional cache miss: the prerendered entry is read from R2, has been revalidated and is regenerated.
 		const first = await getPage(request);
 		expect(first.renderedAt).toBeGreaterThanOrEqual(revalidatedAt);
-		// A regenerated page can still contain the old unstable_cache (fetch) entry.
+		// The regenerated page must not contain the old unstable_cache (fetch) entry.
 		expect(first.data).toBeGreaterThanOrEqual(revalidatedAt);
 
 		// The regenerated page is written after the response: wait until it is served by the cache interceptor.
-		let second = first;
+		// Every response is checked, as a failed assertion inside `toPass` only triggers a retry.
+		const reads: Awaited<ReturnType<typeof getPage>>[] = [];
 		await expect(async () => {
-			second = await getPage(request);
-			expect(second.response.headers()["x-opennext-cache"]).toBe("HIT");
+			const read = await getPage(request);
+			reads.push(read);
+			expect(read.response.headers()["x-opennext-cache"]).toBe("HIT");
 		}).toPass({ timeout: 10_000 });
 		// A read racing the write may have regenerated the page again, but never served it stale.
-		expect(second.renderedAt).toBeGreaterThanOrEqual(first.renderedAt);
-		expect(second.data).toBeGreaterThanOrEqual(revalidatedAt);
+		for (const read of reads) {
+			expect(read.renderedAt).toBeGreaterThanOrEqual(first.renderedAt);
+			expect(read.data).toBeGreaterThanOrEqual(revalidatedAt);
+		}
 	});
 });
