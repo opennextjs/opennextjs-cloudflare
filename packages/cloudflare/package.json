@@ -57,7 +57,7 @@
 		"@dotenvx/dotenvx": "catalog:",
 		"@opennextjs/aws": "4.2.0",
 		"ci-info": "^4.2.0",
-		"cloudflare": "^4.4.1",
+		"cloudflare": "^7.3.0",
 		"comment-json": "^4.5.1",
 		"enquirer": "^2.4.1",
 		"esbuild": "catalog:",
