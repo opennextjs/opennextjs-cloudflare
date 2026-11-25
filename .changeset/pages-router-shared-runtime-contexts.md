@@ -2,8 +2,6 @@
 "@opennextjs/cloudflare": patch
 ---
 
-fix: remap `*.shared-runtime` context imports from dependencies in the Pages Router
+fix: render `<Head>` tags from dependencies like `next-seo`
 
-With Next.js >= 15.3, `<Head>` tags rendered by a `node_modules` dependency such as `next-seo` were silently dropped from the HTML on runtime renders (SSR, ISR with `fallback: 'blocking'`). The adapter stopped remapping `*.shared-runtime` context imports for those versions, so the dependency's `next/head` ended up with its own `HeadManagerContext`, separate from the one used to render the page. The adapter now mirrors Next.js's `require-hook` and always remaps `*.shared-runtime` imports to the contexts vendored in the Pages Router runtime.
-
-See https://github.com/opennextjs/opennextjs-cloudflare/issues/1389
+Since Next.js 15.3, `<Head>` tags rendered by a dependency (e.g. the `<title>`, canonical and `og:` tags from `next-seo`) were missing from the HTML of pages rendered by the Worker, such as `getServerSideProps` pages and ISR fallback paths. Pages pre-rendered at build time were not affected.

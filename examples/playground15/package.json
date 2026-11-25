@@ -16,6 +16,7 @@
 		"cf-typegen": "wrangler types --env-interface CloudflareEnv"
 	},
 	"dependencies": {
+		"external-head": "file:./external-head",
 		"next": "catalog:",
 		"react": "catalog:",
 		"react-dom": "catalog:"

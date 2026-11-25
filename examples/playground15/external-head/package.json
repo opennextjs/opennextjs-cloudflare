@@ -1,0 +1,9 @@
+{
+	"name": "external-head",
+	"version": "0.0.0",
+	"private": true,
+	"peerDependencies": {
+		"next": "*",
+		"react": "*"
+	}
+}
