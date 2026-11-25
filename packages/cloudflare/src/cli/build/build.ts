@@ -128,7 +128,7 @@ export async function build(
 
 	await compileDurableObjects(options);
 
-	await bundleServer(options, projectOpts);
+	await bundleServer(options, projectOpts, wranglerConfig);
 
 	logger.info("OpenNext build complete.");
 }

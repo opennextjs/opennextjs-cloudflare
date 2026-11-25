@@ -5,15 +5,24 @@ import { fileURLToPath } from "node:url";
 
 import * as buildHelper from "@opennextjs/aws/build/helper.js";
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
+import logger from "@opennextjs/aws/logger.js";
 import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
 import { build, type Plugin } from "esbuild";
 import { globSync } from "glob";
+import type { Unstable_Config } from "wrangler";
 
 import { getOpenNextConfig } from "../../api/config.js";
 import type { ProjectOptions } from "../project-options.js";
 import { normalizePath } from "../utils/normalize-path.js";
 import { patchVercelOgLibrary } from "./patches/ast/patch-vercel-og-library.js";
 import { patchWebpackRuntime } from "./patches/ast/webpack-runtime.js";
+import {
+	cacheComponentsSchedulerModule,
+	hasMicrotaskCheckpoint,
+	microtaskCheckpointWarning,
+	needsCacheComponentsScheduler,
+	patchCacheComponents,
+} from "./patches/plugins/cache-components.js";
 import { inlineDynamicRequires } from "./patches/plugins/dynamic-requires.js";
 import { inlineFindDir } from "./patches/plugins/find-dir.js";
 import { patchInstrumentation } from "./patches/plugins/instrumentation.js";
@@ -99,7 +108,11 @@ export function getShimAliases(shimsDir: string, useOg: boolean): Record<string,
  * @returns Resolves when the server bundle and Worker entry point have been written.
  * @throws When preparing or bundling the server fails.
  */
-export async function bundleServer(buildOpts: BuildOptions, projectOpts: ProjectOptions): Promise<void> {
+export async function bundleServer(
+	buildOpts: BuildOptions,
+	projectOpts: ProjectOptions,
+	wranglerConfig: Unstable_Config
+): Promise<void> {
 	copyPackageCliFiles(packageDistDir, buildOpts);
 
 	const { appPath, outputDir, monorepoRoot, debug } = buildOpts;
@@ -108,6 +121,10 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 	const nextConfig = JSON.parse(fs.readFileSync(serverFiles, "utf-8")).config;
 
 	const useTurbopack = buildHelper.getBundlerRuntime(buildOpts) === "turbopack";
+
+	if (needsCacheComponentsScheduler(buildOpts, nextConfig) && !hasMicrotaskCheckpoint(wranglerConfig)) {
+		logger.warn(microtaskCheckpointWarning);
+	}
 
 	console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
 
@@ -132,7 +149,16 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 	const useWorkerdCondition = getOpenNextConfig(buildOpts).cloudflare?.useWorkerdCondition !== false;
 
 	const result = await build({
-		entryPoints: [openNextServer],
+		// The scheduler wraps `setImmediate`, so it must load before the Next.js server captures it.
+		...(needsCacheComponentsScheduler(buildOpts, nextConfig)
+			? {
+					stdin: {
+						contents: `import "${cacheComponentsSchedulerModule}"; export { handler } from ${JSON.stringify(openNextServer)};`,
+						resolveDir: appPath,
+						sourcefile: "cache-components-server-entry.mjs",
+					},
+				}
+			: { entryPoints: [openNextServer] }),
 		bundle: true,
 		outfile: openNextServerBundle,
 		format: "esm",
@@ -161,6 +187,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			fixRequire(updater),
 			handleOptionalDependencies(optionalDependencies),
 			patchInstrumentation(updater, buildOpts),
+			patchCacheComponents(updater, buildOpts, nextConfig),
 			patchPagesRouterContext(buildOpts),
 			inlineFindDir(updater, buildOpts),
 			inlineLoadManifest(updater, buildOpts),
