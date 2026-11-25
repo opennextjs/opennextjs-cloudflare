@@ -875,6 +875,9 @@ importers:
 
   examples/playground15:
     dependencies:
+      external-head:
+        specifier: file:./external-head
+        version: file:examples/playground15/external-head(next@15.5.29(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@22.12.0)(react-dom@19.0.6(react@19.0.6))(react@19.0.6))(react@19.0.6)
       next:
         specifier: 'catalog:'
         version: 15.5.29(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@22.12.0)(react-dom@19.0.6(react@19.0.6))(react@19.0.6)
@@ -5908,6 +5911,12 @@ packages:
 
   extendable-error@0.1.7:
     resolution: {integrity: sha512-UOiS2in6/Q0FK0R0q6UY9vYpQ21mr/Qn1KOnte7vsACuNJf514WvCCUHSRCPcgjPT2bAhNIJdlE6bVap1GKmeg==}
+
+  external-head@file:examples/playground15/external-head:
+    resolution: {directory: examples/playground15/external-head, type: directory}
+    peerDependencies:
+      next: '*'
+      react: '*'
 
   farmhash-modern@1.1.0:
     resolution: {integrity: sha512-6ypT4XfgqJk/F3Yuv4SX26I3doUjt0GTG4a+JgWxXQpxXzTBq8fPUeGHfcYMMDPHJHm3yPOSjaeBwBGAHWXCdA==}
@@ -15411,6 +15420,11 @@ snapshots:
   extend@3.0.2: {}
 
   extendable-error@0.1.7: {}
+
+  external-head@file:examples/playground15/external-head(next@15.5.29(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@22.12.0)(react-dom@19.0.6(react@19.0.6))(react@19.0.6))(react@19.0.6):
+    dependencies:
+      next: 15.5.29(@opentelemetry/api@1.9.0)(@playwright/test@1.63.0)(@types/node@22.12.0)(react-dom@19.0.6(react@19.0.6))(react@19.0.6)
+      react: 19.0.6
 
   farmhash-modern@1.1.0: {}
 
