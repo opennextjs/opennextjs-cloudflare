@@ -1,5 +1,13 @@
 # @opennextjs/cloudflare
 
+## 1.20.20
+
+### Patch Changes
+
+- [#1440](https://github.com/opennextjs/opennextjs-cloudflare/pull/1440) [`873d2b9`](https://github.com/opennextjs/opennextjs-cloudflare/commit/873d2b901636853b229d48a3ab95c89070f704c3) Thanks [@mathurshubham](https://github.com/mathurshubham)! - fix: render `<Head>` tags from dependencies like `next-seo`
+
+  Since Next.js 15.3, `<Head>` tags rendered by a dependency (e.g. the `<title>`, canonical and `og:` tags from `next-seo`) were missing from the HTML of pages rendered by the Worker, such as `getServerSideProps` pages and ISR fallback paths. Pages pre-rendered at build time were not affected.
+
 ## 1.20.19
 
 ### Patch Changes
