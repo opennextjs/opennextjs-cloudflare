@@ -18,7 +18,7 @@ export function patchPagesRouterContext(buildOpts: BuildOptions) {
 	return {
 		name: "pages-router-context",
 		setup: (build: PluginBuild) => {
-			// See https://github.com/vercel/next.js/blob/48540b836642525b38a2cba40a92b4532c553a52/packages/next/src/server/require-hook.ts#L59-L68
+			// See https://github.com/vercel/next.js/blob/48540b8/packages/next/src/server/require-hook.ts#L59-L68
 			build.onResolve(
 				{ filter: /.*shared-runtime/ },
 				async ({ path, resolveDir, ...options }): Promise<OnResolveResult | undefined> => {
