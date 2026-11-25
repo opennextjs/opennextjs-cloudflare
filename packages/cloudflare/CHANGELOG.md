@@ -1,5 +1,36 @@
 # @opennextjs/cloudflare
 
+## 1.20.19
+
+### Patch Changes
+
+- [#1509](https://github.com/opennextjs/opennextjs-cloudflare/pull/1509) [`e664bac`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e664bac6ef1d75b625fff832adf6f78e95e5ff1c) Thanks [@vicb](https://github.com/vicb)! - chore: bump glob to v14 to drop the vulnerable minimatch 10 dependency
+
+  `glob@13` depends on `minimatch@10`, which is affected by GHSA-g3hv-75wg-m249 and has no patched 10.x release. `glob@14` uses `minimatch@11`.
+
+- [#1520](https://github.com/opennextjs/opennextjs-cloudflare/pull/1520) [`5062c28`](https://github.com/opennextjs/opennextjs-cloudflare/commit/5062c2888cbd0921c2abb70060abbd60c36260b2) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.2.1
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.2.1>
+
+  - Do not skip the middleware and the `next.config` routes for some requests of an app using `i18n`.
+  - Require a path separator after the buildId in `/_next/data` requests.
+  - Respond with a 500 when the body stream errors before its first chunk.
+  - Match the middleware against the normalized pathname.
+
+- [#1519](https://github.com/opennextjs/opennextjs-cloudflare/pull/1519) [`db1bd1c`](https://github.com/opennextjs/opennextjs-cloudflare/commit/db1bd1c1f2af9810a2a7e6a5c364556a1af9b7f2) Thanks [@ahmed-abdelkafi](https://github.com/ahmed-abdelkafi)! - fix: validate `tagCache` instead of `incrementalCache` when checking for a custom tag cache
+
+  A hand-written `open-next.config.ts` with a custom `tagCache` and `incrementalCache: "dummy"` was wrongly rejected with "The `open-next.config.ts` should have a default export like this".
+
+- [#1507](https://github.com/opennextjs/opennextjs-cloudflare/pull/1507) [`cc95230`](https://github.com/opennextjs/opennextjs-cloudflare/commit/cc95230d18428593a5ad70dd0d43894acd923143) Thanks [@vicb](https://github.com/vicb)! - fix: answer requests with a `Cookie` header in the Node.js middleware
+
+  Since 1.20.18, with a `proxy.ts` (or a Node.js runtime `middleware.ts`), every request with a `Cookie` header answered 500 with `TypeError: Cannot read properties of undefined (reading 'parse')`.
+
+  The `@opennextjs/aws` files were no longer bundled as ES modules, and the default import of `cookie@1` was `undefined`.
+
+- [#1517](https://github.com/opennextjs/opennextjs-cloudflare/pull/1517) [`226a45f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/226a45fdc807a7f8ec87ecd29e4b8f1a050ca1de) Thanks [@vicb](https://github.com/vicb)! - fix: do not serve stale entries from the regional cache after `revalidateTag`
+
+  With the regional cache (`withRegionalCache`) and `bypassTagCacheOnCacheHit` (set explicitly, or the default on Next.js < 16 when cache purge is enabled), a page revalidated with `revalidateTag` could keep being served stale until its regional cache entry expired or was purged. This happened on almost every revalidation with `enableCacheInterception`.
+
 ## 1.20.18
 
 ### Patch Changes
