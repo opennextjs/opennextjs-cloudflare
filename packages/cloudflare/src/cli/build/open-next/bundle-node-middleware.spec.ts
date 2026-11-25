@@ -380,7 +380,6 @@ describe("getNodeMiddlewareResolveOptions", () => {
 			stdin: { contents: `export * from "pg-like";`, resolveDir: dir },
 			bundle: true,
 			format: "esm",
-			target: "es2022",
 			write: false,
 			logLevel: "silent",
 			...options,
