@@ -33,7 +33,7 @@ import { openNextExternalMiddlewarePlugin } from "@opennextjs/aws/plugins/extern
 import { openNextReplacementPlugin } from "@opennextjs/aws/plugins/replacement.js";
 import { openNextResolvePlugin } from "@opennextjs/aws/plugins/resolve.js";
 import { getCrossPlatformPathRegex } from "@opennextjs/aws/utils/regex.js";
-import { build, type Plugin } from "esbuild";
+import { build, type BuildOptions as EsbuildOptions, type Plugin } from "esbuild";
 
 import { getOpenNextConfig } from "../../../api/config.js";
 import type { ProjectOptions } from "../../project-options.js";
@@ -45,6 +45,38 @@ import { patchInstrumentation } from "../patches/plugins/instrumentation.js";
 import { resolvePackages } from "../patches/plugins/resolve-packages.js";
 import { patchTurbopackRuntimeCode, patchTurbopackWasmChunkCode } from "../patches/plugins/turbopack.js";
 import { setWranglerExternal } from "../patches/plugins/wrangler-external.js";
+
+/**
+ * Imports left external in the Node.js middleware bundle.
+ *
+ * - `cloudflare:*` modules are provided by workerd and resolved by wrangler, as for the server
+ *   (see `serverExternals`). The middleware is bundled with the `workerd` condition, so the static
+ *   `import { connect } from "cloudflare:sockets"` of the `workerd` build of `postgres` 4 reaches it
+ *   when `proxy.ts` imports `postgres`.
+ * - `./open-next.config.mjs` is not bundled.
+ */
+export const nodeMiddlewareExternals = ["cloudflare:*", "./open-next.config.mjs"];
+
+/**
+ * Returns the esbuild options resolving the imports of the Node.js middleware bundle.
+ *
+ * Same resolution as the server: Next.js traced the files with the default conditions of `nft`
+ * (`node`, `require`, `import` and `default`), other conditions would resolve files that are not
+ * in the output (i.e. the `module` condition and field, #1400 and #1401).
+ * Node.js builtins are handled by `nodeBuiltinsPlugin`.
+ *
+ * @param useWorkerdCondition Whether the `workerd` builds of the packages are used.
+ * @returns The `platform`, `conditions` and `external` options.
+ */
+export function getNodeMiddlewareResolveOptions(
+	useWorkerdCondition: boolean
+): Pick<EsbuildOptions, "platform" | "conditions" | "external"> {
+	return {
+		platform: "node",
+		conditions: useWorkerdCondition ? ["workerd"] : [],
+		external: nodeMiddlewareExternals,
+	};
+}
 
 /**
  * Returns the chunks of the middleware compiled by Next.js, from its trace.
@@ -284,11 +316,7 @@ export async function bundleNodeMiddleware(
 		bundle: true,
 		format: "esm",
 		target: "es2022",
-		// Same resolution as the server: Next.js traced the files with the default conditions of
-		// `nft` (`node`, `require`, `import` and `default`), other conditions would resolve files that
-		// are not in the output (i.e. the `module` condition and field, #1400 and #1401).
-		platform: "node",
-		conditions: useWorkerdCondition ? ["workerd"] : [],
+		...getNodeMiddlewareResolveOptions(useWorkerdCondition),
 		// Minified as the server: safe, the identifiers are not renamed
 		minifyWhitespace: projectOpts.minify && !debug,
 		minifyIdentifiers: false,
@@ -296,9 +324,6 @@ export async function bundleNodeMiddleware(
 		legalComments: "none",
 		sourcemap: debug ? "inline" : false,
 		sourcesContent: false,
-		// `cloudflare:*` modules are resolved by wrangler, see `serverExternals`.
-		// Node.js builtins are handled by `nodeBuiltinsPlugin`.
-		external: ["cloudflare:*", "./open-next.config.mjs"],
 		define: {
 			// The base of the middleware compiled by Next.js is runtime agnostic. "edge" selects its
 			// Web API code paths (which workerd supports) over the Node.js server paths (which it does
