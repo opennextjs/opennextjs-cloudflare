@@ -9,6 +9,8 @@
 import { BuildOptions, compareSemver } from "@opennextjs/aws/build/helper.js";
 import type { OnResolveResult, PluginBuild } from "esbuild";
 
+const NEXT_PACKAGE_PATH_RE = /(?:^|[/\\])node_modules[/\\]next(?:[/\\]|$)/;
+
 export function patchPagesRouterContext(buildOpts: BuildOptions) {
 	const pathRegex = /^(?:.*[/\\])?(?<CONTEXT>[^/\\]+)\.shared-runtime(?:\.js)?$/;
 	const isAfter15 = compareSemver(buildOpts.nextVersion, ">=", "15.0.0");
@@ -21,12 +23,21 @@ export function patchPagesRouterContext(buildOpts: BuildOptions) {
 			// is shimmed out on Workers.
 			build.onResolve(
 				{ filter: /\.shared-runtime(?:\.js)?$/ },
-				async ({ path, resolveDir, ...options }): Promise<OnResolveResult | undefined> => {
+				async ({ path, resolveDir, importer, ...options }): Promise<OnResolveResult | undefined> => {
+					const isNextImport =
+						path.startsWith("next/") ||
+						NEXT_PACKAGE_PATH_RE.test(importer) ||
+						NEXT_PACKAGE_PATH_RE.test(resolveDir);
+					if (!isNextImport) {
+						return undefined;
+					}
+
 					const match = path.match(pathRegex);
 					if (match && match.groups?.CONTEXT) {
 						const newPath = `${basePath}${match.groups.CONTEXT}.js`;
 						const resolved = await build.resolve(newPath, {
 							resolveDir,
+							importer,
 							...options,
 						});
 						if (resolved.errors.length === 0) {
@@ -35,13 +46,14 @@ export function patchPagesRouterContext(buildOpts: BuildOptions) {
 						if (buildOpts.appPath && buildOpts.appPath !== resolveDir) {
 							const fallback = await build.resolve(newPath, {
 								resolveDir: buildOpts.appPath,
+								importer,
 								...options,
 							});
 							if (fallback.errors.length === 0) {
 								return fallback;
 							}
 						}
-						return resolved;
+						return undefined;
 					}
 				}
 			);

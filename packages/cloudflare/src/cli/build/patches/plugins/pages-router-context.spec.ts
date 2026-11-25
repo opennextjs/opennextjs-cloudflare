@@ -1,4 +1,6 @@
+import fs from "node:fs";
 import { createRequire } from "node:module";
+import os from "node:os";
 import path from "node:path";
 import { runInNewContext } from "node:vm";
 
@@ -160,5 +162,52 @@ describe("patchPagesRouterContext", () => {
 				...basePlugins,
 			])
 		).toBe(true);
+	});
+
+	test("does not intercept non-Next .shared-runtime.js imports and falls back when vendored lookup misses", async () => {
+		const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "pages-router-ctx-"));
+		try {
+			const thirdPartyFile = path.join(tempDir, "pkg", "custom.shared-runtime.js");
+			fs.mkdirSync(path.dirname(thirdPartyFile), { recursive: true });
+			fs.writeFileSync(thirdPartyFile, 'module.exports = { origin: "third-party" };');
+
+			const fakeNextDir = path.join(tempDir, "node_modules", "next", "dist", "shared", "lib");
+			const missingContextFile = path.join(fakeNextDir, "nonexistent-context.shared-runtime.js");
+			fs.mkdirSync(fakeNextDir, { recursive: true });
+			fs.writeFileSync(missingContextFile, 'module.exports = { origin: "original-next-fallback" };');
+
+			const result = await build({
+				stdin: {
+					contents: `
+						const custom = require("./pkg/custom.shared-runtime.js");
+						const missing = require("next/dist/shared/lib/nonexistent-context.shared-runtime.js");
+						module.exports = { custom, missing };
+					`,
+					resolveDir: tempDir,
+				},
+				bundle: true,
+				write: false,
+				format: "cjs",
+				platform: "node",
+				plugins: [
+					patchPagesRouterContext({
+						nextVersion: "16.3.5",
+						appPath: tempDir,
+					} as BuildOptions),
+				],
+			});
+
+			const exported: {
+				custom: { origin: string };
+				missing: { origin: string };
+			} = runInNewContext(result.outputFiles[0]!.text, {
+				module: { exports: {} },
+				exports: {},
+			});
+			expect(exported.custom.origin).toBe("third-party");
+			expect(exported.missing.origin).toBe("original-next-fallback");
+		} finally {
+			fs.rmSync(tempDir, { recursive: true, force: true });
+		}
 	});
 });
