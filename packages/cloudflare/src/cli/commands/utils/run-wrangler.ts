@@ -68,6 +68,23 @@ function injectPassthroughFlagForArgs(options: PackagerDetails, args: string[]) 
 }
 
 /**
+ * Builds the wrangler `--env` flag.
+ *
+ * An empty environment explicitly targets the top-level environment. It is passed as a single `--env=""`
+ * argument because wrangler is spawned in a shell, which would drop a standalone empty argument.
+ *
+ * @param env The wrangler environment name, `""` for the top-level environment.
+ * @returns The arguments to pass to wrangler, empty when no environment is specified.
+ */
+export function getWranglerEnvArgs(env: string | undefined): string[] {
+	if (env === undefined) {
+		return [];
+	}
+
+	return env === "" ? ['--env=""'] : ["--env", env];
+}
+
+/**
  * Runs a wrangler command using the project's package manager.
  *
  * Spawns a synchronous child process, appending the provided arguments and any flags derived
@@ -106,7 +123,7 @@ export function runWrangler(
 				options,
 				[
 					...args,
-					wranglerOpts.environment && `--env ${wranglerOpts.environment}`,
+					...getWranglerEnvArgs(wranglerOpts.environment),
 					wranglerOpts.configPath && `--config ${wranglerOpts.configPath}`,
 					wranglerOpts.target === "remote" && "--remote",
 					wranglerOpts.target === "local" && "--local",

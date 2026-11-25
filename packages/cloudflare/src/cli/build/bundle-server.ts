@@ -7,6 +7,7 @@ import * as buildHelper from "@opennextjs/aws/build/helper.js";
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
 import { build, type Plugin } from "esbuild";
+import { globSync } from "glob";
 
 import { getOpenNextConfig } from "../../api/config.js";
 import type { ProjectOptions } from "../project-options.js";
@@ -24,11 +25,12 @@ import { patchPagesRouterContext } from "./patches/plugins/pages-router-context.
 import { patchDepdDeprecations } from "./patches/plugins/patch-depd-deprecations.js";
 import { fixRequire } from "./patches/plugins/require.js";
 import { shimRequireHook } from "./patches/plugins/require-hook.js";
+import { resolvePackages } from "./patches/plugins/resolve-packages.js";
 import { patchRouteModules } from "./patches/plugins/route-module.js";
 import { shimReact } from "./patches/plugins/shim-react.js";
 import { setWranglerExternal } from "./patches/plugins/wrangler-external.js";
 import { copyPackageCliFiles } from "./utils/copy-package-cli-files.js";
-import { needsExperimentalReact } from "./utils/needs-experimental-react.js";
+import { needsExperimentalReact } from "./utils/next-config.js";
 
 /** The dist directory of the Cloudflare adapter package */
 const packageDistDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -48,7 +50,54 @@ const optionalDependencies = [
 ];
 
 /**
+ * Imports left external in the server bundle.
+ *
+ * - The middleware is bundled separately.
+ * - `cloudflare:*` modules are provided by workerd and resolved by wrangler, i.e. the static
+ *   `import { connect } from "cloudflare:sockets"` of the `workerd` build of `postgres` 4.
+ */
+export const serverExternals = ["./middleware/handler.mjs", "cloudflare:*"];
+
+/**
+ * Returns the aliases replacing the Next.js modules that are not used or not supported on Workers.
+ *
+ * They are shared by the server and the Node.js middleware bundles.
+ *
+ * @param shimsDir The directory of the shims.
+ * @param useOg Whether the bundle uses `@vercel/og`.
+ * @returns The esbuild aliases.
+ */
+export function getShimAliases(shimsDir: string, useOg: boolean): Record<string, string> {
+	const shim = (name: string) => path.join(shimsDir, `${name}.js`);
+	return {
+		// When @vercel/og is not used, alias the edge entry to a throwing shim so the
+		// dynamic `import("next/dist/compiled/@vercel/og/index.edge.js")` call site
+		// emitted by Next.js does not drag the library (~800 KiB) and its
+		// `resvg.wasm` (~1.4 MiB) into the Worker bundle.
+		...(useOg ? {} : { "next/dist/compiled/@vercel/og/index.edge.js": shim("throw") }),
+		// Workers have `fetch` so the `node-fetch` polyfill is not needed
+		"next/dist/compiled/node-fetch": shim("fetch"),
+		// Workers have builtin Web Sockets
+		"next/dist/compiled/ws": shim("empty"),
+		// The toolbox optimizer pulls severals MB of dependencies (`caniuse-lite`, `terser`, `acorn`, ...)
+		// Drop it to optimize the code size
+		// See https://github.com/vercel/next.js/blob/6eb235c/packages/next/src/server/optimize-amp.ts
+		"next/dist/compiled/@ampproject/toolbox-optimizer": shim("throw"),
+		// The edge runtime is not supported
+		"next/dist/compiled/edge-runtime": shim("empty"),
+		// `@next/env` is used by Next to load environment variables from files.
+		// OpenNext inlines the values at build time so this is not needed.
+		"@next/env": shim("env"),
+	};
+}
+
+/**
  * Bundle the Open Next server.
+ *
+ * @param buildOpts Build options.
+ * @param projectOpts Cloudflare project options.
+ * @returns Resolves when the server bundle and Worker entry point have been written.
+ * @throws When preparing or bundling the server fails.
  */
 export async function bundleServer(buildOpts: BuildOptions, projectOpts: ProjectOptions): Promise<void> {
 	copyPackageCliFiles(packageDistDir, buildOpts);
@@ -63,14 +112,24 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 	console.log(`\x1b[35m⚙️ Bundling the OpenNext server...\n\x1b[0m`);
 
 	await patchWebpackRuntime(path.join(dotNextPath, "server"));
-	const useOg = patchVercelOgLibrary(buildOpts);
 
 	const outputPath = path.join(outputDir, "server-functions", "default");
+	const useOg = patchVercelOgLibrary(buildOpts, {
+		outputDir: outputPath,
+		traceFiles: globSync("**/*.nft.json", {
+			cwd: path.join(buildOpts.appBuildOutputPath, ".next/server"),
+			absolute: true,
+			windowsPathsNoEscape: true,
+			// External middleware has its own bundle and must not enable OG in the server bundle.
+			ignore: buildOpts.config.middleware?.external ? "middleware.js.nft.json" : [],
+		}),
+	});
 	const packagePath = getPackagePath(buildOpts);
 	const openNextServer = path.join(outputPath, packagePath, `index.mjs`);
 	const openNextServerBundle = path.join(outputPath, packagePath, `handler.mjs`);
 
 	const updater = new ContentUpdater(buildOpts);
+	const useWorkerdCondition = getOpenNextConfig(buildOpts).cloudflare?.useWorkerdCondition !== false;
 
 	const result = await build({
 		entryPoints: [openNextServer],
@@ -93,7 +152,7 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 		// - default nft conditions: https://github.com/vercel/nft/blob/2b55b01/readme.md#exports--imports
 		// - Next no explicit override: https://github.com/vercel/next.js/blob/2efcf11/packages/next/src/build/collect-build-traces.ts#L287
 		// - ESBuild `node` platform: https://esbuild.github.io/api/#platform
-		conditions: getOpenNextConfig(buildOpts).cloudflare?.useWorkerdCondition === false ? [] : ["workerd"],
+		conditions: useWorkerdCondition ? ["workerd"] : [],
 		plugins: [
 			shimRequireHook(buildOpts),
 			shimReact(buildOpts),
@@ -110,43 +169,14 @@ export async function bundleServer(buildOpts: BuildOptions, projectOpts: Project
 			patchDepdDeprecations(updater),
 			patchResolveCache(updater, buildOpts),
 			patchSetWorkingDirectory(updater, buildOpts),
+			// Next.js traces the packages with the Node.js conditions, the files only used by their
+			// `workerd` build are resolved from the installed `node_modules`.
+			...(useWorkerdCondition ? [resolvePackages(buildOpts, outputPath)] : []),
 			// Apply updater updates, must be the last plugin
 			updater.plugin,
 		] as Plugin[],
-		external: ["./middleware/handler.mjs"],
-		alias: {
-			// When @vercel/og is not used, alias the edge entry to a throwing shim so the
-			// dynamic `import("next/dist/compiled/@vercel/og/index.edge.js")` call site
-			// emitted by Next.js does not drag the library (~800 KiB) and its
-			// `resvg.wasm` (~1.4 MiB) into the Worker bundle.
-			...(useOg
-				? {}
-				: {
-						"next/dist/compiled/@vercel/og/index.edge.js": path.join(
-							buildOpts.outputDir,
-							"cloudflare-templates/shims/throw.js"
-						),
-					}),
-			// Workers have `fetch` so the `node-fetch` polyfill is not needed
-			"next/dist/compiled/node-fetch": path.join(buildOpts.outputDir, "cloudflare-templates/shims/fetch.js"),
-			// Workers have builtin Web Sockets
-			"next/dist/compiled/ws": path.join(buildOpts.outputDir, "cloudflare-templates/shims/empty.js"),
-			// The toolbox optimizer pulls severals MB of dependencies (`caniuse-lite`, `terser`, `acorn`, ...)
-			// Drop it to optimize the code size
-			// See https://github.com/vercel/next.js/blob/6eb235c/packages/next/src/server/optimize-amp.ts
-			"next/dist/compiled/@ampproject/toolbox-optimizer": path.join(
-				buildOpts.outputDir,
-				"cloudflare-templates/shims/throw.js"
-			),
-			// The edge runtime is not supported
-			"next/dist/compiled/edge-runtime": path.join(
-				buildOpts.outputDir,
-				"cloudflare-templates/shims/empty.js"
-			),
-			// `@next/env` is used by Next to load environment variables from files.
-			// OpenNext inlines the values at build time so this is not needed.
-			"@next/env": path.join(buildOpts.outputDir, "cloudflare-templates/shims/env.js"),
-		},
+		external: serverExternals,
+		alias: getShimAliases(path.join(outputDir, "cloudflare-templates/shims"), useOg),
 		define: {
 			// config file used by Next.js, see: https://github.com/vercel/next.js/blob/68a7128/packages/next/src/build/utils.ts#L2137-L2139
 			"process.env.__NEXT_PRIVATE_STANDALONE_CONFIG": JSON.stringify(JSON.stringify(nextConfig)),

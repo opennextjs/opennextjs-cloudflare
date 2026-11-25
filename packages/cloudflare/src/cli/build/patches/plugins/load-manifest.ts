@@ -1,14 +1,16 @@
 /**
- * Inline `loadManifest` and `evalManifest` from `load-manifest.js`
+ * Inline the manifests read by `loadManifest` and `evalManifest` from `load-manifest.js`
  *
  * They rely on `readFileSync` that is not supported by workerd.
+ * - `loadManifest` reads are replaced with `readInlinedManifest`, keeping the Next.js cache logic
+ * - `evalManifest` is replaced with an implementation returning the inlined client reference manifests
  */
 
 import crypto from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join, posix, relative, sep } from "node:path";
 
-import { Lang, parse, type SgNode } from "@ast-grep/napi";
+import { type Edit, Lang, parse } from "@ast-grep/napi";
 import { type BuildOptions, getPackagePath } from "@opennextjs/aws/build/helper.js";
 import { applyRule, patchCode, type RuleConfig } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import type { ContentUpdater, Plugin } from "@opennextjs/aws/plugins/content-updater.js";
@@ -24,23 +26,83 @@ export function inlineLoadManifest(updater: ContentUpdater, buildOpts: BuildOpti
 				escape: false,
 			}),
 			contentFilter: /function loadManifest\(/,
-			callback: async ({ contents }) => {
-				contents = await patchCode(contents, await getLoadManifestRule(buildOpts));
+			callback: async ({ contents, path }) => {
+				contents = patchCode(contents, inlineManifestReadRule);
 				contents = await patchCode(contents, await getEvalManifestRule(buildOpts));
-				return contents;
+				const root = parse(Lang.JavaScript, contents).root();
+				if (applyRule(remainingFileReadRule, root).matches.length > 0) {
+					throw new Error(`Failed to inline the manifest reads in ${path}`);
+				}
+				return `${contents}\n${await getReadInlinedManifestCode(buildOpts)}`;
 			},
 		},
 	]);
 }
 
-async function getLoadManifestRule(buildOpts: BuildOptions) {
+/**
+ * Match any remaining `readFileSync` reference.
+ *
+ * Used after patching to check that every manifest read has been inlined.
+ * Matches both bare identifiers (`readFileSync`) and property accesses
+ * (`fs.readFileSync`, `(0, _fs.readFileSync)`) because `readFileSync` is not
+ * supported by workerd and would throw at runtime.
+ */
+const remainingFileReadRule: RuleConfig = {
+	rule: {
+		regex: "^readFileSync$",
+		any: [{ kind: "identifier" }, { kind: "property_identifier" }],
+	},
+};
+
+/**
+ * Replace the `readFileSync` calls in `loadManifest` with `readInlinedManifest`.
+ *
+ * Matches the transpiled `(0, fs.readFileSync)(path, encoding)` calls located
+ * anywhere inside the `loadManifest` function and replaces them with
+ * `readInlinedManifest(path)`, which returns the manifest content inlined at
+ * build time (see `getReadInlinedManifestCode`).
+ */
+const inlineManifestReadRule: RuleConfig = {
+	rule: {
+		pattern: "(0, $_FS.readFileSync)($PATH, $_ENCODING)",
+		inside: {
+			kind: "function_declaration",
+			has: { field: "name", regex: "^loadManifest$" },
+			stopBy: "end",
+		},
+	},
+	fix: "readInlinedManifest($PATH)",
+};
+
+/**
+ * Generate the code of the `readInlinedManifest` function.
+ *
+ * The manifests (`*-manifest.json`, `required-server-files.json`, `prefetch-hints.json`
+ * and `server/preview-props.json`) found in the `.next` directory of the build output
+ * are inlined as strings in `readInlinedManifest`, which returns the content matching
+ * the requested path. `.next/BUILD_ID` is resolved from `process.env.NEXT_BUILD_ID`,
+ * known optional manifests resolve to `"{}"`, and any other path throws.
+ *
+ * @param buildOpts The build options.
+ * @returns The code of the `readInlinedManifest` function declaration.
+ * @throws If a manifest can not be read or does not contain valid JSON.
+ */
+async function getReadInlinedManifestCode(buildOpts: BuildOptions): Promise<string> {
 	const { outputDir } = buildOpts;
 
 	const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts));
 	const dotNextDir = join(baseDir, ".next");
 
+	// Manifests to inline:
+	// - `*-manifest.json`
+	// - `required-server-files.json`
+	// - `prefetch-hints.json` (Next 16.2+)
+	// - `server/preview-props.json` (Next 16.4+)
 	const manifests = await glob(
-		join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints}.json"),
+		[
+			join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints}.json"),
+			join(dotNextDir, "server/preview-props.json"),
+		],
 		{
 			windowsPathsNoEscape: true,
 			nodir: true,
@@ -51,50 +113,89 @@ async function getLoadManifestRule(buildOpts: BuildOptions) {
 		await Promise.all(
 			manifests.map(
 				async (manifest) => `
-if ($PATH.endsWith("${normalizePath("/" + relative(dotNextDir, manifest))}")) {
-  return ${await readFile(manifest, "utf-8")};
+if (path.endsWith("${normalizePath("/" + relative(dotNextDir, manifest))}")) {
+  return ${await readManifestAsStringLiteral(manifest)};
 }`
 			)
 		)
 	).join("\n");
 
-	return {
-		rule: {
-			pattern: `
-function loadManifest($PATH, $$$ARGS) {
-  $$$_
-}`,
-		},
-		fix: `
-function loadManifest($PATH, $$$ARGS) {
-  $PATH = $PATH.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
-  if ($PATH.endsWith(".next/BUILD_ID")) {
+	return `
+function readInlinedManifest(path) {
+  path = path.replaceAll(${JSON.stringify(sep)}, ${JSON.stringify(posix.sep)});
+  if (path.endsWith(".next/BUILD_ID")) {
     return process.env.NEXT_BUILD_ID;
-	}
+  }
   ${returnManifests}
   // Known optional manifests \u2014 Next.js loads these with handleMissing: true
   // (see vercel/next.js packages/next/src/server/route-modules/route-module.ts).
-  // Return {} to match Next.js behaviour instead of crashing the worker.
+  // Return an empty manifest (parsed by loadManifest) to match Next.js behaviour
+  // instead of crashing the worker.
   // Note: Some manifest constants in Next.js omit the .json extension
   // (e.g. SUBRESOURCE_INTEGRITY_MANIFEST, DYNAMIC_CSS_MANIFEST), so we
   // strip .json before matching to handle both forms.
   {
-    const p = $PATH.replace(/\\.json$/, "");
+    const p = path.replace(/\\.json$/, "");
     if (p.endsWith("react-loadable-manifest") ||
         p.endsWith("subresource-integrity-manifest") ||
         p.endsWith("server-reference-manifest") ||
         p.endsWith("dynamic-css-manifest") ||
         p.endsWith("fallback-build-manifest") ||
         p.endsWith("prefetch-hints")) {
-      return {};
+      return "{}";
     }
   }
-  throw new Error(\`Unexpected loadManifest(\${$PATH}) call!\`);
-}`,
-	} satisfies RuleConfig;
+  throw new Error(\`Unexpected loadManifest(\${path}) call!\`);
+}`;
 }
 
-async function getEvalManifestRule(buildOpts: BuildOptions) {
+/**
+ * Read a JSON manifest and return its minified content as a JS string literal.
+ *
+ * The manifest is parsed and re-serialized without whitespace to reduce its size,
+ * then serialized again so that it can be inlined in generated code as a string
+ * (`readInlinedManifest` replaces `readFileSync`, so it must return the file content
+ * as text, not the parsed object).
+ *
+ * An invalid manifest fails the build rather than being inlined as-is, which would
+ * only throw at runtime when Next.js parses it.
+ *
+ * @param path Path to the JSON manifest.
+ * @returns The minified manifest content as a quoted and escaped JS string literal.
+ * @throws If the file can not be read.
+ * @throws If the file does not contain valid JSON.
+ */
+async function readManifestAsStringLiteral(path: string): Promise<string> {
+	const manifestText = await readFile(path, "utf-8");
+	let manifestJson: unknown;
+	try {
+		manifestJson = JSON.parse(manifestText);
+	} catch (error) {
+		throw new Error(`Failed to parse the manifest ${path}`, { cause: error });
+	}
+	return JSON.stringify(JSON.stringify(manifestJson, null, 0));
+}
+
+/**
+ * Create a rule that replaces `evalManifest` with inlined client reference manifests.
+ *
+ * `evalManifest` reads and evaluates the `*_client-reference-manifest.js` files at
+ * runtime, which is not supported by workerd. The replacement returns the
+ * `__RSC_MANIFEST` entry for the requested path:
+ * - `page_client-reference-manifest.js` contents are inlined, with eligible large
+ *   values lifted into top-level variables so identical values can share a declaration
+ *   (see `factorManifestValues` and `factorObjectValues`),
+ * - other manifests are loaded via `require` so they get bundled.
+ *
+ * Paths are matched longest first to avoid suffix collisions. A missing
+ * client reference manifest resolves to an empty `__RSC_MANIFEST` (it is optional
+ * for static metadata routes) and any other path throws.
+ *
+ * @param buildOpts The build options.
+ * @returns The rule replacing `evalManifest` and declaring the factored variables.
+ * @throws If a manifest can not be read.
+ */
+async function getEvalManifestRule(buildOpts: BuildOptions): Promise<RuleConfig> {
 	const { outputDir } = buildOpts;
 
 	const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts), ".next");
@@ -104,8 +205,8 @@ async function getEvalManifestRule(buildOpts: BuildOptions) {
 		nodir: true,
 	});
 
-	// Map of factored large objects (variable name -> {...})
-	const factoredObjects = new Map<string, string>();
+	// Map of factored large objects by variable name.
+	const factoredObjects = new Map<string, FactoredObject>();
 	// Map of manifest path -> factored manifest content
 	const factoredManifest = new Map<string, string>();
 	// Shared map of short hash prefix -> full SHA1 hash, used for collision resolution.
@@ -115,35 +216,23 @@ async function getEvalManifestRule(buildOpts: BuildOptions) {
 		if (path.endsWith("page_client-reference-manifest.js")) {
 			// `page_client-reference-manifest.js` files could contain large repeated values.
 			// Factor out large values into separate variables to reduce the overall size of the generated code.
-			let manifest = await readFile(path, "utf-8");
-			for (const key of [
-				"clientModules",
-				"ssrModuleMapping",
-				"edgeSSRModuleMapping",
-				"rscModuleMapping",
-				"entryCSSFiles",
-				"entryJSFiles",
-			]) {
-				manifest = factorManifestValue(manifest, key, factoredObjects, prefixMap);
-			}
-			factoredManifest.set(path, manifest);
+			const manifest = await readFile(path, "utf-8");
+			factoredManifest.set(path, factorManifestValues(manifest, factoredObjects, prefixMap));
 		}
 	}
 
 	// Map of factored values in an object
 	const factoredValues = new Map<string, string>();
 
-	for (const [varName, value] of factoredObjects) {
-		factoredObjects.set(varName, factorObjectValues(value, factoredValues, prefixMap));
-	}
+	factorObjectValues(factoredObjects, factoredValues, prefixMap);
 
-	// Prepend chunks variable declarations before the factored values
+	// Declare shared chunks and CSS strings before the objects that reference them.
 	const factoredValueCode = [...factoredValues.entries()]
 		.map(([name, val]) => `const ${name} = ${val};`)
 		.join("\n");
 
 	const factoredObjectCode = [...factoredObjects.entries()]
-		.map(([varName, value]) => `const ${varName} = ${value};`)
+		.map(([varName, { source }]) => `const ${varName} = ${source};`)
 		.join("\n");
 
 	const returnManifests = manifestPaths
@@ -194,114 +283,149 @@ function evalManifest($PATH, $$$ARGS) {
   }
   throw new Error(\`Unexpected evalManifest(\${$PATH}) call!\`);
 }`,
-	} satisfies RuleConfig;
+	};
 }
 
 /**
- * Factor out large manifest values into separate variables.
+ * A manifest section lifted into a shared variable.
+ */
+export type FactoredObject = {
+	/** JavaScript source for the shared value, updated when nested values are factored out. */
+	source: string;
+	/** Whether at least one reference came from `entryCSSFiles`, making it eligible for inline CSS deduplication. */
+	isEntryCssFiles: boolean;
+};
+
+/**
+ * Top-level client reference manifest keys eligible for factoring.
+ */
+const factoredManifestKeys = [
+	"clientModules",
+	"ssrModuleMapping",
+	"edgeSSRModuleMapping",
+	"rscModuleMapping",
+	"entryCSSFiles",
+	"entryJSFiles",
+];
+
+/**
+ * Match the object assigned to a client reference manifest entry.
+ */
+const manifestObjectRule: RuleConfig = {
+	rule: {
+		kind: "object",
+		inside: { field: "right", pattern: "globalThis.__RSC_MANIFEST[$$$_] = { $$$ }" },
+	},
+};
+
+/**
+ * Lift eligible large top-level sections from a client reference manifest.
+ *
+ * Sections listed in `factoredManifestKeys` are lifted when their source text is
+ * longer than 30 characters, even if they occur only once. Identical section
+ * source reuses the same variable across manifests.
  *
  * @param manifest The manifest code.
- * @param key The key to factor out.
- * @param values A map to store the factored values (indexed by variable name).
+ * @param values Map of variable names to factored objects and their CSS-section metadata.
  * @param prefixMap Map of short hash prefix → full hash, updated in place for
  *   collision resolution across calls.
  * @returns The manifest code with large values factored out.
  */
-export function factorManifestValue(
+export function factorManifestValues(
 	manifest: string,
-	key: string,
-	values: Map<string, string>,
+	values: Map<string, FactoredObject>,
 	prefixMap: Map<string, string>
 ): string {
-	const valueName = "VALUE";
-	// ASTGrep rule to extract the value of a specific key from the manifest object in the evalManifest function.
-	//
-	// globalThis.__RSC_MANIFEST["/path/to/page"] = {
-	//  // ...
-	//  key: $VALUE
-	//  // ...
-	// }
-	const extractValueRule = `
-rule:
-  kind: pair
-  all:
-    - has:
-        field: key
-        pattern: '"${key}"'
-    - has:
-        field: value
-        pattern: $${valueName}
-inside:
-  pattern: globalThis.__RSC_MANIFEST[$$$_] = { $$$ };
-  stopBy: end
-`;
+	const root = parse(Lang.JavaScript, manifest).root();
+	const [object] = applyRule(manifestObjectRule, root, { once: true }).matches;
+	if (!object) return manifest;
 
-	const rootNode = parse(Lang.JavaScript, manifest).root();
-	const { matches } = applyRule(extractValueRule, rootNode, { once: true });
-	if (matches.length === 1 && matches[0]?.getMatch(valueName)) {
-		const match = matches[0];
-		const value = match.getMatch(valueName)!.text();
-		if (value.length > 30) {
-			// Factor out large values into separate variables.
-			const varName = getOrCreateVarName(value, prefixMap);
-			values.set(varName, value);
-			// Replace the value in the manifest with the variable reference.
-			return rootNode.commitEdits([match.replace(`"${key}": ${varName}`)]);
-		}
+	const edits: Edit[] = [];
+	const seenKeys = new Set<string>();
+	for (const pair of object.children()) {
+		if (pair.kind() !== "pair") continue;
+		const keyNode = pair.field("key");
+		if (!keyNode) continue;
+		const text = keyNode.text();
+		const key = keyNode.kind() === "string" ? text.slice(1, -1) : text;
+		if (!factoredManifestKeys.includes(key) || seenKeys.has(key)) continue;
+		seenKeys.add(key);
+
+		const source = pair.field("value")?.text();
+		if (!source || source.length <= 30) continue;
+
+		const varName = getOrCreateVarName(source, prefixMap);
+		values.set(varName, {
+			source,
+			isEntryCssFiles: key === "entryCSSFiles" || values.get(varName)?.isEntryCssFiles === true,
+		});
+		edits.push(pair.replace(`${JSON.stringify(key)}: ${varName}`));
 	}
 
-	// Return the original manifest if the value is not found or is small enough to not warrant factoring out.
-	return manifest;
+	return edits.length > 0 ? root.commitEdits(edits) : manifest;
 }
 
+const chunksArrayRule: RuleConfig = {
+	rule: {
+		kind: "pair",
+		all: [
+			{ has: { field: "key", pattern: '"chunks"' } },
+			{ has: { field: "value", kind: "array", pattern: "$VALUE" } },
+		],
+	},
+};
+
+const inlineCssContentRule: RuleConfig = {
+	rule: {
+		kind: "pair",
+		all: [
+			{ has: { field: "key", pattern: '"content"' } },
+			{ has: { field: "value", kind: "string", pattern: "$VALUE" } },
+		],
+		inside: {
+			kind: "object",
+			has: {
+				kind: "pair",
+				all: [{ has: { field: "key", pattern: '"inlined"' } }, { has: { field: "value", pattern: "true" } }],
+			},
+		},
+	},
+};
+
 /**
- * Factor out large object values into separate variables.
+ * Lift large chunks arrays and inline CSS strings into shared variables.
  *
- * @param valueText The JS source text of the module mapping object.
+ * Parse each object once. Lift matching values longer than 30 characters even
+ * if they occur only once, and reuse the same variable for identical source.
+ *
+ * @param objects The distinct emitted objects, whose source is rewritten in place.
  * @param sharedVars Map to accumulate shared variable declarations.
- * @param prefixMap Map of short hash prefix → full hash, updated in place for
- *   collision resolution across calls.
- * @returns The rewritten value text with chunks arrays replaced by variable refs.
+ * @param prefixMap Map of short hash prefix → full hash, updated in place for collision resolution.
+ * @returns Nothing; updates the object sources and shared variable maps in place.
  */
 export function factorObjectValues(
-	valueText: string,
+	objects: ReadonlyMap<string, FactoredObject>,
 	sharedVars: Map<string, string>,
 	prefixMap: Map<string, string>
-): string {
-	const rootNode = parse(Lang.JavaScript, valueText).root();
+): void {
+	for (const object of objects.values()) {
+		const root = parse(Lang.JavaScript, object.source).root();
+		const rules = object.isEntryCssFiles ? [chunksArrayRule, inlineCssContentRule] : [chunksArrayRule];
+		const edits: Edit[] = [];
+		for (const rule of rules) {
+			for (const match of applyRule(rule, root).matches) {
+				const value = match.getMatch("VALUE");
+				if (!value) continue;
+				const source = value.text();
+				if (source.length <= 30) continue;
 
-	// Find all "chunks": [...] pairs
-	const chunksRule = `
-rule:
-  kind: pair
-  all:
-    - has:
-        field: key
-        pattern: '"chunks"'
-    - has:
-        field: value
-        kind: array
-        pattern: $CHUNKS
-`;
-
-	const { matches } = applyRule(chunksRule, rootNode, { once: false });
-
-	const edits: Array<{ match: SgNode; replacement: string }> = [];
-
-	for (const match of matches) {
-		const chunksNode = match.getMatch("CHUNKS");
-		if (!chunksNode) continue;
-		const chunksText = chunksNode.text();
-		if (chunksText.length <= 30) continue; // Skip small arrays
-
-		const varName = getOrCreateVarName(chunksText, prefixMap);
-		sharedVars.set(varName, chunksText);
-		edits.push({ match, replacement: `"chunks": ${varName}` });
+				const varName = getOrCreateVarName(source, prefixMap);
+				sharedVars.set(varName, source);
+				edits.push(value.replace(varName));
+			}
+		}
+		if (edits.length > 0) object.source = root.commitEdits(edits);
 	}
-
-	return edits.length === 0
-		? valueText
-		: rootNode.commitEdits(edits.map((e) => e.match.replace(e.replacement)));
 }
 
 /** Minimum number of hex characters used for short hash prefixes. */

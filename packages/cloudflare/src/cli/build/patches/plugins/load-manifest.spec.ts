@@ -1,6 +1,11 @@
 import { describe, expect, test } from "vitest";
 
-import { factorManifestValue, factorObjectValues, getOrCreateVarName } from "./load-manifest.js";
+import {
+	type FactoredObject,
+	factorManifestValues,
+	factorObjectValues,
+	getOrCreateVarName,
+} from "./load-manifest.js";
 
 describe("getOrCreateVarName", () => {
 	test("returns a variable name starting with 'v' followed by a 3-char prefix", () => {
@@ -60,19 +65,16 @@ describe("getOrCreateVarName", () => {
 		expect(prefixMap.size).toBe(3);
 	});
 
-	// SHA1("test-value-179-...") = 6ce8d80f...
-	// SHA1("test-value-548-...") = 6ce8335e...
-	// Both share the 4-char prefix "6ce8".
 	test("handles collision that requires more than 4 chars to resolve", () => {
 		const prefixMap = new Map<string, string>();
-		const first = getOrCreateVarName("test-value-179-padding-to-make-it-long", prefixMap);
-		const second = getOrCreateVarName("test-value-548-padding-to-make-it-long", prefixMap);
+		const first = getOrCreateVarName("test-value-6841-padding-to-make-it-long", prefixMap); // 6cee…
+		const second = getOrCreateVarName("test-value-179-padding-to-make-it-long", prefixMap); // 6ce8d…
+		const third = getOrCreateVarName("test-value-548-padding-to-make-it-long", prefixMap); // 6ce83…
 
-		// First takes "6ce".
 		expect(first).toBe("v6ce");
-		// Second collides at "6ce", tries "6ce8" — still collides, resolves to "6ce83".
 		expect(second).toBe("v6ce8");
-		expect(prefixMap.size).toBe(2);
+		expect(third).toBe("v6ce83");
+		expect(prefixMap.size).toBe(3);
 	});
 
 	test("updates prefixMap in place", () => {
@@ -85,35 +87,35 @@ describe("getOrCreateVarName", () => {
 	});
 });
 
-describe("factorManifestValue", () => {
+describe("factorManifestValues", () => {
 	const makeManifest = (key: string, value: string) =>
 		`globalThis.__RSC_MANIFEST["/page"] = { "${key}": ${value} };`;
 
 	test("factors out large values into a variable", () => {
-		const values = new Map<string, string>();
+		const values = new Map<string, FactoredObject>();
 		const prefixMap = new Map<string, string>();
 		const largeValue = JSON.stringify({ a: "x".repeat(50) });
 		const manifest = makeManifest("clientModules", largeValue);
 
-		const result = factorManifestValue(manifest, "clientModules", values, prefixMap);
+		const result = factorManifestValues(manifest, values, prefixMap);
 
 		// The manifest should reference a variable instead of the inline value.
 		expect(result).not.toContain(largeValue);
 		expect(values.size).toBe(1);
 		const [varName, storedValue] = [...values.entries()][0]!;
 		expect(varName).toMatch(/^v[0-9a-f]{3,}$/);
-		expect(storedValue).toBe(largeValue);
+		expect(storedValue).toEqual({ source: largeValue, isEntryCssFiles: false });
 		expect(result).toContain(varName);
 		expect(prefixMap.size).toBe(1);
 	});
 
 	test("leaves small values untouched", () => {
-		const values = new Map<string, string>();
+		const values = new Map<string, FactoredObject>();
 		const prefixMap = new Map<string, string>();
 		const smallValue = '"small"';
 		const manifest = makeManifest("clientModules", smallValue);
 
-		const result = factorManifestValue(manifest, "clientModules", values, prefixMap);
+		const result = factorManifestValues(manifest, values, prefixMap);
 
 		expect(result).toBe(manifest);
 		expect(values.size).toBe(0);
@@ -121,25 +123,46 @@ describe("factorManifestValue", () => {
 	});
 
 	test("returns original manifest when key is not found", () => {
-		const values = new Map<string, string>();
+		const values = new Map<string, FactoredObject>();
 		const prefixMap = new Map<string, string>();
-		const manifest = makeManifest("clientModules", '"some-value"');
+		const manifest = makeManifest("customSection", JSON.stringify("x".repeat(50)));
 
-		const result = factorManifestValue(manifest, "nonExistentKey", values, prefixMap);
+		const result = factorManifestValues(manifest, values, prefixMap);
 
 		expect(result).toBe(manifest);
 		expect(values.size).toBe(0);
 	});
 
+	test("ignores matching keys outside the manifest assignment", () => {
+		const values = new Map<string, FactoredObject>();
+		const outside = JSON.stringify({ outside: "x".repeat(50) });
+		const inside = JSON.stringify({ inside: "y".repeat(50) });
+		const manifest = `const unrelated = { "clientModules": ${outside} };\n${makeManifest("clientModules", inside)}`;
+
+		const result = factorManifestValues(manifest, values, new Map());
+
+		expect(result).toContain(outside);
+		expect(result).not.toContain(inside);
+		expect([...values.values()]).toEqual([{ source: inside, isEntryCssFiles: false }]);
+	});
+
+	test("ignores nested keys with the same names as the top-level sections", () => {
+		const values = new Map<string, FactoredObject>();
+		const manifest = makeManifest("unrelated", JSON.stringify({ clientModules: { a: "x".repeat(50) } }));
+
+		expect(factorManifestValues(manifest, values, new Map())).toBe(manifest);
+		expect(values.size).toBe(0);
+	});
+
 	test("reuses variable name for identical values across manifests", () => {
-		const values = new Map<string, string>();
+		const values = new Map<string, FactoredObject>();
 		const prefixMap = new Map<string, string>();
 		const largeValue = JSON.stringify({ a: "x".repeat(50) });
 		const manifest1 = makeManifest("clientModules", largeValue);
 		const manifest2 = makeManifest("clientModules", largeValue);
 
-		const result1 = factorManifestValue(manifest1, "clientModules", values, prefixMap);
-		const result2 = factorManifestValue(manifest2, "clientModules", values, prefixMap);
+		const result1 = factorManifestValues(manifest1, values, prefixMap);
+		const result2 = factorManifestValues(manifest2, values, prefixMap);
 
 		// Both should reference the same variable.
 		const varName = [...values.keys()][0]!;
@@ -150,25 +173,38 @@ describe("factorManifestValue", () => {
 		expect(prefixMap.size).toBe(1);
 	});
 
-	test("factors multiple keys from the same manifest with shared prefixMap", () => {
-		const values = new Map<string, string>();
+	test.each([
+		["entryCSSFiles", "clientModules"],
+		["clientModules", "entryCSSFiles"],
+	])("retains CSS metadata when %s and %s share a factored value", (firstKey, secondKey) => {
+		const values = new Map<string, FactoredObject>();
+		const prefixMap = new Map<string, string>();
+		const source = JSON.stringify({ layout: [{ path: "static/chunks/layout.css", inlined: false }] });
+		factorManifestValues(makeManifest(firstKey, source), values, prefixMap);
+		factorManifestValues(makeManifest(secondKey, source), values, prefixMap);
+
+		expect([...values.values()]).toEqual([{ source, isEntryCssFiles: true }]);
+	});
+
+	test("factors multiple keys without changing their order in the manifest", () => {
+		const values = new Map<string, FactoredObject>();
 		const prefixMap = new Map<string, string>();
 		const largeA = JSON.stringify({ a: "a".repeat(50) });
 		const largeB = JSON.stringify({ b: "b".repeat(50) });
-		const manifest = `globalThis.__RSC_MANIFEST["/page"] = { "clientModules": ${largeA}, "ssrModuleMapping": ${largeB} };`;
+		const manifest = `globalThis.__RSC_MANIFEST["/page"] = { "ssrModuleMapping": ${largeB}, "clientModules": ${largeA} };`;
 
-		let result = factorManifestValue(manifest, "clientModules", values, prefixMap);
-		result = factorManifestValue(result, "ssrModuleMapping", values, prefixMap);
+		const result = factorManifestValues(manifest, values, prefixMap);
 
+		const entries = [...values.entries()];
 		expect(values.size).toBe(2);
 		expect(prefixMap.size).toBe(2);
-		// Both variable names should appear in the result.
-		for (const varName of values.keys()) {
-			expect(result).toContain(varName);
-		}
-		// Neither large value should appear inline.
-		expect(result).not.toContain(largeA);
-		expect(result).not.toContain(largeB);
+		const clientModules = entries.find(([, { source }]) => source === largeA)?.[0];
+		const ssrModuleMapping = entries.find(([, { source }]) => source === largeB)?.[0];
+		expect(clientModules).toBeDefined();
+		expect(ssrModuleMapping).toBeDefined();
+		expect(result).toBe(
+			`globalThis.__RSC_MANIFEST["/page"] = { "ssrModuleMapping": ${ssrModuleMapping}, "clientModules": ${clientModules} };`
+		);
 	});
 });
 
@@ -183,7 +219,8 @@ describe("factorObjectValues", () => {
 			"mod2": { "id": "2", "chunks": ${chunksArray} }
 		}`;
 
-		const result = factorObjectValues(input, sharedVars, prefixMap);
+		const object = { source: input, isEntryCssFiles: false };
+		factorObjectValues(new Map([["object", object]]), sharedVars, prefixMap);
 
 		// The chunks array should be replaced by a variable reference.
 		expect(sharedVars.size).toBe(1);
@@ -191,7 +228,7 @@ describe("factorObjectValues", () => {
 		expect(varName).toMatch(/^v[0-9a-f]{3,}$/);
 		expect(storedValue).toBe(chunksArray);
 		// Both occurrences should use the same variable.
-		const varOccurrences = result.split(varName).length - 1;
+		const varOccurrences = object.source.split(varName).length - 1;
 		expect(varOccurrences).toBe(2);
 		expect(prefixMap.size).toBe(1);
 	});
@@ -203,9 +240,10 @@ describe("factorObjectValues", () => {
 			"mod1": { "id": "1", "chunks": ["a"] }
 		}`;
 
-		const result = factorObjectValues(input, sharedVars, prefixMap);
+		const object = { source: input, isEntryCssFiles: false };
+		factorObjectValues(new Map([["object", object]]), sharedVars, prefixMap);
 
-		expect(result).toBe(input);
+		expect(object.source).toBe(input);
 		expect(sharedVars.size).toBe(0);
 		expect(prefixMap.size).toBe(0);
 	});
@@ -220,31 +258,36 @@ describe("factorObjectValues", () => {
 			"mod2": { "id": "2", "chunks": ${chunksB} }
 		}`;
 
-		const result = factorObjectValues(input, sharedVars, prefixMap);
+		const object = { source: input, isEntryCssFiles: false };
+		factorObjectValues(new Map([["object", object]]), sharedVars, prefixMap);
 
 		expect(sharedVars.size).toBe(2);
 		expect(prefixMap.size).toBe(2);
 		// Both variable names should appear in the result.
 		for (const varName of sharedVars.keys()) {
-			expect(result).toContain(varName);
+			expect(object.source).toContain(varName);
 		}
 	});
 
-	test("shares the prefixMap with factorManifestValue", () => {
-		const values = new Map<string, string>();
+	test("shares the prefixMap with factorManifestValues", () => {
+		const values = new Map<string, FactoredObject>();
 		const sharedVars = new Map<string, string>();
 		const prefixMap = new Map<string, string>();
 
 		// First, factor a manifest value.
 		const largeValue = JSON.stringify({ a: "x".repeat(50) });
 		const manifest = `globalThis.__RSC_MANIFEST["/page"] = { "clientModules": ${largeValue} };`;
-		factorManifestValue(manifest, "clientModules", values, prefixMap);
+		factorManifestValues(manifest, values, prefixMap);
 		expect(prefixMap.size).toBe(1);
 
 		// Then, factor chunks using the same prefixMap.
 		const chunksArray = JSON.stringify(["chunk-a-long-name.js", "chunk-b-long-name.js"]);
 		const input = `{ "mod1": { "id": "1", "chunks": ${chunksArray} } }`;
-		factorObjectValues(input, sharedVars, prefixMap);
+		factorObjectValues(
+			new Map([["object", { source: input, isEntryCssFiles: false }]]),
+			sharedVars,
+			prefixMap
+		);
 
 		// The prefixMap should now have 2 entries.
 		expect(prefixMap.size).toBe(2);
@@ -258,9 +301,36 @@ describe("factorObjectValues", () => {
 		const prefixMap = new Map<string, string>();
 		const input = `{ "mod1": { "id": "1", "name": "test" } }`;
 
-		const result = factorObjectValues(input, sharedVars, prefixMap);
+		const object = { source: input, isEntryCssFiles: false };
+		factorObjectValues(new Map([["object", object]]), sharedVars, prefixMap);
 
-		expect(result).toBe(input);
+		expect(object.source).toBe(input);
 		expect(sharedVars.size).toBe(0);
+	});
+
+	test("lifts large inline CSS only in objects factored from entryCSSFiles", () => {
+		const sharedVars = new Map<string, string>();
+		const entry = { inlined: true, content: ".single-use-css { color: rebeccapurple; }" };
+		const small = { inlined: true, content: ".a{}" };
+		const linked = { ...entry, inlined: false };
+		const source = JSON.stringify({ layout: [entry, small, linked] });
+		const otherSource = JSON.stringify({ module: entry });
+		const cssObject = { source, isEntryCssFiles: true };
+		const otherObject = { source: otherSource, isEntryCssFiles: false };
+
+		factorObjectValues(
+			new Map([
+				["css", cssObject],
+				["other", otherObject],
+			]),
+			sharedVars,
+			new Map()
+		);
+
+		expect(sharedVars.size).toBe(1);
+		const [varName, literal] = [...sharedVars.entries()][0]!;
+		expect(literal).toBe(JSON.stringify(entry.content));
+		expect(cssObject.source).toBe(source.replace(literal, varName));
+		expect(otherObject.source).toBe(otherSource);
 	});
 });

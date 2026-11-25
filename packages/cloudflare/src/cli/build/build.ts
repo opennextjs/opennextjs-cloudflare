@@ -1,3 +1,6 @@
+import path from "node:path";
+
+import { loadConfig } from "@opennextjs/aws/adapters/config/util.js";
 import { buildNextjsApp, setStandaloneBuildMode } from "@opennextjs/aws/build/buildNextApp.js";
 import { compileCache } from "@opennextjs/aws/build/compileCache.js";
 import { createCacheAssets, createStaticAssets } from "@opennextjs/aws/build/createAssets.js";
@@ -13,14 +16,15 @@ import type { ProjectOptions } from "../project-options.js";
 import { ensureNextjsVersionSupported } from "../utils/nextjs-support.js";
 import { bundleServer } from "./bundle-server.js";
 import { bundleNodeMiddleware } from "./open-next/bundle-node-middleware.js";
-import { compileCacheAssetsManifestSqlFile } from "./open-next/compile-cache-assets-manifest.js";
 import { compileEnvFiles } from "./open-next/compile-env-files.js";
 import { compileImages } from "./open-next/compile-images.js";
 import { compileInit } from "./open-next/compile-init.js";
 import { compileSkewProtection } from "./open-next/compile-skew-protection.js";
 import { compileDurableObjects } from "./open-next/compileDurableObjects.js";
 import { createServerBundle } from "./open-next/createServerBundle.js";
+import { ensureAssetsConfig } from "./utils/ensure-assets-config.js";
 import { useNodeMiddleware } from "./utils/middleware.js";
+import { usesCacheComponents } from "./utils/next-config.js";
 import { getVersion } from "./utils/version.js";
 
 /**
@@ -69,6 +73,7 @@ export async function build(
 			}
 		}
 	}
+	ensureAssetsConfig(wranglerConfig.assets);
 
 	// Clean the output directory before building the Next app.
 	buildHelper.initOutputDir(options);
@@ -89,6 +94,12 @@ export async function build(
 		);
 	}
 
+	if (usesCacheComponents(loadConfig(path.join(options.appBuildOutputPath, ".next")))) {
+		logger.warn(
+			"Cache Components are not fully supported on Cloudflare yet. Track progress at https://github.com/opennextjs/opennextjs-cloudflare/pull/1318"
+		);
+	}
+
 	// Generate deployable bundle
 	printHeader("Generating bundle");
 
@@ -104,17 +115,13 @@ export async function build(
 	await createMiddleware(options, { forceOnlyBuildOnce: true });
 
 	if (hasNodeMiddleware) {
-		await bundleNodeMiddleware(options);
+		await bundleNodeMiddleware(options, projectOpts);
 	}
 
 	createStaticAssets(options, { useBasePath: true });
 
 	if (config.dangerous?.disableIncrementalCache !== true) {
-		const { useTagCache, metaFiles } = createCacheAssets(options);
-
-		if (useTagCache) {
-			compileCacheAssetsManifestSqlFile(options, metaFiles);
-		}
+		createCacheAssets(options);
 	}
 
 	await createServerBundle(options);

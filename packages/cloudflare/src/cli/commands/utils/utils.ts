@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import url from "node:url";
@@ -7,7 +7,6 @@ import { compileOpenNextConfig } from "@opennextjs/aws/build/compileConfig.js";
 import { normalizeOptions } from "@opennextjs/aws/build/helper.js";
 import { printHeader, showWarningOnWindows } from "@opennextjs/aws/build/utils.js";
 import logger from "@opennextjs/aws/logger.js";
-import { unstable_readConfig } from "wrangler";
 import type yargs from "yargs";
 
 import type { OpenNextConfig } from "../../../api/config.js";
@@ -19,6 +18,7 @@ import {
 	OPEN_NEXT_CONFIG_FILE_NAME,
 } from "../../utils/create-open-next-config.js";
 import { isNonInteractiveOrCI } from "../../utils/is-interactive.js";
+import { getWranglerEnvArgs } from "./run-wrangler.js";
 
 export type WithWranglerArgs<T = unknown> = T & {
 	// Array of arguments that can be given to wrangler commands, including the `--config` and `--env` args.
@@ -90,12 +90,26 @@ export async function compileConfig(configPath: string | undefined) {
 }
 
 /**
- * Retrieve a compiled OpenNext config, and ensure it is for Cloudflare.
+ * Retrieve the OpenNext config compiled by the build, and ensure it is for Cloudflare.
+ *
+ * The compiled config is looked up in the default build output first. When it is not there, the
+ * source config is compiled to resolve a custom `buildOutputPath`.
+ *
+ * Exits the process when the compiled config can not be found, i.e. the app was not built.
  *
  * @returns OpenNext config.
  */
 export async function retrieveCompiledConfig() {
-	const configPath = path.join(nextAppDir, ".open-next/.build/open-next.config.edge.mjs");
+	let configPath = path.join(nextAppDir, ".open-next/.build/open-next.config.edge.mjs");
+
+	if (!existsSync(configPath)) {
+		const sourceConfigPath = findOpenNextConfig(nextAppDir);
+		if (sourceConfigPath) {
+			const { config, buildDir } = await compileOpenNextConfig(sourceConfigPath);
+			rmSync(buildDir, { recursive: true, force: true });
+			configPath = path.join(getNormalizedOptions(config).buildDir, "open-next.config.edge.mjs");
+		}
+	}
 
 	if (!existsSync(configPath)) {
 		logger.error("Could not find compiled Open Next config, did you run the build command?");
@@ -132,6 +146,8 @@ export function getNormalizedOptions(config: OpenNextConfig, buildDir = nextAppD
  * @returns Wrangler config.
  */
 export async function readWranglerConfig(args: WithWranglerArgs) {
+	const { unstable_readConfig } = await import("wrangler");
+
 	// Note: `unstable_readConfig` is sync as of wrangler 4.60.0
 	//       But it will eventually become async.
 	//       See https://github.com/cloudflare/workers-sdk/pull/12031
@@ -192,7 +208,7 @@ function getWranglerArgs(
 	return [
 		...(args.configPath ? ["--config", args.configPath] : []),
 		...(args.config ? ["--config", args.config] : []),
-		...(args.env ? ["--env", args.env] : []),
+		...getWranglerEnvArgs(args.env),
 		...(args.remote ? ["--remote"] : []),
 		// Note: the `args` array contains unrecognised flags.
 		...(args.args?.map((a) => `${a}`) ?? []),

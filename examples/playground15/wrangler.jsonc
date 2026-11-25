@@ -7,7 +7,10 @@
 	"assets": {
 		"directory": ".open-next/assets",
 		"binding": "ASSETS",
-		"run_worker_first": true
+		"run_worker_first": true,
+		// Serve public files like Next.js, required with `run_worker_first`
+		"html_handling": "none",
+		"not_found_handling": "none"
 	},
 	"r2_buckets": [
 		{

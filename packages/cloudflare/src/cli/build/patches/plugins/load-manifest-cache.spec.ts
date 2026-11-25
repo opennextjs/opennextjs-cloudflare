@@ -1,0 +1,233 @@
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { runInNewContext } from "node:vm";
+
+import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
+import { ContentUpdater } from "@opennextjs/aws/plugins/content-updater.js";
+import { build } from "esbuild";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
+
+import { inlineLoadManifest } from "./load-manifest.js";
+
+const require = createRequire(import.meta.url);
+const manifest = { version: 4, routes: { "/product": { initialRevalidateSeconds: 60 } } };
+const manifestText = JSON.stringify(manifest);
+const manifestPath = "/app/.next/prerender-manifest.json";
+
+type Loader = {
+	loadManifest: (
+		path: string,
+		shouldCache?: boolean,
+		cache?: Map<string, unknown>,
+		skipParse?: boolean,
+		handleMissing?: boolean
+	) => unknown;
+	clearManifestCache: (path: string, cache?: Map<string, unknown>) => boolean;
+};
+
+type ManifestPatcher = {
+	patch: (contents: string) => Promise<string>;
+	cleanup: () => void;
+};
+
+/**
+ * Create a patcher applying the `inlineLoadManifest` plugin to a manifest loader.
+ *
+ * Creates a temporary build output containing a `prerender-manifest.json`.
+ * Call `cleanup` to remove it.
+ *
+ * @param version The Next.js version.
+ * @param prerenderManifestText The content of the `prerender-manifest.json`.
+ * @param clientReferenceManifests Client reference manifests keyed by app route.
+ * @returns The patcher.
+ */
+function createManifestPatcher(
+	version: string,
+	prerenderManifestText = manifestText,
+	clientReferenceManifests: Record<string, unknown> = {}
+): ManifestPatcher {
+	const outputDir = mkdtempSync(join(tmpdir(), "opennext-manifest-"));
+	const dotNextDir = join(outputDir, "server-functions/default/.next");
+	mkdirSync(dotNextDir, { recursive: true });
+	writeFileSync(join(dotNextDir, "prerender-manifest.json"), prerenderManifestText);
+	for (const [route, value] of Object.entries(clientReferenceManifests)) {
+		const manifestFile = join(dotNextDir, "server/app", `${route}_client-reference-manifest.js`);
+		mkdirSync(dirname(manifestFile), { recursive: true });
+		writeFileSync(
+			manifestFile,
+			`globalThis.__RSC_MANIFEST ??= {};
+globalThis.__RSC_MANIFEST[${JSON.stringify(`/${route}`)}] = ${JSON.stringify(value)};`
+		);
+	}
+
+	const buildOpts = {
+		outputDir,
+		appBuildOutputPath: "/app",
+		monorepoRoot: "/app",
+		nextVersion: version,
+	} as BuildOptions;
+	const updater = new ContentUpdater(buildOpts);
+	inlineLoadManifest(updater, buildOpts);
+	const loaderPath = join(outputDir, "node_modules/next/dist/server/load-manifest.external.js");
+	mkdirSync(dirname(loaderPath), { recursive: true });
+	return {
+		patch: async (contents: string) => {
+			writeFileSync(loaderPath, contents);
+			const result = await build({
+				entryPoints: [loaderPath],
+				write: false,
+				logLevel: "silent",
+				plugins: [updater.plugin],
+			});
+			return result.outputFiles[0]!.text;
+		},
+		cleanup: () => rmSync(outputDir, { recursive: true, force: true }),
+	};
+}
+
+describe.each(["15.5.28", "16.4.1"])("inlined loadManifest (Next %s)", (version) => {
+	let patcher: ManifestPatcher;
+	let patched: string;
+
+	beforeAll(async () => {
+		patcher = createManifestPatcher(version);
+		const contents = readFileSync(
+			new URL(`./fixtures/load-manifest/next-${version}.txt`, import.meta.url),
+			"utf8"
+		);
+		patched = await patcher.patch(contents);
+	});
+
+	afterAll(() => patcher?.cleanup());
+
+	function load(): Loader {
+		return runInNewContext(`${patched}; ({ loadManifest, clearManifestCache })`, {
+			_fs: {
+				readFileSync: () => {
+					throw new Error("The worker must not read a manifest from disk");
+				},
+			},
+			_deepfreeze: require("next/dist/shared/lib/deep-freeze.js"),
+			process: { env: { NEXT_BUILD_ID: "test-build-id" } },
+		});
+	}
+
+	test("reuses and deeply freezes a cached manifest across repeated loads", () => {
+		const { loadManifest } = load();
+		const first = loadManifest(manifestPath);
+		expect(first).toEqual(manifest);
+		expect(Object.isFrozen(first)).toBe(true);
+		expect(Object.isFrozen(Reflect.get(first as object, "routes"))).toBe(true);
+		for (let i = 0; i < 20; i++) expect(loadManifest(manifestPath)).toBe(first);
+	});
+
+	test("uncached loads are fresh and mutable without changing the cached value", () => {
+		const { loadManifest } = load();
+		const cached = loadManifest(manifestPath);
+		const uncached = loadManifest(manifestPath, false);
+		expect(uncached).toEqual(cached);
+		expect(uncached).not.toBe(cached);
+		expect(loadManifest(manifestPath, false)).not.toBe(uncached);
+		expect(Object.isFrozen(uncached)).toBe(false);
+		Reflect.set(uncached as object, "version", 99);
+		expect(loadManifest(manifestPath)).toEqual(manifest);
+	});
+
+	test("honors a caller's cache and clearManifestCache", () => {
+		const { loadManifest, clearManifestCache } = load();
+		const cache = new Map<string, unknown>();
+		const first = loadManifest(manifestPath, true, cache);
+		expect(cache.get(manifestPath)).toBe(first);
+		expect(loadManifest(manifestPath, true, cache)).toBe(first);
+		expect(loadManifest(manifestPath)).not.toBe(first);
+		expect(clearManifestCache(manifestPath, cache)).toBe(true);
+		expect(loadManifest(manifestPath, true, cache)).not.toBe(first);
+		const shared = loadManifest(manifestPath);
+		expect(clearManifestCache(manifestPath)).toBe(true);
+		expect(loadManifest(manifestPath)).not.toBe(shared);
+	});
+
+	test("keeps raw reads and BUILD_ID working", () => {
+		const { loadManifest } = load();
+		expect(loadManifest(manifestPath, false, undefined, true)).toBe(manifestText);
+		expect(loadManifest("/app/.next/BUILD_ID", true, undefined, true)).toBe("test-build-id");
+	});
+
+	test("keeps optional manifest fallbacks and rejects unknown required manifests", () => {
+		const { loadManifest } = load();
+		expect(loadManifest("/app/.next/prefetch-hints.json")).toEqual({});
+		expect(() => loadManifest("/app/.next/unknown.json")).toThrow("Unexpected loadManifest");
+	});
+
+	test("has no filesystem reads left in the generated loader", () => {
+		expect(patched).not.toContain("readFileSync");
+	});
+});
+
+describe("invalid manifest", () => {
+	let patcher: ManifestPatcher;
+
+	beforeAll(() => {
+		patcher = createManifestPatcher("16.4.1", "{ not json");
+	});
+
+	afterAll(() => patcher?.cleanup());
+
+	test("fails the build", async () => {
+		const contents = readFileSync(
+			new URL("./fixtures/load-manifest/next-16.4.1.txt", import.meta.url),
+			"utf8"
+		);
+		await expect(patcher.patch(contents)).rejects.toThrow("Failed to parse the manifest");
+	});
+});
+
+test("shares repeated CSS and chunk arrays while preserving the evaluated client reference manifests", async () => {
+	const sharedCss = '.opennext-shared-css::before { content: "入口"; }\n';
+	const uniqueCss = ".opennext-unique-css { border: 2px solid purple; }".repeat(800);
+	const linkedCss = { path: "static/chunks/linked.css", inlined: false };
+	const chunks = ["static/chunks/opennext-shared-client-chunk.js"];
+	const alpha = {
+		clientModules: { alpha: { id: 1, chunks } },
+		entryCSSFiles: {
+			layout: [
+				{ path: "static/chunks/shared.css", inlined: true, content: sharedCss },
+				linkedCss,
+				{ path: "static/chunks/unique.css", inlined: true, content: uniqueCss },
+			],
+		},
+	};
+	const beta = {
+		clientModules: { beta: { id: 2, chunks } },
+		entryCSSFiles: {
+			"beta/page": [linkedCss, { path: "static/chunks/also-shared.css", inlined: true, content: sharedCss }],
+			layout: [{ path: "static/chunks/shared.css", inlined: true, content: sharedCss }],
+		},
+	};
+	const originals = { "alpha/page": alpha, "beta/page": beta, "gamma/page": alpha };
+	const patcher = createManifestPatcher("16.4.1", manifestText, originals);
+	try {
+		const contents = readFileSync(
+			new URL("./fixtures/load-manifest/next-16.4.1.txt", import.meta.url),
+			"utf8"
+		);
+		const patched = await patcher.patch(
+			contents + '\nfunction evalManifest(path, cache) { throw new Error("Unpatched evalManifest"); }\n'
+		);
+		const evaluate = runInNewContext(`${patched}; evalManifest;`);
+		for (const [route, value] of Object.entries(originals)) {
+			const result = evaluate(`/app/.next/server/app/${route}_client-reference-manifest.js`);
+			const expected = {
+				__RSC_MANIFEST: { [`/${route}`]: value },
+			};
+			expect(JSON.stringify(result)).toBe(JSON.stringify(expected));
+		}
+		expect(patched.split(".opennext-shared-css")).toHaveLength(2);
+		expect(patched).toMatch(/const v[0-9a-f]+\s*=\s*"\.opennext-unique-css/);
+		expect(patched.split("opennext-shared-client-chunk.js")).toHaveLength(2);
+	} finally {
+		patcher.cleanup();
+	}
+});

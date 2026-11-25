@@ -12,3 +12,24 @@ test("should test if poweredByHeader adds the correct headers ", async ({ page }
 	// This header should be defined cause we have set the `OPEN_NEXT_REQUEST_ID_HEADER` env variable in wrangler.jsonc
 	expect(headers?.["x-opennext-requestid"]).not.toBeUndefined();
 });
+
+test("[routing parity] applies a static configured response header", async ({ request }) => {
+	const response = await request.get("/");
+
+	expect(response.status()).toBe(200);
+	expect(response.headers()["x-custom-header"]).toBe("my custom header value");
+});
+
+// Next.js merges successful condition parameters after source parameters and
+// compiles configured headers as non-path values.
+// https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/server/lib/router-utils/resolve-routes.ts#L400-L414
+test("[routing parity] interpolates condition parameters in headers", async ({ request }) => {
+	const response = await request.get(
+		"/condition-headers/from-source/?tenant=condition&my-query=value-less&items=one&items=two"
+	);
+	const headers = response.headers();
+
+	expect(headers["x-condition"]).toBe("value-less");
+	expect(headers["x-items"]).toBe("one/two");
+	expect(headers["x-route-url"]).toBe("https://example.com/path?tenant=condition&next=(literal)+*");
+});

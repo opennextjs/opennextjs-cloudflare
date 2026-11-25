@@ -12,7 +12,8 @@ test.describe("r2-incremental-cache", () => {
 		let cacheHeaders = "";
 		do {
 			const req = await request.get("/");
-			cacheHeaders = req.headers()["x-nextjs-cache"];
+			// Responses served by the cache interceptor use `x-opennext-cache`.
+			cacheHeaders = req.headers()["x-nextjs-cache"] ?? req.headers()["x-opennext-cache"];
 			await page.waitForTimeout(500);
 		} while (cacheHeaders !== "HIT");
 

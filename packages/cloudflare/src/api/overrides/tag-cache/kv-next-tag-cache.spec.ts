@@ -2,7 +2,7 @@ import { error } from "@opennextjs/aws/adapters/logger.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCloudflareContext } from "../../cloudflare-context.js";
-import { FALLBACK_BUILD_ID, purgeCacheByTags } from "../internal.js";
+import { FALLBACK_BUILD_ID } from "../internal.js";
 import { BINDING_NAME, KVNextModeTagCache, NAME } from "./kv-next-tag-cache.js";
 
 // Mock dependencies
@@ -17,8 +17,6 @@ vi.mock("../../cloudflare-context.js", () => ({
 vi.mock("../internal.js", () => ({
 	debugCache: vi.fn(),
 	FALLBACK_BUILD_ID: "fallback-build-id",
-	purgeCacheByTags: vi.fn(),
-	isPurgeCacheEnabled: () => true,
 }));
 
 describe("KVNextModeTagCache", () => {
@@ -209,7 +207,6 @@ describe("KVNextModeTagCache", () => {
 			await tagCache.writeTags(["tag1", "tag2"]);
 
 			expect(mockPut).not.toHaveBeenCalled();
-			expect(purgeCacheByTags).not.toHaveBeenCalled();
 		});
 
 		it("should do nothing when no KV is available", async () => {
@@ -220,17 +217,15 @@ describe("KVNextModeTagCache", () => {
 			await tagCache.writeTags(["tag1", "tag2"]);
 
 			expect(mockPut).not.toHaveBeenCalled();
-			expect(purgeCacheByTags).not.toHaveBeenCalled();
 		});
 
 		it("should do nothing when tags array is empty", async () => {
 			await tagCache.writeTags([]);
 
 			expect(mockPut).not.toHaveBeenCalled();
-			expect(purgeCacheByTags).not.toHaveBeenCalled();
 		});
 
-		it("should write tags to KV and purge cache", async () => {
+		it("should write tags to KV", async () => {
 			const currentTime = Date.now();
 			vi.spyOn(Date, "now").mockReturnValue(currentTime);
 
@@ -240,8 +235,6 @@ describe("KVNextModeTagCache", () => {
 			expect(mockPut).toHaveBeenCalledTimes(2);
 			expect(mockPut).toHaveBeenCalledWith("fallback-build-id/tag1", String(currentTime));
 			expect(mockPut).toHaveBeenCalledWith("fallback-build-id/tag2", String(currentTime));
-
-			expect(purgeCacheByTags).toHaveBeenCalledWith(tags);
 		});
 
 		it("should handle single tag", async () => {
@@ -252,8 +245,6 @@ describe("KVNextModeTagCache", () => {
 
 			expect(mockPut).toHaveBeenCalledTimes(1);
 			expect(mockPut).toHaveBeenCalledWith("fallback-build-id/single-tag", String(currentTime));
-
-			expect(purgeCacheByTags).toHaveBeenCalledWith(["single-tag"]);
 		});
 
 		it("should write object tags as JSON to KV", async () => {
@@ -266,7 +257,6 @@ describe("KVNextModeTagCache", () => {
 				"fallback-build-id/tag1",
 				JSON.stringify({ revalidatedAt: 500, stale: 500, expire: 9999 })
 			);
-			expect(purgeCacheByTags).toHaveBeenCalledWith(["tag1"]);
 		});
 
 		it("should default stale to Date.now() for object tags without stale", async () => {
@@ -279,7 +269,6 @@ describe("KVNextModeTagCache", () => {
 				"fallback-build-id/tag1",
 				JSON.stringify({ revalidatedAt: 1000, stale: 1000, expire: null })
 			);
-			expect(purgeCacheByTags).toHaveBeenCalledWith(["tag1"]);
 		});
 	});
 

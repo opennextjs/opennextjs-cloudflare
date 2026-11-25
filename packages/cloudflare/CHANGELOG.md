@@ -1,5 +1,336 @@
 # @opennextjs/cloudflare
 
+## 1.20.19
+
+### Patch Changes
+
+- [#1509](https://github.com/opennextjs/opennextjs-cloudflare/pull/1509) [`e664bac`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e664bac6ef1d75b625fff832adf6f78e95e5ff1c) Thanks [@vicb](https://github.com/vicb)! - chore: bump glob to v14 to drop the vulnerable minimatch 10 dependency
+
+  `glob@13` depends on `minimatch@10`, which is affected by GHSA-g3hv-75wg-m249 and has no patched 10.x release. `glob@14` uses `minimatch@11`.
+
+- [#1520](https://github.com/opennextjs/opennextjs-cloudflare/pull/1520) [`5062c28`](https://github.com/opennextjs/opennextjs-cloudflare/commit/5062c2888cbd0921c2abb70060abbd60c36260b2) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.2.1
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.2.1>
+
+  - Do not skip the middleware and the `next.config` routes for some requests of an app using `i18n`.
+  - Require a path separator after the buildId in `/_next/data` requests.
+  - Respond with a 500 when the body stream errors before its first chunk.
+  - Match the middleware against the normalized pathname.
+
+- [#1519](https://github.com/opennextjs/opennextjs-cloudflare/pull/1519) [`db1bd1c`](https://github.com/opennextjs/opennextjs-cloudflare/commit/db1bd1c1f2af9810a2a7e6a5c364556a1af9b7f2) Thanks [@ahmed-abdelkafi](https://github.com/ahmed-abdelkafi)! - fix: validate `tagCache` instead of `incrementalCache` when checking for a custom tag cache
+
+  A hand-written `open-next.config.ts` with a custom `tagCache` and `incrementalCache: "dummy"` was wrongly rejected with "The `open-next.config.ts` should have a default export like this".
+
+- [#1507](https://github.com/opennextjs/opennextjs-cloudflare/pull/1507) [`cc95230`](https://github.com/opennextjs/opennextjs-cloudflare/commit/cc95230d18428593a5ad70dd0d43894acd923143) Thanks [@vicb](https://github.com/vicb)! - fix: answer requests with a `Cookie` header in the Node.js middleware
+
+  Since 1.20.18, with a `proxy.ts` (or a Node.js runtime `middleware.ts`), every request with a `Cookie` header answered 500 with `TypeError: Cannot read properties of undefined (reading 'parse')`.
+
+  The `@opennextjs/aws` files were no longer bundled as ES modules, and the default import of `cookie@1` was `undefined`.
+
+- [#1517](https://github.com/opennextjs/opennextjs-cloudflare/pull/1517) [`226a45f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/226a45fdc807a7f8ec87ecd29e4b8f1a050ca1de) Thanks [@vicb](https://github.com/vicb)! - fix: do not serve stale entries from the regional cache after `revalidateTag`
+
+  With the regional cache (`withRegionalCache`) and `bypassTagCacheOnCacheHit` (set explicitly, or the default on Next.js < 16 when cache purge is enabled), a page revalidated with `revalidateTag` could keep being served stale until its regional cache entry expired or was purged. This happened on almost every revalidation with `enableCacheInterception`.
+
+## 1.20.18
+
+### Patch Changes
+
+- [#1505](https://github.com/opennextjs/opennextjs-cloudflare/pull/1505) [`2bc929e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/2bc929e45af3d252ddc99c0ee5dbf8bef03239ee) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.2.0
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.2.0>
+
+  - Honor `dangerous.disableTagCache` when reading `"use cache"` entries.
+  - Queue one revalidation per stale cache entry.
+  - Add an experimental `onTagCacheResult` callback to entries returned by the incremental cache.
+
+- [#1492](https://github.com/opennextjs/opennextjs-cloudflare/pull/1492) [`c41442b`](https://github.com/opennextjs/opennextjs-cloudflare/commit/c41442b5696892947d961bbafc50c0a6b1bf01ef) Thanks [@jorgemoya](https://github.com/jorgemoya)! - perf: read each tag once per request in the sharded Durable Object tag cache
+
+  With `doShardedTagCache`, cached pages could take up to about a second longer to render, mostly on low-traffic sites. Every cached `fetch` or `"use cache"` entry on a page checked its tags separately, so the same tags were read from the Durable Objects many times per render.
+
+  Each tag is now read once per request, which cuts Durable Object reads, and their cost, on pages with many cached entries.
+
+- [#1498](https://github.com/opennextjs/opennextjs-cloudflare/pull/1498) [`2fd94f6`](https://github.com/opennextjs/opennextjs-cloudflare/commit/2fd94f6665d3c0f77fdb618372ca5cae3c4a9db5) Thanks [@haranishi](https://github.com/haranishi)! - fix: deduplicate inline CSS in the Worker bundle
+
+  When `experimental.inlineCss` is enabled, the same stylesheet can repeat across client reference manifests. OpenNext shares repeated inline CSS strings in the Worker bundle, reducing upload size.
+
+- [#1417](https://github.com/opennextjs/opennextjs-cloudflare/pull/1417) [`3d7a137`](https://github.com/opennextjs/opennextjs-cloudflare/commit/3d7a13762b8f648438a40611cd64c7be5a480a7a) Thanks [@Adnan-Husayn](https://github.com/Adnan-Husayn)! - fix: forward an empty `--env` to wrangler
+
+  `--env=""` is how Wrangler recommends targeting the top-level environment when the configuration also defines named environments. The flag was dropped before reaching Wrangler, so the command behaved as if no environment had been specified: the "Multiple environments are defined in the Wrangler configuration file" warning persisted and, when `CLOUDFLARE_ENV` was set, Wrangler targeted that environment instead of the top-level one.
+
+  The empty environment is now forwarded to every Wrangler command, including the ones used to populate the cache.
+
+- [#1353](https://github.com/opennextjs/opennextjs-cloudflare/pull/1353) [`780d32c`](https://github.com/opennextjs/opennextjs-cloudflare/commit/780d32caf2fc5e3c49992cc1d22b119291938ee6) Thanks [@uttkarsh-26](https://github.com/uttkarsh-26)! - fix: declare esbuild as a dependency
+
+  `opennextjs-cloudflare build` imports `esbuild`, but the package only listed it in its `devDependencies`. The import resolved only when the package manager happened to hoist the copy installed by `@opennextjs/aws` or `wrangler`. When another package claimed that slot, or with `npm ci` on a lockfile marking `esbuild` as extraneous, the build failed with `ERR_MODULE_NOT_FOUND: Cannot find package 'esbuild'`.
+
+  `esbuild` is now a dependency, pinned to the version `@opennextjs/aws` uses.
+
+- [#1432](https://github.com/opennextjs/opennextjs-cloudflare/pull/1432) [`e751dd8`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e751dd8884537ff115b494bbb00f01f8538dd6b1) Thanks [@mathurshubham](https://github.com/mathurshubham)! - fix: export `package.json` from `@opennextjs/cloudflare`
+
+  `require.resolve("@opennextjs/cloudflare/package.json")` threw `MODULE_NOT_FOUND` because the `./*` export mapped it to a file that does not exist. Tools that read dependency manifests reported the package as missing, for example Storybook printed `WARN unable to find package.json for @opennextjs/cloudflare`.
+
+- [#1499](https://github.com/opennextjs/opennextjs-cloudflare/pull/1499) [`95d7f52`](https://github.com/opennextjs/opennextjs-cloudflare/commit/95d7f52c0b75997ded7d7ec27d153dde480be086) Thanks [@haranishi](https://github.com/haranishi)! - perf: load Wrangler on demand in the CLI
+
+  The CLI now starts help and version commands without loading Wrangler and Miniflare. Commands that use Wrangler still load it when they read configuration, get bindings, or start an R2 cache worker.
+
+- [#1442](https://github.com/opennextjs/opennextjs-cloudflare/pull/1442) [`f0efe83`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f0efe83dd3b5683d15cf96eacd0061b0629a21c0) Thanks [@mathurshubham](https://github.com/mathurshubham)! - fix: do not import `wrangler` types from the public type declarations
+
+  Projects compiled with `skipLibCheck: false` failed to type-check with errors inside `node_modules/wrangler` and `node_modules/miniflare` (e.g. `TS2307: Cannot find module '@cloudflare/workers-utils'`). The adapter's declarations imported `GetPlatformProxyOptions` from `wrangler`, which pulled in wrangler's own declarations, and those do not type-check (cloudflare/workers-sdk#15940). The options of `initOpenNextCloudflareForDev` are now declared in the adapter, so its declarations no longer reference `wrangler`.
+
+- [#1489](https://github.com/opennextjs/opennextjs-cloudflare/pull/1489) [`f5a2d09`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f5a2d09b239214f9c08afcc371bc6e1d0d98e1e5) Thanks [@vicb](https://github.com/vicb)! - fix: reduce the Node.js middleware (`proxy.ts`) bundle size and resolve its packages like the server
+
+  A `proxy.ts` (or a `middleware.ts` using the Node.js runtime) produced a much larger Worker than the same code in an edge `middleware.ts` ([#1373](https://github.com/opennextjs/opennextjs-cloudflare/issues/1373)). With Next.js 16.4, the middleware bundle of a proxy only using `next/server` is now ~40% smaller. A proxy importing React (directly or through a library like `next/og`) still bundles the Next.js app page runtime.
+
+  It also fixes these build errors:
+
+  - `Could not resolve "#util"` (and similar) when `instrumentation.ts` imports a package with conditional imports ([#1401](https://github.com/opennextjs/opennextjs-cloudflare/issues/1401)). The instrumentation hook is no longer bundled in the middleware.
+  - `Could not resolve "cloudflare:sockets"` when the middleware imports a package whose `workerd` build uses `cloudflare:*` modules, i.e. `postgres` 4 ([#1487](https://github.com/opennextjs/opennextjs-cloudflare/issues/1487)).
+
+  The esbuild metafile is now written to `.open-next/middleware/handler.mjs.meta.json` to help analyze the bundle size.
+
+- [#1462](https://github.com/opennextjs/opennextjs-cloudflare/pull/1462) [`dcffe69`](https://github.com/opennextjs/opennextjs-cloudflare/commit/dcffe6952d231d015367fd9128326ddf93e2ecc3) Thanks [@medlabib](https://github.com/medlabib)! - fix: add a default export to the `@next/env` shim
+
+  Payload 3.x (`payload/dist/bin/loadEnv.js`) imports `@next/env` with a default import, so bundling a Payload app failed with:
+
+  ```
+  No matching export in ".open-next/cloudflare-templates/shims/env.js" for import "default"
+  ```
+
+  The shim now has a default export, and `loadEnvConfig` returns the same shape as `@next/env` (`{ combinedEnv, parsedEnv, loadedEnvFiles }`) so callers destructuring the result no longer throw.
+
+  It still does not load any file: `process.env` is populated at runtime from the Worker bindings and the `.env*` files compiled at build time for the `NEXTJS_ENV` mode.
+
+- [#1504](https://github.com/opennextjs/opennextjs-cloudflare/pull/1504) [`68fc728`](https://github.com/opennextjs/opennextjs-cloudflare/commit/68fc728f141a1d9b2aa2ff7a79d4f12a9d1a896f) Thanks [@vicb](https://github.com/vicb)! - chore: warn at build time when Cache Components are enabled
+
+  Cache Components (`cacheComponents: true` in `next.config`) are not fully supported on Cloudflare yet. Apps that enable them now get a build warning linking to https://github.com/opennextjs/opennextjs-cloudflare/pull/1318, where support is being tracked.
+
+## 1.20.17
+
+### Patch Changes
+
+- [#1488](https://github.com/opennextjs/opennextjs-cloudflare/pull/1488) [`e6c6736`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e6c6736b576b8c226f499ac61428ccc272b5e387) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.16
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.16>
+
+  - Match `fallback: false` routes against the decoded pathname.
+  - Do not expose more Next.js internal headers on the middleware response.
+  - Send the time of entries made stale by a tag to the revalidation queue.
+  - Do not copy `next.config` headers onto the request headers.
+  - Strip the internal `next-resume` header from incoming requests.
+
+- [#1479](https://github.com/opennextjs/opennextjs-cloudflare/pull/1479) [`223f07f`](https://github.com/opennextjs/opennextjs-cloudflare/commit/223f07f46a0620de23c716c633f38621d9282e72) Thanks [@vicb](https://github.com/vicb)! - fix: do not serve `/cdn-cgi/image/` for revalidation requests sent through `WORKER_SELF_REFERENCE`
+
+- [#1427](https://github.com/opennextjs/opennextjs-cloudflare/pull/1427) [`2d4665a`](https://github.com/opennextjs/opennextjs-cloudflare/commit/2d4665a1fc1a57df9fdc095f316241dc21b06769) Thanks [@jkugsiya](https://github.com/jkugsiya)! - fix: stop the Durable Object queue from revalidating routes again after every restart
+
+  Once a revalidation had failed, the Durable Object queue revalidated the route again every time it restarted, even after the retry succeeded or the queue gave up. The number of extra revalidations grew until the next deployment. The queue now forgets a route once it stops retrying it.
+
+- [#1486](https://github.com/opennextjs/opennextjs-cloudflare/pull/1486) [`843723c`](https://github.com/opennextjs/opennextjs-cloudflare/commit/843723cfadd9fdf401cd3a856225a8c92923ea4d) Thanks [@vicb](https://github.com/vicb)! - fix: leave `cloudflare:*` imports external in the server bundle
+
+  `postgres` 4 maps its Workers build (`src/cf.js`) to the `workerd` condition, and that build imports `cloudflare:sockets` statically. With `postgres` 4 in `serverExternalPackages`, the build failed while bundling the server with:
+
+  ```
+  ✘ [ERROR] Could not resolve "cloudflare:sockets"
+  ```
+
+  `cloudflare:*` imports are now left to wrangler, as `node:*` imports already are, so `postgres` 4 uses `cloudflare:sockets` in the Worker.
+
+- [#1441](https://github.com/opennextjs/opennextjs-cloudflare/pull/1441) [`7d97fe8`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7d97fe8a7ebdd2867b82ef0e142dda7149769b18) Thanks [@mathurshubham](https://github.com/mathurshubham)! - fix: stop the Durable Object queue from skipping ISR revalidations until the next deployment
+
+  With the Durable Object queue, some ISR pages stayed `x-nextjs-cache: STALE` until the next deployment:
+
+  - pages that took more than about a second to revalidate,
+  - pages made stale by `revalidateTag` after their first revalidation.
+
+  These pages are now revalidated.
+
+- [#1434](https://github.com/opennextjs/opennextjs-cloudflare/pull/1434) [`e476844`](https://github.com/opennextjs/opennextjs-cloudflare/commit/e4768449e91dacde554016dbf27f95c7b522b8bd) Thanks [@mathurshubham](https://github.com/mathurshubham)! - fix: re-arm the bucket cache purge alarm when the stored alarm is in the past
+
+  Affects apps using `purgeCache({ type: "durableObject" })` (the `NEXT_CACHE_DO_PURGE` binding).
+
+  Once the purge alarm had exhausted its retries (for example after the `Wrong number of parameter bindings` error fixed in [#1289](https://github.com/opennextjs/opennextjs-cloudflare/issues/1289), or a purge rate limit), the Durable Object never scheduled another alarm. Every later `revalidateTag` / `revalidatePath` queued its tags but the CDN cache was never purged and pages stayed stale.
+
+  The alarm is now re-armed when it is in the past. After upgrading, the next revalidation purges the queued tags without having to reset the Durable Object. See https://github.com/opennextjs/opennextjs-cloudflare/issues/929
+
+- [#1431](https://github.com/opennextjs/opennextjs-cloudflare/pull/1431) [`8d30187`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8d30187ff558424b8a108ba671c53d1c0e7242fb) Thanks [@kremnyi](https://github.com/kremnyi)! - fix: retry all the failed revalidations of the Durable Object queue
+
+  When three or more failed ISR revalidations were waiting to be retried at the same time with the Durable Object queue (`DOQueueHandler`), only some of them were retried. The routes that were not retried stayed marked as failed, so later ISR requests for these routes did not trigger a revalidation either. These pages stayed stale until another revalidation failed or the Durable Object restarted.
+
+  All the failed revalidations are now retried.
+
+- [#1484](https://github.com/opennextjs/opennextjs-cloudflare/pull/1484) [`b6ccf33`](https://github.com/opennextjs/opennextjs-cloudflare/commit/b6ccf33cefe04d2161a90ba2b26d2b642ee42264) Thanks [@vicb](https://github.com/vicb)! - fix: resolve the `workerd` build of packages from the installed `node_modules` instead of copying it
+
+  Next.js traces the packages it does not bundle with the Node.js conditions, so the files only used by the `workerd` build of a package are missing from `.open-next`. They used to be copied, along with the dependencies of the `workerd` build, but a dependency that Next.js had partially traced for another package was left incomplete. With `serverExternalPackages: ["@sentry/nextjs"]`, 1.20.15 and 1.20.16 failed with:
+
+  ```
+  ✘ [ERROR] Could not resolve "@sentry/server-utils/no-diagnostic-channels"
+  ```
+
+  Nothing is copied anymore. The server bundle resolves the packages with a `workerd` condition from the installed `node_modules` (the `workerd` condition wins over the Node.js ones) and uses the traced copy of a file when there is one, so that each module is bundled once. The files that were not traced are read from `node_modules`.
+
+## 1.20.16
+
+### Patch Changes
+
+- [#1477](https://github.com/opennextjs/opennextjs-cloudflare/pull/1477) [`6fa9898`](https://github.com/opennextjs/opennextjs-cloudflare/commit/6fa9898272f1d2bd96e08d855a0782e6c0d49b99) Thanks [@vicb](https://github.com/vicb)! - fix: serve public files like Next.js when `run_worker_first` is enabled
+
+  Public files are now only served at their exact path when `run_worker_first` is enabled, like Next.js.
+
+  The build now checks the `assets` configuration when `run_worker_first` is enabled. If the build fails with "When `run_worker_first` is enabled, the `assets` section of the wrangler configuration must be...", update the `assets` section of your wrangler configuration:
+
+  ```jsonc
+  {
+  	"assets": {
+  		"directory": ".open-next/assets",
+  		"binding": "ASSETS",
+  		"run_worker_first": true,
+  		// Serve public files at their exact path only, like Next.js
+  		"html_handling": "none",
+  		// "404-page" is also allowed
+  		"not_found_handling": "none",
+  	},
+  }
+  ```
+
+  With this configuration, `public/about.html` is served at `/about.html` but not at `/about`.
+
+- [#1476](https://github.com/opennextjs/opennextjs-cloudflare/pull/1476) [`750d1b7`](https://github.com/opennextjs/opennextjs-cloudflare/commit/750d1b73a261524d9f49376e26e4ba0996b438c1) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.15
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.15>
+
+- [#1477](https://github.com/opennextjs/opennextjs-cloudflare/pull/1477) [`dbeff84`](https://github.com/opennextjs/opennextjs-cloudflare/commit/dbeff84f072363da2b04c56e25355cfe2b53d546) Thanks [@vicb](https://github.com/vicb)! - fix: false-positive AVIF/HEIC image type detection
+
+  The AVIF and HEIC detection now validates the size of the ISOBMFF `ftyp` box.
+
+- [#1474](https://github.com/opennextjs/opennextjs-cloudflare/pull/1474) [`5c429e7`](https://github.com/opennextjs/opennextjs-cloudflare/commit/5c429e793e268ca34f099075e6e8108441502ecf) Thanks [@vicb](https://github.com/vicb)! - chore: require Next.js 15.5.29 or 16.4.5
+
+  Raise the supported Next.js version floor to 15.5.29 and 16.4.5 to include the fixes from
+  [the Next.js security release on Nov 3](https://nextjs.org/blog/november-2026-security-release).
+
+- [#1477](https://github.com/opennextjs/opennextjs-cloudflare/pull/1477) [`0c7e3e6`](https://github.com/opennextjs/opennextjs-cloudflare/commit/0c7e3e6cc17d66c4b68f60f0b634d009eda63858) Thanks [@vicb](https://github.com/vicb)! - fix: encode cache keys in the static assets incremental cache and the regional cache
+
+  Cache keys are now encoded when they are turned into URLs, so that a key can not resolve to the entry of a different key.
+
+## 1.20.15
+
+### Patch Changes
+
+- [#1473](https://github.com/opennextjs/opennextjs-cloudflare/pull/1473) [`cf1e5b9`](https://github.com/opennextjs/opennextjs-cloudflare/commit/cf1e5b952663fa0100f74b64ab0932ce13d04be0) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.14
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.14>
+
+  - Fix the build-time fetch cache being ignored when `deploymentId` is set.
+  - Fix `res.revalidate()` in Pages Router API routes on Next 15.4+, pages are now revalidated in-process.
+  - Fix pages rendered on demand being reported as stale one second after they were written.
+  - Fix entries marked stale by `revalidateTag(tag, "max")` not being served with stale-while-revalidate on Next 16.4+.
+
+- [#1449](https://github.com/opennextjs/opennextjs-cloudflare/pull/1449) [`d280ba4`](https://github.com/opennextjs/opennextjs-cloudflare/commit/d280ba4acf00dd3ded22eda89626785d5b94034d) Thanks [@vicb](https://github.com/vicb)! - fix: invalidate CDN cache tags through the Cloudflare invalidation handler
+
+  On-demand revalidation now purges Cloudflare cache tags through OpenNext's centralized CDN invalidation flow instead of coupling purges to the built-in tag-cache implementations.
+
+  The purge `type` is now honored for every invalidation. Previously, `revalidateTag` used the `NEXT_CACHE_DO_PURGE` Durable Object whenever it was bound and otherwise called the Cloudflare API directly, regardless of `type`.
+
+  Direct invalidation now rejects unsuccessful API outcomes. In Durable Object mode, a missing `NEXT_CACHE_DO_PURGE` binding now logs an error and skips the purge for both tag and path invalidation. `revalidateTag` no longer falls back to unbuffered direct purges, which count against the account-wide purge rate limit. Add the binding to restore CDN purges.
+
+  When cache purge is configured without `CACHE_PURGE_ZONE_ID` or `CACHE_PURGE_API_TOKEN`, on-demand revalidation still updates the tag cache, but the purge is now reported as a failed CDN invalidation (`Cloudflare cache purge failed: missing-credentials`) rather than a skipped purge. Set both variables, or remove the `cdnInvalidation` override if CDN purging is not needed.
+
+  Custom Durable Objects can extend `BucketCachePurgeBase` and override its protected storage, batching, execution, and settlement hooks to support alternate schemas while retaining alarm scheduling and queue draining. The concrete `BucketCachePurge` class preserves the default single-zone behavior.
+
+- [#1429](https://github.com/opennextjs/opennextjs-cloudflare/pull/1429) [`6026fed`](https://github.com/opennextjs/opennextjs-cloudflare/commit/6026fed8fba2ef1458d4bfad3895b24f4a049012) Thanks [@mathurshubham](https://github.com/mathurshubham)! - fix: copy the workerd build of every traced package, not only of `serverExternalPackages`
+
+  The Cloudflare build of a package exposed through the `workerd` export condition was only included for packages listed in `serverExternalPackages`. Packages that Next.js keeps external on its own, and their dependencies, were missing it.
+
+  For example, building a Next.js 16 app using `pg` or `@prisma/adapter-pg` (the Hyperdrive setup) with Turbopack failed with:
+
+  ```
+  ✘ [ERROR] Could not resolve "pg-cloudflare"
+  The module "./dist/index.js" was not found on the file system
+  ```
+
+  The `workerd` build of every package is now used, so `pg` builds without `outputFileTracingIncludes` workarounds. A package with a `workerd` condition now always uses that build, even when it is not listed in `serverExternalPackages`.
+
+- [#1430](https://github.com/opennextjs/opennextjs-cloudflare/pull/1430) [`8a9be4e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8a9be4e9e7cf5532e78d818c5546d362272814df) Thanks [@rishabhvenu](https://github.com/rishabhvenu)! - fix: bundle the Node.js middleware (`proxy.ts`) when `@opentelemetry/api` is installed
+
+  Since 1.20.3, `opennextjs-cloudflare build` failed with `Could not resolve "@opentelemetry/api"` for apps with a Node.js middleware and `@opentelemetry/api` installed, for example as a dependency of `@sentry/nextjs`.
+
+- [#1473](https://github.com/opennextjs/opennextjs-cloudflare/pull/1473) [`cf1e5b9`](https://github.com/opennextjs/opennextjs-cloudflare/commit/cf1e5b952663fa0100f74b64ab0932ce13d04be0) Thanks [@vicb](https://github.com/vicb)! - fix: use the Open Next build id for the Durable Objects and drop the unused cache assets SQL manifest
+
+  - The Durable Objects now use `getOpenNextBuildId()` from `@opennextjs/aws`, so an empty `deploymentId` falls back to the build id. The queue Durable Object now clears the state of previous builds in that case.
+  - `.open-next/cloudflare/cache-assets-manifest.sql` is no longer generated. It seeded the D1 tag cache used before 1.0 and no current tag cache reads it.
+
+- [#1332](https://github.com/opennextjs/opennextjs-cloudflare/pull/1332) [`7fe40aa`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7fe40aaeaae01cf99c13a8864c71f93a7165b699) Thanks [@yuanzhixiang](https://github.com/yuanzhixiang)! - fix: support a custom `buildOutputPath` in the `deploy`, `preview`, `upload` and `populateCache` commands
+
+  With `buildOutputPath` set in `open-next.config.ts`, these commands failed right after a successful build with `Could not find compiled Open Next config, did you run the build command?`. They now find the build output under the configured `buildOutputPath`.
+
+- [#1438](https://github.com/opennextjs/opennextjs-cloudflare/pull/1438) [`803d221`](https://github.com/opennextjs/opennextjs-cloudflare/commit/803d221a8e9311d50491f46292c5f34f603a17e9) Thanks [@mathurshubham](https://github.com/mathurshubham)! - fix: resolve Turbopack hashed externals through their symlink under pnpm
+
+  With Turbopack and pnpm, packages listed in `serverExternalPackages` were bundled using their Node.js
+  build instead of their `workerd` build. For example `postgres` was bundled without `cloudflare:sockets`
+  support and failed at runtime.
+
+  The `workerd` build is now used. This also fixes externals that are not direct dependencies of the app,
+  and npm aliases.
+
+- [#1332](https://github.com/opennextjs/opennextjs-cloudflare/pull/1332) [`7fe40aa`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7fe40aaeaae01cf99c13a8864c71f93a7165b699) Thanks [@yuanzhixiang](https://github.com/yuanzhixiang)! - fix: find `@vercel/og` in the app `node_modules` when a custom `buildOutputPath` is set
+
+  When `.next` was in `buildOutputPath` and `node_modules` next to the app, the build failed with `ENOENT: no such file or directory, copyfile '.../next/dist/compiled/@vercel/og/index.edge.js'`.
+
+## 1.20.14
+
+### Patch Changes
+
+- [#1470](https://github.com/opennextjs/opennextjs-cloudflare/pull/1470) [`7460f53`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7460f539b0557fde92ce127772a3e6b4411a60ae) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.13
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.13>
+
+  - Export the code patch test utilities as `@opennextjs/aws/build/patch/testUtils.js`
+
+- [#1466](https://github.com/opennextjs/opennextjs-cloudflare/pull/1466) [`3e50371`](https://github.com/opennextjs/opennextjs-cloudflare/commit/3e503712ad32fb0aba169bb46c3b4c6d42d37482) Thanks [@NathanDrake2406](https://github.com/NathanDrake2406)! - fix: reuse cached manifests to reduce CPU and memory usage
+
+  The inlined manifests were re-created on every load, so apps with large manifests (e.g. the prerender manifest) spent CPU time building and garbage collecting the same objects and kept multiple copies in memory.
+
+- [#1470](https://github.com/opennextjs/opennextjs-cloudflare/pull/1470) [`7460f53`](https://github.com/opennextjs/opennextjs-cloudflare/commit/7460f539b0557fde92ce127772a3e6b4411a60ae) Thanks [@vicb](https://github.com/vicb)! - fix: scope the module-loading signal to the request on Next 16
+
+  Starting with Next.js 16, the module-loading patch silently stopped matching the changed `CacheSignal` constructor. Concurrent requests could then fail with `Cannot perform I/O on behalf of a different request` and return truncated responses. Scope the signal to each request again so concurrent renders complete.
+
+## 1.20.13
+
+### Patch Changes
+
+- [#1460](https://github.com/opennextjs/opennextjs-cloudflare/pull/1460) [`8e60ded`](https://github.com/opennextjs/opennextjs-cloudflare/commit/8e60deda4b4c729b98bd1379763a4a6d2c443f5b) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.12
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.12>
+
+  - Fix Next.js 15 builds failing with "Next.js version 15.x.x is not supported by the Next.js team" now that Next.js 15 is 2 years old. A major version stays supported until the second next major (Next.js 17) is released.
+
+- [#1414](https://github.com/opennextjs/opennextjs-cloudflare/pull/1414) [`15f4c9e`](https://github.com/opennextjs/opennextjs-cloudflare/commit/15f4c9e5c1c5080eb87d0634be636aeede23febd) Thanks [@allangreatsoftwares](https://github.com/allangreatsoftwares)! - fix: render server action redirects for the host of the request
+
+- [#1439](https://github.com/opennextjs/opennextjs-cloudflare/pull/1439) [`1ebbc55`](https://github.com/opennextjs/opennextjs-cloudflare/commit/1ebbc55ffe05d7bbe4a76d3f515c2d26f115ca52) Thanks [@mathurshubham](https://github.com/mathurshubham)! - fix: inline named webpack chunks (`webpackChunkName`) in the server runtime
+
+  Apps built with webpack returned a 500 with `Error: Unknown chunk N` when the server code loaded a chunk named with `/* webpackChunkName: "..." */`, i.e. from a `next/dynamic` or `import()` in the app or in a dependency. Named chunks are now bundled into the Worker and load correctly.
+
+## 1.20.12
+
+### Patch Changes
+
+- [#1453](https://github.com/opennextjs/opennextjs-cloudflare/pull/1453) [`5d8c5bc`](https://github.com/opennextjs/opennextjs-cloudflare/commit/5d8c5bc2e1d6d48dbff6d9de7cb8ffa9c7454ca6) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.11
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.11>
+
+  - Add support for Next.js 16.4
+  - Bump Next.js dependencies following [the Next.js security update on Oct 14](https://nextjs.org/blog/nextjs-security-update-october-14-2026)
+
+- [#1356](https://github.com/opennextjs/opennextjs-cloudflare/pull/1356) [`f993c8c`](https://github.com/opennextjs/opennextjs-cloudflare/commit/f993c8c0ff9090fd1a6b38e223ecb1eb3c968a64) Thanks [@chargome](https://github.com/chargome)! - fix(patches): include `preview-props.json` in loadManifest build-time inlining
+
+## 1.20.11
+
+### Patch Changes
+
+- [#1451](https://github.com/opennextjs/opennextjs-cloudflare/pull/1451) [`a6893b8`](https://github.com/opennextjs/opennextjs-cloudflare/commit/a6893b87671f1e0a401aca2da7b0ea9275c2b0e0) Thanks [@vicb](https://github.com/vicb)! - chore: bump `@opennextjs/aws` to 4.1.10
+
+  See details at <https://github.com/opennextjs/opennextjs-aws/releases/tag/v4.1.10>
+
+- [#1437](https://github.com/opennextjs/opennextjs-cloudflare/pull/1437) [`6be5daf`](https://github.com/opennextjs/opennextjs-cloudflare/commit/6be5daff509792e5c624b30ea291f4b18990c79b) Thanks [@mathurshubham](https://github.com/mathurshubham)! - fix: do not bundle `@vercel/og` into the Node.js middleware when it is not used
+
 ## 1.20.10
 
 ### Patch Changes

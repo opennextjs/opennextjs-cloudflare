@@ -176,6 +176,27 @@ export async function handleImageRequest(
 }
 
 /**
+ * Returns whether a request should be served by the development /cdn-cgi/image/ handler.
+ *
+ * In production, the edge serves /cdn-cgi/image/ but requests sent through service bindings bypass the edge
+ * and still reach the worker. This is the case of the revalidation requests sent through `WORKER_SELF_REFERENCE`
+ * by `res.revalidate()` and the revalidation queues.
+ *
+ * Those requests carry the `x-prerender-revalidate` header and must never be served:
+ * `res.revalidate("/cdn-cgi/image/<options>/<url>")` would otherwise make the worker fetch an arbitrary URL.
+ *
+ * Note: the check uses the parsed request URL, the one the worker routes on, so the path is normalized
+ * (i.e. `/cdn-cgi\image/` and `/a/../cdn-cgi/image/` both match).
+ *
+ * @param requestURL The parsed request URL.
+ * @param requestHeaders The request headers.
+ * @returns Whether the request should be served by `handleCdnCgiImageRequest`.
+ */
+export function isCdnCgiImageRequest(requestURL: URL, requestHeaders: Headers): boolean {
+	return requestURL.pathname.startsWith("/cdn-cgi/image/") && !requestHeaders.has("x-prerender-revalidate");
+}
+
+/**
  * Handles requests to /cdn-cgi/image/ in development.
  *
  * Extracts the image URL, fetches the image, and checks the content type against
@@ -786,10 +807,13 @@ type ImageContentType =
 /**
  * Detects the content type by looking at the first few bytes of a file
  *
- * Based on https://github.com/vercel/next.js/blob/72c9635/packages/next/src/server/image-optimizer.ts#L155
+ * Based on https://github.com/vercel/next.js/blob/e66e656/packages/next/src/server/image-optimizer/detect-content-type.ts
  *
- * @param buffer The image bytes
- * @returns a content type of undefined for unsupported content
+ * Note: Next.js falls back to `image-detector` for content not matching any signature. That fallback is not
+ * implemented here and such content is reported as unsupported (e.g. an SVG starting with a comment).
+ *
+ * @param buffer The first bytes of the image.
+ * @returns the detected content type, or `null` for unsupported content.
  */
 export function detectImageContentType(buffer: Uint8Array): ImageContentType | null {
 	if ([0xff, 0xd8, 0xff].every((b, i) => buffer[i] === b)) {
@@ -810,7 +834,7 @@ export function detectImageContentType(buffer: Uint8Array): ImageContentType | n
 	if ([0x3c, 0x73, 0x76, 0x67].every((b, i) => buffer[i] === b)) {
 		return SVG;
 	}
-	if ([0, 0, 0, 0, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66].every((b, i) => !b || buffer[i] === b)) {
+	if (hasFtypBox(buffer, [0x61, 0x76, 0x69, 0x66])) {
 		return AVIF;
 	}
 	if ([0x00, 0x00, 0x01, 0x00].every((b, i) => buffer[i] === b)) {
@@ -833,7 +857,7 @@ export function detectImageContentType(buffer: Uint8Array): ImageContentType | n
 	) {
 		return JXL;
 	}
-	if ([0, 0, 0, 0, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63].every((b, i) => !b || buffer[i] === b)) {
+	if (hasFtypBox(buffer, [0x68, 0x65, 0x69, 0x63])) {
 		return HEIC;
 	}
 	if (
@@ -842,6 +866,41 @@ export function detectImageContentType(buffer: Uint8Array): ImageContentType | n
 		return JP2;
 	}
 	return null;
+}
+
+/**
+ * Upper bound for the size of an ISOBMFF `ftyp` box.
+ *
+ * Real files use a few tens of bytes (16 bytes + 4 bytes per compatible brand).
+ */
+const MAX_FTYP_BOX_SIZE = 4096;
+
+/**
+ * Checks whether the buffer starts with an ISOBMFF `ftyp` box with the given major brand.
+ *
+ * ISOBMFF files (AVIF, HEIC) start with an `ftyp` box: a 4-byte big-endian box size, the box type "ftyp",
+ * then the major brand. Validating the box size keeps text documents from matching the brand bytes at
+ * offset 4, e.g. an SVG starting with the XML comment `<!--ftypavif-->`.
+ *
+ * Next.js checks that the box fits in the whole image. Only the first bytes of the image are available
+ * here so the size is checked against `MAX_FTYP_BOX_SIZE` instead.
+ *
+ * @param buffer The first bytes of the image.
+ * @param brand The 4 bytes of the expected major brand (e.g. "avif", "heic").
+ * @returns whether the buffer starts with a `ftyp` box with the given major brand.
+ */
+function hasFtypBox(buffer: Uint8Array, brand: number[]): boolean {
+	if (buffer.byteLength < 12) {
+		return false;
+	}
+	const boxSize = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength).getUint32(0);
+	if (boxSize < 16 || boxSize > MAX_FTYP_BOX_SIZE) {
+		return false;
+	}
+	return (
+		[0x66, 0x74, 0x79, 0x70].every((b, i) => buffer[i + 4] === b) &&
+		brand.every((b, i) => buffer[i + 8] === b)
+	);
 }
 
 declare global {
