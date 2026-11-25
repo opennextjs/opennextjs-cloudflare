@@ -37,24 +37,32 @@ function buildConfig(
 }
 
 describe("ensureCloudflareConfig", () => {
-	test("accepts the config of defineCloudflareConfig", () => {
+	test("accepts the config of defineCloudflareConfig with the default caches", () => {
 		expect(() => ensureCloudflareConfig(defineCloudflareConfig())).not.toThrow();
+	});
+
+	test("accepts the config of defineCloudflareConfig with custom caches", () => {
+		expect(() =>
+			ensureCloudflareConfig(
+				defineCloudflareConfig({ incrementalCache: lazyOverride, tagCache: lazyOverride })
+			)
+		).not.toThrow();
 	});
 
 	test.each([
 		["dummy", "dummy", "dummy", "dummy"],
-		["dummy", "dummy", "a function", lazyOverride],
-		["a function", lazyOverride, "dummy", "dummy"],
-		["a function", lazyOverride, "a function", lazyOverride],
-	] as const)("accepts incrementalCache: %s with tagCache: %s", (_, incrementalCache, __, tagCache) => {
+		["dummy", "a function", "dummy", lazyOverride],
+		["a function", "dummy", lazyOverride, "dummy"],
+		["a function", "a function", lazyOverride, lazyOverride],
+	] as const)("accepts incrementalCache: %s with tagCache: %s", (_, __, incrementalCache, tagCache) => {
 		expect(() => ensureCloudflareConfig(buildConfig({ incrementalCache, tagCache }))).not.toThrow();
 	});
 
 	test.each([
-		["dummy", "dummy", "unset", undefined],
-		["a function", lazyOverride, "unset", undefined],
-		["a function", lazyOverride, "dynamodb-lite", "dynamodb-lite"],
-	] as const)("rejects incrementalCache: %s with tagCache: %s", (_, incrementalCache, __, tagCache) => {
+		["dummy", "unset", "dummy", undefined],
+		["a function", "unset", lazyOverride, undefined],
+		["a function", "dynamodb-lite", lazyOverride, "dynamodb-lite"],
+	] as const)("rejects incrementalCache: %s with tagCache: %s", (_, __, incrementalCache, tagCache) => {
 		expect(() => ensureCloudflareConfig(buildConfig({ incrementalCache, tagCache }))).toThrow(
 			"The `open-next.config.ts` should have a default export like this"
 		);
