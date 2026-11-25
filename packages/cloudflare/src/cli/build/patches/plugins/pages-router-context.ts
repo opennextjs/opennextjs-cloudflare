@@ -1,35 +1,47 @@
 /**
  * ESBuild plugin to handle pages router context.
  *
- * We need to change the import path for the pages router context to use the one provided in `pages-runtime.prod.js`
+ * We need to change `.shared-runtime` imports to point at the vendored contexts used by
+ * `pages-runtime.prod.js`, mirroring `next/dist/server/require-hook.js` for dependencies
+ * in `node_modules` that webpack leaves externalized.
  */
 
 import { BuildOptions, compareSemver } from "@opennextjs/aws/build/helper.js";
 import type { OnResolveResult, PluginBuild } from "esbuild";
 
 export function patchPagesRouterContext(buildOpts: BuildOptions) {
-	const pathRegex = /^.*\/(?<CONTEXT>.*)\.shared-runtime$/;
+	const pathRegex = /^(?:.*[/\\])?(?<CONTEXT>[^/\\]+)\.shared-runtime(?:\.js)?$/;
 	const isAfter15 = compareSemver(buildOpts.nextVersion, ">=", "15.0.0");
-	const isAfter153 = compareSemver(buildOpts.nextVersion, ">=", "15.3.0");
 	const basePath = `next/dist/server/${isAfter15 ? "" : "future/"}route-modules/pages/vendored/contexts/`;
 	return {
 		name: "pages-router-context",
 		setup: (build: PluginBuild) => {
-			// If we are after 15.3, we don't need to patch the context anymore
-			if (isAfter153) {
-				return;
-			}
-			// We need to modify some imports (i.e. https://github.com/vercel/next.js/blob/48540b836642525b38a2cba40a92b4532c553a52/packages/next/src/server/require-hook.ts#L59-L68)
+			// Externalized packages (e.g. `next-seo` requiring `next/head`) still import `*.shared-runtime`
+			// across Next 15.3+ and 16.x; Node resolves them via `next/dist/server/require-hook.js`, which
+			// is shimmed out on Workers.
 			build.onResolve(
-				{ filter: /.*shared-runtime/ },
+				{ filter: /\.shared-runtime(?:\.js)?$/ },
 				async ({ path, resolveDir, ...options }): Promise<OnResolveResult | undefined> => {
 					const match = path.match(pathRegex);
 					if (match && match.groups?.CONTEXT) {
 						const newPath = `${basePath}${match.groups.CONTEXT}.js`;
-						return await build.resolve(newPath, {
+						const resolved = await build.resolve(newPath, {
 							resolveDir,
 							...options,
 						});
+						if (resolved.errors.length === 0) {
+							return resolved;
+						}
+						if (buildOpts.appPath && buildOpts.appPath !== resolveDir) {
+							const fallback = await build.resolve(newPath, {
+								resolveDir: buildOpts.appPath,
+								...options,
+							});
+							if (fallback.errors.length === 0) {
+								return fallback;
+							}
+						}
+						return resolved;
 					}
 				}
 			);
