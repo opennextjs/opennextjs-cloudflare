@@ -532,9 +532,23 @@ async function sendEntriesToR2Worker(options: {
 	const { workerUrl, assets, prefix, maxConcurrency } = options;
 
 	const pending = new Set<Promise<void>>();
+	// A task that terminally fails while we're throttled or waiting on a slot
+	// leaves `pending` before anything awaits it. Collect failures so they're
+	// thrown below instead of letting the populate "succeed" with missing keys.
+	const failures: unknown[] = [];
+	// Shared cooldown across all uploads: when an entry fails with a retryable
+	// error, no new requests are sent until the failing entry's own retry delay
+	// elapses. Under sustained failures (e.g. the client exhausting connections)
+	// this slows the aggregate send rate and lets things stabilise, instead of
+	// piling new uploads on top of timing-out ones. See
+	// https://github.com/opennextjs/opennextjs-cloudflare/issues/1284
+	const throttle = { resumeAt: 0 };
 
 	for (const asset of tqdm(assets)) {
 		const { fullPath, key, buildId, isFetch } = asset;
+
+		await waitForThrottle(throttle);
+		if (failures.length > 0) break;
 
 		const task = sendEntryToR2Worker({
 			workerUrl,
@@ -544,7 +558,12 @@ async function sendEntriesToR2Worker(options: {
 				cacheType: isFetch ? "fetch" : "cache",
 			}),
 			filename: fullPath,
-		}).finally(() => pending.delete(task));
+			throttle,
+		})
+			.catch((e: unknown) => {
+				failures.push(e);
+			})
+			.finally(() => pending.delete(task));
 
 		pending.add(task);
 
@@ -555,9 +574,24 @@ async function sendEntriesToR2Worker(options: {
 	}
 
 	await Promise.all(pending);
+	if (failures.length > 0) {
+		throw failures[0];
+	}
 }
 
 class RetryableWorkerError extends Error {}
+
+type UploadThrottle = { resumeAt: number };
+
+async function waitForThrottle(throttle: UploadThrottle): Promise<void> {
+	// Re-check after waking: an in-flight failure may have extended the
+	// cooldown past the deadline we originally slept until.
+	let delay = throttle.resumeAt - Date.now();
+	while (delay > 0) {
+		await setTimeout(delay);
+		delay = throttle.resumeAt - Date.now();
+	}
+}
 
 /**
  * Sends a single cache entry to the R2 worker.
@@ -568,16 +602,20 @@ class RetryableWorkerError extends Error {}
  * @param options.workerUrl - The URL of the local R2 worker's `/populate` endpoint.
  * @param options.key - The R2 object key.
  * @param options.filename - Path to the cache file on disk. Read at send time to avoid holding all values in memory.
+ * @param options.throttle - Shared cooldown state. Updated when this entry fails retryably, and waited on before every attempt.
  * @throws {Error} If the worker reports a failure.
  */
 async function sendEntryToR2Worker(options: {
 	workerUrl: string;
 	key: string;
 	filename: string;
+	throttle: UploadThrottle;
 }): Promise<void> {
-	const { workerUrl, key, filename } = options;
+	const { workerUrl, key, filename, throttle } = options;
 
 	for (let attempt = 0; attempt < MAX_REQUEST_RETRIES; attempt++) {
+		await waitForThrottle(throttle);
+
 		try {
 			let response: Response;
 
@@ -650,10 +688,12 @@ async function sendEntryToR2Worker(options: {
 			return;
 		} catch (e) {
 			if (e instanceof RetryableWorkerError && attempt < MAX_REQUEST_RETRIES - 1) {
+				const retryDelay = BASE_RETRY_DELAY_MS * Math.pow(BACKOFF_FACTOR, attempt);
+				throttle.resumeAt = Math.max(throttle.resumeAt, Date.now() + retryDelay);
 				logger.error(
 					`Attempt ${attempt + 1} to write "${key}" failed with a retryable error: ${e.message}. Retrying...`
 				);
-				await setTimeout(BASE_RETRY_DELAY_MS * Math.pow(BACKOFF_FACTOR, attempt));
+				await setTimeout(retryDelay);
 				continue;
 			}
 
