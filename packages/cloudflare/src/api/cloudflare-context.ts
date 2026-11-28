@@ -162,13 +162,25 @@ export function getCloudflareContext<
 
 /**
  * Get the cloudflare context from the current global scope
+ *
+ * @throws {Error} When the Worker is initialized and there is no active request.
  */
 function getCloudflareContextFromGlobalScope<
 	CfProperties extends Record<string, unknown> = IncomingRequestCfProperties,
 	Context = ExecutionContext,
 >(): CloudflareContext<CfProperties, Context> | undefined {
 	const global = globalThis as InternalGlobalThis<CfProperties, Context>;
-	return global[cloudflareContextSymbol];
+	const context = global[cloudflareContextSymbol];
+
+	// The Worker installs a getter backed by the request's AsyncLocalStorage.
+	if (context === undefined && Object.getOwnPropertyDescriptor(global, cloudflareContextSymbol)?.get) {
+		throw new Error(
+			"`getCloudflareContext` must be called while handling a request on a Cloudflare Worker. " +
+				"Move the call inside your request handler."
+		);
+	}
+
+	return context;
 }
 
 /**
@@ -387,9 +399,7 @@ async function getCloudflareContextFromWrangler<
 	};
 }
 
-// In production the cloudflare context is initialized by the worker so it is always available.
-// During local development (`next dev`) it might be missing only if the developers hasn't called
-// the `initOpenNextCloudflareForDev` function in their Next.js config file
+// In `next dev`, the Next.js config calls `initOpenNextCloudflareForDev` to set the context.
 const initOpenNextCloudflareForDevErrorMsg =
 	`\n\nERROR: \`getCloudflareContext\` has been called without having called` +
 	` \`initOpenNextCloudflareForDev\` from the Next.js config file.\n` +
