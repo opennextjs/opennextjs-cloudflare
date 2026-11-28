@@ -1,4 +1,5 @@
 import logger from "@opennextjs/aws/logger.js";
+import type { Unstable_Config } from "wrangler";
 import type yargs from "yargs";
 
 import { build as buildImpl } from "../build/build.js";
@@ -62,7 +63,25 @@ export async function buildCommand(
 		}
 	}
 
-	const wranglerConfig = await readWranglerConfig(args);
+	const wranglerConfig: Unstable_Config = await readWranglerConfig(args);
+
+	// A local Durable Object reads the same environment as the Worker.
+	if (
+		!args.skipWranglerConfigCheck &&
+		wranglerConfig.durable_objects.bindings.some(
+			({ name, class_name, script_name }) =>
+				name === "NEXT_CACHE_DO_QUEUE" && class_name === "DOQueueHandler" && script_name === undefined
+		) &&
+		!wranglerConfig.services?.some(({ binding }) => binding === "WORKER_SELF_REFERENCE")
+	) {
+		const configFile = wranglerConfig.configPath ? `\`${wranglerConfig.configPath}\`` : "the Wrangler config";
+		const environment = args.env ? ` for the \`${args.env}\` environment` : "";
+		const workerName = wranglerConfig.name ? `\`${wranglerConfig.name}\`` : "this Worker's name";
+		logger.warn(
+			"The local `DOQueueHandler` requires `WORKER_SELF_REFERENCE` for cache revalidation. " +
+				`Add this binding to \`services\` in ${configFile}${environment} and set \`service\` to ${workerName}.`
+		);
+	}
 
 	await buildImpl(options, config, projectOpts, wranglerConfig, args.dangerouslyUseUnsupportedNextVersion);
 }
